@@ -1,0 +1,38 @@
+{
+  "id": "goudron",
+  "name_key": "material.goudron.name",
+  "category": "liquide",
+  "stats": {
+    "durete": 1,
+    "densite": 11,
+    "valeur_base": 5,
+    "conductivite_mana": 3,
+    "flammabilite": 90,
+    "isolation": 35,
+    "conductivite_electrique": 5,
+    "flottabilite": 100,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 10,
+    "friction": 5
+  },
+  "tags": [],
+  "color": "#26221E",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 290,
+    "amplitude": 0.04,
+    "scale": 8
+  },
+  "harvest": {
+    "tool_category": "seau",
+    "skill": "collecte"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "aquatique"
+    ]
+  }
+}

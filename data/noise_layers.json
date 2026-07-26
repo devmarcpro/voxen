@@ -1,0 +1,10 @@
+{
+  "altitude":    { "type": "fbm",     "octaves": 3, "frequency": 0.00042, "seed_offset": 1 },
+  "temperature": { "type": "simplex", "octaves": 3, "frequency": 0.0005, "seed_offset": 2 },
+  "humidite":    { "type": "simplex", "octaves": 3, "frequency": 0.0005, "seed_offset": 3 },
+  "mana":        { "type": "simplex", "octaves": 4, "frequency": 0.0012, "seed_offset": 4 },
+  "danger":      { "type": "simplex", "octaves": 2, "frequency": 0.0004, "seed_offset": 5 },
+  "vegetation":  { "type": "simplex", "octaves": 3, "frequency": 0.002,  "seed_offset": 6 },
+  "sismique":    { "type": "simplex", "octaves": 2, "frequency": 0.0006, "seed_offset": 7 },
+  "ressources":  { "type": "fbm",     "octaves": 4, "frequency": 0.003,  "seed_offset": 8 }
+}

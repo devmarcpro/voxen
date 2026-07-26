@@ -1,0 +1,19 @@
+{
+  "id": "calebasse",
+  "name_key": "plant.calebasse.name",
+  "resolution": 8,
+  "materials": {
+    "stem_material": "tige_verte",
+    "leaf_material": "tige_verte",
+    "flower_material": "fruit_calebasse"
+  },
+  "morphology": {
+    "max_height_subvoxels": 2,
+    "spread_radius": 0.5,
+    "branching_factor": 0.3,
+    "leaf_pattern": "alternate"
+  },
+  "special_tags": ["fruit_massif_sol"],
+  "agriculture": { "stages": 2 },
+  "world_gen": { "biome_tags": ["plaine", "savane"], "density": 0.004 }
+}

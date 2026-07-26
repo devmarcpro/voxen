@@ -1,0 +1,14 @@
+{
+  "id": "fonte_aluminium",
+  "name_key": "transformation.fonte_aluminium.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "aluminium",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_aluminium",
+    "amount": 1
+  }
+}

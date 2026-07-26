@@ -1,0 +1,53 @@
+{
+  "id": "lande",
+  "name_key": "biome.lande.name",
+  "conditions": {
+    "altitude": [
+      0.15,
+      0.62
+    ],
+    "temperature": [
+      0.28,
+      0.52
+    ],
+    "humidite": [
+      0.4,
+      0.72
+    ]
+  },
+  "priority": 3,
+  "surface_material": "herbe",
+  "subsurface_material": "terre",
+  "grass_tint": [
+    0.95,
+    0.9,
+    0.7
+  ],
+  "vegetation": [
+    {
+      "id": "bouleau",
+      "density": 0.0015
+    }
+  ],
+  "village_palette": {
+    "mur": "terre",
+    "toit": "chaume_tresse",
+    "sol": "terre"
+  },
+  "poi_weights": {
+    "village": 4,
+    "donjon": 5,
+    "camp": 7
+  },
+  "farming_yield": 0.7,
+  "tags": [
+    "tempere",
+    "lande"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "buisson",
+      "density": 0.02
+    }
+  ]
+}

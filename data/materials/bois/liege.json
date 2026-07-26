@@ -1,0 +1,38 @@
+{
+  "id": "liege",
+  "name_key": "material.liege.name",
+  "category": "bois",
+  "stats": {
+    "durete": 4,
+    "densite": 2,
+    "valeur_base": 8,
+    "conductivite_mana": 6,
+    "flammabilite": 55,
+    "isolation": 88,
+    "conductivite_electrique": 3,
+    "flottabilite": 96,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 65,
+    "friction": 70
+  },
+  "tags": [],
+  "color": "#B08D62",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 219,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

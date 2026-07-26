@@ -1,0 +1,50 @@
+{
+  "id": "montagne",
+  "name_key": "biome.montagne.name",
+  "conditions": {
+    "altitude": [
+      0.62,
+      1.0
+    ],
+    "temperature": [
+      0.0,
+      1.0
+    ],
+    "humidite": [
+      0.0,
+      1.0
+    ]
+  },
+  "priority": 4,
+  "surface_material": "pierre",
+  "subsurface_material": "pierre",
+  "vegetation": [
+    {
+      "id": "sapin",
+      "density": 0.008
+    },
+    {
+      "id": "cedre",
+      "density": 0.006
+    },
+    {
+      "id": "if",
+      "density": 0.004
+    }
+  ],
+  "village_palette": {
+    "mur": "pierre",
+    "toit": "ardoise",
+    "sol": "pierre"
+  },
+  "poi_weights": {
+    "village": 2,
+    "donjon": 7,
+    "camp": 6
+  },
+  "farming_yield": 0.7,
+  "tags": [
+    "montagne",
+    "froid"
+  ]
+}

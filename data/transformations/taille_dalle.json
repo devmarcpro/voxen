@@ -1,0 +1,14 @@
+{
+  "id": "taille_dalle",
+  "name_key": "transformation.taille_dalle.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "dalle",
+    "amount": 2
+  },
+  "input": {
+    "material": "pierre_taillee",
+    "amount": 1
+  }
+}

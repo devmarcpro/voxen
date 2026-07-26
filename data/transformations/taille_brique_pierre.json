@@ -1,0 +1,14 @@
+{
+  "id": "taille_brique_pierre",
+  "name_key": "transformation.taille_brique_pierre.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "brique_pierre",
+    "amount": 1
+  },
+  "input": {
+    "material": "pierre_taillee",
+    "amount": 1
+  }
+}

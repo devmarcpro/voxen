@@ -1,0 +1,38 @@
+{
+  "id": "bambou",
+  "name_key": "material.bambou.name",
+  "category": "bois",
+  "stats": {
+    "durete": 7,
+    "densite": 3,
+    "valeur_base": 4,
+    "conductivite_mana": 15,
+    "flammabilite": 75,
+    "isolation": 30,
+    "conductivite_electrique": 5,
+    "flottabilite": 90,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 75,
+    "friction": 40
+  },
+  "tags": [],
+  "color": "#B9BA6D",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 217,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

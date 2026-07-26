@@ -1,0 +1,38 @@
+{
+  "id": "meleze",
+  "name_key": "material.meleze.name",
+  "category": "bois",
+  "stats": {
+    "durete": 10,
+    "densite": 5,
+    "valeur_base": 5,
+    "conductivite_mana": 8,
+    "flammabilite": 55,
+    "isolation": 40,
+    "conductivite_electrique": 5,
+    "flottabilite": 80,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 35,
+    "friction": 45
+  },
+  "tags": [],
+  "color": "#B98D5C",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 201,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "id": "fruit_calebasse",
+  "name_key": "material.fruit_calebasse.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 2, "densite": 3, "valeur_base": 4,
+    "conductivite_mana": 3, "flammabilite": 15, "isolation": 15,
+    "conductivite_electrique": 3, "flottabilite": 30, "luminosite": 0,
+    "fertilite": 15, "transparence": 0, "elasticite": 20, "friction": 40
+  },
+  "tags": ["organique", "recolte"],
+  "color": "#D97D2C",
+  "noise": { "type": "procedural", "seed_offset": 208, "amplitude": 0.06, "scale": 2 },
+  "harvest": { "tool_category": "mains_nues", "skill": "herboristerie" },
+  "world_gen": { "mode": "plante", "biome_tags": ["plaine"] }
+}

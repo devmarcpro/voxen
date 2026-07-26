@@ -1,0 +1,14 @@
+{
+  "id": "fonte_verre",
+  "name_key": "transformation.fonte_verre.name",
+  "station": "forge",
+  "skill": "forge",
+  "output": {
+    "material": "verre",
+    "amount": 1
+  },
+  "input": {
+    "material": "sable",
+    "amount": 2
+  }
+}

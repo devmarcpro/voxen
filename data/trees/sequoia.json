@@ -1,0 +1,17 @@
+{
+  "id": "sequoia",
+  "name_key": "tree.sequoia.name",
+  "wood_material": "sequoia",
+  "leaf_material": "feuilles_sequoia",
+  "height_range": [14, 22],
+  "trunk_radius": 2,
+  "branch_parameters": {
+    "start_fraction": 0.2,
+    "count_range": [0, 0],
+    "angle_deg": 0,
+    "length_range": [0, 0]
+  },
+  "canopy_shape": "conical",
+  "canopy_radius_range": [3, 5],
+  "special_tags": []
+}

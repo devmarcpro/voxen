@@ -1,0 +1,17 @@
+{
+  "stand_in_materiaux": {
+    "#00FF00": "categorie_1",
+    "#FF00FF": "categorie_2",
+    "#00FFFF": "categorie_3",
+    "#FFFF00": "categorie_4"
+  },
+  "marqueurs_attache": {
+    "#FF8000": "bras",
+    "#8000FF": "jambe_patte",
+    "#0080FF": "tete_cou",
+    "#FF0080": "main_arme",
+    "#80FF00": "dos",
+    "#008080": "selle_monture",
+    "#FFFFFF": "orientation"
+  }
+}

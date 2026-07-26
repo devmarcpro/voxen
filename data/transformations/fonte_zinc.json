@@ -1,0 +1,14 @@
+{
+  "id": "fonte_zinc",
+  "name_key": "transformation.fonte_zinc.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "zinc",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_zinc",
+    "amount": 1
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "id": "filage",
+  "name_key": "transformation.filage.name",
+  "station": "tissage",
+  "skill": "herboristerie",
+  "output": {
+    "material": "fil",
+    "amount": 1
+  },
+  "input": {
+    "category": "vegetal",
+    "amount": 2
+  }
+}

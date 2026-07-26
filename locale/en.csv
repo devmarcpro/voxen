@@ -1,0 +1,612 @@
+keys,en
+material.terre.name,Dirt
+material.pierre.name,Stone
+material.chene.name,Oak
+material.terre_fertile.name,Fertile soil
+material.sable.name,Sand
+material.gres.name,Sandstone
+material.calcaire.name,Limestone
+material.ardoise.name,Slate
+material.basalte.name,Basalt
+material.granit.name,Granite
+material.granit_noir.name,Black granite
+material.fer.name,Iron
+material.pin.name,Pine
+material.cuivre.name,Copper
+material.feuilles_chene.name,Oak leaves
+biome.plaine_temperee.name,Temperate plains
+biome.foret_temperee.name,Temperate forest
+biome.desert_aride.name,Arid desert
+biome.montagne.name,Mountains
+skill.minage.name,Mining
+skill.bucheronnage.name,Woodcutting
+skill.terrassement.name,Digging
+skill.herboristerie.name,Herbalism
+skill.collecte.name,Gathering
+functionality.recolte_minage.name,Mining tool
+functionality.recolte_bucheronnage.name,Woodcutting tool
+functionality.recolte_terrassement.name,Digging tool
+item.pioche.name,Pickaxe
+item.hache.name,Axe
+item.pelle.name,Shovel
+ui.hud.fps,FPS: {fps}
+ui.hud.chunks,Chunks: {meshes} shown · {cache} cached · {file} queued
+ui.hud.meshing,Meshing: {moyen} ms average · {max} ms max
+ui.hud.pos,"Position: {x}, {y}, {z}"
+ui.hud.biome,Biome: {biome}
+ui.hud.fertilite,"Fertility: {pct}%"
+ui.hud.temperature,"Temperature: {deg}°C"
+ui.hud.cible,Target: {materiau} — {progres} %
+ui.hud.cible_rebond,Target: {materiau} — the tool bounces off!
+ui.hud.outil,Tool: {outil}
+ui.outil.mains_nues,bare hands
+ui.hud.grille,Grid: {res} px
+ui.toast.budget_subdivision,Detail limit reached in this area
+ui.hud.controles1,WASD: walk · Space: jump · F: fly/walk
+ui.hud.controles2,Left click (hold): harvest/carve/attack · Right click: place
+ui.hud.controles3,1-9/wheel: select · Shift+1-9/wheel: bank · R: grid 32/16/8/4
+ui.hud.controles4,J/K/L: modules · V: claim · B: role · M: map · Tab: inventory · F5: reload
+ui.hud.controles5,T: list for sale (targeted stall) · G: collect gold (targeted stall) · F1: cheat menu
+ui.toast.niveau,{competence} reached level {niveau}!
+ui.toast.etal_vendu,Sold: {item} for {prix} gold
+ui.toast.etal_stock,Listed for sale: {item} at {prix} gold
+ui.toast.etal_collecte,Collected: {montant} gold
+ui.inv.titre,Inventory
+ui.inv.poids,Weight: {poids} / {capacite}
+ui.inv.surcharge,OVERLOADED — speed reduced
+ui.inv.competences,Skills
+ui.inv.competence_ligne,{nom} — level {niveau} ({xp} / {xp_max} XP · potential {potentiel})
+ui.inv.outil_ligne,{nom} (quality {qualite} · hardness {durete})
+ui.inv.vide,(empty inventory)
+skill.epee.name,Sword
+skill.mains_nues.name,Bare Hands
+skill.meditation.name,Meditation
+skill.controle_mana.name,Mana Control
+skill.esquive.name,Dodge
+skill.encaissement.name,Toughness
+functionality.morsure.name,Bite
+functionality.epee.name,Sword
+item.epee.name,Sword
+module.trait_de_mana.name,Mana Bolt
+module.soin_mineur.name,Minor Heal
+module.frappe_lourde.name,Heavy Strike
+module.morsure_simple.name,Bite
+creature.sanglier.name,Boar
+ui.hud.sante,HP: {pv} / {pv_max}
+ui.hud.mana,Mana: {mana} / {mana_max}
+ui.hud.or,Gold: {or}
+ui.toast.creature_tuee,{creature} defeated!
+functionality.mains_nues.name,Bare Hands
+ui.hud.module,Module {slot}: {nom} ({cout} mana)
+ui.role.base,Role: Base
+ui.role.habitation,Role: Housing
+ui.role.champs,Role: Farmland
+ui.role.ressources_naturelles,Role: Natural Resources
+ui.hud.cellule,"Cell {x},{z}: {statut}"
+ui.hud.cellule_revendiquee,claimed ({role})
+ui.hud.cellule_libre,unclaimed (V to claim)
+ui.role_name.base,Base
+ui.role_name.habitation,Housing
+ui.role_name.champs,Farmland
+ui.role_name.ressources_naturelles,Nat. Resources
+ui.map.titre,World Map
+ui.map.danger.0,Peaceful
+ui.map.danger.1,Dangerous
+ui.map.danger.2,Deadly
+ui.map.aide,WASD: move view · Wheel: zoom (infinite) · L: change display · Click: fast travel · Esc: close
+stat.force.name,Strength
+stat.dexterite.name,Dexterity
+stat.endurance.name,Endurance
+stat.volonte.name,Willpower
+stat.perception.name,Perception
+stat.charisme.name,Charisma
+material.sapin.name,Fir
+material.aiguilles_sapin.name,Fir needles
+material.bois_palmier.name,Palm wood
+material.feuilles_palmier.name,Palm fronds
+material.bois_baobab.name,Baobab wood
+material.feuilles_baobab.name,Baobab leaves
+tree.chene.name,Oak
+tree.sapin.name,Fir
+tree.palmier.name,Palm
+tree.baobab.name,Baobab
+material.eau.name,Water
+material.epicea.name,Spruce
+material.meleze.name,Larch
+material.cedre.name,Cedar
+material.hetre.name,Beech
+material.bouleau.name,Birch
+material.erable.name,Maple
+material.frene.name,Ash
+material.orme.name,Elm
+material.if.name,Yew
+material.noyer.name,Walnut
+material.cerisier.name,Cherry
+material.olivier.name,Olive
+material.ebene.name,Ebony
+material.gaiac.name,Lignum vitae
+material.acajou.name,Mahogany
+material.teck.name,Teak
+material.balsa.name,Balsa
+material.bambou.name,Bamboo
+material.saule.name,Willow
+material.liege.name,Cork
+material.peuplier.name,Poplar
+material.tilleul.name,Linden
+material.charme.name,Hornbeam
+material.robinier.name,Black locust
+material.chataignier.name,Chestnut
+material.platane.name,Plane tree
+material.aulne.name,Alder
+material.buis.name,Boxwood
+material.cypres.name,Cypress
+material.sequoia.name,Sequoia
+material.acacia.name,Acacia
+material.eucalyptus.name,Eucalyptus
+material.pommier.name,Apple wood
+material.noisetier.name,Hazel
+material.bois_flotte.name,Driftwood
+material.bois_calcine.name,Charred wood
+material.etain.name,Tin
+material.zinc.name,Zinc
+material.bronze.name,Bronze
+material.laiton.name,Brass
+material.acier.name,Steel
+material.acier_trempe.name,Hardened steel
+material.argent.name,Silver
+material.or.name,Gold
+material.platine.name,Platinum
+material.plomb.name,Lead
+material.nickel.name,Nickel
+material.cobalt.name,Cobalt
+material.titane.name,Titanium
+material.tungstene.name,Tungsten
+material.aluminium.name,Aluminum
+material.chrome.name,Chromium
+material.manganese.name,Manganese
+material.bismuth.name,Bismuth
+material.antimoine.name,Antimony
+material.diorite.name,Diorite
+material.andesite.name,Andesite
+material.dolomie.name,Dolomite
+material.craie.name,Chalk
+material.marbre.name,Marble
+material.quartzite.name,Quartzite
+material.schiste.name,Shale
+material.gneiss.name,Gneiss
+material.tuf_volcanique.name,Volcanic tuff
+material.pierre_ponce.name,Pumice
+material.obsidienne.name,Obsidian
+material.silex.name,Flint
+material.gypse.name,Gypsum
+material.rhyolite.name,Rhyolite
+material.peridotite.name,Peridotite
+material.serpentinite.name,Serpentinite
+material.travertin.name,Travertine
+material.conglomerat.name,Conglomerate
+material.breche_volcanique.name,Volcanic breccia
+material.kimberlite.name,Kimberlite
+material.calcite.name,Calcite
+material.tourbe.name,Peat
+material.argile.name,Clay
+material.gravier.name,Gravel
+material.lin.name,Flax
+material.coton.name,Cotton
+material.paille.name,Straw
+material.chanvre.name,Hemp
+material.laine.name,Wool
+material.soie.name,Silk
+material.cuir.name,Leather
+material.fourrure.name,Fur
+material.eau_salee.name,Salt water
+material.lave.name,Lava
+material.huile.name,Oil
+material.goudron.name,Tar
+material.boue.name,Mud
+material.seve.name,Sap
+material.houille.name,Bituminous coal
+material.lignite.name,Lignite
+material.anthracite.name,Anthracite
+material.soufre.name,Sulfur
+material.salpetre.name,Saltpeter
+material.sel_gemme.name,Rock salt
+material.graphite.name,Graphite
+material.mica.name,Mica
+material.pyrite.name,Pyrite
+material.malachite.name,Malachite
+material.argile_refractaire.name,Fire clay
+material.guano.name,Guano
+material.tourbe_compactee.name,Compacted peat
+material.bitume.name,Bitumen
+material.cinabre.name,Cinnabar
+material.ocre.name,Ochre
+material.lapis_lazuli.name,Lapis lazuli
+material.turquoise.name,Turquoise
+material.ambre.name,Amber
+material.fluorine.name,Fluorite
+material.amiante.name,Asbestos
+material.phosphorite.name,Phosphorite
+material.os_fossile.name,Fossil bone
+material.ammonite.name,Ammonite
+material.bois_petrifie.name,Petrified wood
+material.coquillage_fossile.name,Fossil shell
+material.geode.name,Geode
+material.meteorite_ferreuse.name,Iron meteorite
+material.glace.name,Ice
+material.neige.name,Snow
+material.quartz.name,Quartz
+material.amethyste.name,Amethyst
+material.topaze.name,Topaz
+material.grenat.name,Garnet
+material.opale.name,Opal
+material.jade.name,Jade
+material.rubis.name,Ruby
+material.saphir.name,Sapphire
+material.emeraude.name,Emerald
+material.diamant.name,Diamond
+material.verre.name,Glass
+material.brique.name,Brick
+material.etal_de_vente.name,Sale stall
+material.chaume_tresse.name,Thatch
+material.papier.name,Paper
+material.feuilles_bouleau.name,Birch leaves
+material.feuilles_sequoia.name,Sequoia leaves
+material.feuilles_saule.name,Willow leaves
+tree.bouleau.name,Birch
+tree.sequoia.name,Sequoia
+tree.saule.name,Weeping willow
+material.feuilles_acacia.name,Acacia leaves
+tree.acacia.name,Acacia
+material.feuilles_acajou.name,Mahogany leaves
+tree.acajou.name,Mahogany
+material.feuilles_aulne.name,Alder leaves
+tree.aulne.name,Alder
+material.feuilles_balsa.name,Balsa leaves
+tree.balsa.name,Balsa
+material.feuilles_bambou.name,Bamboo leaves
+tree.bambou.name,Bamboo
+material.feuilles_buis.name,Boxwood leaves
+tree.buis.name,Boxwood
+material.feuilles_cedre.name,Cedar leaves
+tree.cedre.name,Cedar
+material.feuilles_cerisier.name,Cherry leaves
+tree.cerisier.name,Cherry
+material.feuilles_charme.name,Hornbeam leaves
+tree.charme.name,Hornbeam
+material.feuilles_chataignier.name,Chestnut leaves
+tree.chataignier.name,Chestnut
+material.feuilles_cypres.name,Cypress leaves
+tree.cypres.name,Cypress
+material.feuilles_ebene.name,Ebony leaves
+tree.ebene.name,Ebony
+material.feuilles_epicea.name,Spruce leaves
+tree.epicea.name,Spruce
+material.feuilles_erable.name,Maple leaves
+tree.erable.name,Maple
+material.feuilles_eucalyptus.name,Eucalyptus leaves
+tree.eucalyptus.name,Eucalyptus
+material.feuilles_frene.name,Ash leaves
+tree.frene.name,Ash
+material.feuilles_gaiac.name,Lignum vitae leaves
+tree.gaiac.name,Lignum vitae
+material.feuilles_hetre.name,Beech leaves
+tree.hetre.name,Beech
+material.feuilles_if.name,Yew leaves
+tree.if.name,Yew
+material.feuilles_liege.name,Cork oak leaves
+tree.liege.name,Cork oak
+material.feuilles_meleze.name,Larch leaves
+tree.meleze.name,Larch
+material.feuilles_noisetier.name,Hazel leaves
+tree.noisetier.name,Hazel
+material.feuilles_noyer.name,Walnut leaves
+tree.noyer.name,Walnut
+material.feuilles_olivier.name,Olive leaves
+tree.olivier.name,Olive
+material.feuilles_orme.name,Elm leaves
+tree.orme.name,Elm
+material.feuilles_peuplier.name,Poplar leaves
+tree.peuplier.name,Poplar
+material.feuilles_platane.name,Plane tree leaves
+tree.platane.name,Plane tree
+material.feuilles_pommier.name,Apple tree leaves
+tree.pommier.name,Apple tree
+material.feuilles_robinier.name,Black locust leaves
+tree.robinier.name,Black locust
+material.feuilles_teck.name,Teak leaves
+tree.teck.name,Teak
+material.feuilles_tilleul.name,Linden leaves
+tree.tilleul.name,Linden
+biome.taiga.name,Taiga
+biome.toundra.name,Tundra
+biome.marecage.name,Swamp
+biome.cote.name,Coast / beach
+biome.mediterraneen.name,Mediterranean
+biome.jungle_tropicale.name,Tropical jungle
+biome.savane.name,Savanna
+biome.prairie.name,Prairie
+biome.foret_tropicale_seche.name,Dry tropical forest
+biome.mangrove.name,Mangrove
+biome.marais_froid.name,Cold marsh
+biome.foret_de_mana.name,Mana forest
+biome.montagne_cristalline.name,Crystal mountains
+material.herbe.name,Grass
+ui.map.zoom_info,"Grid: {grille} cells (128 blocks) — Display: {calque}"
+ui.map.layer.biome,Biome/relief
+ui.map.layer.danger,Danger
+ui.map.layer.revendications,Claims
+ui.map.layer.exploration,Exploration
+material.fleurs.name,Flowers
+material.buisson.name,Bush
+material.fougere.name,Fern
+material.herbe_seche.name,Dry grass
+biome.calotte_glaciaire.name,Ice cap
+biome.steppe.name,Steppe
+biome.foret_mixte.name,Mixed forest
+biome.desert_rocheux.name,Rocky desert
+material.tige_verte.name,Green stem
+material.epi_ble.name,Wheat ear
+material.tubercule.name,Tuber
+material.fruit_calebasse.name,Gourd
+material.petale_safran.name,Saffron petal
+material.pistil_safran.name,Saffron pistil
+material.epine.name,Thorn
+material.algue.name,Kelp
+plant.ble.name,Wheat
+plant.pomme_de_terre.name,Potato
+plant.calebasse.name,Gourd
+plant.safran.name,Saffron
+plant.ronces.name,Brambles
+plant.algue.name,Kelp
+ui.toast.cellule_donjon,A dungeon occupies this cell — it cannot be claimed
+ui.toast.partie_sauvegardee,Game saved
+ui.donjon.titre,⚔ Dungeon
+ui.donjon.infos,Danger: {danger} · Rooms: {salles} · 1 floor
+ui.donjon.compte,Entering in {secondes} s — step back to cancel
+ui.donjon.chargement,Generating dungeon...
+ui.donjon.danger.0,peaceful
+ui.donjon.danger.1,dangerous
+ui.donjon.danger.2,deadly
+ui.menu.titre,VOXEN
+ui.menu.solo,Singleplayer
+ui.menu.multi,Multiplayer
+ui.menu.parametres,Settings
+ui.menu.quitter,Quit
+ui.menu.continuer,Continue
+ui.menu.nouvelle,New game
+ui.menu.retour,Back
+ui.menu.distance_affichage,Render distance
+ui.menu.aucun_monde,No saved world
+ui.menu.nom_monde,World name
+ui.menu.nom_defaut,New world
+ui.menu.graine,Seed
+ui.menu.monde_info,Seed {graine} · Day {jour}
+ui.menu.relief,Terrain relief
+ui.menu.niveau_mer,Sea level
+ui.menu.temperature,Temperature
+ui.menu.humidite,Humidity
+ui.menu.arbres,Tree density
+ui.menu.rivieres,Rivers
+ui.menu.cavernes,Caves
+ui.menu.biome_force,Single biome
+ui.menu.biome_aucun,— all biomes —
+ui.menu.creer,Create and play
+ui.menu.apercu,World preview
+ui.menu.spawn_hint,Click the map to choose your spawn point
+ui.menu.regions,"Continents: {continents} · Oceans: {oceans}"
+ui.menu.host,Host (default world)
+ui.menu.rejoindre,Join
+ui.menu.ip,IP address
+ui.menu.langue,Language
+category.bois.name,Wood
+category.cristal.name,Crystal
+category.fossile.name,Fossil
+category.liquide.name,Liquid
+category.meteorologique.name,Weather
+category.minerai.name,Ore
+category.mineral.name,Mineral
+category.roche.name,Rock
+category.synthetique.name,Synthetic
+category.terre.name,Soil
+category.vegetal.name,Plant fiber
+category.gaz.name,Gas
+ui.type.arme,Weapon
+ui.type.outil,Tool
+ui.type.objet,Item
+ui.menu.onglet.personnage,Character
+ui.menu.onglet.inventaire,Inventory
+ui.menu.onglet.carte,Map
+ui.menu.onglet.royaume,Kingdom
+ui.menu.onglet.monde,World
+ui.menu.tri.nom,Name
+ui.menu.tri.categorie,Category
+ui.menu.tri.quantite,Quantity
+ui.menu.tri.durete,Hardness
+ui.menu.tri.densite,Density
+ui.menu.tri.valeur,Value
+ui.menu.tri.poids,Weight
+ui.menu.trier_par,Sort by:
+ui.menu.ordre_desc,Descending
+ui.menu.carte_aide,The world map opens fullscreen.
+ui.menu.ouvrir_carte,Open map
+ui.menu.encyclopedie,Encyclopedia
+ui.menu.enc.biomes,Biomes
+ui.menu.enc.creatures,Creatures
+ui.menu.enc.arbres,Trees
+ui.menu.enc.compte,{materiaux} materials · {plantes} plants catalogued
+ui.menu.enc.factions,Factions and other kingdoms: coming soon
+ui.menu.niveau_combat,Combat level: {niveau}
+ui.menu.niveau_general,General level: {niveau}
+ui.menu.aucune_competence,No skills trained yet.
+ui.menu.royaume_total,Claimed cells: {total}
+ui.menu.royaume_vide,No claimed cells (press V in game).
+ui.menu.royaume_cases,Cells:
+ui.menu.inv_objet_info,{categorie} · quality {qualite} · hardness {durete} · weight {poids}
+ui.menu.inv_mat_info,{categorie} · hardness {durete} · density {densite} · value {valeur}
+skill.forge.name,Smithing
+skill.menuiserie.name,Woodworking
+ui.menu.onglet.craft,Crafting
+ui.menu.craft_aide,Recipe crafting (basic path) — pick your materials.
+ui.menu.craft_titre,{nom} — {competence} lv {niveau} · station: {station}
+ui.menu.craft_manque,— no material —
+ui.menu.fabriquer,Craft
+ui.menu.craft_qualite,Expected quality: {palier}
+ui.qualite.miserable,Miserable
+ui.qualite.pauvre,Poor
+ui.qualite.correct,Decent
+ui.qualite.bon,Good
+ui.qualite.excellent,Excellent
+ui.qualite.chef_oeuvre,Masterwork
+ui.qualite.legendaire,Legendary
+ui.qualite.mythique,Mythic
+ui.station.etabli,Workbench
+ui.station.forge,Forge
+ui.station.aucune,none
+ui.toast.craft_reussi,Item crafted
+race.humain.name,Human
+race.elfe.name,Elf
+race.nain.name,Dwarf
+race.sylvide.name,Sylvid
+race.cendreux.name,Ashborn
+race.echomorphe.name,Echomorph
+class.guerrier.name,Warrior
+class.mage.name,Mage
+class.artisan.name,Artisan
+class.chasseur.name,Hunter
+class.marchand.name,Merchant
+class.vagabond.name,Wanderer
+ui.menu.creation_perso,Character creation
+ui.menu.race,Race
+ui.menu.classe,Class
+ui.menu.points_restants,Points to spend: {restants} / {total}
+ui.menu.commencer,Begin adventure
+ui.menu.perso_resume,{race} — traits: {traits}
+{classe} — skills: {competences} · gold: {or}
+ui.menu.perso_competences,Starting skills: {competences}
+ui.menu.perso_or,Starting gold: {or}
+category.lingot.name,Ingot
+ui.menu.transformations,Smelting / Transformations
+ui.menu.transformer,Smelt
+material.lingot_aluminium.name,Aluminum ingot
+transformation.fonte_aluminium.name,Smelt aluminum
+material.lingot_antimoine.name,Antimony ingot
+transformation.fonte_antimoine.name,Smelt antimony
+material.lingot_argent.name,Silver ingot
+transformation.fonte_argent.name,Smelt silver
+material.lingot_bismuth.name,Bismuth ingot
+transformation.fonte_bismuth.name,Smelt bismuth
+material.lingot_chrome.name,Chromium ingot
+transformation.fonte_chrome.name,Smelt chromium
+material.lingot_cobalt.name,Cobalt ingot
+transformation.fonte_cobalt.name,Smelt cobalt
+material.lingot_cuivre.name,Copper ingot
+transformation.fonte_cuivre.name,Smelt copper
+material.lingot_etain.name,Tin ingot
+transformation.fonte_etain.name,Smelt tin
+material.lingot_fer.name,Iron ingot
+transformation.fonte_fer.name,Smelt iron
+material.lingot_manganese.name,Manganese ingot
+transformation.fonte_manganese.name,Smelt manganese
+material.lingot_nickel.name,Nickel ingot
+transformation.fonte_nickel.name,Smelt nickel
+material.lingot_or.name,Gold ingot
+transformation.fonte_or.name,Smelt gold
+material.lingot_platine.name,Platinum ingot
+transformation.fonte_platine.name,Smelt platinum
+material.lingot_plomb.name,Lead ingot
+transformation.fonte_plomb.name,Smelt lead
+material.lingot_titane.name,Titanium ingot
+transformation.fonte_titane.name,Smelt titanium
+material.lingot_tungstene.name,Tungsten ingot
+transformation.fonte_tungstene.name,Smelt tungsten
+material.lingot_zinc.name,Zinc ingot
+transformation.fonte_zinc.name,Smelt zinc
+ui.menu.transform_aucune,No raw ore to smelt.
+ui.menu.transform_ligne,{n_in}× {entree} (owned: {possede}) → {n_out}× {sortie}
+biome.desert_froid.name,Cold desert
+biome.foret_pluviale_temperee.name,Temperate rainforest
+biome.lande.name,Heath
+material.etabli.name,Workbench
+material.four.name,Furnace
+ui.menu.craft_station,"Station: {station} ({etat})"
+ui.menu.station_dispo,available
+ui.menu.station_absente,not in this cell
+ui.menu.craft_competence,"Skill: {competence} (lv {niveau})"
+ui.menu.craft_resultat,"Result: {nom} — quality ~{palier}"
+transformation.fab_etabli.name,Craft a workbench
+transformation.fab_four.name,Craft a furnace
+ui.menu.stats_composant,Component
+ui.menu.stats_produit,Product
+material.scierie.name,Sawmill
+material.tailleur.name,Stonecutter
+material.metier_tisser.name,Loom
+material.alambic.name,Still
+material.enclume.name,Anvil
+material.planches.name,Planks
+material.poutre.name,Beam
+material.manche.name,Handle
+material.pierre_taillee.name,Cut stone
+material.dalle.name,Slab
+material.brique_pierre.name,Stone brick
+material.charbon.name,Charcoal
+material.fil.name,Thread
+material.tissu.name,Cloth
+material.corde.name,Rope
+material.torche.name,Torch
+category.construction.name,Construction
+category.textile.name,Textile
+category.planches.name,Planks
+category.station.name,Station
+ui.station.scierie,Sawmill
+ui.station.tailleur,Stonecutter
+ui.station.tissage,Loom
+ui.station.alambic,Still
+ui.station.enclume,Anvil
+transformation.fab_scierie.name,Craft a sawmill
+transformation.fab_tailleur.name,Craft a stonecutter
+transformation.fab_metier_tisser.name,Craft a loom
+transformation.fab_alambic.name,Craft a still
+transformation.fab_enclume.name,Craft an anvil
+transformation.alliage_acier.name,Forge steel
+transformation.alliage_bronze.name,Forge bronze
+transformation.alliage_laiton.name,Forge brass
+transformation.charbon_de_bois.name,Charcoal
+transformation.fonte_verre.name,Melt glass
+transformation.cuisson_brique.name,Fire bricks
+transformation.debit_planches.name,Cut planks
+transformation.taille_poutre.name,Cut a beam
+transformation.taille_manche.name,Cut handles
+transformation.taille_pierre.name,Cut stone
+transformation.taille_dalle.name,Cut slabs
+transformation.taille_brique_pierre.name,Cut stone bricks
+transformation.filage.name,Spin thread
+transformation.tissage_tissu.name,Weave cloth
+transformation.tressage_corde.name,Braid rope
+transformation.extraction_huile.name,Extract oil
+transformation.fab_torche.name,Craft torches
+item.dague.name,Dagger
+functionality.dague.name,Dagger
+item.masse.name,Mace
+functionality.masse.name,Mace
+item.lance.name,Spear
+functionality.lance.name,Spear
+item.hache_arme.name,Battle axe
+functionality.hache_arme.name,Battle axe
+item.arc.name,Bow
+functionality.arc.name,Bow
+item.arbalete.name,Crossbow
+functionality.arbalete.name,Crossbow
+item.baton_magique.name,Magic staff
+functionality.baton_magique.name,Magic staff
+item.faucille.name,Sickle
+item.seau.name,Bucket
+skill.dague.name,Dagger
+skill.masse.name,Mace
+skill.lance.name,Spear
+skill.hache_arme.name,Battle axe
+skill.arc.name,Bow
+skill.arbalete.name,Crossbow
+skill.baton_magique.name,Magic staff
+functionality.recolte_herboristerie.name,Harvesting tool
+functionality.recolte_collecte.name,Gathering tool
+ui.menu.craft_a_la_main,By hand (inventory)

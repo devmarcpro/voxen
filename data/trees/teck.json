@@ -1,0 +1,29 @@
+{
+  "id": "teck",
+  "name_key": "tree.teck.name",
+  "wood_material": "teck",
+  "leaf_material": "feuilles_teck",
+  "height_range": [
+    7,
+    10
+  ],
+  "trunk_radius": 1,
+  "branch_parameters": {
+    "start_fraction": 0.5,
+    "count_range": [
+      3,
+      5
+    ],
+    "angle_deg": 35,
+    "length_range": [
+      2,
+      3
+    ]
+  },
+  "canopy_shape": "spherical",
+  "canopy_radius_range": [
+    3,
+    4
+  ],
+  "special_tags": []
+}

@@ -1,0 +1,16 @@
+{
+  "id": "tige_verte",
+  "name_key": "material.tige_verte.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 1, "densite": 1, "valeur_base": 1,
+    "conductivite_mana": 4, "flammabilite": 70, "isolation": 15,
+    "conductivite_electrique": 8, "flottabilite": 25, "luminosite": 0,
+    "fertilite": 15, "transparence": 0, "elasticite": 30, "friction": 40
+  },
+  "tags": ["organique"],
+  "color": "#4B8B3B",
+  "noise": { "type": "procedural", "seed_offset": 205, "amplitude": 0.05, "scale": 1 },
+  "harvest": { "tool_category": "mains_nues", "skill": "herboristerie" },
+  "world_gen": { "mode": "plante", "biome_tags": ["plaine"] }
+}

@@ -1,0 +1,38 @@
+{
+  "id": "sequoia",
+  "name_key": "material.sequoia.name",
+  "category": "bois",
+  "stats": {
+    "durete": 9,
+    "densite": 4,
+    "valeur_base": 14,
+    "conductivite_mana": 12,
+    "flammabilite": 48,
+    "isolation": 52,
+    "conductivite_electrique": 5,
+    "flottabilite": 86,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 26,
+    "friction": 45
+  },
+  "tags": [],
+  "color": "#A0522D",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 229,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

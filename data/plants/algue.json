@@ -1,0 +1,16 @@
+{
+  "id": "algue",
+  "name_key": "plant.algue.name",
+  "resolution": 4,
+  "materials": {
+    "stem_material": "algue"
+  },
+  "morphology": {
+    "max_height_subvoxels": 8,
+    "spread_radius": 0.0,
+    "branching_factor": 0.0,
+    "leaf_pattern": "none"
+  },
+  "special_tags": ["aquatique"],
+  "world_gen": { "biome_tags": ["aquatique"], "density": 0.01 }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "eau",
+  "name_key": "material.eau.name",
+  "category": "liquide",
+  "stats": {
+    "durete": 0, "densite": 10, "valeur_base": 1,
+    "conductivite_mana": 15, "flammabilite": 0, "isolation": 20,
+    "conductivite_electrique": 80, "flottabilite": 100, "luminosite": 0,
+    "fertilite": 30, "transparence": 85, "elasticite": 0, "friction": 10
+  },
+  "tags": [],
+  "color": "#3F76B8",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 122,
+    "amplitude": 0.04,
+    "scale": 8
+  },
+  "harvest": {
+    "tool_category": "seau",
+    "skill": "collecte"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": ["aquatique"]
+  }
+}

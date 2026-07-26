@@ -1,0 +1,61 @@
+{
+  "id": "marecage",
+  "name_key": "biome.marecage.name",
+  "conditions": {
+    "altitude": [
+      0.0,
+      0.35
+    ],
+    "temperature": [
+      0.35,
+      0.65
+    ],
+    "humidite": [
+      0.72,
+      1.0
+    ]
+  },
+  "priority": 4,
+  "surface_material": "herbe",
+  "subsurface_material": "argile",
+  "grass_tint": [0.8, 0.85, 0.6],
+  "vegetation": [
+    {
+      "id": "saule",
+      "density": 0.012
+    },
+    {
+      "id": "peuplier",
+      "density": 0.012
+    },
+    {
+      "id": "aulne",
+      "density": 0.012
+    }
+  ],
+  "village_palette": {
+    "mur": "aulne",
+    "toit": "chaume_tresse",
+    "sol": "argile"
+  },
+  "poi_weights": {
+    "village": 2,
+    "donjon": 7,
+    "camp": 6
+  },
+  "farming_yield": 0.8,
+  "tags": [
+    "marecage",
+    "humide"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "fougere",
+      "density": 0.025
+    },
+    {
+      "material_id": "buisson",
+      "density": 0.005
+    }
+  ]
+}

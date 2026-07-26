@@ -1,0 +1,46 @@
+{
+  "id": "pelle",
+  "name_key": "item.pelle.name",
+  "type": "outil",
+  "equip_slot": "arme",
+  "hands": 1,
+  "functionality": "recolte_terrassement",
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "menuiserie",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 2
+      },
+      {
+        "category": "minerai",
+        "amount": 1
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.8,
+      "bois": 0.2
+    }
+  },
+  "vox_model": "models/tools/pelle.vox",
+  "vox_slots": {
+    "#00FF00": "bois",
+    "#FF00FF": "minerai"
+  },
+  "effects": [],
+  "tags": [
+    "outil",
+    "recolte"
+  ],
+  "sprites": {
+    "manche": "res://assets/tools/pelle_manche.png",
+    "tete": "res://assets/tools/pelle_tete.png"
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  }
+}

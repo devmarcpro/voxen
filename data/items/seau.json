@@ -1,0 +1,35 @@
+{
+  "id": "seau",
+  "name_key": "item.seau.name",
+  "type": "outil",
+  "equip_slot": "arme",
+  "hands": 1,
+  "functionality": "recolte_collecte",
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "minerai",
+        "amount": 3
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 1.0
+    }
+  },
+  "effects": [],
+  "tags": [
+    "outil"
+  ],
+  "sprites": {
+    "manche": "res://assets/tools/seau_manche.png",
+    "tete": "res://assets/tools/seau_tete.png"
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  }
+}

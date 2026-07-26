@@ -1,0 +1,14 @@
+{
+  "id": "taille_manche",
+  "name_key": "transformation.taille_manche.name",
+  "station": "scierie",
+  "skill": "bucheronnage",
+  "output": {
+    "material": "manche",
+    "amount": 2
+  },
+  "input": {
+    "category": "planches",
+    "amount": 1
+  }
+}

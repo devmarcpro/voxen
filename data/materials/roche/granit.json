@@ -1,0 +1,27 @@
+{
+  "id": "granit",
+  "name_key": "material.granit.name",
+  "category": "roche",
+  "stats": {
+    "durete": 28, "densite": 16, "valeur_base": 4,
+    "conductivite_mana": 5, "flammabilite": 0, "isolation": 25,
+    "conductivite_electrique": 8, "flottabilite": 1, "luminosite": 0,
+    "fertilite": 0, "transparence": 0, "elasticite": 2, "friction": 55
+  },
+  "tags": [],
+  "color": "#A79E96",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 110,
+    "amplitude": 0.09,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": ["souterrain"]
+  }
+}

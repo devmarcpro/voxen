@@ -1,0 +1,14 @@
+{
+  "id": "fonte_chrome",
+  "name_key": "transformation.fonte_chrome.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "chrome",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_chrome",
+    "amount": 1
+  }
+}

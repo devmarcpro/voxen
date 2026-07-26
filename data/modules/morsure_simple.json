@@ -1,0 +1,12 @@
+{
+  "id": "morsure_simple",
+  "name_key": "module.morsure_simple.name",
+  "module_type": "effet",
+  "mana_cost_base": 0,
+  "power_base": 0,
+  "degats_des": "1d4",
+  "tags": ["frappe"],
+  "params": {},
+  "grimoire_domains": [],
+  "book_type": "manuel"
+}

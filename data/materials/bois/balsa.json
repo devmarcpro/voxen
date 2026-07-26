@@ -1,0 +1,38 @@
+{
+  "id": "balsa",
+  "name_key": "material.balsa.name",
+  "category": "bois",
+  "stats": {
+    "durete": 3,
+    "densite": 1,
+    "valeur_base": 6,
+    "conductivite_mana": 8,
+    "flammabilite": 80,
+    "isolation": 50,
+    "conductivite_electrique": 4,
+    "flottabilite": 97,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 40,
+    "friction": 45
+  },
+  "tags": [],
+  "color": "#EFDFBC",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 216,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

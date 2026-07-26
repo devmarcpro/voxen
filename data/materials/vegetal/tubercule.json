@@ -1,0 +1,16 @@
+{
+  "id": "tubercule",
+  "name_key": "material.tubercule.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 2, "densite": 4, "valeur_base": 3,
+    "conductivite_mana": 2, "flammabilite": 20, "isolation": 20,
+    "conductivite_electrique": 3, "flottabilite": 15, "luminosite": 0,
+    "fertilite": 20, "transparence": 0, "elasticite": 15, "friction": 45
+  },
+  "tags": ["organique", "recolte"],
+  "color": "#B8895A",
+  "noise": { "type": "procedural", "seed_offset": 207, "amplitude": 0.06, "scale": 1 },
+  "harvest": { "tool_category": "mains_nues", "skill": "herboristerie" },
+  "world_gen": { "mode": "plante", "biome_tags": ["plaine"] }
+}

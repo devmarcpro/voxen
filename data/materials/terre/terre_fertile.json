@@ -1,0 +1,27 @@
+{
+  "id": "terre_fertile",
+  "name_key": "material.terre_fertile.name",
+  "category": "terre",
+  "stats": {
+    "durete": 3, "densite": 8, "valeur_base": 3,
+    "conductivite_mana": 10, "flammabilite": 5, "isolation": 35,
+    "conductivite_electrique": 22, "flottabilite": 10, "luminosite": 0,
+    "fertilite": 75, "transparence": 0, "elasticite": 15, "friction": 60
+  },
+  "tags": [],
+  "color": "#4E3A22",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 104,
+    "amplitude": 0.1,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pelle",
+    "skill": "terrassement"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": ["foret", "tempere"]
+  }
+}

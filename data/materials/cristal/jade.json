@@ -1,0 +1,38 @@
+{
+  "id": "jade",
+  "name_key": "material.jade.name",
+  "category": "cristal",
+  "stats": {
+    "durete": 26,
+    "densite": 10,
+    "valeur_base": 38,
+    "conductivite_mana": 50,
+    "flammabilite": 0,
+    "isolation": 35,
+    "conductivite_electrique": 15,
+    "flottabilite": 3,
+    "luminosite": 8,
+    "fertilite": 0,
+    "transparence": 40,
+    "elasticite": 25,
+    "friction": 34
+  },
+  "tags": [],
+  "color": "#3D9B6B",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 328,
+    "amplitude": 0.06,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

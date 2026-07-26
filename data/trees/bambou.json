@@ -1,0 +1,29 @@
+{
+  "id": "bambou",
+  "name_key": "tree.bambou.name",
+  "wood_material": "bambou",
+  "leaf_material": "feuilles_bambou",
+  "height_range": [
+    6,
+    9
+  ],
+  "trunk_radius": 1,
+  "branch_parameters": {
+    "start_fraction": 0.05,
+    "count_range": [
+      0,
+      0
+    ],
+    "angle_deg": 0,
+    "length_range": [
+      0,
+      0
+    ]
+  },
+  "canopy_shape": "conical",
+  "canopy_radius_range": [
+    1,
+    1
+  ],
+  "special_tags": []
+}

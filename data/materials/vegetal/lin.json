@@ -1,0 +1,39 @@
+{
+  "id": "lin",
+  "name_key": "material.lin.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 2,
+    "densite": 1,
+    "valeur_base": 3,
+    "conductivite_mana": 8,
+    "flammabilite": 80,
+    "isolation": 45,
+    "conductivite_electrique": 3,
+    "flottabilite": 88,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 55,
+    "friction": 55
+  },
+  "tags": [],
+  "color": "#E9E2C8",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 279,
+    "amplitude": 0.1,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "faucille",
+    "skill": "herboristerie"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "plaine",
+      "foret"
+    ]
+  }
+}

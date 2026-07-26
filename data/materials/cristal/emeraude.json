@@ -1,0 +1,38 @@
+{
+  "id": "emeraude",
+  "name_key": "material.emeraude.name",
+  "category": "cristal",
+  "stats": {
+    "durete": 24,
+    "densite": 9,
+    "valeur_base": 50,
+    "conductivite_mana": 82,
+    "flammabilite": 0,
+    "isolation": 15,
+    "conductivite_electrique": 26,
+    "flottabilite": 3,
+    "luminosite": 12,
+    "fertilite": 0,
+    "transparence": 64,
+    "elasticite": 2,
+    "friction": 30
+  },
+  "tags": [],
+  "color": "#1F9E5A",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 331,
+    "amplitude": 0.06,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

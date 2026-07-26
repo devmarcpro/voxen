@@ -1,0 +1,13 @@
+{
+  "name_key": "race.cendreux.name",
+  "stat_bonuses": {},
+  "xp_modifier": 1.0,
+  "base_potentials": {
+    "forge": 115
+  },
+  "traits": [
+    "immunite_chaleur_mineure",
+    "forge_15"
+  ],
+  "id": "cendreux"
+}

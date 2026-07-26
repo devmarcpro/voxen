@@ -1,0 +1,13 @@
+{
+  "id": "mains_nues",
+  "name_key": "functionality.mains_nues.name",
+  "kind": "arme",
+  "hands": 0,
+  "combat_skill": "mains_nues",
+  "degats_des": "1d3",
+  "crit_range": 20,
+  "vitesse_base": 2.5,
+  "portee": 1.5,
+  "type_degats": "contondant",
+  "poids_reference": 1
+}

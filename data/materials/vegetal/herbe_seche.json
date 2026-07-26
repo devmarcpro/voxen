@@ -1,0 +1,16 @@
+{
+  "id": "herbe_seche",
+  "name_key": "material.herbe_seche.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 2, "densite": 2, "valeur_base": 1,
+    "conductivite_mana": 4, "flammabilite": 75, "isolation": 25,
+    "conductivite_electrique": 10, "flottabilite": 20, "luminosite": 0,
+    "fertilite": 25, "transparence": 0, "elasticite": 10, "friction": 55
+  },
+  "tags": ["organique"],
+  "color": "#B8A153",
+  "noise": { "type": "procedural", "seed_offset": 124, "amplitude": 0.08, "scale": 2 },
+  "harvest": { "tool_category": "pelle", "skill": "terrassement" },
+  "world_gen": { "mode": "biome", "biome_tags": ["steppe"] }
+}

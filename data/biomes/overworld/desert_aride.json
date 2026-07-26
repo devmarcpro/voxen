@@ -1,0 +1,46 @@
+{
+  "id": "desert_aride",
+  "name_key": "biome.desert_aride.name",
+  "conditions": {
+    "altitude": [
+      0.0,
+      1.0
+    ],
+    "temperature": [
+      0.65,
+      1.0
+    ],
+    "humidite": [
+      0.0,
+      0.35
+    ]
+  },
+  "priority": 3,
+  "surface_material": "sable",
+  "subsurface_material": "gres",
+  "vegetation": [
+    {
+      "id": "palmier",
+      "density": 0.004
+    },
+    {
+      "id": "baobab",
+      "density": 0.0015
+    }
+  ],
+  "village_palette": {
+    "mur": "gres",
+    "toit": "gres",
+    "sol": "gres"
+  },
+  "poi_weights": {
+    "village": 3,
+    "donjon": 6,
+    "camp": 8
+  },
+  "farming_yield": 0.5,
+  "tags": [
+    "desert",
+    "chaud"
+  ]
+}

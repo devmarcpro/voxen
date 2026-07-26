@@ -1,0 +1,27 @@
+{
+  "id": "foret_mixte",
+  "name_key": "biome.foret_mixte.name",
+  "conditions": {
+    "altitude": [0.0, 0.6],
+    "temperature": [0.28, 0.42],
+    "humidite": [0.4, 0.65]
+  },
+  "priority": 3,
+  "surface_material": "herbe",
+  "subsurface_material": "terre",
+  "grass_tint": [0.95, 1.0, 0.9],
+  "vegetation": [
+    { "id": "sapin", "density": 0.005 },
+    { "id": "bouleau", "density": 0.005 },
+    { "id": "chene", "density": 0.003 },
+    { "id": "epicea", "density": 0.004 }
+  ],
+  "plantes_sol": [
+    { "material_id": "fougere", "density": 0.012 },
+    { "material_id": "buisson", "density": 0.008 }
+  ],
+  "village_palette": { "mur": "bouleau", "toit": "sapin", "sol": "terre" },
+  "poi_weights": { "village": 3, "donjon": 6, "camp": 8 },
+  "farming_yield": 0.8,
+  "tags": ["tempere", "foret", "mixte"]
+}

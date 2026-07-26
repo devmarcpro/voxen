@@ -1,0 +1,14 @@
+{
+  "id": "tressage_corde",
+  "name_key": "transformation.tressage_corde.name",
+  "station": "tissage",
+  "skill": "herboristerie",
+  "output": {
+    "material": "corde",
+    "amount": 1
+  },
+  "input": {
+    "material": "fil",
+    "amount": 2
+  }
+}

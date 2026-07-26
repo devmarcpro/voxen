@@ -1,0 +1,20 @@
+{
+  "name_key": "class.mage.name",
+  "stat_bonuses": {
+    "volonte": 2,
+    "perception": 1
+  },
+  "starting_skills": {
+    "meditation": 5,
+    "controle_mana": 5
+  },
+  "starting_items": [],
+  "starting_materials": {},
+  "gold": 0,
+  "extra_points": 0,
+  "base_potentials": {
+    "meditation": 120,
+    "controle_mana": 120
+  },
+  "id": "mage"
+}

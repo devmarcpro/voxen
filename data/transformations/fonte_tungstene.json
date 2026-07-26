@@ -1,0 +1,14 @@
+{
+  "id": "fonte_tungstene",
+  "name_key": "transformation.fonte_tungstene.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "tungstene",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_tungstene",
+    "amount": 1
+  }
+}

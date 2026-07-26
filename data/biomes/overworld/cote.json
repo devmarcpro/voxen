@@ -1,0 +1,42 @@
+{
+  "id": "cote",
+  "name_key": "biome.cote.name",
+  "conditions": {
+    "altitude": [
+      0.0,
+      0.28
+    ],
+    "temperature": [
+      0.4,
+      0.75
+    ],
+    "humidite": [
+      0.35,
+      0.6
+    ]
+  },
+  "priority": 3,
+  "surface_material": "sable",
+  "subsurface_material": "gres",
+  "vegetation": [
+    {
+      "id": "palmier",
+      "density": 0.006
+    }
+  ],
+  "village_palette": {
+    "mur": "teck",
+    "toit": "chaume_tresse",
+    "sol": "sable"
+  },
+  "poi_weights": {
+    "village": 4,
+    "donjon": 4,
+    "camp": 6
+  },
+  "farming_yield": 0.6,
+  "tags": [
+    "cote",
+    "plage"
+  ]
+}

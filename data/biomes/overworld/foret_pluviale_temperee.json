@@ -1,0 +1,66 @@
+{
+  "id": "foret_pluviale_temperee",
+  "name_key": "biome.foret_pluviale_temperee.name",
+  "conditions": {
+    "altitude": [
+      0.0,
+      0.5
+    ],
+    "temperature": [
+      0.4,
+      0.63
+    ],
+    "humidite": [
+      0.73,
+      1.0
+    ]
+  },
+  "priority": 4,
+  "surface_material": "herbe",
+  "subsurface_material": "terre",
+  "grass_tint": [
+    0.8,
+    1.1,
+    0.75
+  ],
+  "vegetation": [
+    {
+      "id": "sequoia",
+      "density": 0.006
+    },
+    {
+      "id": "sapin",
+      "density": 0.012
+    },
+    {
+      "id": "hetre",
+      "density": 0.008
+    },
+    {
+      "id": "erable",
+      "density": 0.006
+    }
+  ],
+  "village_palette": {
+    "mur": "sapin",
+    "toit": "sapin",
+    "sol": "terre"
+  },
+  "poi_weights": {
+    "village": 3,
+    "donjon": 6,
+    "camp": 7
+  },
+  "farming_yield": 1.15,
+  "tags": [
+    "tempere",
+    "foret",
+    "humide"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "fougere",
+      "density": 0.025
+    }
+  ]
+}

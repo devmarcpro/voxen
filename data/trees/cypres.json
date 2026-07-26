@@ -1,0 +1,29 @@
+{
+  "id": "cypres",
+  "name_key": "tree.cypres.name",
+  "wood_material": "cypres",
+  "leaf_material": "feuilles_cypres",
+  "height_range": [
+    8,
+    13
+  ],
+  "trunk_radius": 1,
+  "branch_parameters": {
+    "start_fraction": 0.1,
+    "count_range": [
+      0,
+      0
+    ],
+    "angle_deg": 0,
+    "length_range": [
+      0,
+      0
+    ]
+  },
+  "canopy_shape": "conical",
+  "canopy_radius_range": [
+    1,
+    2
+  ],
+  "special_tags": []
+}

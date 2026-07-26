@@ -1,0 +1,27 @@
+{
+  "id": "feuilles_palmier",
+  "name_key": "material.feuilles_palmier.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 1, "densite": 1, "valeur_base": 1,
+    "conductivite_mana": 5, "flammabilite": 70, "isolation": 22,
+    "conductivite_electrique": 5, "flottabilite": 75, "luminosite": 0,
+    "fertilite": 5, "transparence": 10, "elasticite": 50, "friction": 50
+  },
+  "tags": ["organique"],
+  "color": "#7BA23E",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 119,
+    "amplitude": 0.1,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": ["desert", "cote"]
+  }
+}

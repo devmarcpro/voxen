@@ -1,0 +1,14 @@
+{
+  "id": "cuisson_brique",
+  "name_key": "transformation.cuisson_brique.name",
+  "station": "forge",
+  "skill": "forge",
+  "output": {
+    "material": "brique",
+    "amount": 1
+  },
+  "input": {
+    "material": "argile",
+    "amount": 2
+  }
+}

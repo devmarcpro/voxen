@@ -1,0 +1,14 @@
+{
+  "id": "tissage_tissu",
+  "name_key": "transformation.tissage_tissu.name",
+  "station": "tissage",
+  "skill": "herboristerie",
+  "output": {
+    "material": "tissu",
+    "amount": 1
+  },
+  "input": {
+    "material": "fil",
+    "amount": 3
+  }
+}

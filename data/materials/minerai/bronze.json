@@ -1,0 +1,38 @@
+{
+  "id": "bronze",
+  "name_key": "material.bronze.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 20,
+    "densite": 11,
+    "valeur_base": 6,
+    "conductivite_mana": 20,
+    "flammabilite": 0,
+    "isolation": 5,
+    "conductivite_electrique": 70,
+    "flottabilite": 4,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 12,
+    "friction": 25
+  },
+  "tags": [],
+  "color": "#B08D57",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 238,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

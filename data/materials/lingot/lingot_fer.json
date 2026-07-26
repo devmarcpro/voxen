@@ -1,0 +1,38 @@
+{
+  "id": "lingot_fer",
+  "name_key": "material.lingot_fer.name",
+  "category": "lingot",
+  "stats": {
+    "durete": 32,
+    "densite": 12,
+    "valeur_base": 16,
+    "conductivite_mana": 10,
+    "flammabilite": 0,
+    "isolation": 5,
+    "conductivite_electrique": 75,
+    "flottabilite": 3,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 10,
+    "friction": 25
+  },
+  "tags": [
+    "metal",
+    "raffine"
+  ],
+  "color": "#A6A6AA",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 308,
+    "amplitude": 0.04,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "none"
+  }
+}

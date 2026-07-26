@@ -1,0 +1,29 @@
+{
+  "id": "cedre",
+  "name_key": "tree.cedre.name",
+  "wood_material": "cedre",
+  "leaf_material": "feuilles_cedre",
+  "height_range": [
+    6,
+    10
+  ],
+  "trunk_radius": 2,
+  "branch_parameters": {
+    "start_fraction": 0.4,
+    "count_range": [
+      5,
+      7
+    ],
+    "angle_deg": 25,
+    "length_range": [
+      3,
+      5
+    ]
+  },
+  "canopy_shape": "flat",
+  "canopy_radius_range": [
+    3,
+    4
+  ],
+  "special_tags": []
+}

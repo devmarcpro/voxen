@@ -1,0 +1,38 @@
+{
+  "id": "bouleau",
+  "name_key": "material.bouleau.name",
+  "category": "bois",
+  "stats": {
+    "durete": 9,
+    "densite": 4,
+    "valeur_base": 3,
+    "conductivite_mana": 15,
+    "flammabilite": 65,
+    "isolation": 35,
+    "conductivite_electrique": 5,
+    "flottabilite": 85,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 35,
+    "friction": 45
+  },
+  "tags": [],
+  "color": "#E3CDA4",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 204,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

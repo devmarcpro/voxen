@@ -1,0 +1,19 @@
+{
+  "name_key": "class.chasseur.name",
+  "stat_bonuses": {
+    "dexterite": 2,
+    "perception": 1
+  },
+  "starting_skills": {
+    "esquive": 5,
+    "herboristerie": 5
+  },
+  "starting_items": [],
+  "starting_materials": {},
+  "gold": 0,
+  "extra_points": 0,
+  "base_potentials": {
+    "esquive": 110
+  },
+  "id": "chasseur"
+}

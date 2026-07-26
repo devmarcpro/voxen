@@ -1,0 +1,39 @@
+{
+  "id": "sel_gemme",
+  "name_key": "material.sel_gemme.name",
+  "category": "mineral",
+  "stats": {
+    "durete": 4,
+    "densite": 8,
+    "valeur_base": 5,
+    "conductivite_mana": 5,
+    "flammabilite": 0,
+    "isolation": 25,
+    "conductivite_electrique": 35,
+    "flottabilite": 12,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 20,
+    "elasticite": 3,
+    "friction": 50
+  },
+  "tags": [],
+  "color": "#F0E8E0",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 298,
+    "amplitude": 0.07,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  },
+  "texture_pattern": 4
+}

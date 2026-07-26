@@ -1,0 +1,38 @@
+{
+  "id": "opale",
+  "name_key": "material.opale.name",
+  "category": "cristal",
+  "stats": {
+    "durete": 12,
+    "densite": 7,
+    "valeur_base": 45,
+    "conductivite_mana": 92,
+    "flammabilite": 0,
+    "isolation": 18,
+    "conductivite_electrique": 22,
+    "flottabilite": 4,
+    "luminosite": 45,
+    "fertilite": 0,
+    "transparence": 55,
+    "elasticite": 5,
+    "friction": 32
+  },
+  "tags": [],
+  "color": "#DCE8E4",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 327,
+    "amplitude": 0.06,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

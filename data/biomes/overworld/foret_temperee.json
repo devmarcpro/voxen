@@ -1,0 +1,101 @@
+{
+  "id": "foret_temperee",
+  "name_key": "biome.foret_temperee.name",
+  "conditions": {
+    "altitude": [
+      0.0,
+      0.62
+    ],
+    "temperature": [
+      0.3,
+      0.7
+    ],
+    "humidite": [
+      0.55,
+      1.0
+    ]
+  },
+  "priority": 2,
+  "surface_material": "herbe",
+  "subsurface_material": "terre",
+  "grass_tint": [
+    0.9,
+    1.05,
+    0.85
+  ],
+  "vegetation": [
+    {
+      "id": "chene",
+      "density": 0.0125
+    },
+    {
+      "id": "sapin",
+      "density": 0.0075
+    },
+    {
+      "id": "bouleau",
+      "density": 0.00625
+    },
+    {
+      "id": "sequoia",
+      "density": 0.00125
+    },
+    {
+      "id": "hetre",
+      "density": 0.0075
+    },
+    {
+      "id": "erable",
+      "density": 0.005
+    },
+    {
+      "id": "frene",
+      "density": 0.00375
+    },
+    {
+      "id": "tilleul",
+      "density": 0.00375
+    },
+    {
+      "id": "charme",
+      "density": 0.00375
+    },
+    {
+      "id": "chataignier",
+      "density": 0.00375
+    },
+    {
+      "id": "buis",
+      "density": 0.0025
+    },
+    {
+      "id": "noisetier",
+      "density": 0.0025
+    }
+  ],
+  "village_palette": {
+    "mur": "chene",
+    "toit": "chene",
+    "sol": "terre"
+  },
+  "poi_weights": {
+    "village": 4,
+    "donjon": 6,
+    "camp": 8
+  },
+  "farming_yield": 1.1,
+  "tags": [
+    "tempere",
+    "foret"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "fougere",
+      "density": 0.015
+    },
+    {
+      "material_id": "buisson",
+      "density": 0.01
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "alliage_acier",
+  "name_key": "transformation.alliage_acier.name",
+  "station": "forge",
+  "skill": "forge",
+  "output": {
+    "material": "acier",
+    "amount": 2
+  },
+  "inputs": [
+    {
+      "material": "fer",
+      "amount": 2
+    },
+    {
+      "material": "charbon",
+      "amount": 1
+    }
+  ]
+}

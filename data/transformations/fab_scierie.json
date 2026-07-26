@@ -1,0 +1,20 @@
+{
+  "id": "fab_scierie",
+  "name_key": "transformation.fab_scierie.name",
+  "station": "etabli",
+  "skill": "bucheronnage",
+  "output": {
+    "material": "scierie",
+    "amount": 1
+  },
+  "inputs": [
+    {
+      "category": "bois",
+      "amount": 6
+    },
+    {
+      "category": "minerai",
+      "amount": 1
+    }
+  ]
+}

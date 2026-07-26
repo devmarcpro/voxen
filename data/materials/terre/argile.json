@@ -1,0 +1,38 @@
+{
+  "id": "argile",
+  "name_key": "material.argile.name",
+  "category": "terre",
+  "stats": {
+    "durete": 4,
+    "densite": 10,
+    "valeur_base": 2,
+    "conductivite_mana": 8,
+    "flammabilite": 0,
+    "isolation": 40,
+    "conductivite_electrique": 30,
+    "flottabilite": 5,
+    "luminosite": 0,
+    "fertilite": 20,
+    "transparence": 0,
+    "elasticite": 35,
+    "friction": 50
+  },
+  "tags": [],
+  "color": "#B0764F",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 277,
+    "amplitude": 0.08,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pelle",
+    "skill": "terrassement"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "plaine"
+    ]
+  }
+}

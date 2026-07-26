@@ -1,0 +1,66 @@
+{
+  "id": "taiga",
+  "name_key": "biome.taiga.name",
+  "conditions": {
+    "altitude": [
+      0.0,
+      0.55
+    ],
+    "temperature": [
+      0.12,
+      0.35
+    ],
+    "humidite": [
+      0.35,
+      0.75
+    ]
+  },
+  "priority": 3,
+  "surface_material": "herbe",
+  "subsurface_material": "pierre",
+  "grass_tint": [0.85, 0.95, 1.05],
+  "vegetation": [
+    {
+      "id": "epicea",
+      "density": 0.02
+    },
+    {
+      "id": "meleze",
+      "density": 0.015
+    },
+    {
+      "id": "sapin",
+      "density": 0.012
+    },
+    {
+      "id": "bouleau",
+      "density": 0.008
+    }
+  ],
+  "village_palette": {
+    "mur": "sapin",
+    "toit": "sapin",
+    "sol": "pierre"
+  },
+  "poi_weights": {
+    "village": 2,
+    "donjon": 6,
+    "camp": 6
+  },
+  "farming_yield": 0.6,
+  "tags": [
+    "taiga",
+    "froid",
+    "foret"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "fougere",
+      "density": 0.006
+    },
+    {
+      "material_id": "buisson",
+      "density": 0.006
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "id": "titane",
+  "name_key": "material.titane.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 32,
+    "densite": 8,
+    "valeur_base": 40,
+    "conductivite_mana": 18,
+    "flammabilite": 0,
+    "isolation": 8,
+    "conductivite_electrique": 45,
+    "flottabilite": 8,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 22,
+    "friction": 25
+  },
+  "tags": [],
+  "color": "#9FA8B5",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 248,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

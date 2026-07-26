@@ -1,0 +1,18 @@
+{
+  "id": "prairie",
+  "name_key": "biome.prairie.name",
+  "conditions": { "altitude": [0.0, 0.5], "temperature": [0.35, 0.62], "humidite": [0.22, 0.52] },
+  "priority": 3,
+  "surface_material": "herbe",
+  "subsurface_material": "terre",
+  "grass_tint": [1.1, 1.08, 0.7],
+  "vegetation": [
+    { "id": "chene", "density": 0.0015 },
+    { "id": "bouleau", "density": 0.0015 }
+  ],
+  "village_palette": { "mur": "terre", "toit": "chaume_tresse", "sol": "terre" },
+  "poi_weights": { "village": 5, "donjon": 5, "camp": 7 },
+  "farming_yield": 1.2,
+  "tags": ["tempere", "prairie", "herbe"],
+  "plantes_sol": [ { "material_id": "buisson", "density": 0.006 } ]
+}

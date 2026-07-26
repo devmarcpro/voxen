@@ -1,0 +1,38 @@
+{
+  "id": "seve",
+  "name_key": "material.seve.name",
+  "category": "liquide",
+  "stats": {
+    "durete": 1,
+    "densite": 9,
+    "valeur_base": 5,
+    "conductivite_mana": 20,
+    "flammabilite": 65,
+    "isolation": 30,
+    "conductivite_electrique": 10,
+    "flottabilite": 100,
+    "luminosite": 0,
+    "fertilite": 10,
+    "transparence": 40,
+    "elasticite": 20,
+    "friction": 3
+  },
+  "tags": [],
+  "color": "#C79038",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 292,
+    "amplitude": 0.04,
+    "scale": 8
+  },
+  "harvest": {
+    "tool_category": "seau",
+    "skill": "collecte"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "aquatique"
+    ]
+  }
+}

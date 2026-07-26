@@ -1,0 +1,38 @@
+{
+  "id": "saule",
+  "name_key": "material.saule.name",
+  "category": "bois",
+  "stats": {
+    "durete": 8,
+    "densite": 5,
+    "valeur_base": 4,
+    "conductivite_mana": 15,
+    "flammabilite": 50,
+    "isolation": 35,
+    "conductivite_electrique": 8,
+    "flottabilite": 80,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 55,
+    "friction": 45
+  },
+  "tags": [],
+  "color": "#A89A6B",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 218,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

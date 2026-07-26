@@ -1,0 +1,20 @@
+{
+  "id": "alliage_bronze",
+  "name_key": "transformation.alliage_bronze.name",
+  "station": "forge",
+  "skill": "forge",
+  "output": {
+    "material": "bronze",
+    "amount": 2
+  },
+  "inputs": [
+    {
+      "material": "cuivre",
+      "amount": 2
+    },
+    {
+      "material": "etain",
+      "amount": 1
+    }
+  ]
+}

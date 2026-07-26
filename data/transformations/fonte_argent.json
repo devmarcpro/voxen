@@ -1,0 +1,14 @@
+{
+  "id": "fonte_argent",
+  "name_key": "transformation.fonte_argent.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "argent",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_argent",
+    "amount": 1
+  }
+}

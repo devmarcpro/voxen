@@ -1,0 +1,27 @@
+{
+  "id": "chene",
+  "name_key": "material.chene.name",
+  "category": "bois",
+  "stats": {
+    "durete": 12, "densite": 6, "valeur_base": 4,
+    "conductivite_mana": 10, "flammabilite": 60, "isolation": 35,
+    "conductivite_electrique": 5, "flottabilite": 80, "luminosite": 0,
+    "fertilite": 0, "transparence": 0, "elasticite": 25, "friction": 45
+  },
+  "tags": ["organique"],
+  "color": "#8B5A2B",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 101,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": ["foret", "tempere"]
+  }
+}

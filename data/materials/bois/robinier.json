@@ -1,0 +1,38 @@
+{
+  "id": "robinier",
+  "name_key": "material.robinier.name",
+  "category": "bois",
+  "stats": {
+    "durete": 15,
+    "densite": 7,
+    "valeur_base": 7,
+    "conductivite_mana": 9,
+    "flammabilite": 50,
+    "isolation": 34,
+    "conductivite_electrique": 5,
+    "flottabilite": 72,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 38,
+    "friction": 45
+  },
+  "tags": [],
+  "color": "#A98A3F",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 223,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

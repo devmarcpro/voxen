@@ -1,0 +1,14 @@
+{
+  "id": "fonte_bismuth",
+  "name_key": "transformation.fonte_bismuth.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "bismuth",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_bismuth",
+    "amount": 1
+  }
+}

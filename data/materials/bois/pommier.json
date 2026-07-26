@@ -1,0 +1,38 @@
+{
+  "id": "pommier",
+  "name_key": "material.pommier.name",
+  "category": "bois",
+  "stats": {
+    "durete": 12,
+    "densite": 6,
+    "valeur_base": 7,
+    "conductivite_mana": 11,
+    "flammabilite": 58,
+    "isolation": 34,
+    "conductivite_electrique": 5,
+    "flottabilite": 79,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 28,
+    "friction": 44
+  },
+  "tags": [],
+  "color": "#A5643C",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 232,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

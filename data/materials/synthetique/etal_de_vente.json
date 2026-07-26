@@ -1,0 +1,36 @@
+{
+  "id": "etal_de_vente",
+  "name_key": "material.etal_de_vente.name",
+  "category": "synthetique",
+  "stats": {
+    "durete": 10,
+    "densite": 15,
+    "valeur_base": 8,
+    "conductivite_mana": 0,
+    "flammabilite": 20,
+    "isolation": 10,
+    "conductivite_electrique": 0,
+    "flottabilite": 5,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 5,
+    "friction": 40
+  },
+  "tags": ["meuble"],
+  "color": "#8A5A2E",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 512,
+    "amplitude": 0.05,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": null,
+    "skill": null
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": []
+  }
+}

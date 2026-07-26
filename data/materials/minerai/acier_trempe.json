@@ -1,0 +1,38 @@
+{
+  "id": "acier_trempe",
+  "name_key": "material.acier_trempe.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 34,
+    "densite": 13,
+    "valeur_base": 20,
+    "conductivite_mana": 12,
+    "flammabilite": 0,
+    "isolation": 5,
+    "conductivite_electrique": 70,
+    "flottabilite": 3,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 12,
+    "friction": 25
+  },
+  "tags": [],
+  "color": "#7E848D",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 241,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

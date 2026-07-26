@@ -1,0 +1,36 @@
+{
+  "id": "verre",
+  "name_key": "material.verre.name",
+  "category": "synthetique",
+  "stats": {
+    "durete": 8,
+    "densite": 8,
+    "valeur_base": 6,
+    "conductivite_mana": 20,
+    "flammabilite": 0,
+    "isolation": 10,
+    "conductivite_electrique": 15,
+    "flottabilite": 4,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 95,
+    "elasticite": 1,
+    "friction": 25
+  },
+  "tags": [],
+  "color": "#C6DEE4",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 333,
+    "amplitude": 0.04,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": null,
+    "skill": null
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": []
+  }
+}

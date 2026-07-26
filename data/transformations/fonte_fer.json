@@ -1,0 +1,14 @@
+{
+  "id": "fonte_fer",
+  "name_key": "transformation.fonte_fer.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "fer",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_fer",
+    "amount": 1
+  }
+}

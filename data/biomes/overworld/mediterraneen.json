@@ -1,0 +1,50 @@
+{
+  "id": "mediterraneen",
+  "name_key": "biome.mediterraneen.name",
+  "conditions": {
+    "altitude": [
+      0.0,
+      0.5
+    ],
+    "temperature": [
+      0.55,
+      0.75
+    ],
+    "humidite": [
+      0.3,
+      0.5
+    ]
+  },
+  "priority": 3,
+  "surface_material": "terre",
+  "subsurface_material": "calcaire",
+  "vegetation": [
+    {
+      "id": "olivier",
+      "density": 0.012
+    },
+    {
+      "id": "liege",
+      "density": 0.01
+    },
+    {
+      "id": "cypres",
+      "density": 0.008
+    }
+  ],
+  "village_palette": {
+    "mur": "calcaire",
+    "toit": "brique",
+    "sol": "calcaire"
+  },
+  "poi_weights": {
+    "village": 4,
+    "donjon": 5,
+    "camp": 5
+  },
+  "farming_yield": 0.9,
+  "tags": [
+    "mediterraneen",
+    "sec"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "baton_magique",
+  "name_key": "functionality.baton_magique.name",
+  "kind": "arme",
+  "hands": 1,
+  "combat_skill": "baton_magique",
+  "degats_des": "1d4",
+  "crit_range": 20,
+  "vitesse_base": 1.8,
+  "portee": 1,
+  "type_degats": "contondant",
+  "poids_reference": 25
+}

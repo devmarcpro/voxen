@@ -1,0 +1,36 @@
+{
+  "id": "chaume_tresse",
+  "name_key": "material.chaume_tresse.name",
+  "category": "synthetique",
+  "stats": {
+    "durete": 3,
+    "densite": 2,
+    "valeur_base": 2,
+    "conductivite_mana": 5,
+    "flammabilite": 90,
+    "isolation": 65,
+    "conductivite_electrique": 3,
+    "flottabilite": 88,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 55,
+    "friction": 60
+  },
+  "tags": [],
+  "color": "#D3B76A",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 335,
+    "amplitude": 0.04,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": null,
+    "skill": null
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": []
+  }
+}

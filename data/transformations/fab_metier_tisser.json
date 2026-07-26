@@ -1,0 +1,20 @@
+{
+  "id": "fab_metier_tisser",
+  "name_key": "transformation.fab_metier_tisser.name",
+  "station": "etabli",
+  "skill": "bucheronnage",
+  "output": {
+    "material": "metier_tisser",
+    "amount": 1
+  },
+  "inputs": [
+    {
+      "category": "bois",
+      "amount": 4
+    },
+    {
+      "category": "vegetal",
+      "amount": 2
+    }
+  ]
+}

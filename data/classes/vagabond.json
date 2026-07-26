@@ -1,0 +1,43 @@
+{
+  "name_key": "class.vagabond.name",
+  "stat_bonuses": {
+    "force": 1,
+    "dexterite": 1,
+    "endurance": 1,
+    "volonte": 1,
+    "perception": 1,
+    "charisme": 1
+  },
+  "starting_skills": {},
+  "starting_items": [
+    {
+      "item_id": "pioche",
+      "materials": {
+        "bois": "pin",
+        "minerai": "cuivre"
+      },
+      "quality": 0.7
+    },
+    {
+      "item_id": "hache",
+      "materials": {
+        "bois": "pin",
+        "minerai": "cuivre"
+      },
+      "quality": 0.7
+    },
+    {
+      "item_id": "pelle",
+      "materials": {
+        "bois": "pin",
+        "minerai": "cuivre"
+      },
+      "quality": 0.7
+    }
+  ],
+  "starting_materials": {},
+  "gold": 0,
+  "extra_points": 15,
+  "base_potentials": {},
+  "id": "vagabond"
+}

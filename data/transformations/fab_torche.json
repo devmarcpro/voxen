@@ -1,0 +1,20 @@
+{
+  "id": "fab_torche",
+  "name_key": "transformation.fab_torche.name",
+  "station": "aucune",
+  "skill": "bucheronnage",
+  "output": {
+    "material": "torche",
+    "amount": 4
+  },
+  "inputs": [
+    {
+      "category": "bois",
+      "amount": 1
+    },
+    {
+      "material": "charbon",
+      "amount": 1
+    }
+  ]
+}

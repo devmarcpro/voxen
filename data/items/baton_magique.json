@@ -1,0 +1,40 @@
+{
+  "id": "baton_magique",
+  "name_key": "item.baton_magique.name",
+  "type": "arme",
+  "equip_slot": "arme",
+  "hands": 1,
+  "functionality": "baton_magique",
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 2
+      },
+      {
+        "category": "cristal",
+        "amount": 1
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "cristal": 0.7,
+      "bois": 0.3
+    }
+  },
+  "effects": [],
+  "tags": [
+    "arme"
+  ],
+  "sprites": {
+    "manche": "res://assets/tools/baton_magique_manche.png",
+    "tete": "res://assets/tools/baton_magique_tete.png"
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "cristal"
+  }
+}

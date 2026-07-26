@@ -1,0 +1,13 @@
+{
+  "id": "salle_petite",
+  "kind": "salle",
+  "size_category": "petite",
+  "size": [7, 5, 7],
+  "doors": [
+    { "position": [3, 0, 0], "direction": "sud" },
+    { "position": [3, 0, 6], "direction": "nord" },
+    { "position": [6, 0, 3], "direction": "est" },
+    { "position": [0, 0, 3], "direction": "ouest" }
+  ],
+  "special_tags": ["treasure_eligible"]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "fonte_etain",
+  "name_key": "transformation.fonte_etain.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "etain",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_etain",
+    "amount": 1
+  }
+}

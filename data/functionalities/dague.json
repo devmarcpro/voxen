@@ -1,0 +1,13 @@
+{
+  "id": "dague",
+  "name_key": "functionality.dague.name",
+  "kind": "arme",
+  "hands": 1,
+  "combat_skill": "dague",
+  "degats_des": "1d6",
+  "crit_range": 19,
+  "vitesse_base": 3.0,
+  "portee": 1,
+  "type_degats": "percant",
+  "poids_reference": 20
+}

@@ -1,0 +1,10 @@
+{
+  "name_key": "race.echomorphe.name",
+  "stat_bonuses": {},
+  "xp_modifier": 0.9,
+  "base_potentials": {},
+  "traits": [
+    "mimetique"
+  ],
+  "id": "echomorphe"
+}

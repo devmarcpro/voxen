@@ -1,0 +1,12 @@
+{
+  "id": "soin_mineur",
+  "name_key": "module.soin_mineur.name",
+  "module_type": "effet",
+  "mana_cost_base": 8,
+  "power_base": 12,
+  "degats_des": "3d4",
+  "tags": ["vie", "soin"],
+  "params": { "portee": 5 },
+  "grimoire_domains": ["vie"],
+  "book_type": "grimoire"
+}

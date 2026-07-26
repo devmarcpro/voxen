@@ -1,0 +1,38 @@
+{
+  "id": "etain",
+  "name_key": "material.etain.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 12,
+    "densite": 9,
+    "valeur_base": 4,
+    "conductivite_mana": 15,
+    "flammabilite": 0,
+    "isolation": 5,
+    "conductivite_electrique": 60,
+    "flottabilite": 5,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 10,
+    "friction": 25
+  },
+  "tags": [],
+  "color": "#B8BCC0",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 236,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

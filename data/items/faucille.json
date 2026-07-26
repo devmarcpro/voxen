@@ -1,0 +1,40 @@
+{
+  "id": "faucille",
+  "name_key": "item.faucille.name",
+  "type": "outil",
+  "equip_slot": "arme",
+  "hands": 1,
+  "functionality": "recolte_herboristerie",
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "menuiserie",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 1
+      },
+      {
+        "category": "minerai",
+        "amount": 2
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.8,
+      "bois": 0.2
+    }
+  },
+  "effects": [],
+  "tags": [
+    "outil"
+  ],
+  "sprites": {
+    "manche": "res://assets/tools/faucille_manche.png",
+    "tete": "res://assets/tools/faucille_tete.png"
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  }
+}

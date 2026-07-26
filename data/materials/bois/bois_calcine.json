@@ -1,0 +1,38 @@
+{
+  "id": "bois_calcine",
+  "name_key": "material.bois_calcine.name",
+  "category": "bois",
+  "stats": {
+    "durete": 6,
+    "densite": 4,
+    "valeur_base": 3,
+    "conductivite_mana": 5,
+    "flammabilite": 5,
+    "isolation": 45,
+    "conductivite_electrique": 5,
+    "flottabilite": 70,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 5,
+    "friction": 50
+  },
+  "tags": [],
+  "color": "#3A322C",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 235,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

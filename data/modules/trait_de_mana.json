@@ -1,0 +1,12 @@
+{
+  "id": "trait_de_mana",
+  "name_key": "module.trait_de_mana.name",
+  "module_type": "effet",
+  "mana_cost_base": 5,
+  "power_base": 8,
+  "degats_des": "1d8",
+  "tags": ["arcane", "projectile"],
+  "params": { "vitesse": 20, "portee": 30 },
+  "grimoire_domains": ["arcane"],
+  "book_type": "grimoire"
+}

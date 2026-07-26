@@ -1,0 +1,14 @@
+{
+  "id": "fonte_cobalt",
+  "name_key": "transformation.fonte_cobalt.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "cobalt",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_cobalt",
+    "amount": 1
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "corridor_droit",
+  "kind": "connecteur",
+  "type": "corridor",
+  "length": 5,
+  "doors": [
+    { "position": [0, 0, 0], "direction": "sud" },
+    { "position": [0, 0, 5], "direction": "nord" }
+  ]
+}

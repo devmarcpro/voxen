@@ -1,0 +1,38 @@
+{
+  "id": "conglomerat",
+  "name_key": "material.conglomerat.name",
+  "category": "roche",
+  "stats": {
+    "durete": 12,
+    "densite": 13,
+    "valeur_base": 2,
+    "conductivite_mana": 5,
+    "flammabilite": 0,
+    "isolation": 26,
+    "conductivite_electrique": 9,
+    "flottabilite": 2,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 4,
+    "friction": 58
+  },
+  "tags": [],
+  "color": "#AF9C82",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 272,
+    "amplitude": 0.07,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

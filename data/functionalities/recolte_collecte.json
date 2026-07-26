@@ -1,0 +1,7 @@
+{
+  "id": "recolte_collecte",
+  "name_key": "functionality.recolte_collecte.name",
+  "kind": "outil",
+  "hands": 1,
+  "tool_category": "seau"
+}

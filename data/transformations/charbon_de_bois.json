@@ -1,0 +1,14 @@
+{
+  "id": "charbon_de_bois",
+  "name_key": "transformation.charbon_de_bois.name",
+  "station": "forge",
+  "skill": "forge",
+  "output": {
+    "material": "charbon",
+    "amount": 2
+  },
+  "input": {
+    "category": "bois",
+    "amount": 2
+  }
+}

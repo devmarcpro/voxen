@@ -1,0 +1,38 @@
+{
+  "id": "bois_flotte",
+  "name_key": "material.bois_flotte.name",
+  "category": "bois",
+  "stats": {
+    "durete": 7,
+    "densite": 4,
+    "valeur_base": 4,
+    "conductivite_mana": 6,
+    "flammabilite": 58,
+    "isolation": 38,
+    "conductivite_electrique": 6,
+    "flottabilite": 82,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 22,
+    "friction": 48
+  },
+  "tags": [],
+  "color": "#B7AC97",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 234,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

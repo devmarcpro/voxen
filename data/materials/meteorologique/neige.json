@@ -1,0 +1,38 @@
+{
+  "id": "neige",
+  "name_key": "material.neige.name",
+  "category": "meteorologique",
+  "stats": {
+    "durete": 1,
+    "densite": 3,
+    "valeur_base": 1,
+    "conductivite_mana": 10,
+    "flammabilite": 0,
+    "isolation": 60,
+    "conductivite_electrique": 5,
+    "flottabilite": 50,
+    "luminosite": 0,
+    "fertilite": 5,
+    "transparence": 5,
+    "elasticite": 30,
+    "friction": 30
+  },
+  "tags": [],
+  "color": "#FAFBFD",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 322,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pelle",
+    "skill": "terrassement"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "froid"
+    ]
+  }
+}

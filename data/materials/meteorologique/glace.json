@@ -1,0 +1,38 @@
+{
+  "id": "glace",
+  "name_key": "material.glace.name",
+  "category": "meteorologique",
+  "stats": {
+    "durete": 6,
+    "densite": 9,
+    "valeur_base": 2,
+    "conductivite_mana": 20,
+    "flammabilite": 0,
+    "isolation": 30,
+    "conductivite_electrique": 25,
+    "flottabilite": 40,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 70,
+    "elasticite": 2,
+    "friction": 5
+  },
+  "tags": [],
+  "color": "#B8E0EE",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 321,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pelle",
+    "skill": "terrassement"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "froid"
+    ]
+  }
+}

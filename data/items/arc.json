@@ -1,0 +1,40 @@
+{
+  "id": "arc",
+  "name_key": "item.arc.name",
+  "type": "arme",
+  "equip_slot": "arme",
+  "hands": 2,
+  "functionality": "arc",
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 2
+      },
+      {
+        "category": "textile",
+        "amount": 1
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "bois": 0.7,
+      "textile": 0.3
+    }
+  },
+  "effects": [],
+  "tags": [
+    "arme"
+  ],
+  "sprites": {
+    "manche": "res://assets/tools/arc_manche.png",
+    "tete": "res://assets/tools/arc_tete.png"
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "bois"
+  }
+}

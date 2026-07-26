@@ -1,0 +1,38 @@
+{
+  "id": "argent",
+  "name_key": "material.argent.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 15,
+    "densite": 10,
+    "valeur_base": 20,
+    "conductivite_mana": 55,
+    "flammabilite": 0,
+    "isolation": 5,
+    "conductivite_electrique": 90,
+    "flottabilite": 4,
+    "luminosite": 5,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 12,
+    "friction": 22
+  },
+  "tags": [],
+  "color": "#D9DCE1",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 242,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

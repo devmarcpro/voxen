@@ -1,0 +1,46 @@
+{
+  "id": "hache",
+  "name_key": "item.hache.name",
+  "type": "outil",
+  "equip_slot": "arme",
+  "hands": 1,
+  "functionality": "recolte_bucheronnage",
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "menuiserie",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 2
+      },
+      {
+        "category": "minerai",
+        "amount": 3
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.8,
+      "bois": 0.2
+    }
+  },
+  "vox_model": "models/tools/hache.vox",
+  "vox_slots": {
+    "#00FF00": "bois",
+    "#FF00FF": "minerai"
+  },
+  "effects": [],
+  "tags": [
+    "outil",
+    "recolte"
+  ],
+  "sprites": {
+    "manche": "res://assets/tools/hache_manche.png",
+    "tete": "res://assets/tools/hache_tete.png"
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  }
+}

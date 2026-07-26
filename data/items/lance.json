@@ -1,0 +1,40 @@
+{
+  "id": "lance",
+  "name_key": "item.lance.name",
+  "type": "arme",
+  "equip_slot": "arme",
+  "hands": 2,
+  "functionality": "lance",
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 2
+      },
+      {
+        "category": "minerai",
+        "amount": 2
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.7,
+      "bois": 0.3
+    }
+  },
+  "effects": [],
+  "tags": [
+    "arme"
+  ],
+  "sprites": {
+    "manche": "res://assets/tools/lance_manche.png",
+    "tete": "res://assets/tools/lance_tete.png"
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  }
+}

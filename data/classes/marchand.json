@@ -1,0 +1,20 @@
+{
+  "name_key": "class.marchand.name",
+  "stat_bonuses": {
+    "charisme": 2,
+    "perception": 1
+  },
+  "starting_skills": {
+    "collecte": 5
+  },
+  "starting_items": [],
+  "starting_materials": {
+    "etal_de_vente": 1
+  },
+  "gold": 500,
+  "extra_points": 0,
+  "base_potentials": {
+    "collecte": 110
+  },
+  "id": "marchand"
+}

@@ -1,0 +1,38 @@
+{
+  "id": "bismuth",
+  "name_key": "material.bismuth.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 8,
+    "densite": 17,
+    "valeur_base": 16,
+    "conductivite_mana": 35,
+    "flammabilite": 0,
+    "isolation": 12,
+    "conductivite_electrique": 30,
+    "flottabilite": 2,
+    "luminosite": 12,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 6,
+    "friction": 28
+  },
+  "tags": [],
+  "color": "#B78CA8",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 253,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

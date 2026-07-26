@@ -1,0 +1,7 @@
+{
+  "id": "recolte_terrassement",
+  "name_key": "functionality.recolte_terrassement.name",
+  "kind": "outil",
+  "hands": 1,
+  "tool_category": "pelle"
+}

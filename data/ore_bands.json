@@ -1,0 +1,346 @@
+[
+ {
+  "material": "cuivre",
+  "depth_min": 0,
+  "depth_max": 55,
+  "weight": 1.0
+ },
+ {
+  "material": "etain",
+  "depth_min": 0,
+  "depth_max": 55,
+  "weight": 0.8
+ },
+ {
+  "material": "zinc",
+  "depth_min": 0,
+  "depth_max": 55,
+  "weight": 0.8
+ },
+ {
+  "material": "aluminium",
+  "depth_min": 0,
+  "depth_max": 55,
+  "weight": 0.7
+ },
+ {
+  "material": "lignite",
+  "depth_min": 0,
+  "depth_max": 55,
+  "weight": 1.0
+ },
+ {
+  "material": "sel_gemme",
+  "depth_min": 0,
+  "depth_max": 55,
+  "weight": 0.7
+ },
+ {
+  "material": "argile_refractaire",
+  "depth_min": 0,
+  "depth_max": 55,
+  "weight": 0.6
+ },
+ {
+  "material": "ocre",
+  "depth_min": 0,
+  "depth_max": 55,
+  "weight": 0.6
+ },
+ {
+  "material": "tourbe_compactee",
+  "depth_min": 0,
+  "depth_max": 55,
+  "weight": 0.6
+ },
+ {
+  "material": "turquoise",
+  "depth_min": 0,
+  "depth_max": 55,
+  "weight": 0.3
+ },
+ {
+  "material": "ambre",
+  "depth_min": 0,
+  "depth_max": 55,
+  "weight": 0.3
+ },
+ {
+  "material": "fer",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 1.2
+ },
+ {
+  "material": "nickel",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 0.6
+ },
+ {
+  "material": "manganese",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 0.6
+ },
+ {
+  "material": "plomb",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 0.6
+ },
+ {
+  "material": "houille",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 1.0
+ },
+ {
+  "material": "pyrite",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 0.7
+ },
+ {
+  "material": "malachite",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 0.5
+ },
+ {
+  "material": "soufre",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 0.6
+ },
+ {
+  "material": "mica",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 0.6
+ },
+ {
+  "material": "salpetre",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 0.5
+ },
+ {
+  "material": "quartz",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 0.8
+ },
+ {
+  "material": "bitume",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 0.5
+ },
+ {
+  "material": "fluorine",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 0.5
+ },
+ {
+  "material": "phosphorite",
+  "depth_min": 30,
+  "depth_max": 120,
+  "weight": 0.5
+ },
+ {
+  "material": "or",
+  "depth_min": 80,
+  "depth_max": 220,
+  "weight": 0.5
+ },
+ {
+  "material": "argent",
+  "depth_min": 80,
+  "depth_max": 220,
+  "weight": 0.6
+ },
+ {
+  "material": "cobalt",
+  "depth_min": 80,
+  "depth_max": 220,
+  "weight": 0.4
+ },
+ {
+  "material": "antimoine",
+  "depth_min": 80,
+  "depth_max": 220,
+  "weight": 0.4
+ },
+ {
+  "material": "anthracite",
+  "depth_min": 80,
+  "depth_max": 220,
+  "weight": 0.7
+ },
+ {
+  "material": "graphite",
+  "depth_min": 80,
+  "depth_max": 220,
+  "weight": 0.5
+ },
+ {
+  "material": "cinabre",
+  "depth_min": 80,
+  "depth_max": 220,
+  "weight": 0.3
+ },
+ {
+  "material": "amiante",
+  "depth_min": 80,
+  "depth_max": 220,
+  "weight": 0.4
+ },
+ {
+  "material": "amethyste",
+  "depth_min": 80,
+  "depth_max": 220,
+  "weight": 0.3
+ },
+ {
+  "material": "topaze",
+  "depth_min": 80,
+  "depth_max": 220,
+  "weight": 0.3
+ },
+ {
+  "material": "grenat",
+  "depth_min": 80,
+  "depth_max": 220,
+  "weight": 0.3
+ },
+ {
+  "material": "lapis_lazuli",
+  "depth_min": 80,
+  "depth_max": 220,
+  "weight": 0.3
+ },
+ {
+  "material": "geode",
+  "depth_min": 80,
+  "depth_max": 220,
+  "weight": 0.3
+ },
+ {
+  "material": "platine",
+  "depth_min": 160,
+  "depth_max": 320,
+  "weight": 0.3
+ },
+ {
+  "material": "titane",
+  "depth_min": 160,
+  "depth_max": 320,
+  "weight": 0.4
+ },
+ {
+  "material": "chrome",
+  "depth_min": 160,
+  "depth_max": 320,
+  "weight": 0.4
+ },
+ {
+  "material": "bismuth",
+  "depth_min": 160,
+  "depth_max": 320,
+  "weight": 0.3
+ },
+ {
+  "material": "opale",
+  "depth_min": 160,
+  "depth_max": 320,
+  "weight": 0.2
+ },
+ {
+  "material": "jade",
+  "depth_min": 160,
+  "depth_max": 320,
+  "weight": 0.2
+ },
+ {
+  "material": "rubis",
+  "depth_min": 160,
+  "depth_max": 320,
+  "weight": 0.2
+ },
+ {
+  "material": "saphir",
+  "depth_min": 160,
+  "depth_max": 320,
+  "weight": 0.2
+ },
+ {
+  "material": "emeraude",
+  "depth_min": 160,
+  "depth_max": 320,
+  "weight": 0.2
+ },
+ {
+  "material": "tungstene",
+  "depth_min": 280,
+  "depth_max": 512,
+  "weight": 0.35
+ },
+ {
+  "material": "diamant",
+  "depth_min": 280,
+  "depth_max": 512,
+  "weight": 0.18
+ },
+ {
+  "material": "ammonite",
+  "depth_min": 4,
+  "depth_max": 380,
+  "weight": 0.35,
+  "host": [
+   "gres",
+   "calcaire",
+   "ardoise"
+  ]
+ },
+ {
+  "material": "coquillage_fossile",
+  "depth_min": 4,
+  "depth_max": 380,
+  "weight": 0.35,
+  "host": [
+   "gres",
+   "calcaire",
+   "ardoise"
+  ]
+ },
+ {
+  "material": "os_fossile",
+  "depth_min": 4,
+  "depth_max": 380,
+  "weight": 0.3,
+  "host": [
+   "gres",
+   "calcaire",
+   "ardoise"
+  ]
+ },
+ {
+  "material": "bois_petrifie",
+  "depth_min": 4,
+  "depth_max": 380,
+  "weight": 0.2,
+  "host": [
+   "gres",
+   "calcaire",
+   "ardoise"
+  ]
+ },
+ {
+  "material": "meteorite_ferreuse",
+  "depth_min": 4,
+  "depth_max": 512,
+  "weight": 0.05
+ }
+]

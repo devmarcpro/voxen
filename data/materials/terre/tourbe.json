@@ -1,0 +1,38 @@
+{
+  "id": "tourbe",
+  "name_key": "material.tourbe.name",
+  "category": "terre",
+  "stats": {
+    "durete": 4,
+    "densite": 7,
+    "valeur_base": 2,
+    "conductivite_mana": 8,
+    "flammabilite": 55,
+    "isolation": 45,
+    "conductivite_electrique": 18,
+    "flottabilite": 25,
+    "luminosite": 0,
+    "fertilite": 60,
+    "transparence": 0,
+    "elasticite": 20,
+    "friction": 55
+  },
+  "tags": [],
+  "color": "#3F3428",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 276,
+    "amplitude": 0.08,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pelle",
+    "skill": "terrassement"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "plaine"
+    ]
+  }
+}

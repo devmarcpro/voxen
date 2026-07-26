@@ -1,0 +1,38 @@
+{
+  "id": "chrome",
+  "name_key": "material.chrome.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 28,
+    "densite": 13,
+    "valeur_base": 22,
+    "conductivite_mana": 12,
+    "flammabilite": 0,
+    "isolation": 5,
+    "conductivite_electrique": 52,
+    "flottabilite": 3,
+    "luminosite": 4,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 8,
+    "friction": 18
+  },
+  "tags": [],
+  "color": "#C4CBD4",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 251,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

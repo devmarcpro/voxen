@@ -1,0 +1,14 @@
+{
+  "id": "fab_enclume",
+  "name_key": "transformation.fab_enclume.name",
+  "station": "forge",
+  "skill": "forge",
+  "output": {
+    "material": "enclume",
+    "amount": 1
+  },
+  "input": {
+    "category": "lingot",
+    "amount": 4
+  }
+}

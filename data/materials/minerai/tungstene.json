@@ -1,0 +1,38 @@
+{
+  "id": "tungstene",
+  "name_key": "material.tungstene.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 42,
+    "densite": 24,
+    "valeur_base": 55,
+    "conductivite_mana": 8,
+    "flammabilite": 0,
+    "isolation": 5,
+    "conductivite_electrique": 55,
+    "flottabilite": 1,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 6,
+    "friction": 28
+  },
+  "tags": [],
+  "color": "#55585F",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 249,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

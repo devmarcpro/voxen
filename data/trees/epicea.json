@@ -1,0 +1,29 @@
+{
+  "id": "epicea",
+  "name_key": "tree.epicea.name",
+  "wood_material": "epicea",
+  "leaf_material": "feuilles_epicea",
+  "height_range": [
+    7,
+    13
+  ],
+  "trunk_radius": 1,
+  "branch_parameters": {
+    "start_fraction": 0.2,
+    "count_range": [
+      0,
+      0
+    ],
+    "angle_deg": 0,
+    "length_range": [
+      0,
+      0
+    ]
+  },
+  "canopy_shape": "conical",
+  "canopy_radius_range": [
+    2,
+    4
+  ],
+  "special_tags": []
+}

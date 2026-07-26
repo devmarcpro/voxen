@@ -1,0 +1,13 @@
+{
+  "id": "morsure",
+  "name_key": "functionality.morsure.name",
+  "kind": "arme",
+  "hands": 0,
+  "combat_skill": "mains_nues",
+  "degats_des": "1d6",
+  "crit_range": 20,
+  "vitesse_base": 2.2,
+  "portee": 1.2,
+  "type_degats": "perforant",
+  "poids_reference": 1
+}

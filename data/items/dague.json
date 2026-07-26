@@ -1,0 +1,40 @@
+{
+  "id": "dague",
+  "name_key": "item.dague.name",
+  "type": "arme",
+  "equip_slot": "arme",
+  "hands": 1,
+  "functionality": "dague",
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 1
+      },
+      {
+        "category": "minerai",
+        "amount": 1
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.9,
+      "bois": 0.1
+    }
+  },
+  "effects": [],
+  "tags": [
+    "arme"
+  ],
+  "sprites": {
+    "manche": "res://assets/tools/dague_manche.png",
+    "tete": "res://assets/tools/dague_tete.png"
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  }
+}

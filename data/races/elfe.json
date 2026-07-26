@@ -1,0 +1,16 @@
+{
+  "name_key": "race.elfe.name",
+  "stat_bonuses": {
+    "volonte": 2,
+    "perception": 1
+  },
+  "xp_modifier": 1.0,
+  "base_potentials": {
+    "meditation": 120,
+    "controle_mana": 110
+  },
+  "traits": [
+    "regen_mana_20"
+  ],
+  "id": "elfe"
+}

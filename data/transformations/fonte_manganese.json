@@ -1,0 +1,14 @@
+{
+  "id": "fonte_manganese",
+  "name_key": "transformation.fonte_manganese.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "manganese",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_manganese",
+    "amount": 1
+  }
+}

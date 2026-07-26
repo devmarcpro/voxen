@@ -1,0 +1,38 @@
+{
+  "id": "cobalt",
+  "name_key": "material.cobalt.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 23,
+    "densite": 12,
+    "valeur_base": 14,
+    "conductivite_mana": 25,
+    "flammabilite": 0,
+    "isolation": 5,
+    "conductivite_electrique": 58,
+    "flottabilite": 3,
+    "luminosite": 2,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 13,
+    "friction": 25
+  },
+  "tags": [],
+  "color": "#4A5E8F",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 247,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "id": "fab_tailleur",
+  "name_key": "transformation.fab_tailleur.name",
+  "station": "etabli",
+  "skill": "minage",
+  "output": {
+    "material": "tailleur",
+    "amount": 1
+  },
+  "inputs": [
+    {
+      "category": "roche",
+      "amount": 6
+    },
+    {
+      "category": "minerai",
+      "amount": 1
+    }
+  ]
+}

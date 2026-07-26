@@ -1,0 +1,14 @@
+{
+  "id": "fonte_nickel",
+  "name_key": "transformation.fonte_nickel.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "nickel",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_nickel",
+    "amount": 1
+  }
+}

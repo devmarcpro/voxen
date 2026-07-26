@@ -1,0 +1,41 @@
+{
+  "id": "feuilles_sequoia",
+  "name_key": "material.feuilles_sequoia.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 1,
+    "densite": 1,
+    "valeur_base": 1,
+    "conductivite_mana": 5,
+    "flammabilite": 55,
+    "isolation": 30,
+    "conductivite_electrique": 5,
+    "flottabilite": 68,
+    "luminosite": 0,
+    "fertilite": 5,
+    "transparence": 12,
+    "elasticite": 32,
+    "friction": 50
+  },
+  "tags": [
+    "organique"
+  ],
+  "color": "#3D5A2E",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 341,
+    "amplitude": 0.1,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  },
+  "texture_pattern": 4
+}

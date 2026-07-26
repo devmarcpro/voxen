@@ -1,0 +1,14 @@
+{
+  "id": "taille_poutre",
+  "name_key": "transformation.taille_poutre.name",
+  "station": "scierie",
+  "skill": "bucheronnage",
+  "output": {
+    "material": "poutre",
+    "amount": 1
+  },
+  "input": {
+    "category": "planches",
+    "amount": 4
+  }
+}

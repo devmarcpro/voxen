@@ -1,0 +1,38 @@
+{
+  "id": "acajou",
+  "name_key": "material.acajou.name",
+  "category": "bois",
+  "stats": {
+    "durete": 12,
+    "densite": 6,
+    "valeur_base": 12,
+    "conductivite_mana": 12,
+    "flammabilite": 55,
+    "isolation": 35,
+    "conductivite_electrique": 5,
+    "flottabilite": 78,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 28,
+    "friction": 45
+  },
+  "tags": [],
+  "color": "#7C3B24",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 214,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

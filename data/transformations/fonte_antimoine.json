@@ -1,0 +1,14 @@
+{
+  "id": "fonte_antimoine",
+  "name_key": "transformation.fonte_antimoine.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "antimoine",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_antimoine",
+    "amount": 1
+  }
+}

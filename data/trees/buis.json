@@ -1,0 +1,29 @@
+{
+  "id": "buis",
+  "name_key": "tree.buis.name",
+  "wood_material": "buis",
+  "leaf_material": "feuilles_buis",
+  "height_range": [
+    2,
+    3
+  ],
+  "trunk_radius": 1,
+  "branch_parameters": {
+    "start_fraction": 0.3,
+    "count_range": [
+      3,
+      4
+    ],
+    "angle_deg": 45,
+    "length_range": [
+      1,
+      2
+    ]
+  },
+  "canopy_shape": "spherical",
+  "canopy_radius_range": [
+    1,
+    2
+  ],
+  "special_tags": []
+}

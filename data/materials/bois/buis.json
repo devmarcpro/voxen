@@ -1,0 +1,38 @@
+{
+  "id": "buis",
+  "name_key": "material.buis.name",
+  "category": "bois",
+  "stats": {
+    "durete": 19,
+    "densite": 9,
+    "valeur_base": 18,
+    "conductivite_mana": 14,
+    "flammabilite": 42,
+    "isolation": 30,
+    "conductivite_electrique": 6,
+    "flottabilite": 48,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 20,
+    "friction": 34
+  },
+  "tags": [],
+  "color": "#D9C27E",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 227,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

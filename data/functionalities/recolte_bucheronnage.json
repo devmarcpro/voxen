@@ -1,0 +1,7 @@
+{
+  "id": "recolte_bucheronnage",
+  "name_key": "functionality.recolte_bucheronnage.name",
+  "kind": "outil",
+  "hands": 1,
+  "tool_category": "hache"
+}

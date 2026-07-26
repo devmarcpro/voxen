@@ -1,0 +1,38 @@
+{
+  "id": "meteorite_ferreuse",
+  "name_key": "material.meteorite_ferreuse.name",
+  "category": "fossile",
+  "stats": {
+    "durete": 38,
+    "densite": 20,
+    "valeur_base": 60,
+    "conductivite_mana": 40,
+    "flammabilite": 0,
+    "isolation": 8,
+    "conductivite_electrique": 65,
+    "flottabilite": 1,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 7,
+    "friction": 26
+  },
+  "tags": [],
+  "color": "#443F45",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 320,
+    "amplitude": 0.06,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

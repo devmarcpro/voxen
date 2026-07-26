@@ -1,0 +1,7 @@
+{
+  "id": "recolte_minage",
+  "name_key": "functionality.recolte_minage.name",
+  "kind": "outil",
+  "hands": 1,
+  "tool_category": "pioche"
+}

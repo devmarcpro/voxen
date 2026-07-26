@@ -1,0 +1,38 @@
+{
+  "id": "cypres",
+  "name_key": "material.cypres.name",
+  "category": "bois",
+  "stats": {
+    "durete": 10,
+    "densite": 4,
+    "valeur_base": 8,
+    "conductivite_mana": 13,
+    "flammabilite": 52,
+    "isolation": 42,
+    "conductivite_electrique": 5,
+    "flottabilite": 83,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 28,
+    "friction": 43
+  },
+  "tags": [],
+  "color": "#A28A55",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 228,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

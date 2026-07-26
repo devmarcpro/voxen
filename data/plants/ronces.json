@@ -1,0 +1,17 @@
+{
+  "id": "ronces",
+  "name_key": "plant.ronces.name",
+  "resolution": 4,
+  "materials": {
+    "stem_material": "buisson",
+    "leaf_material": "epine"
+  },
+  "morphology": {
+    "max_height_subvoxels": 6,
+    "spread_radius": 0.5,
+    "branching_factor": 0.6,
+    "leaf_pattern": "spiral"
+  },
+  "special_tags": ["degats_epines", "statut_saignement"],
+  "world_gen": { "biome_tags": ["plaine", "foret"], "density": 0.003 }
+}

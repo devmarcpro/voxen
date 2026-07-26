@@ -1,0 +1,19 @@
+{
+  "id": "foret_tropicale_seche",
+  "name_key": "biome.foret_tropicale_seche.name",
+  "conditions": { "altitude": [0.0, 0.55], "temperature": [0.68, 1.0], "humidite": [0.5, 0.7] },
+  "priority": 3,
+  "surface_material": "herbe",
+  "subsurface_material": "terre",
+  "grass_tint": [1.15, 1.0, 0.6],
+  "vegetation": [
+    { "id": "acacia", "density": 0.009 },
+    { "id": "eucalyptus", "density": 0.006 },
+    { "id": "baobab", "density": 0.002 }
+  ],
+  "village_palette": { "mur": "terre", "toit": "chaume_tresse", "sol": "terre" },
+  "poi_weights": { "village": 3, "donjon": 6, "camp": 7 },
+  "farming_yield": 0.8,
+  "tags": ["tropical", "foret", "chaud"],
+  "plantes_sol": [ { "material_id": "buisson", "density": 0.005 } ]
+}

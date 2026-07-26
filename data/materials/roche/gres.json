@@ -1,0 +1,40 @@
+{
+  "id": "gres",
+  "name_key": "material.gres.name",
+  "category": "roche",
+  "stats": {
+    "durete": 10,
+    "densite": 12,
+    "valeur_base": 2,
+    "conductivite_mana": 5,
+    "flammabilite": 0,
+    "isolation": 30,
+    "conductivite_electrique": 8,
+    "flottabilite": 3,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 4,
+    "friction": 60
+  },
+  "tags": [],
+  "color": "#D2B285",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 106,
+    "amplitude": 0.07,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain",
+      "desert"
+    ]
+  },
+  "texture_style": "sand"
+}

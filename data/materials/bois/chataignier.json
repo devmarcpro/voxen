@@ -1,0 +1,38 @@
+{
+  "id": "chataignier",
+  "name_key": "material.chataignier.name",
+  "category": "bois",
+  "stats": {
+    "durete": 11,
+    "densite": 5,
+    "valeur_base": 5,
+    "conductivite_mana": 10,
+    "flammabilite": 58,
+    "isolation": 36,
+    "conductivite_electrique": 5,
+    "flottabilite": 81,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 34,
+    "friction": 45
+  },
+  "tags": [],
+  "color": "#93683B",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 224,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

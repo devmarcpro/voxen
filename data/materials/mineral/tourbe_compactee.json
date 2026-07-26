@@ -1,0 +1,39 @@
+{
+  "id": "tourbe_compactee",
+  "name_key": "material.tourbe_compactee.name",
+  "category": "mineral",
+  "stats": {
+    "durete": 5,
+    "densite": 8,
+    "valeur_base": 3,
+    "conductivite_mana": 6,
+    "flammabilite": 65,
+    "isolation": 42,
+    "conductivite_electrique": 15,
+    "flottabilite": 22,
+    "luminosite": 0,
+    "fertilite": 55,
+    "transparence": 0,
+    "elasticite": 12,
+    "friction": 50
+  },
+  "tags": [],
+  "color": "#4A3E2E",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 305,
+    "amplitude": 0.07,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  },
+  "texture_pattern": 3
+}

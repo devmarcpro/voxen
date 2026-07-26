@@ -1,0 +1,40 @@
+{
+  "id": "masse",
+  "name_key": "item.masse.name",
+  "type": "arme",
+  "equip_slot": "arme",
+  "hands": 1,
+  "functionality": "masse",
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 1
+      },
+      {
+        "category": "minerai",
+        "amount": 4
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.9,
+      "bois": 0.1
+    }
+  },
+  "effects": [],
+  "tags": [
+    "arme"
+  ],
+  "sprites": {
+    "manche": "res://assets/tools/masse_manche.png",
+    "tete": "res://assets/tools/masse_tete.png"
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  }
+}

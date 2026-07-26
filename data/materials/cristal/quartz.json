@@ -1,0 +1,38 @@
+{
+  "id": "quartz",
+  "name_key": "material.quartz.name",
+  "category": "cristal",
+  "stats": {
+    "durete": 20,
+    "densite": 9,
+    "valeur_base": 8,
+    "conductivite_mana": 45,
+    "flammabilite": 0,
+    "isolation": 15,
+    "conductivite_electrique": 25,
+    "flottabilite": 3,
+    "luminosite": 10,
+    "fertilite": 0,
+    "transparence": 70,
+    "elasticite": 2,
+    "friction": 30
+  },
+  "tags": [],
+  "color": "#E8E4EC",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 323,
+    "amplitude": 0.06,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

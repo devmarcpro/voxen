@@ -1,0 +1,9 @@
+[
+  { "material": "gres",        "y_max": 0,    "transition": 4 },
+  { "material": "calcaire",    "y_max": -12,  "transition": 12 },
+  { "material": "ardoise",     "y_max": -55,  "transition": 12 },
+  { "material": "pierre",      "y_max": -80,  "transition": 12 },
+  { "material": "basalte",     "y_max": -160, "transition": 12 },
+  { "material": "granit",      "y_max": -260, "transition": 12 },
+  { "material": "granit_noir", "y_max": -380, "transition": 12 }
+]

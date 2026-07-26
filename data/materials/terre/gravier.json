@@ -1,0 +1,38 @@
+{
+  "id": "gravier",
+  "name_key": "material.gravier.name",
+  "category": "terre",
+  "stats": {
+    "durete": 4,
+    "densite": 11,
+    "valeur_base": 1,
+    "conductivite_mana": 3,
+    "flammabilite": 0,
+    "isolation": 20,
+    "conductivite_electrique": 8,
+    "flottabilite": 4,
+    "luminosite": 0,
+    "fertilite": 5,
+    "transparence": 0,
+    "elasticite": 5,
+    "friction": 75
+  },
+  "tags": [],
+  "color": "#A29A8D",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 278,
+    "amplitude": 0.08,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pelle",
+    "skill": "terrassement"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "plaine"
+    ]
+  }
+}

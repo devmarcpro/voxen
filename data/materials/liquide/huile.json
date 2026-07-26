@@ -1,0 +1,38 @@
+{
+  "id": "huile",
+  "name_key": "material.huile.name",
+  "category": "liquide",
+  "stats": {
+    "durete": 0,
+    "densite": 8,
+    "valeur_base": 6,
+    "conductivite_mana": 5,
+    "flammabilite": 95,
+    "isolation": 30,
+    "conductivite_electrique": 5,
+    "flottabilite": 100,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 55,
+    "elasticite": 0,
+    "friction": 5
+  },
+  "tags": [],
+  "color": "#6E5B23",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 289,
+    "amplitude": 0.04,
+    "scale": 8
+  },
+  "harvest": {
+    "tool_category": "seau",
+    "skill": "collecte"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "aquatique"
+    ]
+  }
+}

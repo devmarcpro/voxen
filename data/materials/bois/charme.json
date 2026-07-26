@@ -1,0 +1,38 @@
+{
+  "id": "charme",
+  "name_key": "material.charme.name",
+  "category": "bois",
+  "stats": {
+    "durete": 14,
+    "densite": 7,
+    "valeur_base": 5,
+    "conductivite_mana": 8,
+    "flammabilite": 58,
+    "isolation": 33,
+    "conductivite_electrique": 5,
+    "flottabilite": 74,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 26,
+    "friction": 50
+  },
+  "tags": [],
+  "color": "#C2AD85",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 222,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

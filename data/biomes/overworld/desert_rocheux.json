@@ -1,0 +1,19 @@
+{
+  "id": "desert_rocheux",
+  "name_key": "biome.desert_rocheux.name",
+  "conditions": {
+    "altitude": [0.22, 0.72],
+    "temperature": [0.58, 1.0],
+    "humidite": [0.0, 0.3]
+  },
+  "priority": 4,
+  "surface_material": "pierre",
+  "subsurface_material": "gres",
+  "vegetation": [
+    { "id": "acacia", "density": 0.001 }
+  ],
+  "village_palette": { "mur": "gres", "toit": "gres", "sol": "pierre" },
+  "poi_weights": { "village": 2, "donjon": 7, "camp": 6 },
+  "farming_yield": 0.15,
+  "tags": ["desert", "chaud", "rocheux"]
+}

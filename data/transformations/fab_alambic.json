@@ -1,0 +1,20 @@
+{
+  "id": "fab_alambic",
+  "name_key": "transformation.fab_alambic.name",
+  "station": "forge",
+  "skill": "forge",
+  "output": {
+    "material": "alambic",
+    "amount": 1
+  },
+  "inputs": [
+    {
+      "category": "minerai",
+      "amount": 4
+    },
+    {
+      "material": "verre",
+      "amount": 2
+    }
+  ]
+}

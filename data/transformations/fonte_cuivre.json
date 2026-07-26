@@ -1,0 +1,14 @@
+{
+  "id": "fonte_cuivre",
+  "name_key": "transformation.fonte_cuivre.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "cuivre",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_cuivre",
+    "amount": 1
+  }
+}

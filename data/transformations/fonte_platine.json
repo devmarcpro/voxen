@@ -1,0 +1,14 @@
+{
+  "id": "fonte_platine",
+  "name_key": "transformation.fonte_platine.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "platine",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_platine",
+    "amount": 1
+  }
+}

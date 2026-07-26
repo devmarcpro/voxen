@@ -1,0 +1,45 @@
+{
+  "id": "epee",
+  "name_key": "item.epee.name",
+  "type": "arme",
+  "equip_slot": "arme",
+  "hands": 1,
+  "functionality": "epee",
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 1
+      },
+      {
+        "category": "minerai",
+        "amount": 3
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.9,
+      "bois": 0.1
+    }
+  },
+  "vox_model": "models/weapons/epee.vox",
+  "vox_slots": {
+    "#00FF00": "bois",
+    "#FF00FF": "minerai"
+  },
+  "effects": [],
+  "tags": [
+    "arme"
+  ],
+  "sprites": {
+    "manche": "res://assets/tools/epee_manche.png",
+    "tete": "res://assets/tools/epee_tete.png"
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  }
+}

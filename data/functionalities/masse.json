@@ -1,0 +1,13 @@
+{
+  "id": "masse",
+  "name_key": "functionality.masse.name",
+  "kind": "arme",
+  "hands": 1,
+  "combat_skill": "masse",
+  "degats_des": "3d8",
+  "crit_range": 20,
+  "vitesse_base": 1.2,
+  "portee": 1.5,
+  "type_degats": "contondant",
+  "poids_reference": 80
+}

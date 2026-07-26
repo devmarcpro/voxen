@@ -1,0 +1,10 @@
+{
+  "id": "entree",
+  "kind": "salle",
+  "size_category": "petite",
+  "size": [7, 5, 7],
+  "doors": [
+    { "position": [3, 0, 6], "direction": "nord" }
+  ],
+  "special_tags": ["entree"]
+}

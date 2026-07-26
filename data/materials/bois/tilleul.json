@@ -1,0 +1,38 @@
+{
+  "id": "tilleul",
+  "name_key": "material.tilleul.name",
+  "category": "bois",
+  "stats": {
+    "durete": 8,
+    "densite": 4,
+    "valeur_base": 5,
+    "conductivite_mana": 12,
+    "flammabilite": 64,
+    "isolation": 40,
+    "conductivite_electrique": 4,
+    "flottabilite": 85,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 30,
+    "friction": 42
+  },
+  "tags": [],
+  "color": "#E8D9B0",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 221,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

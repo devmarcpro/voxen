@@ -1,0 +1,38 @@
+{
+  "id": "teck",
+  "name_key": "material.teck.name",
+  "category": "bois",
+  "stats": {
+    "durete": 13,
+    "densite": 7,
+    "valeur_base": 16,
+    "conductivite_mana": 10,
+    "flammabilite": 42,
+    "isolation": 38,
+    "conductivite_electrique": 5,
+    "flottabilite": 74,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 26,
+    "friction": 40
+  },
+  "tags": [],
+  "color": "#8F6236",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 215,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

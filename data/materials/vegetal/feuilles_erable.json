@@ -1,0 +1,40 @@
+{
+  "id": "feuilles_erable",
+  "name_key": "material.feuilles_erable.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 1,
+    "densite": 1,
+    "valeur_base": 1,
+    "conductivite_mana": 5,
+    "flammabilite": 65,
+    "isolation": 22,
+    "conductivite_electrique": 5,
+    "flottabilite": 75,
+    "luminosite": 0,
+    "fertilite": 6,
+    "transparence": 15,
+    "elasticite": 35,
+    "friction": 50
+  },
+  "tags": [
+    "organique"
+  ],
+  "color": "#6EA463",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 504,
+    "amplitude": 0.1,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret_temperee"
+    ]
+  }
+}

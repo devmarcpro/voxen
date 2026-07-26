@@ -1,0 +1,18 @@
+{
+  "id": "pomme_de_terre",
+  "name_key": "plant.pomme_de_terre.name",
+  "resolution": 8,
+  "materials": {
+    "stem_material": "tige_verte",
+    "leaf_material": "tige_verte",
+    "root_material": "tubercule"
+  },
+  "morphology": {
+    "max_height_subvoxels": 3,
+    "spread_radius": 0.4,
+    "branching_factor": 0.0,
+    "leaf_pattern": "clump"
+  },
+  "agriculture": { "stages": 3 },
+  "world_gen": { "biome_tags": ["plaine"], "density": 0.008 }
+}

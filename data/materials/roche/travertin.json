@@ -1,0 +1,38 @@
+{
+  "id": "travertin",
+  "name_key": "material.travertin.name",
+  "category": "roche",
+  "stats": {
+    "durete": 11,
+    "densite": 12,
+    "valeur_base": 8,
+    "conductivite_mana": 8,
+    "flammabilite": 0,
+    "isolation": 30,
+    "conductivite_electrique": 10,
+    "flottabilite": 3,
+    "luminosite": 2,
+    "fertilite": 0,
+    "transparence": 5,
+    "elasticite": 3,
+    "friction": 50
+  },
+  "tags": [],
+  "color": "#DDC9A6",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 271,
+    "amplitude": 0.07,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

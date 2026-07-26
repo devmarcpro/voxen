@@ -1,0 +1,14 @@
+{
+  "id": "debit_planches",
+  "name_key": "transformation.debit_planches.name",
+  "station": "scierie",
+  "skill": "bucheronnage",
+  "output": {
+    "material": "planches",
+    "amount": 4
+  },
+  "input": {
+    "category": "bois",
+    "amount": 1
+  }
+}

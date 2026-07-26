@@ -1,0 +1,14 @@
+{
+  "id": "fonte_titane",
+  "name_key": "transformation.fonte_titane.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "titane",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_titane",
+    "amount": 1
+  }
+}

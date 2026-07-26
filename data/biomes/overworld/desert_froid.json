@@ -1,0 +1,49 @@
+{
+  "id": "desert_froid",
+  "name_key": "biome.desert_froid.name",
+  "conditions": {
+    "altitude": [
+      0.0,
+      0.6
+    ],
+    "temperature": [
+      0.14,
+      0.4
+    ],
+    "humidite": [
+      0.0,
+      0.28
+    ]
+  },
+  "priority": 3,
+  "surface_material": "gres",
+  "subsurface_material": "gres",
+  "grass_tint": [
+    1.0,
+    0.95,
+    0.8
+  ],
+  "vegetation": [
+    {
+      "id": "bouleau",
+      "density": 0.0006
+    }
+  ],
+  "village_palette": {
+    "mur": "gres",
+    "toit": "gres",
+    "sol": "gres"
+  },
+  "poi_weights": {
+    "village": 2,
+    "donjon": 6,
+    "camp": 6
+  },
+  "farming_yield": 0.3,
+  "tags": [
+    "froid",
+    "aride",
+    "desert"
+  ],
+  "plantes_sol": []
+}

@@ -1,0 +1,28 @@
+{
+  "id": "cuivre",
+  "name_key": "material.cuivre.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 16, "densite": 10, "valeur_base": 5,
+    "conductivite_mana": 30, "flammabilite": 0, "isolation": 5,
+    "conductivite_electrique": 85, "flottabilite": 5, "luminosite": 0,
+    "fertilite": 0, "transparence": 0, "elasticite": 15, "friction": 25
+  },
+  "tags": [],
+  "color": "#C26E43",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 114,
+    "amplitude": 0.07,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "noise_layer",
+    "noise_layer_id": "ressources",
+    "biome_tags": ["souterrain"]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "id": "rubis",
+  "name_key": "material.rubis.name",
+  "category": "cristal",
+  "stats": {
+    "durete": 27,
+    "densite": 9,
+    "valeur_base": 40,
+    "conductivite_mana": 78,
+    "flammabilite": 0,
+    "isolation": 0,
+    "conductivite_electrique": 25,
+    "flottabilite": 3,
+    "luminosite": 22,
+    "fertilite": 0,
+    "transparence": 62,
+    "elasticite": 2,
+    "friction": 30
+  },
+  "tags": [],
+  "color": "#C81E3C",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 329,
+    "amplitude": 0.06,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

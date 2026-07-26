@@ -1,0 +1,14 @@
+{
+  "name_key": "race.sylvide.name",
+  "stat_bonuses": {},
+  "xp_modifier": 1.0,
+  "base_potentials": {
+    "herboristerie": 120,
+    "collecte": 110
+  },
+  "traits": [
+    "photosynthese",
+    "affinite_vegetale"
+  ],
+  "id": "sylvide"
+}

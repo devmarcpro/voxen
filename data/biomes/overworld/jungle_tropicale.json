@@ -1,0 +1,74 @@
+{
+  "id": "jungle_tropicale",
+  "name_key": "biome.jungle_tropicale.name",
+  "conditions": {
+    "altitude": [
+      0.0,
+      0.5
+    ],
+    "temperature": [
+      0.75,
+      1.0
+    ],
+    "humidite": [
+      0.7,
+      1.0
+    ]
+  },
+  "priority": 4,
+  "surface_material": "herbe",
+  "subsurface_material": "terre",
+  "grass_tint": [0.85, 1.2, 0.75],
+  "vegetation": [
+    {
+      "id": "ebene",
+      "density": 0.008
+    },
+    {
+      "id": "gaiac",
+      "density": 0.006
+    },
+    {
+      "id": "acajou",
+      "density": 0.008
+    },
+    {
+      "id": "teck",
+      "density": 0.008
+    },
+    {
+      "id": "balsa",
+      "density": 0.008
+    },
+    {
+      "id": "bambou",
+      "density": 0.02
+    }
+  ],
+  "village_palette": {
+    "mur": "teck",
+    "toit": "chaume_tresse",
+    "sol": "terre"
+  },
+  "poi_weights": {
+    "village": 3,
+    "donjon": 8,
+    "camp": 8
+  },
+  "farming_yield": 1.3,
+  "tags": [
+    "jungle",
+    "tropical",
+    "humide"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "fougere",
+      "density": 0.03
+    },
+    {
+      "material_id": "buisson",
+      "density": 0.015
+    }
+  ]
+}

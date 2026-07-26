@@ -1,0 +1,57 @@
+{
+  "id": "savane",
+  "name_key": "biome.savane.name",
+  "conditions": {
+    "altitude": [
+      0.0,
+      0.5
+    ],
+    "temperature": [
+      0.7,
+      1.0
+    ],
+    "humidite": [
+      0.3,
+      0.55
+    ]
+  },
+  "priority": 3,
+  "surface_material": "herbe",
+  "subsurface_material": "gres",
+  "grass_tint": [1.25, 1.1, 0.55],
+  "vegetation": [
+    {
+      "id": "acacia",
+      "density": 0.012
+    },
+    {
+      "id": "eucalyptus",
+      "density": 0.008
+    },
+    {
+      "id": "baobab",
+      "density": 0.003
+    }
+  ],
+  "village_palette": {
+    "mur": "terre",
+    "toit": "chaume_tresse",
+    "sol": "terre"
+  },
+  "poi_weights": {
+    "village": 3,
+    "donjon": 6,
+    "camp": 7
+  },
+  "farming_yield": 0.6,
+  "tags": [
+    "savane",
+    "chaud"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "buisson",
+      "density": 0.004
+    }
+  ]
+}

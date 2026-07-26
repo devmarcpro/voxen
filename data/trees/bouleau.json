@@ -1,0 +1,17 @@
+{
+  "id": "bouleau",
+  "name_key": "tree.bouleau.name",
+  "wood_material": "bouleau",
+  "leaf_material": "feuilles_bouleau",
+  "height_range": [5, 8],
+  "trunk_radius": 1,
+  "branch_parameters": {
+    "start_fraction": 0.6,
+    "count_range": [3, 4],
+    "angle_deg": 50,
+    "length_range": [1, 3]
+  },
+  "canopy_shape": "spherical",
+  "canopy_radius_range": [1, 2],
+  "special_tags": []
+}

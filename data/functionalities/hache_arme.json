@@ -1,0 +1,13 @@
+{
+  "id": "hache_arme",
+  "name_key": "functionality.hache_arme.name",
+  "kind": "arme",
+  "hands": 2,
+  "combat_skill": "hache_arme",
+  "degats_des": "2d10",
+  "crit_range": 20,
+  "vitesse_base": 1.4,
+  "portee": 1.5,
+  "type_degats": "tranchant",
+  "poids_reference": 70
+}

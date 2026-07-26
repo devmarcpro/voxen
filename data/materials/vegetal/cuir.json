@@ -1,0 +1,39 @@
+{
+  "id": "cuir",
+  "name_key": "material.cuir.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 8,
+    "densite": 4,
+    "valeur_base": 5,
+    "conductivite_mana": 5,
+    "flammabilite": 40,
+    "isolation": 50,
+    "conductivite_electrique": 15,
+    "flottabilite": 60,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 55,
+    "friction": 55
+  },
+  "tags": [],
+  "color": "#8A5A33",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 285,
+    "amplitude": 0.1,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "faucille",
+    "skill": "herboristerie"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "plaine",
+      "foret"
+    ]
+  }
+}

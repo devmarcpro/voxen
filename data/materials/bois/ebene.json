@@ -1,0 +1,38 @@
+{
+  "id": "ebene",
+  "name_key": "material.ebene.name",
+  "category": "bois",
+  "stats": {
+    "durete": 18,
+    "densite": 10,
+    "valeur_base": 22,
+    "conductivite_mana": 15,
+    "flammabilite": 38,
+    "isolation": 30,
+    "conductivite_electrique": 8,
+    "flottabilite": 45,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 15,
+    "friction": 36
+  },
+  "tags": [],
+  "color": "#2B211C",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 212,
+    "amplitude": 0.08,
+    "scale": 4
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret"
+    ]
+  }
+}

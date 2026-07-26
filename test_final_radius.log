@@ -1,0 +1,33 @@
+Godot Engine v4.7.stable.official.5b4e0cb0f - https://godotengine.org
+OpenGL API 3.3.0 - Build 31.0.101.2134 - Compatibility - Using Device: Intel - Intel(R) UHD Graphics 620
+
+GameData : 202 matériau(x), 12 catégorie(s), 17 biome(s), 8 couche(s) de bruit, 7 strate(s), 11 compétence(s), 4 objet(s), 4 module(s), 1 créature(s), 38 essence(s) d'arbre.
+[TEST] outils au départ : 4
+[TEST]   pioche — durete_base=14.4 qualite=0.70 poids=38.0
+[TEST]   hache — durete_base=14.4 qualite=0.70 poids=38.0
+[TEST]   pelle — durete_base=14.4 qualite=0.70 poids=18.0
+[TEST]   epee — durete_base=15.2 qualite=0.70 poids=34.0
+[TEST] souris capturée : true
+[TEST] rotation : avant=(-0.20944, 0.0, 0.0) après=(-0.33444, -0.25, 0.0) changée=true
+[TEST] créature spawnée, distance=5.6
+[TEST] combat : 41 clics, sanglier mort=true (PV joueur=31/60)
+[TEST] créatures avant attente spawn naturel : 0
+[TEST] créatures après 6 s : 0 (spawn naturel désactivé pour le sanglier — 0 attendu)
+[TEST] marche/gravité : y=181.90 (attendu 181.90 = sol+1.9)
+[TEST] cellule=(0, 0) revendiquée=false (attendu false)
+[TEST] après V : revendiquée=true rôle=base (attendu true/base)
+[TEST] après B : rôle=habitation (attendu habitation)
+[TEST] voyage rapide : cible=(2, 0) atterri=(2, 0) (doivent correspondre)
+[TEST] carte après M : ouverte=true stats_visibles=true joueur_verrouille=true (attendus true/true/true)
+[TEST] capture carte : map_screenshot.png
+[TEST] carte après Échap : ouverte=false stats_visibles=false joueur_verrouille=false (attendus false/false/false)
+[TEST] carte : clic central a fermé=true (attendu true), cellule avant=(2, 0) après=(-13, 0)
+[TEST] molette bas : slot=4 (avant=3, +1 attendu)
+[TEST] shift+molette bas : banque=1 (attendu 1)
+[TEST] shift+3 : banque=2 (attendu 2)
+[TEST] pose 16px : ok
+[TEST] pose 8px : ok
+[TEST] pose 4px : ok
+[TEST] sculpture 8px : ok
+[TEST] grille du bloc sculpté : 504 cellules solides
+[TEST] capture : c:/Voxen/subdiv_screenshot.png

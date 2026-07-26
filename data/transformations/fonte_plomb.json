@@ -1,0 +1,14 @@
+{
+  "id": "fonte_plomb",
+  "name_key": "transformation.fonte_plomb.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "plomb",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_plomb",
+    "amount": 1
+  }
+}

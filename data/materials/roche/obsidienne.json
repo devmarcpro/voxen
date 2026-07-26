@@ -1,0 +1,38 @@
+{
+  "id": "obsidienne",
+  "name_key": "material.obsidienne.name",
+  "category": "roche",
+  "stats": {
+    "durete": 30,
+    "densite": 15,
+    "valeur_base": 15,
+    "conductivite_mana": 35,
+    "flammabilite": 0,
+    "isolation": 15,
+    "conductivite_electrique": 15,
+    "flottabilite": 1,
+    "luminosite": 5,
+    "fertilite": 0,
+    "transparence": 25,
+    "elasticite": 1,
+    "friction": 30
+  },
+  "tags": [],
+  "color": "#1E1B24",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 265,
+    "amplitude": 0.07,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "mica",
+  "name_key": "material.mica.name",
+  "category": "mineral",
+  "stats": {
+    "durete": 4,
+    "densite": 9,
+    "valeur_base": 5,
+    "conductivite_mana": 18,
+    "flammabilite": 0,
+    "isolation": 50,
+    "conductivite_electrique": 4,
+    "flottabilite": 8,
+    "luminosite": 3,
+    "fertilite": 0,
+    "transparence": 45,
+    "elasticite": 15,
+    "friction": 40
+  },
+  "tags": [],
+  "color": "#C7B98F",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 300,
+    "amplitude": 0.07,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  },
+  "texture_pattern": 4
+}

@@ -1,0 +1,38 @@
+{
+  "id": "antimoine",
+  "name_key": "material.antimoine.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 10,
+    "densite": 12,
+    "valeur_base": 10,
+    "conductivite_mana": 20,
+    "flammabilite": 5,
+    "isolation": 10,
+    "conductivite_electrique": 35,
+    "flottabilite": 3,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 5,
+    "friction": 28
+  },
+  "tags": [],
+  "color": "#9A9AA6",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 254,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

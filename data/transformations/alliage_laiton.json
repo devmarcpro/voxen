@@ -1,0 +1,20 @@
+{
+  "id": "alliage_laiton",
+  "name_key": "transformation.alliage_laiton.name",
+  "station": "forge",
+  "skill": "forge",
+  "output": {
+    "material": "laiton",
+    "amount": 2
+  },
+  "inputs": [
+    {
+      "material": "cuivre",
+      "amount": 2
+    },
+    {
+      "material": "zinc",
+      "amount": 1
+    }
+  ]
+}

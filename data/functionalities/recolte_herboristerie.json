@@ -1,0 +1,7 @@
+{
+  "id": "recolte_herboristerie",
+  "name_key": "functionality.recolte_herboristerie.name",
+  "kind": "outil",
+  "hands": 1,
+  "tool_category": "faucille"
+}

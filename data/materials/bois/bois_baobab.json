@@ -1,0 +1,27 @@
+{
+  "id": "bois_baobab",
+  "name_key": "material.bois_baobab.name",
+  "category": "bois",
+  "stats": {
+    "durete": 5, "densite": 4, "valeur_base": 6,
+    "conductivite_mana": 15, "flammabilite": 30, "isolation": 55,
+    "conductivite_electrique": 5, "flottabilite": 75, "luminosite": 0,
+    "fertilite": 0, "transparence": 0, "elasticite": 20, "friction": 45
+  },
+  "tags": ["organique"],
+  "color": "#B79A6B",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 120,
+    "amplitude": 0.07,
+    "scale": 5
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": ["desert", "savane"]
+  }
+}

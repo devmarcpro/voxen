@@ -1,0 +1,38 @@
+{
+  "id": "diamant",
+  "name_key": "material.diamant.name",
+  "category": "cristal",
+  "stats": {
+    "durete": 40,
+    "densite": 9,
+    "valeur_base": 80,
+    "conductivite_mana": 55,
+    "flammabilite": 0,
+    "isolation": 15,
+    "conductivite_electrique": 12,
+    "flottabilite": 3,
+    "luminosite": 20,
+    "fertilite": 0,
+    "transparence": 85,
+    "elasticite": 1,
+    "friction": 28
+  },
+  "tags": [],
+  "color": "#EDF5F7",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 332,
+    "amplitude": 0.06,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

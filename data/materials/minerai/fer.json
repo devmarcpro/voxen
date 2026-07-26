@@ -1,0 +1,28 @@
+{
+  "id": "fer",
+  "name_key": "material.fer.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 25, "densite": 12, "valeur_base": 8,
+    "conductivite_mana": 10, "flammabilite": 0, "isolation": 5,
+    "conductivite_electrique": 75, "flottabilite": 3, "luminosite": 0,
+    "fertilite": 0, "transparence": 0, "elasticite": 10, "friction": 25
+  },
+  "tags": [],
+  "color": "#8E8E93",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 112,
+    "amplitude": 0.07,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "noise_layer",
+    "noise_layer_id": "ressources",
+    "biome_tags": ["souterrain"]
+  }
+}

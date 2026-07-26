@@ -1,0 +1,18 @@
+{
+  "id": "safran",
+  "name_key": "plant.safran.name",
+  "resolution": 2,
+  "materials": {
+    "stem_material": "tige_verte",
+    "leaf_material": "tige_verte",
+    "flower_material": "petale_safran"
+  },
+  "morphology": {
+    "max_height_subvoxels": 3,
+    "spread_radius": 0.1,
+    "branching_factor": 0.0,
+    "leaf_pattern": "opposite"
+  },
+  "agriculture": { "stages": 2 },
+  "world_gen": { "biome_tags": ["plaine", "mediterraneen"], "density": 0.002 }
+}

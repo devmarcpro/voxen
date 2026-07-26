@@ -1,0 +1,72 @@
+{
+  "id": "plaine_temperee",
+  "name_key": "biome.plaine_temperee.name",
+  "conditions": {
+    "altitude": [
+      0.0,
+      1.0
+    ],
+    "temperature": [
+      0.0,
+      1.0
+    ],
+    "humidite": [
+      0.0,
+      1.0
+    ]
+  },
+  "priority": 0,
+  "surface_material": "herbe",
+  "subsurface_material": "terre",
+  "vegetation": [
+    {
+      "id": "chene",
+      "density": 0.005
+    },
+    {
+      "id": "saule",
+      "density": 0.003
+    },
+    {
+      "id": "orme",
+      "density": 0.004
+    },
+    {
+      "id": "cerisier",
+      "density": 0.003
+    },
+    {
+      "id": "robinier",
+      "density": 0.004
+    },
+    {
+      "id": "platane",
+      "density": 0.003
+    },
+    {
+      "id": "pommier",
+      "density": 0.004
+    }
+  ],
+  "village_palette": {
+    "mur": "chene",
+    "toit": "chene",
+    "sol": "pierre"
+  },
+  "poi_weights": {
+    "village": 4,
+    "donjon": 6,
+    "camp": 8
+  },
+  "farming_yield": 1.0,
+  "tags": [
+    "tempere",
+    "plaine"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "buisson",
+      "density": 0.008
+    }
+  ]
+}

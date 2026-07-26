@@ -1,0 +1,16 @@
+{
+  "id": "petale_safran",
+  "name_key": "material.petale_safran.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 1, "densite": 1, "valeur_base": 2,
+    "conductivite_mana": 6, "flammabilite": 60, "isolation": 5,
+    "conductivite_electrique": 5, "flottabilite": 20, "luminosite": 0,
+    "fertilite": 5, "transparence": 10, "elasticite": 20, "friction": 30
+  },
+  "tags": ["organique"],
+  "color": "#8B5FBF",
+  "noise": { "type": "procedural", "seed_offset": 209, "amplitude": 0.04, "scale": 1 },
+  "harvest": { "tool_category": "mains_nues", "skill": "herboristerie" },
+  "world_gen": { "mode": "plante", "biome_tags": ["plaine", "mediterraneen"] }
+}

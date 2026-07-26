@@ -1,0 +1,12 @@
+{
+  "id": "frappe_lourde",
+  "name_key": "module.frappe_lourde.name",
+  "module_type": "effet",
+  "mana_cost_base": 6,
+  "power_base": 6,
+  "degats_des": "1d6",
+  "tags": ["frappe"],
+  "params": {},
+  "grimoire_domains": ["frappes"],
+  "book_type": "manuel"
+}

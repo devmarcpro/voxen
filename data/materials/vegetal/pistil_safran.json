@@ -1,0 +1,16 @@
+{
+  "id": "pistil_safran",
+  "name_key": "material.pistil_safran.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 1, "densite": 1, "valeur_base": 25,
+    "conductivite_mana": 15, "flammabilite": 40, "isolation": 5,
+    "conductivite_electrique": 5, "flottabilite": 10, "luminosite": 0,
+    "fertilite": 5, "transparence": 0, "elasticite": 10, "friction": 25
+  },
+  "tags": ["organique", "precieux"],
+  "color": "#C21807",
+  "noise": { "type": "procedural", "seed_offset": 210, "amplitude": 0.03, "scale": 1 },
+  "harvest": { "tool_category": "mains_nues", "skill": "herboristerie" },
+  "world_gen": { "mode": "plante", "biome_tags": ["plaine", "mediterraneen"] }
+}

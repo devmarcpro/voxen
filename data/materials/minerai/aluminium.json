@@ -1,0 +1,38 @@
+{
+  "id": "aluminium",
+  "name_key": "material.aluminium.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 14,
+    "densite": 5,
+    "valeur_base": 9,
+    "conductivite_mana": 15,
+    "flammabilite": 0,
+    "isolation": 6,
+    "conductivite_electrique": 78,
+    "flottabilite": 25,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 18,
+    "friction": 22
+  },
+  "tags": [],
+  "color": "#CED3D6",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 250,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

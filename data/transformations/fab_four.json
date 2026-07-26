@@ -1,0 +1,8 @@
+{
+  "id": "fab_four",
+  "name_key": "transformation.fab_four.name",
+  "station": "etabli",
+  "skill": "minage",
+  "input": { "category": "roche", "amount": 8 },
+  "output": { "material": "four", "amount": 1 }
+}

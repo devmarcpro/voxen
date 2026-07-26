@@ -1,0 +1,38 @@
+{
+  "id": "or",
+  "name_key": "material.or.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 10,
+    "densite": 19,
+    "valeur_base": 35,
+    "conductivite_mana": 65,
+    "flammabilite": 0,
+    "isolation": 5,
+    "conductivite_electrique": 95,
+    "flottabilite": 2,
+    "luminosite": 8,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 20,
+    "friction": 20
+  },
+  "tags": [],
+  "color": "#E8C34A",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 243,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

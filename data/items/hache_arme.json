@@ -1,0 +1,40 @@
+{
+  "id": "hache_arme",
+  "name_key": "item.hache_arme.name",
+  "type": "arme",
+  "equip_slot": "arme",
+  "hands": 2,
+  "functionality": "hache_arme",
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 1
+      },
+      {
+        "category": "minerai",
+        "amount": 3
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.9,
+      "bois": 0.1
+    }
+  },
+  "effects": [],
+  "tags": [
+    "arme"
+  ],
+  "sprites": {
+    "manche": "res://assets/tools/hache_arme_manche.png",
+    "tete": "res://assets/tools/hache_arme_tete.png"
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  }
+}

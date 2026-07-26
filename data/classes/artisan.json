@@ -1,0 +1,45 @@
+{
+  "name_key": "class.artisan.name",
+  "stat_bonuses": {
+    "dexterite": 2,
+    "force": 1
+  },
+  "starting_skills": {
+    "forge": 5,
+    "menuiserie": 5
+  },
+  "starting_items": [
+    {
+      "item_id": "pioche",
+      "materials": {
+        "bois": "chene",
+        "minerai": "fer"
+      },
+      "quality": 1.0
+    },
+    {
+      "item_id": "hache",
+      "materials": {
+        "bois": "chene",
+        "minerai": "fer"
+      },
+      "quality": 1.0
+    },
+    {
+      "item_id": "pelle",
+      "materials": {
+        "bois": "chene",
+        "minerai": "fer"
+      },
+      "quality": 1.0
+    }
+  ],
+  "starting_materials": {},
+  "gold": 0,
+  "extra_points": 0,
+  "base_potentials": {
+    "forge": 115,
+    "menuiserie": 115
+  },
+  "id": "artisan"
+}

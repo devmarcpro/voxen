@@ -1,0 +1,14 @@
+{
+  "id": "extraction_huile",
+  "name_key": "transformation.extraction_huile.name",
+  "station": "alambic",
+  "skill": "collecte",
+  "output": {
+    "material": "huile",
+    "amount": 1
+  },
+  "input": {
+    "category": "vegetal",
+    "amount": 3
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "id": "arbalete",
+  "name_key": "functionality.arbalete.name",
+  "kind": "arme",
+  "hands": 2,
+  "combat_skill": "arbalete",
+  "degats_des": "3d6",
+  "crit_range": 20,
+  "vitesse_base": 0.8,
+  "portee": 30,
+  "type_degats": "percant",
+  "poids_reference": 60
+}

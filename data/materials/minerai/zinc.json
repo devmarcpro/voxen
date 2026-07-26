@@ -1,0 +1,38 @@
+{
+  "id": "zinc",
+  "name_key": "material.zinc.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 13,
+    "densite": 9,
+    "valeur_base": 4,
+    "conductivite_mana": 12,
+    "flammabilite": 0,
+    "isolation": 5,
+    "conductivite_electrique": 55,
+    "flottabilite": 5,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 10,
+    "friction": 25
+  },
+  "tags": [],
+  "color": "#AEB4B8",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 237,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

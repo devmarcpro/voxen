@@ -1,0 +1,14 @@
+{
+  "id": "fonte_or",
+  "name_key": "transformation.fonte_or.name",
+  "station": "forge",
+  "skill": "forge",
+  "input": {
+    "material": "or",
+    "amount": 2
+  },
+  "output": {
+    "material": "lingot_or",
+    "amount": 1
+  }
+}

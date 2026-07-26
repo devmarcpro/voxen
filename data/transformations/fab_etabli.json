@@ -1,0 +1,8 @@
+{
+  "id": "fab_etabli",
+  "name_key": "transformation.fab_etabli.name",
+  "station": "aucune",
+  "skill": "bucheronnage",
+  "input": { "category": "bois", "amount": 4 },
+  "output": { "material": "etabli", "amount": 1 }
+}

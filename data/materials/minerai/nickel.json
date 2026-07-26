@@ -1,0 +1,38 @@
+{
+  "id": "nickel",
+  "name_key": "material.nickel.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 22,
+    "densite": 12,
+    "valeur_base": 10,
+    "conductivite_mana": 15,
+    "flammabilite": 0,
+    "isolation": 5,
+    "conductivite_electrique": 60,
+    "flottabilite": 3,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 14,
+    "friction": 25
+  },
+  "tags": [],
+  "color": "#B9B6A8",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 246,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "bois": {
+    "tool": "hache",
+    "harvest_skill": "bucheronnage",
+    "station_transform": "scierie"
+  },
+  "planches": {
+    "tool": null,
+    "harvest_skill": null,
+    "station_transform": "atelier"
+  },
+  "minerai": {
+    "tool": "pioche",
+    "harvest_skill": "minage",
+    "station_transform": "forge"
+  },
+  "roche": {
+    "tool": "pioche",
+    "harvest_skill": "minage",
+    "station_transform": "tailleur_pierre"
+  },
+  "terre": {
+    "tool": "pelle",
+    "harvest_skill": "terrassement",
+    "station_transform": null
+  },
+  "vegetal": {
+    "tool": "faucille",
+    "harvest_skill": "herboristerie",
+    "station_transform": "atelier_tissage"
+  },
+  "liquide": {
+    "tool": "seau",
+    "harvest_skill": "collecte",
+    "station_transform": "alambic"
+  },
+  "mineral": {
+    "tool": "pioche",
+    "harvest_skill": "minage",
+    "station_transform": "alambic"
+  },
+  "fossile": {
+    "tool": "pioche",
+    "harvest_skill": "minage",
+    "station_transform": "tailleur_pierre"
+  },
+  "cristal": {
+    "tool": "pioche",
+    "harvest_skill": "minage",
+    "station_transform": "table_enchantement"
+  },
+  "meteorologique": {
+    "tool": "pelle",
+    "harvest_skill": "terrassement",
+    "station_transform": null
+  },
+  "synthetique": {
+    "tool": null,
+    "harvest_skill": null,
+    "station_transform": "atelier"
+  },
+  "lingot": {
+    "tool": null,
+    "harvest_skill": null,
+    "station_transform": "forge"
+  },
+  "station": {
+    "tool": "pioche",
+    "harvest_skill": "minage",
+    "station_transform": null
+  },
+  "construction": {
+    "tool": "pioche",
+    "harvest_skill": "minage",
+    "station_transform": null
+  },
+  "textile": {
+    "tool": "faucille",
+    "harvest_skill": "herboristerie",
+    "station_transform": null
+  }
+}

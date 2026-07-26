@@ -1,0 +1,38 @@
+{
+  "id": "amethyste",
+  "name_key": "material.amethyste.name",
+  "category": "cristal",
+  "stats": {
+    "durete": 22,
+    "densite": 9,
+    "valeur_base": 25,
+    "conductivite_mana": 75,
+    "flammabilite": 0,
+    "isolation": 15,
+    "conductivite_electrique": 45,
+    "flottabilite": 3,
+    "luminosite": 25,
+    "fertilite": 0,
+    "transparence": 68,
+    "elasticite": 2,
+    "friction": 30
+  },
+  "tags": [],
+  "color": "#8A4FBF",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 324,
+    "amplitude": 0.06,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "souterrain"
+    ]
+  }
+}
