@@ -549,9 +549,18 @@ Les PNJ résidant sur la base/claim du joueur (compagnons recrutés, animaux —
 - **Voxel stylisé et coloré**, façon Minecraft (plutôt que pixel art ou ambiance sombre façon Noita).
 - **Références de direction artistique :** voxel lisible et chaleureux — inspirations : la lisibilité matérielle de Minecraft, la générosité colorée de Dragon Quest Builders 2, le charme cubique de Cube World. La palette de matériaux (F.1.1) EST la palette du jeu : couleurs naturelles désaturées pour le monde, saturées réservées aux gemmes/magie/UI. Lumière douce, ombres colorées, brouillard de distance teinté par le biome.
 
-### 9.1 Pipeline technique : modélisation MagicaVoxel et couleurs indexées
+### 9.1 Pipeline technique : modélisation et couleurs indexées
 
-- Les modèles 3D sont créés dans **MagicaVoxel**.
+**Amendé le 2026-07-26 — deux outils, deux familles d'assets (décision de l'auteur) :**
+
+| Famille | Outil | Format | Technique de couleur |
+|---|---|---|---|
+| **Blocs spéciaux, meubles (F.6), items/armes, structures et bâtiments (9.2)** | **MagicaVoxel** | `.vox` | index de palette + couleurs stand-in remappées (ci-dessous) |
+| **Créatures, PNJ et montures (12, F.3)** | **Blockbench** | glTF/`.glb` (export), maillé et *riggé* dans l'outil | texture atlas pixel-art ; recoloration par échange de palette en shader (voir 12.1) |
+
+*Tout ce qui suit dans cette section décrit le pipeline **MagicaVoxel**. Le pipeline créatures est décrit en 12.1.*
+
+- Les modèles 3D de blocs, meubles, items et structures sont créés dans **MagicaVoxel**.
 - Le format `.vox` stocke chaque voxel avec un **index de couleur** (pas une couleur RGB figée), relié à une palette de 256 couleurs. Changer une couleur dans la palette met à jour tous les voxels liés à cet index.
 - **Technique de matérialisation dynamique :** pour les objets composés de plusieurs matériaux (ex : une épée = manche en bois + lame en minerai), on modélise avec des **couleurs "stand-in" dédiées** et non-naturelles (ex : vert fluo = emplacement bois, rose fluo = emplacement minerai). En jeu, ces index sont **remappés dynamiquement** vers la couleur réelle du matériau utilisé dans le craft (bois ou minerai spécifique).
 - **Contrainte pipeline :** l'import doit préserver l'index de couleur par voxel (lecture directe du format `.vox`, pas d'export intermédiaire type OBJ qui fige la couleur en RGB par sommet).
@@ -648,7 +657,23 @@ Chaque créature du jeu est un assemblage choisi dans ces bibliothèques de part
 
 **Mécanique d'apprivoisement :** en deux temps — une **action dédiée** est nécessaire pour la première rencontre/le premier apprivoisement (jet de compétence universel, E.3 : 1d20 + Dressage/2 + Charisme/4 vs DD = 10 + niveau_combat_cible/2, cible affaiblie = bonus), puis la **relation évolue ensuite** dans le temps comme pour tout autre PNJ (via le système de réputation/relations, section 7).
 
-### 12.1 Points d'attache encodés dans les .vox
+### 12.1 Modèles de créatures (Blockbench)
+
+**Amendé le 2026-07-26 (décision de l'auteur) : les créatures sont modélisées et riggées dans Blockbench, pas assemblées à partir de parties `.vox`.** Une créature = **un modèle complet**, exporté en glTF/`.glb` avec son squelette et ses animations, référencé par `model` dans sa fiche B.5.
+
+**Ce que ce choix remplace :** la bibliothèque de parties interchangeables et l'assemblage par points d'attache (spécification d'origine conservée plus bas comme référence). Conséquences assumées :
+
+- `parts_pool` (B.5) devient **facultatif et inutilisé** pour les créatures Blockbench — la variété vient de modèles distincts et de la recoloration, plus du tirage de parties. Le champ reste au schéma pour ne pas casser les fiches existantes.
+- Les **templates de squelette** (humanoïde / quadrupède / volant / amorphe) restent pertinents : ils ne pilotent plus l'assemblage mais restent la clé des `equip_slots` par morphologie (6.2) et des profils d'IA (E.16).
+- Les **points d'équipement visibles** (arme en main, cape au dos) deviennent des **os nommés** du rig Blockbench (`attach_arme`, `attach_dos`...) plutôt que des voxels-marqueurs — même rôle, convention de nommage à figer dans les données.
+- La **recoloration** (variantes rares 12.4, statue 1:1 de F.3, teintes de biome) reste possible : la texture atlas est en pixel-art à palette réduite, l'échange de couleurs se fait **en shader** exactement comme le remapping `.vox`, en travaillant sur des couleurs-clés de la texture au lieu d'index de palette.
+- Les **couleurs réservées d'attache** de `data/reserved_colors.json` (#FF8000 bras, #8000FF patte, #0080FF tête...) ne servent plus aux créatures. Elles restent réservées pour les blocs/meubles MagicaVoxel qui en auraient besoin — aucune n'entre en collision avec la palette de matériaux (F.1.1).
+
+**Statut d'implémentation (2026-07-26) :** les créatures en jeu sont des **capsules colorées provisoires**. Les 37 fiches de F.3 existent en données avec leurs stats, profils d'IA et biomes ; il manque les modèles Blockbench et l'importeur glTF associé.
+
+---
+
+*Spécification d'origine, conservée comme référence (assemblage `.vox` par points d'attache — remplacée pour les créatures, la technique reste valable pour tout assemblage voxel futur) :*
 
 **Principe :** l'assemblage des parties du corps est piloté par des **voxels-marqueurs de couleurs réservées** placés directement dans les modèles .vox (extension de la technique des couleurs stand-in, section 9.1) :
 
@@ -1196,7 +1221,10 @@ Jauge 0–100, départ 100. Baisse de 1 point / 90 s de jeu actif
 (pauses et menus exclus). Effets :
   < 50 : -10 % régénération de santé
   < 25 : -10 % à toutes les stats, plus de régén de santé
-  = 0  : perte de 1 % de santé max / 30 s (ne tue pas en dessous de 1 PV)
+  = 0  : perte de 1 % de santé max / 30 s
+        AMENDÉ 2026-07-27 (décision de l'auteur) : la famine PEUT tuer.
+        Le plancher de 1 PV est retiré — mourir de faim déclenche la
+        pénalité de mort normale (A.10), jamais un game over.
 Manger restaure selon l'aliment (valeur nutritive en données).
 ```
 
@@ -1406,6 +1434,7 @@ Pour une armure : `"kind": "armure"`, avec `"equip_slot"` et `"facteur_slot"` à
 }
 ```
 
+- `model` (ajouté 2026-07-26) : chemin du modèle **Blockbench** exporté (glTF/`.glb`) de la créature — voir 12.1. `parts_pool` devient facultatif et n'est plus utilisé pour l'assemblage.
 - `recruitable.method` : `"relation"` (seuil), `"dressage"` (jet de compétence), `"quete"` (id de gabarit), ou `"jamais"`.
 - `jobs_compatible` : postes de travail assignables (section 14.2) ; `housing_default` : statut de logement initial (7.5), modifiable par le joueur (y compris → `"betail"`).
 - `leadership_role` (instance uniquement, ex. `"roi_royaume_x"`, `"maitre_guilde_guerriers"`) et `succession_rule` (`"heir"` ou `"next_in_rank"`, section 12.3) : définis sur les PNJ uniques, `null` pour la population générique.
@@ -1688,7 +1717,9 @@ res://
 │   ├── ui/              # Inventaire, craft, carte du monde, sculpture
 │   └── main.tscn
 ├── locale/              # Traductions : fr.csv, en.csv... (voir 10.1)
-├── models/              # .vox sources (importés par script custom)
+├── models/              # .vox sources : blocs, meubles, items, structures
+│                        # (importés par script custom)
+├── models/creatures/    # .glb Blockbench : créatures et PNJ (import natif)
 └── addons/
 ```
 
@@ -1699,7 +1730,8 @@ res://
 - **GameData** charge tous les JSON au boot, valide les schémas (champs manquants → erreur claire en console), et expose des dictionnaires indexés par id. Hot-reload en debug (touche F5 recharge les données sans relancer) — crucial pour itérer sur le contenu.
 - **EventBus** : les systèmes communiquent par signaux (`block_destroyed`, `item_crafted`, `creature_killed`, `skill_xp_gained`...). Le système de quêtes écoute `creature_killed` sans que le combat connaisse les quêtes — c'est l'interaction inter-systèmes voulue en section 10.
 - **Voxels : chunks cubiques de 16×16×16 blocs, indexés en 3D `(x, y, z)` dès le premier jour** (jamais en `(x, z)` + pile fixe — coût quasi nul maintenant, retrofit pénible plus tard). La cellule-monde de 128×128 = 8×8 chunks horizontaux × 32 en hauteur par défaut. Le streaming charge une bulle de chunks autour du joueur ; la hauteur 512 est une borne de design que le streaming peut ignorer si un mode profondeur infinie est activé (voir 3.2). Chaque bloc est soit plein (1 id matériau, 2 octets), soit accompagné d'une structure de subdivision séparée (amendé 2026-07-21 : **grille plate 8×8×8**, pas un octree — voir G.2 ; seule une minorité de blocs sont subdivisés — **budget de 512 blocs subdivisés par chunk**, voir G.2). Meshing par greedy meshing, uniquement les faces visibles, avec **LOD de distance** : la subdivision fine n'est jamais meshée au loin (G.2).
-- **Import .vox :** script d'import custom (EditorImportPlugin) qui lit le format .vox directement et produit une ressource `VoxModel` conservant `positions + index de couleur`, et détectant les **voxels-marqueurs de couleurs réservées** (section 12.1) : ils sont retirés du mesh visible et exportés comme liste de points d'attache typés `{type, position, direction}`. Le remapping des couleurs stand-in matériaux se fait dans un shader (palette 256 entrées passée en uniform/texture 256×1). Les couleurs réservées (attaches + stand-in matériaux) sont centralisées dans `data/reserved_colors.json`.
+- **Import des créatures (amendé 2026-07-26) :** modèles **Blockbench** exportés en glTF/`.glb`, importés nativement par Godot (maillage + squelette + animations). Aucun importeur custom n'est nécessaire ; la recoloration (12.4/F.3) se fait en shader sur la texture atlas. Le point d'attache d'un équipement visible est un **os nommé** du rig.
+- **Import .vox (blocs, meubles, items, structures) :** script d'import custom (EditorImportPlugin) qui lit le format .vox directement et produit une ressource `VoxModel` conservant `positions + index de couleur`, et détectant les **voxels-marqueurs de couleurs réservées** (section 12.1) : ils sont retirés du mesh visible et exportés comme liste de points d'attache typés `{type, position, direction}`. Le remapping des couleurs stand-in matériaux se fait dans un shader (palette 256 entrées passée en uniform/texture 256×1). Les couleurs réservées (attaches + stand-in matériaux) sont centralisées dans `data/reserved_colors.json`.
 - **Sauvegarde différentielle :** le monde n'est jamais sauvegardé entièrement ; seuls les chunks modifiés par rapport à la génération (diff) + les entités + l'état abstrait des claims sont écrits. Un chunk sauvegardé stocke `seed + liste des modifications`.
 - **Réseau :** API haut niveau Godot (`MultiplayerAPI`, RPC). Le host est autoritaire. Les modifications voxel sont des RPC fiables (`place_block`, `destroy_block`) ; positions des entités en unreliable à 10-20 Hz. Prévoir dès le début que toute mutation du monde passe par une fonction unique (facile à router en réseau plus tard, même si le multi arrive après le MVP).
 - **Temps :** horloge de jeu centrale dans WorldManager (jour/nuit, semaine in-game pour la régénération des cases sauvages, timers d'abstraction hors-site).
@@ -2323,6 +2355,14 @@ SOMMEIL (lit requis, meuble F.6) :
   pendant la nuit sautée et réveillent le dormeur, résolution réelle).
 - Pas de privation de sommeil punitive pour le joueur (pas de jauge
   fatigue) — dormir est un choix avantageux, pas une corvée.
+  **AMENDÉ le 2026-07-27 (décision de l'auteur) : une jauge de fatigue
+  EST ajoutée.** Elle descend avec le temps éveillé (~2 jours in-game)
+  et se remplit entièrement en dormant une nuit. Ses effets restent
+  volontairement doux, dans l'esprit de la règle d'origine — une
+  incitation, jamais une corvée, et jamais létale :
+    < 50 : -10 % d'XP gagnée
+    < 25 : -10 % à toutes les stats, plus de régénération de santé
+    = 0  : effets cumulés, AUCUN dégât (contrairement à la famine A.9)
 MULTIJOUEUR — sauter la nuit déclenche un VOTE (même mécanique que le
 mode tactique, E.11) : majorité simple, tous doivent être dans un lit
 ou hors combat ; le temps saute pour tout le monde.

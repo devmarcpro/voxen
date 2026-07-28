@@ -17,17 +17,17 @@ var _ready_setup := false
 var _busy := false          # Un seul rendu à la fois (viewport/cube partagés).
 var _diag_done := false      # Diagnostic imprimé une seule fois.
 var _avatar_tex: Texture2D   # Icône du modèle du joueur (marqueur de carte).
-var _avatar_rendering := false
+var _avatar_done := false    # Rendu tenté UNE fois (jamais de churn de viewport).
 
 
-## Icône du MODÈLE 3D du joueur (marqueur de carte). null tant que pas rendu.
+## Icône du MODÈLE 3D du joueur (marqueur de carte). Rendu UNE SEULE fois ; si
+## le rendu échoue, on garde un repli en cache — PAS de nouveau SubViewport
+## chaque frame (ça détruisait le FPS via un readback GPU par frame, 2026-07-26).
 func avatar_icon() -> Texture2D:
-	if _avatar_tex != null:
-		return _avatar_tex
-	if not _avatar_rendering:
-		_avatar_rendering = true
+	if not _avatar_done:
+		_avatar_done = true
 		_render_avatar()
-	return null
+	return _avatar_tex
 
 
 func _render_avatar() -> void:
@@ -52,7 +52,6 @@ func _render_avatar() -> void:
 	if img != null and _has_opaque(img):
 		_avatar_tex = ImageTexture.create_from_image(img)
 	vp.queue_free()
-	_avatar_rendering = false
 
 
 func _ready() -> void:

@@ -36,6 +36,45 @@ static func quality_tier_key(quality: float) -> String:
 	return "ui.qualite.mythique"
 
 
+## Identifiant d'instance, monotone. Sert aux liaisons de hotbar : un objet
+## doit rester désignable même quand l'inventaire est trié ou réordonné, et
+## deux instances identiques ne doivent pas être confondues.
+static var _next_uid := 1
+
+
+static func next_uid() -> int:
+	_next_uid += 1
+	return _next_uid
+
+
+## Instance d'une RESSOURCE de créature (viande, peau — 7.7). Même modèle que
+## les objets craftés (une entrée dans `Inventory.objects`), pas une pile de
+## matériau : ce n'est pas un bloc, ça ne se pose pas, et ça pourra porter des
+## données par instance (fraîcheur, qualité de découpe) sans rien changer.
+## `count` : unités identiques regroupées sur une même instance — sans lui,
+## dix chasses produiraient des dizaines de lignes strictement identiques.
+static func resource_instance(resource_id: String, count: int = 1) -> Dictionary:
+	var definition: Dictionary = GameData.resources.get(resource_id, {})
+	if definition.is_empty():
+		push_error("ItemFactory : ressource inconnue « %s »." % resource_id)
+		return {}
+	var stats: Dictionary = definition.get("stats", {})
+	return {
+		"uid": next_uid(),
+		"item_id": String(definition.get("item_kind", "ressource")),
+		"resource_id": resource_id,
+		"name_key": String(definition.get("name_key", "")),
+		"source_name_key": String(definition.get("source_name_key", "")),
+		"color": String(definition.get("color", "#FFFFFF")),
+		"count": maxi(1, count),
+		"weight": float(stats.get("densite", 1.0)),
+		"value": float(stats.get("valeur_base", 1.0)),
+		"nutrition": definition.get("nutrition", {}),
+		"potentiel": definition.get("potentiel", {}),
+		"tags": definition.get("tags", []),
+	}
+
+
 ## Crée une instance d'objet : `material_choices` associe chaque catégorie de
 ## la recette au matériau choisi (ex. {"bois": "chene", "minerai": "fer"}).
 static func craft(item_id: String, material_choices: Dictionary, quality: float) -> Dictionary:
@@ -43,7 +82,8 @@ static func craft(item_id: String, material_choices: Dictionary, quality: float)
 	if item == null:
 		push_error("ItemFactory : objet inconnu « %s »." % item_id)
 		return {}
-	var functionality: Dictionary = GameData.functionalities.get(item["functionality"], {})
+	# Une armure (6.2) n'a pas de fonctionnalité : elle ne frappe ni ne récolte.
+	var functionality: Dictionary = GameData.functionalities.get(item.get("functionality", ""), {})
 
 	# Dureté de base : moyenne pondérée selon stat_weights.durete (A.4).
 	var hardness_weights: Dictionary = (item["stat_weights"] as Dictionary).get("durete", {})
@@ -65,9 +105,10 @@ static func craft(item_id: String, material_choices: Dictionary, quality: float)
 			weight += float(mat["stats"]["densite"]) * int(input["amount"])
 
 	return {
+		"uid": next_uid(),
 		"item_id": item_id,
 		"name_key": item["name_key"],
-		"functionality": item["functionality"],
+		"functionality": item.get("functionality", ""),
 		"tool_category": functionality.get("tool_category", ""),
 		"quality": quality,
 		# Dureté de BASE (avant qualité) — A.2 multiplie durete_outil par

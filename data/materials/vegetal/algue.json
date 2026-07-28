@@ -11,6 +11,7 @@
   "tags": ["organique", "aquatique"],
   "color": "#2E6B5E",
   "noise": { "type": "procedural", "seed_offset": 212, "amplitude": 0.05, "scale": 1 },
+  "nutrition": { "faim": 8, "cuit": false },
   "harvest": { "tool_category": "mains_nues", "skill": "herboristerie" },
   "world_gen": { "mode": "plante", "biome_tags": ["aquatique"] }
 }

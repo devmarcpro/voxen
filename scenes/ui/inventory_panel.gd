@@ -36,8 +36,9 @@ func _refresh() -> void:
 	if not visible or _player == null:
 		return
 	var inventory: Inventory = _player.inventory
-	var capacity := Inventory.capacity_for(int(_player.stats["force"]))
-	var weight := inventory.total_weight()
+	# A.4.2 : la charge compte l'inventaire ET l'équipement porté (6.2).
+	var capacity: float = _player.carry_capacity()
+	var weight: float = _player.carried_weight()
 	var lines: Array[String] = [
 		tr("ui.inv.titre"),
 		"",
@@ -57,7 +58,7 @@ func _refresh() -> void:
 	var ids: Array = inventory.material_stacks.keys()
 	ids.sort()
 	for id: String in ids:
-		lines.append("%s × %d" % [tr(GameData.materials[id]["name_key"]), inventory.material_stacks[id]])
+		lines.append("%s × %d" % [tr(String(GameData.stackable(id).get("name_key", ""))), inventory.material_stacks[id]])
 	if inventory.objects.is_empty() and ids.is_empty():
 		lines.append(tr("ui.inv.vide"))
 	# Compétences (A.1) — niveau, XP vers le prochain niveau, potentiel.

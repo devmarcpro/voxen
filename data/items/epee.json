@@ -35,8 +35,8 @@
     "arme"
   ],
   "sprites": {
-    "manche": "res://assets/tools/epee_manche.png",
-    "tete": "res://assets/tools/epee_tete.png"
+    "manche": "res://assets/weapons/epee_manche.png",
+    "tete": "res://assets/weapons/epee_tete.png"
   },
   "sprite_tint": {
     "manche": "bois",

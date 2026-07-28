@@ -35,8 +35,8 @@
     "arme"
   ],
   "sprites": {
-    "manche": "res://assets/tools/arbalete_manche.png",
-    "tete": "res://assets/tools/arbalete_tete.png"
+    "manche": "res://assets/weapons/arbalete_manche.png",
+    "tete": "res://assets/weapons/arbalete_tete.png"
   },
   "sprite_tint": {
     "manche": "bois",

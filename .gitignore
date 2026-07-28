@@ -1,0 +1,6 @@
+# Logs et captures générés par les benchs, sondes et tests (régénérables)
+*.log
+/debug/
+
+# Dossier d'import de Godot
+.godot/

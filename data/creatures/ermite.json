@@ -1,0 +1,60 @@
+{
+  "id": "ermite",
+  "name_key": "creature.ermite.name",
+  "skeleton_template": "humanoide",
+  "parts_pool": {
+    "tete": [
+      1
+    ],
+    "torse": [
+      1
+    ],
+    "bras": [
+      1
+    ],
+    "jambes": [
+      1
+    ]
+  },
+  "race": "humain",
+  "base_stats": {
+    "sante": 46,
+    "force": 14,
+    "volonte": 6,
+    "vitesse": 9,
+    "dexterite": 9,
+    "endurance": 11
+  },
+  "equip_slots": "humanoide_standard",
+  "inventory_table": null,
+  "ai_profile": "bete_sauvage",
+  "jobs_compatible": [],
+  "housing_default": "normal",
+  "recruitable": {
+    "method": "relation",
+    "threshold": 85
+  },
+  "leadership_role": null,
+  "succession_rule": null,
+  "rare_chance": 0.02,
+  "combat": {
+    "functionality": "mains_nues",
+    "modules": [
+      "frappe_lourde"
+    ],
+    "durete_naturelle": 8.0
+  },
+  "niveau_combat": 14,
+  "world_gen": {
+    "biome_tags": [
+      "montagne",
+      "foret",
+      "rocheux"
+    ],
+    "activite": "jour"
+  },
+  "tags": [
+    "bete_sauvage",
+    "humanoide"
+  ]
+}

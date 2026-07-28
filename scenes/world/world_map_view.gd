@@ -16,7 +16,15 @@ const MIN_RADIUS := 4
 const MAX_RADIUS := 60                  # Grille max ~121×121 cellules — garde-fou perf (construction de la mosaïque), pas une limite de gameplay.
 const RADIUS_STEP := 3
 const BASE_RADIUS := 18
-const PAN_CELLS_PER_SEC := 6.0
+## Déplacement CASE PAR CASE sur la carte (2026-07-27). ZQSD/WASD ne fait
+## plus défiler la vue : il fait MARCHER le joueur d'une cellule (128 blocs).
+## Le temps s'écoule réellement pendant le trajet — E.1 : « le saut n'est
+## jamais gratuit ». Coût doublé par rapport à la marche au sol (3 ticks/bloc,
+## E.1) : traverser la carte est pratique, jamais gratuit.
+const MAP_TICKS_PER_BLOCK := 6
+## Anti-répétition : une pression = une case, sinon un appui maintenu
+## traverserait le monde et affamerait le joueur en une seconde.
+const STEP_COOLDOWN := 0.18
 const SIDEBAR_WIDTH := 320.0            # Réserve la largeur du panneau de stats (WorldMapPanel).
 
 const LAYERS := ["biome", "danger", "revendications", "exploration"]
@@ -40,6 +48,12 @@ var _radius := BASE_RADIUS
 var _center_tile := Vector2i.ZERO
 var _layer_index := 0
 var _pan_accum := Vector2.ZERO
+var _step_cooldown := 0.0
+## Barres d'état + horloge affichées SUR la carte : voyager consomme faim et
+## fatigue, le joueur doit pouvoir décider de s'arrêter.
+var _clock_label: Label
+var _bars: Control
+var _avatar: TextureRect
 var _hover_tile := Vector2i(1 << 30, 0)
 var _side := 0                          # Cellules par côté (2*_radius+1) de la dernière mosaïque construite.
 var _display_scale := 1.0
@@ -119,6 +133,31 @@ func _ready() -> void:
 	_player_marker_inner.visible = false
 	_root.add_child(_player_marker_inner)
 
+	# Marqueur AVATAR (2026-07-27) : l'icône du joueur sur la carte est le
+	# rendu de son propre modèle, pas un point blanc anonyme.
+	_avatar = TextureRect.new()
+	_avatar.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_avatar.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_avatar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_avatar.visible = false
+	_root.add_child(_avatar)
+
+	# Horloge + barres d'état : voyager sur la carte consomme du temps, donc
+	# de la faim et de la fatigue. Sans ces indicateurs le joueur ne verrait
+	# pas qu'il s'épuise en traversant le monde.
+	_clock_label = Label.new()
+	_clock_label.position = Vector2(12.0, 34.0)
+	_clock_label.add_theme_font_size_override("font_size", 18)
+	_clock_label.add_theme_constant_override("outline_size", 4)
+	_clock_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	_root.add_child(_clock_label)
+
+	_bars = Control.new()
+	_bars.position = Vector2(12.0, 60.0)
+	_bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bars.draw.connect(_draw_bars)
+	_root.add_child(_bars)
+
 	_info_label = Label.new()
 	_info_label.position = Vector2(12.0, 8.0)
 	_info_label.add_theme_constant_override("outline_size", 4)
@@ -172,22 +211,95 @@ func _on_gui_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if not is_open:
 		return
-	var dir := Vector2.ZERO
+	_refresh_status()
+	# Touches PHYSIQUES : W/A/S/D correspondent à Z/Q/S/D sur un clavier
+	# AZERTY — le joueur utilise bien ZQSD sans configuration.
+	_step_cooldown = maxf(0.0, _step_cooldown - delta)
+	if _step_cooldown > 0.0:
+		return
+	var step := Vector2i.ZERO
 	if Input.is_physical_key_pressed(KEY_W):
-		dir.y -= 1.0
-	if Input.is_physical_key_pressed(KEY_S):
-		dir.y += 1.0
-	if Input.is_physical_key_pressed(KEY_A):
-		dir.x -= 1.0
-	if Input.is_physical_key_pressed(KEY_D):
-		dir.x += 1.0
-	if dir != Vector2.ZERO:
-		_pan_accum += dir.normalized() * PAN_CELLS_PER_SEC * delta
-		var shift := Vector2i(roundi(_pan_accum.x), roundi(_pan_accum.y))
-		if shift != Vector2i.ZERO:
-			_center_tile += shift
-			_pan_accum -= Vector2(shift)
-			_build_mosaic()
+		step.y -= 1
+	elif Input.is_physical_key_pressed(KEY_S):
+		step.y += 1
+	elif Input.is_physical_key_pressed(KEY_A):
+		step.x -= 1
+	elif Input.is_physical_key_pressed(KEY_D):
+		step.x += 1
+	if step == Vector2i.ZERO:
+		return
+	_step_cooldown = STEP_COOLDOWN
+	_walk_one_cell(step)
+
+
+## Fait marcher le joueur d'UNE cellule dans la direction donnée, en faisant
+## réellement s'écouler le temps du trajet (faim, fatigue, régénération, IA).
+## Le joueur peut donc s'affaiblir — voire mourir — en traversant la carte
+## sans surveiller ses jauges : c'est voulu.
+func _walk_one_cell(step: Vector2i) -> void:
+	if _player == null:
+		return
+	var cs := ClaimManager.CELL_SIZE
+	var pos: Vector3 = _player.get_position_for_ai()
+	var target_cell := Vector2i(floori(pos.x / cs) + step.x, floori(pos.z / cs) + step.y)
+	# Une cellule de donjon ne se traverse pas : on y ENTRE (3.5).
+	if DungeonManager.is_dungeon_cell(target_cell):
+		_close()
+		DungeonManager.enter_from_map(target_cell)
+		return
+	var wx := target_cell.x * cs + cs / 2
+	var wz := target_cell.y * cs + cs / 2
+	var travelled := Vector2(float(wx) - pos.x, float(wz) - pos.z).length()
+	var ticks := int(round(travelled * float(MAP_TICKS_PER_BLOCK)))
+
+	_player.teleport_to_surface(wx, wz)
+	# Le temps du trajet, poussé par paquets : les systèmes à ticks (faim,
+	# fatigue, régén, créatures) le consomment vraiment.
+	var pushed := 0
+	while pushed < ticks:
+		var batch := mini(500, ticks - pushed)
+		TickManager.push_ticks(batch)
+		pushed += batch
+	_center_tile = target_cell
+	_build_mosaic()
+	_update_player_marker()
+	_refresh_status()
+	# Mort en chemin : la carte se ferme, le joueur réapparaît à son ancre.
+	if float(_player.health) <= 0.0:
+		_close()
+
+
+## Horloge et jauges, rafraîchies à chaque frame pendant que la carte est
+## ouverte (le temps peut avancer très vite en marchant de case en case).
+func _refresh_status() -> void:
+	if _player == null or _clock_label == null:
+		return
+	var h := DayNightManager.hour()
+	_clock_label.text = tr("ui.carte.heure").format({
+		"heure": "%02d:%02d" % [int(h), int(fmod(h, 1.0) * 60.0)],
+		"phase": tr("ui.phase." + DayNightManager.phase())})
+	_bars.queue_redraw()
+
+
+const BAR_W := 190.0
+const BAR_H := 12.0
+const BAR_GAP := 4.0
+
+
+func _draw_bars() -> void:
+	if _player == null:
+		return
+	var jauges := [
+		[float(_player.health) / maxf(float(_player.health_max), 1.0), Color(0.85, 0.25, 0.25)],
+		[float(_player.mana.current) / maxf(float(_player.mana.max_mana()), 1.0), Color(0.3, 0.5, 0.9)],
+		[float(_player.hunger) / maxf(float(_player.hunger_max), 1.0), Color(0.9, 0.62, 0.2)],
+		[float(_player.fatigue) / maxf(float(_player.fatigue_max), 1.0), Color(0.55, 0.5, 0.85)],
+	]
+	for i in jauges.size():
+		var y := float(i) * (BAR_H + BAR_GAP)
+		_bars.draw_rect(Rect2(0.0, y, BAR_W, BAR_H), Color(0, 0, 0, 0.55))
+		var ratio: float = clampf(jauges[i][0], 0.0, 1.0)
+		_bars.draw_rect(Rect2(2.0, y + 2.0, (BAR_W - 4.0) * ratio, BAR_H - 4.0), jauges[i][1])
 
 
 func _set_zoom(radius: int) -> void:
@@ -291,7 +403,11 @@ func _sample_color(wx: int, wz: int, g: NoiseGenerator, h: int, surf_id: int, ri
 				"ressources_naturelles": return Color(0.2, 0.6, 0.5)
 				_: return Color(0.8, 0.8, 0.8)
 		"exploration":
-			var explored := ExplorationManager.is_explored(wx >> 4, wz >> 4, 0)
+			# Vue de DESSUS : une case est révélée si elle a été parcourue à
+			# n'importe quelle hauteur. L'ancien test forçait chunk_y = 0 —
+			# explorer en altitude ou sous terre ne révélait donc rien
+			# (corrigé le 2026-07-27 avec le stockage par colonne).
+			var explored := ExplorationManager.is_column_explored(wx >> 4, wz >> 4)
 			return Color(0.7, 0.7, 0.75) if explored else Color(0.08, 0.08, 0.1)
 		_:
 			if h <= g.water_level:
@@ -464,8 +580,23 @@ func _update_player_marker() -> void:
 	if screen_pos.x < _origin.x or screen_pos.y < _origin.y or screen_pos.x > _origin.x + span or screen_pos.y > _origin.y + span:
 		_player_marker_outer.visible = false
 		_player_marker_inner.visible = false
+		if _avatar != null:
+			_avatar.visible = false
 		return
 	var outer_size := cell_px * 0.4
+	# Avatar du joueur si son icône est disponible ; sinon le repère
+	# noir/blanc historique, qui reste un repli sûr.
+	var avatar_tex: Texture2D = BlockPreview.avatar_icon()
+	if avatar_tex != null:
+		var avatar_size := maxf(cell_px * 0.9, 18.0)
+		_avatar.texture = avatar_tex
+		_avatar.size = Vector2.ONE * avatar_size
+		_avatar.position = screen_pos - Vector2.ONE * avatar_size * 0.5
+		_avatar.visible = true
+		_player_marker_outer.visible = false
+		_player_marker_inner.visible = false
+		return
+	_avatar.visible = false
 	var inner_size := outer_size * 0.5
 	_player_marker_outer.size = Vector2.ONE * outer_size
 	_player_marker_outer.position = screen_pos - Vector2.ONE * outer_size * 0.5

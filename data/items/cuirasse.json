@@ -1,0 +1,30 @@
+{
+  "id": "cuirasse",
+  "name_key": "item.cuirasse.name",
+  "type": "armure",
+  "equip_slot": "torse",
+  "recipe": {
+    "station": "forge",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "minerai",
+        "amount": 6
+      },
+      {
+        "category": "textile",
+        "amount": 2
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.85,
+      "textile": 0.15
+    }
+  },
+  "effects": [],
+  "tags": [
+    "armure"
+  ]
+}

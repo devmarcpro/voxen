@@ -1,7 +1,7 @@
 extends HBoxContainer
 ## Hotbar (9 emplacements × 9 banques) — OUTILS puis piles de matériaux
 ## (étape D.3.3). Sélection d'emplacement par les touches 1-9 ou la molette ;
-## banque active (0-8) par Shift+1-9 ou Shift+molette, affichée à droite.
+## banque active par Ctrl+1-9 ou Ctrl+molette, affichée à droite.
 ## Un outil s'affiche en bicolore (tête = couleur du minerai, manche =
 ## couleur du bois — les vrais modèles .vox arrivent à l'étape 5) ; un
 ## matériau en aplat + quantité.
@@ -18,6 +18,8 @@ var _heads: Array[ColorRect] = []    # Partie haute (matériau/tête d'outil).
 var _handles: Array[ColorRect] = []  # Partie basse (manche d'outil).
 var _icons: Array[TextureRect] = []  # Icône cube 3 faces (blocs matériaux).
 var _counts: Array[Label] = []
+## Numéro de touche (1-9) affiché en haut à gauche de chaque emplacement.
+var _keys: Array[Label] = []
 
 
 func _ready() -> void:
@@ -64,6 +66,18 @@ func _ready() -> void:
 		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(count)
+		var key_label := Label.new()
+		key_label.text = str(i + 1)
+		key_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		key_label.offset_left = 4
+		key_label.offset_top = 1
+		key_label.add_theme_font_size_override("font_size", 11)
+		# Coin OPPOSÉ à la quantité (bas-droite) : les deux ne se recouvrent
+		# jamais, quel que soit le nombre de chiffres.
+		key_label.modulate = Color(1, 1, 1, 0.55)
+		key_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(key_label)
+		_keys.append(key_label)
 		add_child(slot)
 		_slots.append(slot)
 		_heads.append(head)
@@ -94,7 +108,10 @@ func _refresh() -> void:
 	for i in SLOT_COUNT:
 		var selected: bool = i == _player.selected_slot
 		_slots[i].modulate = Color(1, 1, 1, 1.0) if selected else Color(0.75, 0.75, 0.75, 0.75)
-		if i >= entries.size():
+		_keys[i].modulate = Color(1, 0.92, 0.6, 1.0) if selected else Color(1, 1, 1, 0.55)
+		# Emplacement VIDE : depuis que la hotbar est assignable (2026-07-27),
+		# un slot non lié rend un dictionnaire vide au lieu d'être absent.
+		if i >= entries.size() or entries[i].is_empty():
 			_heads[i].color = Color(0, 0, 0, 0.25)
 			_handles[i].visible = false
 			_icons[i].texture = null
@@ -102,13 +119,17 @@ func _refresh() -> void:
 			_slots[i].tooltip_text = ""
 			continue
 		var entry: Dictionary = entries[i]
-		if entry["kind"] == "object":
+		if String(entry.get("kind", "")) == "object":
 			var obj: Dictionary = entry["object"]
 			var mats: Dictionary = obj.get("materials", {})
 			# Apparence d'OUTIL (sprite manche+tête teintés) si dispo, sinon
 			# repli bicolore tête/manche (2026-07-26).
 			var item: Dictionary = GameData.items.get(obj.get("item_id", ""), {})
 			var tool_tex: Texture2D = ToolSprite.item_icon(item, mats, SLOT_SIZE)
+			# Ressource (viande, peau) : pastille colorée d'objet — pas de
+			# sprite dédié, et surtout pas l'apparence d'un bloc.
+			if tool_tex == null and obj.has("color"):
+				tool_tex = BlockIcon.item_texture(Color.html(String(obj["color"])), SLOT_SIZE - 12)
 			if tool_tex != null:
 				_icons[i].texture = tool_tex
 				_heads[i].color = Color.TRANSPARENT
@@ -118,10 +139,11 @@ func _refresh() -> void:
 				_heads[i].color = _material_color(mats.get("minerai", ""))
 				_handles[i].color = _material_color(mats.get("bois", ""))
 				_handles[i].visible = true
-			_counts[i].text = ""
+			var units := int(obj.get("count", 1))
+			_counts[i].text = str(units) if units > 1 else ""
 			_slots[i].tooltip_text = tr(obj["name_key"])
 		else:
-			var mat: Dictionary = GameData.materials[entry["id"]]
+			var mat: Dictionary = GameData.stackable(entry["id"])
 			# Bloc = icône TEXTURÉE (rendu voxel) si prête, sinon cube couleur.
 			_heads[i].color = Color.TRANSPARENT
 			_handles[i].visible = false
@@ -133,5 +155,5 @@ func _refresh() -> void:
 
 
 func _material_color(material_id: String) -> Color:
-	var mat: Variant = GameData.materials.get(material_id)
+	var mat: Variant = GameData.stackable(material_id)
 	return Color.html(mat["color"]) if mat != null else Color(0.5, 0.5, 0.5)

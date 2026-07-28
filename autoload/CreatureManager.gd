@@ -30,16 +30,22 @@ var _tick_samples: int = 0
 
 
 func _ready() -> void:
-	TickManager.tick.connect(_on_tick)
-	# Pool de spawn naturel : toute créature hostile des données (12/B.5),
-	# extensible sans code. "sanglier" exclu du spawn naturel (demande
-	# explicite 2026-07-20) — reste spawnable manuellement (spawn() direct,
-	# ex. le test de combat), seul le peuplement automatique du monde est coupé.
+	TickManager.tick_entities.connect(_on_tick)
+	# Pool de spawn naturel (12/B.5), extensible sans code. Une créature n'y
+	# entre QUE si elle déclare des `world_gen.biome_tags` : les civils
+	# (villageois, forgeron...) n'en ont aucun et n'apparaissent donc jamais
+	# en pleine nature — ils viendront avec la population de village (3.4/E.25).
+	# "sanglier" exclu du spawn naturel (demande explicite 2026-07-20) — reste
+	# spawnable manuellement (spawn() direct, ex. le test de combat).
 	const NATURAL_SPAWN_EXCLUDED := ["sanglier"]
 	for id in GameData.creatures:
 		var data: Dictionary = GameData.creatures[id]
-		if data.get("ai_profile", "") == "hostile" and id not in NATURAL_SPAWN_EXCLUDED:
-			_spawn_pool.append(id)
+		if id in NATURAL_SPAWN_EXCLUDED:
+			continue
+		var tags: Array = (data.get("world_gen", {}) as Dictionary).get("biome_tags", [])
+		if tags.is_empty():
+			continue
+		_spawn_pool.append(id)
 
 
 func spawn(creature_id: String, world_position: Vector3) -> Node:
@@ -130,10 +136,15 @@ func _resolve_creature_attack(creature: Node, player: Node) -> void:
 	# 10 (étalon demi-fer, A.4.1) par défaut — plus de valeur en dur unique
 	# pour toutes les créatures (audit 2026-07-21).
 	var natural_hardness := float((creature.combat as Dictionary).get("durete_naturelle", 10.0))
+	# Armure du joueur (6.2/A.4.2, 2026-07-26) : jusqu'ici la mitigation d'E.3
+	# était TOUJOURS nulle faute d'emplacements d'équipement — les dés de
+	# réduction et le malus de défense au poids sont maintenant réels.
+	var armor_dice := String(player.call("armor_dice"))
+	var armor_malus := int(player.call("armor_malus"))
 	var result := CombatResolver.resolve_attack(
 		creature.weapon_level, int(creature.stats.get("dexterite", 5)), int(creature.stats.get("force", 5)),
-		player.skill_level("esquive"), 0,
-		String(functionality.get("degats_des", "1d4")), natural_hardness, 1.0, false, "")
+		player.skill_level("esquive"), armor_malus,
+		String(functionality.get("degats_des", "1d4")), natural_hardness, 1.0, false, armor_dice)
 	var player_skills: Variant = player.get("skills")
 	if result["hit"]:
 		player.take_damage(result["damage"])
@@ -165,15 +176,73 @@ func _natural_spawn_tick(player_pos: Vector3) -> void:
 	for creature in to_despawn:
 		despawn(creature)
 
-	if creatures.size() >= MAX_ACTIVE or nearby >= SPAWN_NEARBY_CAP:
+	# Nuit : densité de spawn hostile DOUBLÉE (E.21 « la nuit est dangereuse »).
+	# On relève le plafond local plutôt que d'accélérer la cadence : ça donne
+	# une nuit plus peuplée sans multiplier le coût par tick.
+	var local_cap := SPAWN_NEARBY_CAP * 2 if DayNightManager.is_night() else SPAWN_NEARBY_CAP
+	if creatures.size() >= MAX_ACTIVE or nearby >= local_cap:
 		return
 	var angle := randf() * TAU
 	var spawn_dist := randf_range(SPAWN_MIN_DIST, SPAWN_MAX_DIST)
 	var x := int(player_pos.x + cos(angle) * spawn_dist)
 	var z := int(player_pos.z + sin(angle) * spawn_dist)
 	var h := WorldManager.generator.height_at(x, z)
-	var creature_id: String = _spawn_pool[randi() % _spawn_pool.size()]
-	spawn(creature_id, Vector3(x, h + 0.5, z))
+	# Cohérence de faune : la créature doit appartenir au BIOME du point de
+	# spawn (sinon un ours polaire apparaît en plein désert). Même convention
+	# que les plantes et les arbres : intersection des `biome_tags`.
+	var creature_id := _pick_for_biome(x, z)
+	if creature_id == "":
+		return
+	var spawned := spawn(creature_id, Vector3(x, h + 0.5, z))
+	if spawned == null:
+		return
+	# Meutes (F.3 : « Loup, meutes 1d4+1 ») : compagnons serrés autour du
+	# premier, dans la limite des budgets globaux/locaux déjà vérifiés.
+	var pack: Array = (GameData.creatures[creature_id].get("world_gen", {}) as Dictionary).get("pack_size", [])
+	if pack.size() != 2:
+		return
+	var extra := randi_range(int(pack[0]), int(pack[1])) - 1
+	for i in extra:
+		if creatures.size() >= MAX_ACTIVE:
+			return
+		var ox := x + randi_range(-3, 3)
+		var oz := z + randi_range(-3, 3)
+		spawn(creature_id, Vector3(ox, WorldManager.generator.height_at(ox, oz) + 0.5, oz))
+
+
+## Créature du pool compatible avec le biome en (x, z), ou "" si aucune.
+## Tirage uniforme parmi les compatibles (le GDD ne pondère pas les créatures
+## par biome — F.3 les range par milieu, sans densité).
+func _pick_for_biome(x: int, z: int) -> String:
+	var biome: Dictionary = WorldManager.generator.biome_at(x, z)
+	if biome.is_empty():
+		return ""
+	var candidates := _candidates_for_tags(biome.get("tags", []))
+	if candidates.is_empty():
+		return ""
+	return candidates[randi() % candidates.size()]
+
+## Créatures du pool compatibles avec un jeu de tags de biome — extrait de
+## _pick_for_biome pour être testable sans passer par des coordonnées.
+func _candidates_for_tags(biome_tags: Array) -> Array[String]:
+	# Volet NOCTURNE des tables de spawn (E.21) : chaque espèce déclare son
+	# `activite` (jour / nuit / toujours). Sans ce filtre, les loups en chasse
+	# et les maraudeurs apparaissaient en plein midi et les herbivores
+	# broutaient à 3 h du matin — la nuit n'avait aucune identité propre.
+	var night := DayNightManager.is_night()
+	var candidates: Array[String] = []
+	for id in _spawn_pool:
+		var world_gen: Dictionary = GameData.creatures[id].get("world_gen", {})
+		var activite := String(world_gen.get("activite", "toujours"))
+		if activite == "nuit" and not night:
+			continue
+		if activite == "jour" and night:
+			continue
+		for tag: String in (world_gen.get("biome_tags", []) as Array):
+			if tag in biome_tags:
+				candidates.append(id)
+				break
+	return candidates
 
 
 ## Statistiques pour le HUD/bench (critère G.8 : 50 créatures, tick < 8 ms).

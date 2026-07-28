@@ -1,5 +1,16 @@
 class_name StartMenu
 extends CanvasLayer
+
+## Langues proposées : (code de locale, libellé natif). Les libellés ne
+## sont JAMAIS traduits — une langue se nomme dans sa propre langue.
+## Ajouter une entrée ici suffit : le reste (validation, couverture,
+## fichiers .translation) est piloté par GameData et project.godot.
+const LOCALES: Array = [
+	["fr", "Français"],
+	["en", "English"],
+	["ja", "日本語"],
+	["zh_Hans", "简体中文"],
+]
 ## Menu de démarrage (2026-07-21, demande explicite) — construit en code
 ## comme le reste de l'UI du projet, textes via tr() (10.1, jamais en dur).
 ## Structure : Solo (Continuer / liste des mondes / Nouvelle partie) ·
@@ -115,8 +126,15 @@ func _build_solo() -> VBoxContainer:
 	box.add_child(_title_label("ui.menu.solo"))
 	box.add_child(_button("ui.menu.continuer", _on_continue))
 	box.add_child(_spacer(8))
+	# Liste DÉFILANTE : le nombre de mondes n'est plus plafonné, la hauteur
+	# de l'écran ne doit donc plus limiter ce qu'on peut voir et charger.
+	var worlds_scroll := ScrollContainer.new()
+	worlds_scroll.custom_minimum_size = Vector2(0, 320)
+	worlds_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_solo_worlds_box = VBoxContainer.new()
-	box.add_child(_solo_worlds_box)
+	_solo_worlds_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	worlds_scroll.add_child(_solo_worlds_box)
+	box.add_child(worlds_scroll)
 	_solo_status = Label.new()
 	_solo_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_solo_status)
@@ -131,15 +149,42 @@ func _refresh_worlds() -> void:
 	for child in _solo_worlds_box.get_children():
 		child.queue_free()
 	var worlds := SaveManager.list_worlds()
-	_solo_status.text = tr("ui.menu.aucun_monde") if worlds.is_empty() else ""
-	for world: Dictionary in worlds.slice(0, 8):
+	_solo_status.text = tr("ui.menu.aucun_monde") if worlds.is_empty() else \
+			tr("ui.menu.nb_mondes").format({"nb": str(worlds.size())})
+	# Plus de plafond d'affichage : la liste montrait `slice(0, 8)`, donc les
+	# mondes au-delà du 8e devenaient invisibles ET irrécupérables depuis le
+	# menu. Elle est désormais complète et défilante.
+	for world: Dictionary in worlds:
 		var day := int(world["ticks"]) / 24000 + 1
+		var row := HBoxContainer.new()
 		var b := Button.new()
 		b.text = "%s — %s" % [world["name"],
 			tr("ui.menu.monde_info").format({"graine": str(world["seed"]), "jour": str(day)})]
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var dir: String = world["dir"]
 		b.pressed.connect(func() -> void: _on_load_world(dir))
-		_solo_worlds_box.add_child(b)
+		row.add_child(b)
+		var del := Button.new()
+		del.text = tr("ui.menu.supprimer")
+		del.pressed.connect(func() -> void: _confirm_delete(dir, String(world["name"])))
+		row.add_child(del)
+		_solo_worlds_box.add_child(row)
+
+
+## Suppression d'un monde : TOUJOURS confirmée. Un clic malheureux effacerait
+## des dizaines d'heures de jeu, et rien ne permettrait de revenir en arrière.
+func _confirm_delete(dir: String, world_name: String) -> void:
+	var dialog := ConfirmationDialog.new()
+	dialog.dialog_text = tr("ui.menu.supprimer_confirme").format({"monde": world_name})
+	dialog.ok_button_text = tr("ui.menu.supprimer")
+	dialog.confirmed.connect(func() -> void:
+		SaveManager.delete_world(dir)
+		_refresh_worlds())
+	dialog.visibility_changed.connect(func() -> void:
+		if not dialog.visible:
+			dialog.queue_free())
+	add_child(dialog)
+	dialog.popup_centered()
 
 
 func _build_new_world() -> VBoxContainer:
@@ -389,9 +434,18 @@ func _build_settings() -> VBoxContainer:
 	var lang_row := HBoxContainer.new()
 	lang_row.add_child(_row_label("ui.menu.langue"))
 	var lang := OptionButton.new()
-	lang.add_item("Français")  # Noms de langues : invariants, jamais traduits.
-	lang.add_item("English")
-	lang.selected = 0 if TranslationServer.get_locale().begins_with("fr") else 1
+	# Table unique langue -> libellé (2026-07-27) : ajouter une langue est
+	# désormais une ligne de données. Le sélecteur était câblé en dur sur
+	# deux entrées (« 0 si fr sinon en »), donc toute 3e langue était
+	# invisible dans l'interface même une fois traduite.
+	var current := TranslationServer.get_locale()
+	var selected_index := 0
+	for i in LOCALES.size():
+		var entry: Array = LOCALES[i]
+		lang.add_item(String(entry[1]))  # Noms de langues : invariants, jamais traduits.
+		if current.begins_with(String(entry[0])):
+			selected_index = i
+	lang.selected = selected_index
 	lang.item_selected.connect(_on_language_selected)
 	lang.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lang_row.add_child(lang)
@@ -556,7 +610,7 @@ func _on_join() -> void:
 
 
 func _on_language_selected(index: int) -> void:
-	var locale := "fr" if index == 0 else "en"
+	var locale := String((LOCALES[index] as Array)[0]) if index < LOCALES.size() else "en"
 	TranslationServer.set_locale(locale)
 	EventBus.locale_changed.emit(locale)
 	# Les textes du menu sont posés à la construction : reconstruire.

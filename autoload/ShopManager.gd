@@ -28,7 +28,7 @@ var _tick_accum := 0
 func _ready() -> void:
 	EventBus.block_placed.connect(_on_block_placed)
 	EventBus.block_destroyed.connect(_on_block_destroyed)
-	TickManager.tick.connect(_on_tick)
+	TickManager.tick_world.connect(_on_tick)
 
 
 func _on_block_placed(pos: Vector3i, material_id: int) -> void:
@@ -51,7 +51,7 @@ func is_stall(pos: Vector3i) -> bool:
 ## Prix suggéré (A.8) pour un matériau BRUT (qualité 1.0 implicite — pas
 ## d'objet crafté dans l'étal pour cette passe).
 static func suggested_price(material_id: String) -> int:
-	var mat: Dictionary = GameData.materials.get(material_id, {})
+	var mat: Dictionary = GameData.stackable(material_id)
 	var valeur_base: float = float((mat.get("stats", {}) as Dictionary).get("valeur_base", 1.0))
 	var facteur_reputation := clampf(1.0 + (0.0 / 200.0), 0.5, 2.0) * REPUTATION_FACTOR
 	return maxi(1, int(round(valeur_base * PRICE_MARGIN * facteur_reputation)))

@@ -15,9 +15,11 @@ var _camera: Node3D
 var _pv_bg: ColorRect
 var _mana_bg: ColorRect
 var _faim_bg: ColorRect
+var _fatigue_bg: ColorRect
 var _pv_fill: ColorRect
 var _mana_fill: ColorRect
 var _faim_fill: ColorRect
+var _fatigue_fill: ColorRect
 var _temp_label: Label
 var _clock: Control
 
@@ -33,6 +35,8 @@ func _ready() -> void:
 	var pv := _make_bar(Color(0.85, 0.2, 0.2)); _pv_bg = pv[0]; _pv_fill = pv[1]
 	var mn := _make_bar(Color(0.25, 0.5, 0.95)); _mana_bg = mn[0]; _mana_fill = mn[1]
 	var fm := _make_bar(Color(0.9, 0.62, 0.2)); _faim_bg = fm[0]; _faim_fill = fm[1]
+	# Fatigue (amendement E.21) — bleu-violet, distincte de la faim.
+	var ft := _make_bar(Color(0.55, 0.5, 0.85)); _fatigue_bg = ft[0]; _fatigue_fill = ft[1]
 	_clock = Control.new()
 	_clock.custom_minimum_size = Vector2(52, 52)
 	_clock.size = Vector2(52, 52)
@@ -59,30 +63,47 @@ func _make_bar(color: Color) -> Array:
 	return [bg, fill]
 
 
-func _process(_delta: float) -> void:
+## Maj THROTTLÉE (2026-07-26, fix perf) : ne rien recalculer à 60 fps — le coût
+## par frame (positions, température, redraw horloge) faisait chuter le FPS.
+## On rafraîchit ~6×/s ; les positions ne bougent qu'au redimensionnement.
+var _acc := 0.0
+var _last_vp := Vector2.ZERO
+func _process(delta: float) -> void:
 	if _player == null:
 		return
-	# --- Positionnement absolu au-dessus de la hotbar ---
+	_acc += delta
+	if _acc < 0.16:
+		return
+	_acc = 0.0
 	var vp := get_viewport_rect().size
-	var bx := vp.x * 0.5 - BAR_W - 40.0   # barres à gauche du centre
-	var y0 := vp.y - HOTBAR_MARGIN - 3.0 * (BAR_H + GAP)
-	_pv_bg.position = Vector2(bx, y0)
-	_mana_bg.position = Vector2(bx, y0 + BAR_H + GAP)
-	_faim_bg.position = Vector2(bx, y0 + 2.0 * (BAR_H + GAP))
-	_clock.position = Vector2(vp.x * 0.5 + 44.0, y0 - 4.0)
-	_clock.queue_redraw()
-	_temp_label.position = Vector2(vp.x * 0.5 + 104.0, y0 + 14.0)
-
-	# --- Valeurs ---
+	if vp != _last_vp:
+		_last_vp = vp
+		_layout(vp)
 	_fill(_pv_fill, _player.health / maxf(_player.health_max, 1.0))
 	var m: Object = _player.mana
 	_fill(_mana_fill, float(m.current) / maxf(float(m.max_mana()), 1.0))
 	_fill(_faim_fill, _player.hunger / maxf(_player.hunger_max, 1.0))
+	_fill(_fatigue_fill, _player.fatigue / maxf(_player.fatigue_max, 1.0))
+	_clock.queue_redraw()
 	if WorldManager.generator != null and _camera != null:
 		var pos: Vector3 = _camera.global_position
 		var t: float = WorldManager.generator.temperature_at(int(pos.x), int(pos.z))
-		_temp_label.text = "%d°C" % int(round(-15.0 + t * 55.0))
+		var txt := "%d°C" % int(round(-15.0 + t * 55.0))
+		if txt != _temp_label.text:
+			_temp_label.text = txt
 		_temp_label.modulate = Color(0.5, 0.7, 1.0).lerp(Color(1.0, 0.5, 0.3), t)
+
+
+func _layout(vp: Vector2) -> void:
+	var bx := vp.x * 0.5 - BAR_W - 40.0
+	# 4 barres depuis l'ajout de la fatigue (PV, mana, faim, fatigue).
+	var y0 := vp.y - HOTBAR_MARGIN - 4.0 * (BAR_H + GAP)
+	_pv_bg.position = Vector2(bx, y0)
+	_mana_bg.position = Vector2(bx, y0 + BAR_H + GAP)
+	_faim_bg.position = Vector2(bx, y0 + 2.0 * (BAR_H + GAP))
+	_fatigue_bg.position = Vector2(bx, y0 + 3.0 * (BAR_H + GAP))
+	_clock.position = Vector2(vp.x * 0.5 + 44.0, y0 - 4.0)
+	_temp_label.position = Vector2(vp.x * 0.5 + 104.0, y0 + 14.0)
 
 
 func _fill(fill: ColorRect, ratio: float) -> void:

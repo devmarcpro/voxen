@@ -1,0 +1,30 @@
+{
+  "id": "gants",
+  "name_key": "item.gants.name",
+  "type": "armure",
+  "equip_slot": "mains",
+  "recipe": {
+    "station": "forge",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "minerai",
+        "amount": 2
+      },
+      {
+        "category": "textile",
+        "amount": 1
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.85,
+      "textile": 0.15
+    }
+  },
+  "effects": [],
+  "tags": [
+    "armure"
+  ]
+}

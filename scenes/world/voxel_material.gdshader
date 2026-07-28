@@ -22,6 +22,17 @@ uniform int eau_id = -1;
 uniform sampler2D grass_tint_map : filter_linear, repeat_disable;
 uniform float chunk_size = 16.0;
 uniform float bump_strength = 0.35;
+// Cycle jour/nuit (E.21/G.3) : le terrain est UNSHADED, il ignore donc
+// totalement la lumière directionnelle — changer l'énergie du soleil ne
+// noircissait rien du tout. G.3 prescrit exactement ce qui suit : « le cycle
+// jour/nuit module en SHADER (uniform global), pas en re-propagation —
+// changer l'heure ne coûte rien ». `daylight` va de 0 (minuit) à 1 (midi).
+uniform float daylight = 1.0;
+uniform vec3 night_tint = vec3(0.42, 0.50, 0.78);
+// Plancher de luminosité nocturne : la nuit n'est JAMAIS noire tant que les
+// sources de lumière locales (torches, G.3) n'existent pas — sinon le jeu
+// deviendrait injouable la nuit au lieu d'être dangereux.
+uniform float night_floor = 0.30;
 // Origine MONDE du chunk (en blocs, multiple de 16) — permet de calculer la
 // texture à partir des coords LOCALES précises (2026-07-26) : à grande distance
 // de l'origine, `fract(world_pos)` perdait toute précision → la texture nageait
@@ -332,4 +343,23 @@ void fragment() {
 	// Ombrage par FACE (maison, remplace les ombres temps réel) : profondeur
 	// gratuite façon Minecraft. Cuit directement dans l'albédo (unshaded).
 	ALBEDO *= face_shade(v_world_normal);
+
+	// Jour/nuit : assombrissement + dérive vers une teinte froide la nuit.
+	// Une simple multiplication suffit — aucun coût mesurable, et l'heure
+	// peut changer à chaque frame sans rien recalculer côté CPU.
+	float lum = mix(night_floor, 1.0, daylight);
+	vec3 tinted = mix(ALBEDO * night_tint, ALBEDO, daylight);
+	ALBEDO = tinted * lum;
+
+	// Lumière de BLOC (G.3), cuite dans la couleur de sommet par le mesher :
+	// torches, lave, gemmes. Elle s'AJOUTE au jour plutôt que de le
+	// remplacer — une torche en plein midi ne doit rien changer, la même
+	// torche en pleine nuit doit tout changer. La teinte est chaude, pour
+	// contraster avec le bleu nocturne.
+	float block_light = COLOR.r;
+	if (block_light > 0.001) {
+		vec3 warm = ALBEDO * vec3(1.25, 1.08, 0.82);
+		ALBEDO = mix(ALBEDO, warm, block_light * (1.0 - daylight * 0.75));
+		ALBEDO *= 1.0 + block_light * (1.0 - daylight) * 1.6;
+	}
 }

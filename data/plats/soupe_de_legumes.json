@@ -1,0 +1,29 @@
+{
+  "id": "soupe_de_legumes",
+  "name_key": "plat.soupe_de_legumes.name",
+  "nutrition": {
+    "faim": 22,
+    "cuit": true
+  },
+  "potentiel": {
+    "volonte": 1,
+    "perception": 1
+  },
+  "color": "#7C9A4A",
+  "valeur_base": 11,
+  "densite": 2,
+  "recipe": {
+    "station": "fourneau",
+    "skill": "cuisine",
+    "inputs": [
+      {
+        "material": "tubercule",
+        "amount": 2
+      },
+      {
+        "material": "fruit_calebasse",
+        "amount": 1
+      }
+    ]
+  }
+}

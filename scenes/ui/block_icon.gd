@@ -65,3 +65,35 @@ static func _in_quad(p: Vector2, q: PackedVector2Array) -> bool:
 		elif (cross > 0.0) != (sign > 0.0):
 			return false
 	return true
+
+
+## Icône d'OBJET (2026-07-27) : pastille arrondie teintée, visuellement
+## distincte du cube isométrique des blocs — une viande ou une peau ne se
+## pose pas, elle ne doit pas ressembler à un bloc de construction. Sert de
+## visuel par défaut à toute instance sans sprite dédié.
+static var _item_cache := {}
+static func item_texture(color: Color, size: int = 22) -> ImageTexture:
+	var key := "%s|%d" % [color.to_html(false), size]
+	if _item_cache.has(key):
+		return _item_cache[key]
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var center := Vector2(size * 0.5, size * 0.5)
+	var radius := size * 0.42
+	for y in size:
+		for x in size:
+			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
+			var d := p.distance_to(center)
+			if d > radius:
+				continue
+			# Dégradé sphérique : clair en haut à gauche, sombre en bas.
+			var shade := 1.15 - 0.5 * (p.y - center.y + radius) / (radius * 2.0)
+			shade -= 0.15 * (p.x - center.x) / radius
+			var col := _shade(color, clampf(shade, 0.45, 1.3))
+			# Bord assombri pour détacher la pastille du fond.
+			if d > radius - 1.2:
+				col = _shade(col, 0.6)
+			img.set_pixel(x, y, col)
+	var tex := ImageTexture.create_from_image(img)
+	_item_cache[key] = tex
+	return tex

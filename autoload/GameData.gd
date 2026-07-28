@@ -26,14 +26,22 @@ const PATH_DUNGEON_CONNECTORS := "res://data/dungeon_connectors"
 const PATH_RACES := "res://data/races"
 const PATH_CLASSES := "res://data/classes"
 const PATH_TRANSFORMATIONS := "res://data/transformations"
+const PATH_PLATS := "res://data/plats"
 
 ## Les 6 stats de personnage (C.1) — pour la validation des bonus race/classe.
 const CHARACTER_STATS: Array[String] = [
 	"force", "dexterite", "endurance", "volonte", "perception", "charisme",
 ]
 
-## Locales dont les clés sont validées au boot (10.1 — ja/zh s'ajouteront ici).
+## Locales de RÉFÉRENCE : toute clé manquante est un défaut, signalé une par
+## une (10.1 — « aucune string affichable en dur, jamais »).
 const VALIDATED_LOCALES: Array[String] = ["fr", "en"]
+## Locales EN COURS de traduction (2026-07-27) : une clé manquante y retombe
+## sur l'anglais (locale/fallback) et n'est PAS un défaut. On rapporte un
+## TAUX DE COUVERTURE au lieu de noyer la console sous des centaines
+## d'avertissements — sinon les vrais problèmes des locales de référence
+## deviennent invisibles au milieu du bruit.
+const PARTIAL_LOCALES: Array[String] = ["ja", "zh_Hans"]
 
 ## Les 13 stats obligatoires d'un matériau (B.1 / 4.2 / A.4.5).
 ## (Les noms de champs JSON sont ceux des schémas B — français, comme le GDD.)
@@ -94,6 +102,10 @@ var material_by_runtime: Array[String] = ["air"]
 ## Masque des liquides par id runtime (1 = liquide) — le mesher abaisse leur
 ## face du dessus (2026-07-24). Thread-safe en lecture (rempli au boot).
 var liquid_mask := PackedByteArray()
+## Émission lumineuse (0-15) et transmission par id runtime (G.3). Lues sans
+## verrou depuis les threads de meshing — comme tout GameData, figées au boot.
+var emission_by_runtime := PackedByteArray()
+var transmits_by_runtime := PackedByteArray()
 ## Biomes indexés par id (schéma B.6).
 var biomes: Dictionary = {}
 ## Couches de bruit (schéma B.8).
@@ -127,8 +139,23 @@ var races: Dictionary = {}
 var classes: Dictionary = {}
 ## Transformations à station (4.2/C.8) : minerai→lingot, etc. (data/transformations).
 var transformations: Dictionary = {}
+## PLATS cuisinés (7.7) : consommables d'inventaire produits à la station
+## Cuisine. Comme les ressources, ce sont des INSTANCES d'objet, jamais des
+## blocs. `nutrition.cuit = true` → nutrition PLEINE (A.9.1) et bonus de
+## potentiel crédités à la consommation (6.4).
+var plats: Dictionary = {}
+## RESSOURCES : objets empilables d'inventaire qui ne sont PAS des blocs
+## (viandes, peaux — 7.7). Registre distinct de `materials` À DESSEIN : elles
+## n'ont pas d'id runtime, pas d'entrée de palette, et ne peuvent donc pas
+## être posées dans le monde. Poser un bloc de viande n'a aucun sens.
+## Même stockage d'inventaire que les matériaux (empilage par id) — voir
+## `stackable()` pour la résolution unifiée nom/couleur/valeur.
+var resources: Dictionary = {}
 
 var _blocking_errors: int = 0
+## Couleur (hex majuscule) -> id du matériau qui la porte. Sert à garantir
+## l'unicité des couleurs générées pour les matériaux paramétriques (B.1).
+var _seen_colors: Dictionary = {}
 
 
 func _ready() -> void:
@@ -150,6 +177,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 ## Recharge toutes les données à chaud, puis prévient les systèmes dérivés.
 func reload_data() -> void:
 	print("GameData : rechargement des données (F5)...")
+	# Les threads de meshing lisent `materials` / `material_by_runtime` /
+	# `liquid_mask` SANS VERROU — c'est sûr uniquement parce que ces données
+	# sont figées après le boot. load_all() les vide et les reconstruit : sans
+	# cette attente, un thread pouvait parcourir un dictionnaire en cours de
+	# réécriture (2026-07-27). Le drain rend la garantie « lecture seule » vraie
+	# à nouveau avant qu'on y touche.
+	if WorldManager != null:
+		WorldManager.wait_for_in_flight()
 	load_all()
 	EventBus.data_reloaded.emit()
 
@@ -186,6 +221,9 @@ func load_all() -> bool:
 	_load_races()
 	_load_classes()
 	_load_transformations()
+	_load_plats()
+	_generate_parametric_resources()
+	_finalize_material_index()
 	_validate_translation_keys()
 
 	print("GameData : %d matériau(x), %d catégorie(s), %d biome(s), %d couche(s) de bruit, %d strate(s), %d compétence(s), %d objet(s), %d module(s), %d créature(s), %d essence(s) d'arbre, %d plante(s), %d salle(s)/%d connecteur(s) de donjon, %d race(s), %d classe(s)." % [
@@ -232,10 +270,18 @@ func _load_materials() -> void:
 			_blocking_error("id de matériau dupliqué « %s » (%s)" % [id, path])
 			continue
 
-		# Unicité des couleurs + collision avec les couleurs réservées (B.1).
+		# Couleurs (B.1, amendé le 2026-07-27 sur décision de l'auteur) :
+		# l'unicité n'est PLUS obligatoire. Elle était une erreur bloquante,
+		# ce qui plafonnait de fait le catalogue et imposait de chercher une
+		# teinte libre à chaque ajout — friction inacceptable pour un jeu
+		# volontairement très dense. Deux matériaux sans rapport peuvent
+		# partager une couleur ; ce qui les distingue reste leur bruit de
+		# texture (`noise`) et leur contexte. Seules les couleurs RÉSERVÉES
+		# (marqueurs d'attache, stand-ins de craft) restent interdites : elles
+		# ont une SIGNIFICATION technique, les confondre casserait le remapping.
 		var color: String = String(mat["color"]).to_upper()
 		if seen_colors.has(color):
-			_blocking_error("couleur %s dupliquée entre « %s » et « %s »" % [color, seen_colors[color], id])
+			pass  # Doublon toléré (voir ci-dessus).
 		elif reserved.has(color):
 			_blocking_error("couleur %s du matériau « %s » entre en collision avec une couleur réservée (%s)" % [color, id, reserved[color]])
 		seen_colors[color] = id
@@ -248,7 +294,17 @@ func _load_materials() -> void:
 		materials[id] = mat
 		sorted_ids.append(id)
 
+	_seen_colors = seen_colors
+
+
+## Fige les ids runtime et les masques dérivés. APPELÉ EN DERNIER (2026-07-27) :
+## les matériaux paramétriques (viandes, peaux) naissent des créatures, qui se
+## chargent après les matériaux — indexer trop tôt les aurait laissés sans id.
+func _finalize_material_index() -> void:
 	# Ids runtime stables : ordre alphabétique des ids texte, 0 réservé à l'air.
+	var sorted_ids: Array[String] = []
+	for id: String in materials:
+		sorted_ids.append(id)
 	sorted_ids.sort()
 	for id in sorted_ids:
 		material_runtime_ids[id] = material_by_runtime.size()
@@ -257,13 +313,169 @@ func _load_materials() -> void:
 	# Masque des LIQUIDES par id runtime (2026-07-24) : le mesher abaisse la
 	# face du dessus des liquides (eau/lave « moins grands » que les blocs
 	# pleins). Lu depuis les threads de meshing (GameData en lecture seule).
+	# Émission lumineuse par id runtime (G.3) : table plate, lue depuis les
+	# threads de meshing comme `liquid_mask`. Sans elle, le mesher devrait
+	# faire deux consultations de dictionnaire par cellule du voisinage.
+	emission_by_runtime = PackedByteArray()
+	emission_by_runtime.resize(palette_size())
+	transmits_by_runtime = PackedByteArray()
+	transmits_by_runtime.resize(palette_size())
+	transmits_by_runtime[0] = 1  # L'air transmet toujours.
+	for id in sorted_ids:
+		var rid: int = material_runtime_ids[id]
+		var stats: Dictionary = materials[id]["stats"]
+		emission_by_runtime[rid] = int(round(float(stats.get("luminosite", 0)) / 100.0 * 15.0))
+		transmits_by_runtime[rid] = 1 if float(stats.get("transparence", 0)) >= 50.0 else 0
+
 	liquid_mask = PackedByteArray()
-	liquid_mask.resize(256)
+	liquid_mask.resize(palette_size())
 	for id in sorted_ids:
 		if String(materials[id].get("category", "")) == "liquide":
-			var rid: int = material_runtime_ids[id]
-			if rid < 256:
-				liquid_mask[rid] = 1
+			liquid_mask[material_runtime_ids[id]] = 1
+
+
+## Largeur des textures de palette indexées par id runtime (couleurs, bruit,
+## style, masque des liquides). Le shader les lit en `texelFetch` par index
+## exact — la largeur peut donc être quelconque, elle doit juste couvrir TOUS
+## les ids.
+##
+## Corrigé le 2026-07-27 : ces tableaux étaient figés à 256 alors que le
+## catalogue est à 242 matériaux. Au 257e, `set_pixel` serait sorti des bornes
+## et le masque des liquides aurait silencieusement ignoré les ids au-delà —
+## une corruption de rendu progressive et difficile à relier à sa cause. Un
+## plancher de 256 est conservé pour ne rien changer tant qu'on est dessous.
+func palette_size() -> int:
+	return maxi(256, material_by_runtime.size())
+
+
+## Plats cuisinés (7.7) — recettes à station Cuisine. Ils rejoignent
+## `resources` : même modèle d'instance, même consommation.
+func _load_plats() -> void:
+	plats.clear()
+	for path in _list_json_recursive(PATH_PLATS):
+		var raw: Variant = _load_json(path)
+		if not (raw is Dictionary):
+			continue
+		var plat: Dictionary = raw
+		var ok := true
+		for field in ["id", "name_key", "nutrition", "recipe"]:
+			if not plat.has(field):
+				_blocking_error("champ « %s » manquant dans %s" % [field, path])
+				ok = false
+		if not ok:
+			continue
+		var recipe: Dictionary = plat["recipe"]
+		if not skills.has(String(recipe.get("skill", ""))):
+			_blocking_error("compétence inconnue « %s » (plat « %s »)" % [
+					recipe.get("skill", "?"), plat["id"]])
+		# Chaque entrée est un matériau précis OU un tag de ressource
+		# (« viande » : n'importe quelle viande convient — c'est tout
+		# l'intérêt des viandes paramétriques).
+		for in_def: Dictionary in recipe.get("inputs", []):
+			if in_def.has("material") and not materials.has(in_def["material"]):
+				_blocking_error("ingrédient inconnu « %s » (plat « %s »)" % [
+						in_def["material"], plat["id"]])
+		# Un plat EST une ressource consommable : même registre, donc mêmes
+		# règles (non posable, instancié en inventaire).
+		plats[plat["id"]] = plat
+		resources[plat["id"]] = {
+			"id": plat["id"],
+			"name_key": plat["name_key"],
+			"category": "ressource",
+			"item_kind": "plat",
+			"color": String(plat.get("color", "#CCAA77")),
+			"stats": {"densite": float(plat.get("densite", 2)),
+				"valeur_base": float(plat.get("valeur_base", 8))},
+			"nutrition": plat["nutrition"],
+			"potentiel": plat.get("potentiel", {}),
+			"tags": ["plat", "comestible"],
+		}
+
+
+## RESSOURCES paramétriques (B.1 : « gabarits instanciés depuis une source »).
+## Chaque créature engendre sa viande et sa peau — « Viande de X », « Peau de
+## X » — au lieu de 74 fichiers écrits à la main. Ce sont des objets
+## d'inventaire, PAS des blocs : elles vont dans `resources` (2026-07-27).
+##
+## Bonus de potentiel de la viande (A.9.1, copié à la lettre) :
+##   bonus_potentiel(stat) = stat_source_creature / 10, arrondi, max 8
+## Nutrition (A.9) : proportionnelle à la corpulence de la bête, bornée. Le
+## bloc est marqué `cuit: false` — manger cru ne rend que 50 % (A.9.1), le
+## reste attend la station Cuisine (7.7).
+##
+## Couleur : décalage DÉTERMINISTE de la couleur du gabarit par le hash de
+## l'id de la créature (B.1 : « la couleur d'une variante = couleur de la
+## source décalée déterministiquement »), puis résolution de collision par
+## petits pas — la validation d'unicité des couleurs reste vraie.
+func _generate_parametric_resources() -> void:
+	for creature_id: String in creatures:
+		var creature: Dictionary = creatures[creature_id]
+		# Les créatures sans corps à dépecer (essaims, nuées) ne donnent rien.
+		if "amorphe" in (creature.get("tags", []) as Array):
+			continue
+		var stats: Dictionary = creature.get("base_stats", {})
+		var potential := {}
+		for stat_id: String in ["force", "dexterite", "endurance", "volonte"]:
+			var bonus := mini(8, int(round(float(stats.get(stat_id, 0)) / 10.0)))
+			if bonus > 0:
+				potential[stat_id] = bonus
+		var sante := float(stats.get("sante", 10))
+		_add_parametric("viande_de_" + creature_id, "material.viande.name", creature,
+				"#B5443C", {
+					"nutrition": {"faim": clampf(round(sante * 0.6), 6.0, 45.0), "cuit": false},
+					"potentiel": potential,
+				})
+		_add_parametric("peau_de_" + creature_id, "material.peau.name", creature,
+				"#8A6A4F", {})
+
+
+## Crée un matériau paramétrique dérivé de `source`, s'il n'existe pas déjà
+## en dur dans data/materials (un fichier écrit à la main gagne toujours).
+func _add_parametric(id: String, name_key: String, source: Dictionary,
+		base_color: String, extra: Dictionary) -> void:
+	if materials.has(id) or resources.has(id):
+		return
+	var mat := {
+		"id": id,
+		"name_key": name_key,
+		"category": "ressource",  # Ni bois ni pierre : ça ne se pose pas.
+		"stats": {
+			"durete": 2, "densite": 5, "valeur_base": 3 + int(source.get("niveau_combat", 1)),
+			"conductivite_mana": 2, "flammabilite": 30, "isolation": 25,
+			"conductivite_electrique": 5, "flottabilite": 20, "luminosite": 0,
+			"fertilite": 5, "transparence": 0, "elasticite": 20, "friction": 40,
+		},
+		"tags": ["organique", "animal"],
+		"color": _variant_color(base_color, id),
+		"noise": {"type": "procedural", "seed_offset": 900, "amplitude": 0.06, "scale": 1},
+		"harvest": {"tool_category": "mains_nues", "skill": "collecte"},
+		"world_gen": {"mode": "aucun", "biome_tags": []},
+		"parametric": {"source": "creature", "source_id": source.get("id", "")},
+		# Type d'objet porté par les instances (viande / peau) — sert au
+		# libellé de catégorie et aux filtres d'interface.
+		"item_kind": "viande" if name_key.ends_with("viande.name") else "peau",
+		"source_name_key": source.get("name_key", ""),
+	}
+	for key: String in extra:
+		mat[key] = extra[key]
+	_derive_tags(mat)
+	resources[id] = mat
+
+
+## Couleur d'une variante paramétrique : décalage DÉTERMINISTE de la couleur
+## du gabarit par le hash de l'id (B.1). Plus aucune recherche de teinte libre
+## depuis que l'unicité n'est plus exigée (2026-07-27) — deux variantes ou une
+## variante et un bloc peuvent coïncider, c'est sans conséquence : les
+## ressources ne sont pas dans la palette du monde, et leur icône est un
+## visuel d'objet, pas une face de bloc.
+func _variant_color(base_color: String, variant_id: String) -> String:
+	var base := Color.html(base_color)
+	var offset: int = absi(hash(variant_id)) % 4096
+	var color := Color.from_hsv(
+		fposmod(base.h + float(offset % 64) / 512.0 - 0.0625, 1.0),
+		clampf(base.s + float((offset / 64) % 8) * 0.02 - 0.06, 0.15, 0.95),
+		clampf(base.v + float((offset / 512) % 8) * 0.02 - 0.06, 0.15, 0.95))
+	return ("#" + color.to_html(false)).to_upper()
 
 
 ## Valide le schéma B.1 d'un matériau. Retourne false si invalide (bloquant).
@@ -298,6 +510,21 @@ func _validate_material(mat: Dictionary, path: String) -> bool:
 	for key in ["type", "seed_offset", "amplitude", "scale"]:
 		if not noise.has(key):
 			_blocking_error("paramètre de bruit « %s » manquant pour le matériau « %s »" % [key, mat.get("id", "?")])
+			ok = false
+
+	# Nutrition (A.9/A.9.1) — bloc OPTIONNEL : seuls les matériaux comestibles
+	# le portent. `faim` = valeur nutritive PLEINE (celle du plat cuisiné) ;
+	# `cuit` = false pour un ingrédient cru, qui n'en rend que 50 % (A.9.1).
+	if mat.has("nutrition"):
+		var nutrition: Dictionary = mat["nutrition"] if mat["nutrition"] is Dictionary else {}
+		if not nutrition.has("faim"):
+			_blocking_error("bloc « nutrition » sans « faim » pour le matériau « %s »" % mat.get("id", "?"))
+			ok = false
+		elif float(nutrition["faim"]) <= 0.0:
+			_blocking_error("nutrition.faim doit être > 0 pour le matériau « %s »" % mat.get("id", "?"))
+			ok = false
+		if not nutrition.has("cuit"):
+			_blocking_error("bloc « nutrition » sans « cuit » pour le matériau « %s »" % mat.get("id", "?"))
 			ok = false
 	return ok
 
@@ -454,13 +681,24 @@ func _load_items() -> void:
 			continue
 		var item: Dictionary = raw
 		var ok := true
-		for field in ["id", "name_key", "type", "functionality", "recipe", "stat_weights"]:
+		# Une ARMURE (6.2) n'a pas de `functionality` — elle ne sert pas à
+		# frapper ni à récolter : elle porte un `equip_slot` et contribue des
+		# dés de réduction (A.4.2). Tout autre type exige sa fonctionnalité.
+		var is_armor := String(item.get("type", "")) == "armure"
+		var required := ["id", "name_key", "type", "recipe", "stat_weights"]
+		required.append("equip_slot" if is_armor else "functionality")
+		for field in required:
 			if not item.has(field):
 				_blocking_error("champ « %s » manquant dans %s" % [field, path])
 				ok = false
 		if not ok:
 			continue
-		if not functionalities.has(item["functionality"]):
+		if is_armor:
+			if not (String(item["equip_slot"]) in Equipment.SLOTS
+					or Equipment.SLOT_GROUPS.has(String(item["equip_slot"]))):
+				_blocking_error("emplacement d'équipement inconnu « %s » dans l'objet « %s » (6.2)" % [
+						item["equip_slot"], item["id"]])
+		elif not functionalities.has(item["functionality"]):
 			_blocking_error("fonctionnalité inconnue « %s » dans l'objet « %s »" % [item["functionality"], item["id"]])
 		var recipe: Dictionary = item["recipe"] if item["recipe"] is Dictionary else {}
 		for input: Variant in recipe.get("inputs", []):
@@ -470,6 +708,14 @@ func _load_items() -> void:
 		var vox_path := String(item.get("vox_model", ""))
 		if vox_path != "" and not FileAccess.file_exists(vox_path if vox_path.begins_with("res://") else "res://" + vox_path):
 			push_warning("GameData : modèle .vox introuvable « %s » (objet « %s »)." % [vox_path, item["id"]])
+		# Sprites d'outil/arme (ToolSprite) : même règle que le .vox ci-dessus —
+		# absence = warning. Ajouté après le rangement d'assets/ (2026-07-26) :
+		# un déplacement de fichier cassait les icônes SANS aucun signal au boot.
+		for part: String in (item.get("sprites", {}) as Dictionary):
+			var sprite_path := String(item["sprites"][part])
+			if sprite_path != "" and not FileAccess.file_exists(sprite_path):
+				push_warning("GameData : sprite « %s » introuvable (%s de l'objet « %s »)." % [
+						sprite_path, part, item["id"]])
 		if items.has(item["id"]):
 			_blocking_error("id d'objet dupliqué « %s »" % item["id"])
 		else:
@@ -624,6 +870,12 @@ func _load_creatures() -> void:
 		for module_id: String in combat.get("modules", []):
 			if not modules.has(module_id):
 				_blocking_error("module inconnu « %s » pour la créature « %s »" % [module_id, creature["id"]])
+		# Modèle Blockbench (B.5/12.1) : absence = warning, comme les .vox
+		# d'items — une créature sans modèle tombe sur la capsule provisoire.
+		var model_path := String(creature.get("model", ""))
+		if model_path != "" and not FileAccess.file_exists(model_path):
+			push_warning("GameData : modèle de créature introuvable « %s » (« %s »)." % [
+					model_path, creature["id"]])
 		if creatures.has(creature["id"]):
 			_blocking_error("id de créature dupliqué « %s »" % creature["id"])
 		else:
@@ -749,6 +1001,75 @@ func _validate_translation_keys() -> void:
 		for key in name_keys:
 			if translation.get_message(key) == &"":
 				push_warning("Localisation : clé « %s » absente de la locale « %s »." % [key, locale])
+	# Locales en cours : taux de couverture, pas d'avertissement par clé.
+	# Mesuré sur TOUTES les clés de la locale de référence (anglais), pas
+	# seulement les noms d'objets — c'est l'interface entière qu'il faut
+	# traduire, et son volume ne se déduit pas des données.
+	# La liste des clés vient du CSV de référence, PAS de l'objet Translation :
+	# un .translation compilé (OptimizedTranslation) stocke ses messages dans
+	# une table de hachage et get_message_list() y retourne toujours vide — la
+	# couverture se calculait donc sur 0 clé et affichait « 0 / 0 ».
+	var all_keys := _reference_keys()
+	if all_keys.is_empty():
+		all_keys = name_keys  # Repli : au moins les noms issus des données.
+	for locale in PARTIAL_LOCALES:
+		var translation := TranslationServer.get_translation_object(locale)
+		if translation == null:
+			# Silencieux = invisible : une locale déclarée mais non chargée
+			# (fichier absent de project.godot, ou non réimporté après édition
+			# du CSV) doit se voir, sinon on croit traduire dans le vide.
+			push_warning("Localisation : locale « %s » déclarée mais AUCUNE traduction chargée (project.godot / réimport ?)." % locale)
+			continue
+		var traduites := 0
+		for key: String in all_keys:
+			var value := String(translation.get_message(key))
+			if value != "" and value != key:
+				traduites += 1
+		var total := all_keys.size()
+		var pourcent := 100.0 * float(traduites) / maxf(1.0, float(total))
+		print("Localisation : « %s » traduite à %.0f %% (%d / %d clés) — le reste retombe sur l'anglais." % [
+				locale, pourcent, traduites, total])
+
+
+## Toutes les clés de traduction, lues dans le CSV de référence (anglais).
+## Vide si le CSV n'est pas disponible (build exporté : seuls les
+## .translation sont embarqués) — l'appelant retombe alors sur les noms de
+## données, qu'il connaît toujours.
+func _reference_keys() -> Array[String]:
+	var keys: Array[String] = []
+	var path := "res://locale/en.csv"
+	if not FileAccess.file_exists(path):
+		return keys
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return keys
+	var first := true
+	while not file.eof_reached():
+		var row := file.get_csv_line()
+		if first:
+			first = false
+			continue  # En-tête « keys,en ».
+		if row.size() >= 1 and String(row[0]) != "":
+			keys.append(String(row[0]))
+	return keys
+
+
+## Définition d'un EMPILABLE d'inventaire, matériau ou ressource. Tout code
+## qui manipule le CONTENU d'un inventaire (nom, couleur, poids, valeur) doit
+## passer par ici ; seul le code du MONDE (meshing, pose, palette) interroge
+## `materials` directement — une ressource n'y figure pas, ce qui rend une
+## viande non plaçable par construction plutôt que par une vérification qu'on
+## pourrait oublier quelque part.
+func stackable(id: String) -> Dictionary:
+	var entry: Variant = materials.get(id)
+	if entry != null:
+		return entry
+	return resources.get(id, {})
+
+
+## true si `id` désigne un bloc posable dans le monde.
+func is_placeable(id: String) -> bool:
+	return materials.has(id)
 
 
 ## Aplatis toutes les couleurs réservées en { "#HEX": description }.

@@ -1,0 +1,24 @@
+{
+  "id": "pain",
+  "name_key": "plat.pain.name",
+  "nutrition": {
+    "faim": 20,
+    "cuit": true
+  },
+  "potentiel": {
+    "endurance": 1
+  },
+  "color": "#C9A26B",
+  "valeur_base": 11,
+  "densite": 2,
+  "recipe": {
+    "station": "fourneau",
+    "skill": "cuisine",
+    "inputs": [
+      {
+        "material": "epi_ble",
+        "amount": 3
+      }
+    ]
+  }
+}

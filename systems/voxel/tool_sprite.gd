@@ -5,7 +5,8 @@ extends RefCounted
 ## PAR-DESSUS le manche, puis EXTRUDÉS en un modèle 3D façon Minecraft (chaque
 ## pixel opaque → une petite dalle de cube, faces latérales sur la silhouette).
 ##
-## Format des PNG fournis par l'utilisateur (assets/tools/) : pixel-art sur fond
+## Format des PNG fournis par l'utilisateur (assets/tools/ pour les outils,
+## assets/weapons/ pour les armes — même découpage que models/) : pixel-art sur fond
 ## TRANSPARENT ; la couleur du pixel est MULTIPLIÉE par la couleur du matériau
 ## (blanc = teinte pure du matériau, gris = ombrage conservé). Résolution libre
 ## (16×16 ou 32×32), manche et tête de MÊME taille.

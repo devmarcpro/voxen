@@ -24,27 +24,103 @@ const MODULE_LOADOUT := ["trait_de_mana", "soin_mineur", "frappe_lourde"]
 const MODULE_KEYS := [KEY_J, KEY_K, KEY_L]
 ## C.1 : 6 stats, base 5.
 var stats := {"force": 5, "dexterite": 5, "endurance": 5, "volonte": 5, "perception": 5, "charisme": 5}
+## Potentiel PAR STAT (6.4) : 0-200, plancher au potentiel de base. Monté par
+## les plats cuisinés (A.9.1). ATTENTION — il est stocké, sauvegardé et
+## affiché, mais rien ne le CONSOMME encore : 6.4 prévoit que les stats
+## gagnent de l'XP multipliée par leur potentiel, or la progression de stats
+## n'existe pas (les stats sont figées à la création). Le crédit est donc
+## fidèle au GDD, son effet attend la progression de stats.
+const POTENTIAL_BASE := 80.0
+const POTENTIAL_MAX := 200.0
+var stat_potentials := {"force": POTENTIAL_BASE, "dexterite": POTENTIAL_BASE,
+	"endurance": POTENTIAL_BASE, "volonte": POTENTIAL_BASE,
+	"perception": POTENTIAL_BASE, "charisme": POTENTIAL_BASE}
 var skills: PlayerSkills
 var inventory: Inventory
+## Emplacements d'équipement (6.2) — l'armure portée alimente la mitigation
+## d'E.3, jusque-là toujours nulle faute d'équipement.
+var equipment: Equipment
 ## Santé — formule validée par l'auteur (2026-07-20), par analogie avec le
 ## mana (A.5, Endurance ~ Volonté) : santé_max = 20 + Endurance * 8.
 var health_max: float
 var health: float
-## Faim (2026-07-26) : décroît lentement avec le temps. Effets (dégâts de
-## famine, nourriture) à câbler avec la boucle de survie — pour l'instant
-## indicateur seulement.
+## Faim (A.9) : décroît lentement avec le temps, se restaure en mangeant
+## (touche F sur un matériau comestible en main — A.9.1). Effets de seuil
+## appliqués par tick dans _hunger_tick_effects.
 var hunger_max := 100.0
 var hunger := 100.0
 const HUNGER_DECAY_PER_TICK := 0.003   # ~100 → 0 en ~1,4 jour in-game (24000 ticks/jour).
+## Seuils A.9 : < 50 → -10 % de régén de santé ; < 25 → -10 % à toutes les
+## stats ET plus aucune régén ; = 0 → famine (1 % de santé max / 30 s).
+const HUNGER_REGEN_PENALTY := 50.0
+const HUNGER_STARVING := 25.0
+const HUNGER_STAT_MALUS := 0.9
+const STARVE_INTERVAL_TICKS := 300     # 30 s à 10 ticks/s (E.1).
+const STARVE_HEALTH_FRACTION := 0.01
+## Régénération de santé — le GDD ne donne PAS de formule (A.5.1 ne couvre
+## que le maximum ; A.9 se contente de la moduler). Proposition par défaut,
+## calquée sur la cadence du mana (A.5) : 1 PV toutes les 10 s, dont A.9
+## retire 10 % sous 50 de faim et tout sous 25.
+const HEALTH_REGEN_INTERVAL_TICKS := 100
+const HEALTH_REGEN_AMOUNT := 1.0
+## FATIGUE (amendement E.21 du 2026-07-27, demande de l'auteur — la spec
+## d'origine excluait explicitement toute jauge de fatigue). Elle descend
+## avec le temps éveillé et se restaure en dormant. Réglée pour rester une
+## INCITATION, pas une corvée : ses effets sont progressifs, jamais létaux,
+## et une nuit de sommeil la remplit entièrement.
+##   < 50 : -10 % d'XP gagnée
+##   < 25 : -10 % à toutes les stats, plus de régénération de santé
+##   = 0  : effets cumulés, mais aucun dégât (contrairement à la famine A.9)
+var fatigue_max := 100.0
+var fatigue := 100.0
+## ~2 jours in-game d'éveil avant l'épuisement total : dormir une nuit sur
+## deux suffit, on ne court jamais après la jauge.
+const FATIGUE_DECAY_PER_TICK := 0.002
+const FATIGUE_TIRED := 50.0
+const FATIGUE_EXHAUSTED := 25.0
+const FATIGUE_XP_MALUS := 0.9
+const FATIGUE_STAT_MALUS := 0.9
+## Sommeil (E.21). Dormir demande un LIT visé (meuble F.6). Deux effets :
+## saut de la nuit (21h → 5h) et buff « Reposé » (+5 % d'XP pendant 4 h
+## in-game). Aucune jauge de fatigue : le GDD est explicite, dormir est un
+## choix avantageux, jamais une corvée.
+const RESTED_DURATION_TICKS := 4000     # 4 h in-game (24 000 ticks/jour).
+const RESTED_XP_BONUS := 0.05
+## Le saut de nuit fait AVANCER les ticks : la faim, le mana et l'IA
+## consomment réellement le temps sauté (E.21 : « le saut n'est jamais
+## gratuit ni exploitable »). Poussé par paquets pour ne pas geler la frame.
+const SLEEP_TICK_BATCH := 500
+var rested_until_tick := 0
+## Mort (A.10) : -10 % de l'or transporté, 10 % de chance de perdre chaque objet.
+const DEATH_GOLD_PENALTY := 0.10
+const DEATH_DROP_CHANCE := 0.10
+var _regen_tick_counter := 0
+var _starve_tick_counter := 0
 var mana: ManaPool
 ## Monnaie unique (or, 7.1) — aucun concept de portefeuille PNJ/taxes/
 ## entretien (A.8.1) n'est implémenté, seul le joueur en a un pour l'instant.
 var gold: int = 0
 var selected_slot := 0
-## Banque de hotbar active (0-8, molette+Shift ou Shift+1-9) — 9 banques de
-## 9 emplacements, fenêtres consécutives sur la liste stable outils+matériaux.
+## Banque de hotbar active (Ctrl+molette ou Ctrl+1-9).
 var active_hotbar := 0
-const HOTBAR_COUNT := 9
+## LIAISONS de hotbar (2026-07-27) : indice absolu (banque * 9 + slot) ->
+## { "kind": "material", "id": ... } ou { "kind": "object", "uid": ... }.
+##
+## Avant, la hotbar était une simple FENÊTRE sur la liste d'inventaire : son
+## contenu changeait tout seul dès qu'on ramassait ou consommait quelque
+## chose, et rien ne pouvait y être assigné. Les liaisons désignent les objets
+## par `uid` (stable au tri, à la sauvegarde et au rechargement) et les
+## matériaux par id. Une liaison dont la cible a disparu affiche un
+## emplacement vide plutôt que de décaler tout le reste.
+var hotbar_bindings := {}
+## Banques de hotbar : PLANCHER, pas plafond (corrigé le 2026-07-27).
+## Le nombre réel de banques suit la taille de l'inventaire — voir
+## hotbar_bank_count(). L'ancienne constante était un plafond dur de
+## 9 x 9 = 81 entrées : au-delà, un matériau détenu devenait IMPOSSIBLE
+## à prendre en main, donc impossible à poser ou à manger. Avec 310
+## matériaux au catalogue et un jeu conçu pour être très dense, la
+## limite était déjà atteignable en jouant normalement.
+const HOTBAR_MIN_BANKS := 9
 const HOTBAR_SLOTS := 9
 ## Résolution de grille active (4.1) : 32 = bloc plein, 16/8/4 = sous-blocs.
 var active_res := 32
@@ -90,9 +166,10 @@ func _ready() -> void:
 	skills = PlayerSkills.new()
 	skills.owner_entity = self
 	inventory = Inventory.new()
+	equipment = Equipment.new()
 	_recompute_derived()
 	_camera = get_node("../FlyCamera") as FlyCamera
-	TickManager.tick.connect(_on_tick)
+	TickManager.tick_entities.connect(_on_tick)
 	_build_ghost.call_deferred()
 
 
@@ -111,6 +188,7 @@ func apply_default_character() -> void:
 	inventory.add_object(ItemFactory.craft("epee", {"bois": "pin", "minerai": "cuivre"}, STARTER_QUALITY))
 	inventory.add_material("etal_de_vente", 1)
 	_recompute_derived()
+	autofill_hotbar()
 
 
 ## Applique une création de personnage (6.1/C.1-C.3) : stats réparties + bonus
@@ -150,6 +228,7 @@ func apply_character(config: Dictionary) -> void:
 	gold = int(cls.get("gold", 0))
 
 	_recompute_derived()
+	autofill_hotbar()
 
 
 ## Dernière position caméra valide — la sauvegarde de sortie (SaveManager)
@@ -180,11 +259,16 @@ func save_state() -> Dictionary:
 		"gold": gold,
 		"health": health,
 		"hunger": hunger,
+		"fatigue": fatigue,
 		"selected_slot": selected_slot,
 		"active_hotbar": active_hotbar,
 		"active_res": active_res,
 		"skills": skills.save_state(),
 		"inventory": inventory.save_state(),
+		"equipment": equipment.save_state(),
+		"hotbar": _hotbar_for_save(),
+		"rested_until": rested_until_tick,
+		"stat_potentials": stat_potentials.duplicate(),
 	}
 
 
@@ -203,6 +287,20 @@ func restore_state(data: Dictionary) -> void:
 	skills.restore_state(data.get("skills", {}))
 	skills.xp_modifier = float(data.get("xp_modifier", 1.0))
 	inventory.restore_state(data.get("inventory", {}))
+	equipment.restore_state(data.get("equipment", {}))
+	rested_until_tick = int(data.get("rested_until", 0))
+	var saved_potentials: Dictionary = data.get("stat_potentials", {})
+	for stat_id: String in stat_potentials:
+		stat_potentials[stat_id] = float(saved_potentials.get(stat_id, POTENTIAL_BASE))
+	hotbar_bindings.clear()
+	for entry: Variant in data.get("hotbar", []):
+		if entry is Dictionary and (entry as Dictionary).has("slot"):
+			var saved: Dictionary = entry
+			hotbar_bindings[int(saved["slot"])] = {
+				"kind": String(saved.get("kind", "")),
+				"id": String(saved.get("id", "")),
+			} if String(saved.get("kind", "")) == "material" else {
+				"kind": "object", "uid": int(saved.get("uid", -1))}
 	# Santé/mana dérivent des stats/compétences restaurées (A.5). Le mana
 	# repart plein (simplification), la santé est restaurée telle quelle,
 	# bornée par le nouveau max (l'Endurance restaurée peut l'avoir changé).
@@ -210,6 +308,7 @@ func restore_state(data: Dictionary) -> void:
 	mana = ManaPool.new(int(stats["volonte"]), skills.level("meditation"))
 	health = clampf(float(data.get("health", health_max)), 1.0, health_max)
 	hunger = clampf(float(data.get("hunger", hunger_max)), 0.0, hunger_max)
+	fatigue = clampf(float(data.get("fatigue", fatigue_max)), 0.0, fatigue_max)
 	var pos: Variant = data.get("position")
 	if pos is Array and (pos as Array).size() == 3:
 		teleport_to(Vector3(float(pos[0]), float(pos[1]), float(pos[2])))
@@ -221,6 +320,69 @@ func skill_level(skill_id: String) -> int:
 
 func take_damage(amount: int) -> void:
 	health = maxf(0.0, health - amount)
+	if health <= 0.0:
+		die()
+
+
+## Mort et pénalité (A.10), copiée à la lettre :
+##   respawn au dernier claim activé ; -10 % de l'or transporté ; chaque objet
+##   de l'inventaire a 10 % de chance de tomber sur le lieu de mort
+##   (récupérable 1 jour in-game) ; équipement PORTÉ conservé ; aucune perte
+##   d'XP (la progression par l'usage rend la perte d'XP trop punitive — le
+##   GDD pénalise l'économie à la place).
+## Les MATÉRIAUX en vrac ne sont pas concernés : A.10 parle des « objets de
+## l'inventaire », et lâcher des fractions de blocs n'aurait pas de sens.
+func die() -> void:
+	var death_position := get_position_for_ai()
+
+	var lost_gold := int(floor(gold * DEATH_GOLD_PENALTY))
+	gold -= lost_gold
+
+	var dropped: Array[Dictionary] = []
+	for instance in inventory.objects.duplicate():
+		if randf() < DEATH_DROP_CHANCE:
+			dropped.append(instance)
+	for instance in dropped:
+		inventory.objects.erase(instance)
+	DropManager.drop(death_position, dropped, lost_gold)
+
+	# Retour en jeu : santé pleine, faim conservée (A.10 ne la mentionne pas —
+	# mourir de faim puis réapparaître affamé reste cohérent).
+	health = health_max
+	_mining = false
+	_progress = 0.0
+	_target_creature = null
+	_clamp_selection()
+	_respawn()
+
+	EventBus.player_died.emit(death_position, dropped.size(), lost_gold)
+	EventBus.ui_notification.emit(tr("ui.toast.mort").format({
+		"or": str(lost_gold), "objets": str(dropped.size())}))
+
+
+## Point de retour : dernier claim activé (A.10), sinon la position courante
+## en surface — le GDD ne prévoit pas de joueur sans aucun point d'ancrage
+## (il y a toujours un lit ou un claim à ce stade du jeu), donc rester sur
+## place est le repli le moins surprenant.
+## Réapparition IMMÉDIATE (teleport_to), surtout pas fast_travel_to_cell :
+## le voyage rapide est une traversée ANIMÉE qui pousse des ticks (donc du
+## temps de jeu, de la faim, de l'IA) — infliger ça à un joueur qui vient de
+## mourir n'aurait aucun sens, et le ferait entrer dans un donjon si sa case
+## de retour en abritait un.
+func _respawn() -> void:
+	var pos := get_position_for_ai()
+	var wx := int(pos.x)
+	var wz := int(pos.z)
+	if ClaimManager.has_respawn:
+		var center := POIGenerator.cell_center_world(ClaimManager.respawn_cell)
+		wx = center.x
+		wz = center.y
+	var h := 24.0
+	if WorldManager.generator != null:
+		h = float(WorldManager.generator.height_at(wx, wz))
+	# +2.9 : le joueur se tient SUR le sommet du bloc de sol, l'œil 1.9 plus
+	# haut que ses pieds (même convention que le spawn de main._start_world).
+	teleport_to(Vector3(float(wx) + 0.5, h + 2.9, float(wz) + 0.5))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -238,15 +400,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif button.button_index == MOUSE_BUTTON_RIGHT and button.pressed:
 			_try_place()
 		elif button.pressed and button.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_scroll_hotbar(-1, button.shift_pressed)
+			_scroll_hotbar(-1, button.ctrl_pressed)
 		elif button.pressed and button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_scroll_hotbar(1, button.shift_pressed)
+			_scroll_hotbar(1, button.ctrl_pressed)
 	var key := event as InputEventKey
 	if key != null and key.pressed and not key.echo:
 		if key.physical_keycode >= KEY_1 and key.physical_keycode <= KEY_9:
 			var slot := key.physical_keycode - KEY_1
-			if key.shift_pressed:
-				active_hotbar = slot  # Shift+1..9 : changer de banque de hotbar.
+			if key.ctrl_pressed:
+				# Ctrl+1..9 : changer de banque (2026-07-27, remplace Shift —
+				# Shift reste libre pour les usages classiques de déplacement).
+				active_hotbar = mini(slot, hotbar_bank_count() - 1)
 			else:
 				selected_slot = slot
 		elif key.physical_keycode == KEY_R:
@@ -263,6 +427,96 @@ func _unhandled_input(event: InputEvent) -> void:
 			_try_stock_stall()
 		elif key.physical_keycode == KEY_G:
 			_try_collect_stall()
+		elif key.physical_keycode == KEY_F:
+			_try_eat()
+		elif key.physical_keycode == KEY_E:
+			_try_equip()
+		elif key.physical_keycode == KEY_C:
+			_try_pickup()
+		elif key.physical_keycode == KEY_N:
+			_try_sleep()
+
+
+## Liaisons de hotbar sérialisées (les clés JSON sont des chaînes : on écrit
+## une liste d'entrées plutôt qu'un dictionnaire à clés entières).
+func _hotbar_for_save() -> Array:
+	var out: Array = []
+	for index: int in hotbar_bindings:
+		var binding: Dictionary = hotbar_bindings[index]
+		var row := {"slot": index, "kind": String(binding.get("kind", ""))}
+		if String(binding.get("kind", "")) == "material":
+			row["id"] = String(binding.get("id", ""))
+		else:
+			row["uid"] = int(binding.get("uid", -1))
+		out.append(row)
+	return out
+
+
+## Remplit les emplacements libres de la hotbar avec les entrées d'inventaire
+## pas encore liées, dans l'ordre. Appelé après la constitution du kit de
+## départ et après un ramassage : sans ça, la hotbar assignable démarrerait
+## VIDE et le joueur ne pourrait rien tenir.
+func autofill_hotbar() -> void:
+	var used := {}
+	for index: int in hotbar_bindings:
+		used[hotbar_bindings[index]] = true
+	var free_slots: Array[int] = []
+	for index in HOTBAR_MIN_BANKS * HOTBAR_SLOTS:
+		if not hotbar_bindings.has(index):
+			free_slots.append(index)
+	var cursor := 0
+	for entry in all_entries():
+		if cursor >= free_slots.size():
+			return
+		var binding := _binding_for(entry)
+		if binding.is_empty() or used.has(binding):
+			continue
+		hotbar_bindings[free_slots[cursor]] = binding
+		used[binding] = true
+		cursor += 1
+
+
+## Équipe une INSTANCE précise (API pour l'interface d'inventaire, 6.2).
+## Renvoie false si l'objet ne s'équipe pas.
+func equip_instance(instance: Dictionary) -> bool:
+	var item: Dictionary = GameData.items.get(instance.get("item_id", ""), {})
+	var slot := equipment.resolve_slot(String(item.get("equip_slot", "")))
+	if slot == "":
+		EventBus.ui_notification.emit("ui.toast.pas_equipable")
+		return false
+	inventory.objects.erase(instance)
+	var replaced := equipment.equip(instance)
+	if not replaced.is_empty():
+		inventory.add_object(replaced)
+	_clamp_selection()
+	EventBus.ui_notification.emit(tr("ui.toast.equipe").format({
+		"item": tr(String(instance.get("name_key", "")))}))
+	return true
+
+
+## Dépose une entrée d'inventaire au sol, à portée du joueur (A.10 : même
+## mécanisme que les caches de mort — un objet lâché n'est jamais détruit).
+## Un matériau est déposé par pile entière, un objet par instance.
+func drop_entry(entry: Dictionary) -> void:
+	var position := get_position_for_ai()
+	match String(entry.get("kind", "")):
+		"object":
+			var instance: Dictionary = entry.get("object", {})
+			if instance.is_empty() or not inventory.objects.has(instance):
+				return
+			inventory.objects.erase(instance)
+			DropManager.drop(position, [instance], 0)
+		"material":
+			var id := String(entry.get("id", ""))
+			var amount := int(inventory.material_stacks.get(id, 0))
+			if amount <= 0:
+				return
+			inventory.remove_material(id, amount)
+			DropManager.drop_materials(position, {id: amount})
+		_:
+			return
+	_clamp_selection()
+	EventBus.ui_notification.emit("ui.toast.depose")
 
 
 ## Cellule (3.2 : 128×128 blocs) où se trouve le joueur.
@@ -300,23 +554,46 @@ func fast_travel_to_cell(cell: Vector2i) -> void:
 	fast_travel_to_world(cx, cz)
 
 
-## Voyage vers un point monde (carte) : PROGRESSIF désormais (2026-07-26) — le
-## joueur marche automatiquement jusqu'à la cible, à mi-vitesse (2× plus lent
-## qu'à pied). Plus de téléportation instantanée.
+## Voyage rapide (carte) : téléportation GRADUELLE le temps que le trajet
+## s'écoule (2026-07-26). Coût de base 6 ticks/bloc (2× la marche à 3 ticks/bloc,
+## GDD E.1), DIVISÉ par la vitesse de déplacement du joueur (`move_speed_mult`,
+## modifiable par stats/effets). Le temps est réellement simulé (mana/faim).
+const MAP_TRAVEL_TICKS_PER_BLOCK := 6.0
+## Multiplicateur de vitesse de déplacement (1.0 = base ; bottes/stats l'augmentent).
+var move_speed_mult := 1.0
+## Le joueur est-il en voyage rapide (carte) ? — pour l'UI de la carte.
+func is_traveling() -> bool:
+	return _camera.has_method("is_traveling") and _camera.is_traveling()
+
+
 func fast_travel_to_world(wx: int, wz: int) -> void:
-	_camera.travel_to(wx, wz)
+	var from: Vector3 = _camera.global_position
+	var dist := Vector2(float(wx) - from.x, float(wz) - from.z).length()
+	var ticks := int(round(dist * MAP_TRAVEL_TICKS_PER_BLOCK / maxf(move_speed_mult, 0.1)))
+	_camera.travel_to(wx, wz, ticks)
+
+
+## Pose le joueur À LA SURFACE en (wx, wz), instantanément. Utilisé par la
+## carte du monde, qui gère elle-même l'écoulement du temps du trajet : le
+## voyage animé (fast_travel_to_world) pousserait ses propres ticks et
+## compterait le temps DEUX FOIS.
+func teleport_to_surface(wx: int, wz: int) -> void:
+	var h := 24.0
+	if WorldManager.generator != null:
+		h = float(WorldManager.generator.height_at(wx, wz))
+	teleport_to(Vector3(float(wx) + 0.5, h + 2.9, float(wz) + 0.5))
 
 
 ## Téléportation générique (DungeonManager : entrée/sortie de donjon).
-func teleport_to(pos: Vector3) -> void:
-	_camera.teleport_to(pos)
+func teleport_to(pos: Vector3, yaw_degrees: float = NAN) -> void:
+	_camera.teleport_to(pos, yaw_degrees)
 
 
-## Molette : change l'emplacement sélectionné ; Shift+molette : change de
-## banque de hotbar (jusqu'à 9).
-func _scroll_hotbar(delta: int, shifted: bool) -> void:
-	if shifted:
-		active_hotbar = wrapi(active_hotbar + delta, 0, HOTBAR_COUNT)
+## Molette : change l'emplacement sélectionné ; Ctrl+molette : change de
+## banque de hotbar (2026-07-27 : Ctrl remplace Shift).
+func _scroll_hotbar(delta: int, bank_modifier: bool) -> void:
+	if bank_modifier:
+		active_hotbar = wrapi(active_hotbar + delta, 0, hotbar_bank_count())
 	else:
 		selected_slot = wrapi(selected_slot + delta, 0, HOTBAR_SLOTS)
 
@@ -397,10 +674,11 @@ func _try_melee_attack() -> void:
 	_attack_cooldown_ticks = maxi(1, ceili(10.0 / speed))
 
 	var result := CombatResolver.resolve_attack(
-		skills.level(skill_id), int(stats["dexterite"]), int(stats["force"]),
+		skills.level(skill_id), effective_stat("dexterite"), effective_stat("force"),
 		0, 0, String(functionality["degats_des"]), base_hardness, quality, false, "")
 	if result["hit"]:
 		_target_creature.health = maxf(0.0, _target_creature.health - result["damage"])
+		_target_creature.provoke()  # Une bête sauvage riposte dès le 1er coup (F.3).
 		skills.gain_xp(skill_id, result["damage"])
 		if _target_creature.is_dead():
 			_creature_defeated(_target_creature)
@@ -409,7 +687,40 @@ func _try_melee_attack() -> void:
 ## Notifie la mort d'une créature (E.12) — le HUD écoute ce signal pour le
 ## toast localisé ; le nettoyage effectif (despawn) est fait par CreatureManager.
 func _creature_defeated(creature: Node) -> void:
+	_collect_loot(creature)
 	EventBus.creature_killed.emit(self, creature)
+
+
+## Dépeçage (7.7 : « chaque créature droppe sa propre viande ») — viande et
+## peau paramétriques de l'espèce (B.1/A.9.1), en quantité liée à sa
+## corpulence. Va directement à l'inventaire : le joueur est sur place, une
+## cache au sol serait une friction inutile. Les créatures amorphes (essaims,
+## nuées) n'ont ni viande ni peau et ne donnent rien.
+## Non implémenté : les parties d'alchimie (yeux, griffes, os — 7.7), les
+## pools de loot F.7 et la statue 1:1 (F.3), qui attendent leurs systèmes.
+func _collect_loot(creature: Node) -> void:
+	var data: Dictionary = GameData.creatures.get(creature.creature_id, {})
+	if data.is_empty() or "amorphe" in (data.get("tags", []) as Array):
+		return
+	var sante := float((data.get("base_stats", {}) as Dictionary).get("sante", 10))
+	var portions := maxi(1, int(round(sante / 12.0)))
+	var gained := {}
+	for prefix: String in ["viande_de_", "peau_de_"]:
+		var resource_id: String = prefix + String(creature.creature_id)
+		if not GameData.resources.has(resource_id):
+			continue
+		var amount := portions if prefix == "viande_de_" else maxi(1, portions / 2)
+		# Instances d'objet (comme les armes), pas des piles de matériau :
+		# viandes et peaux ne sont pas des blocs (décision 2026-07-27).
+		inventory.add_object(ItemFactory.resource_instance(resource_id, amount))
+		gained[resource_id] = amount
+	if gained.is_empty():
+		return
+	skills.gain_xp("collecte", float(portions) * 2.0)
+	autofill_hotbar()
+	EventBus.ui_notification.emit(tr("ui.toast.depecage").format({
+		"creature": tr(String(data.get("name_key", ""))),
+		"portions": str(portions)}))
 
 
 ## Lance un des 3 modules du loadout (E.3/A.6) sur la créature visée (sinon
@@ -429,6 +740,7 @@ func _try_cast_module(slot: int) -> void:
 		var power: float = float(module["power_base"]) * PlayerSkills.skill_factor(module_level)
 		var damage := CombatResolver.roll_dice(String(module.get("degats_des", "1d4"))) + int(power * 0.1)
 		_target_creature.health = maxf(0.0, _target_creature.health - damage)
+		_target_creature.provoke()
 		if _target_creature.is_dead():
 			_creature_defeated(_target_creature)
 
@@ -438,6 +750,8 @@ func _try_cast_module(slot: int) -> void:
 func _on_tick(_tick_index: int) -> void:
 	mana.on_tick()
 	hunger = maxf(0.0, hunger - HUNGER_DECAY_PER_TICK)
+	fatigue = maxf(0.0, fatigue - FATIGUE_DECAY_PER_TICK)
+	_hunger_tick_effects()
 	if input_locked:
 		# Carte du monde ouverte (ou bench) : pas de minage/attaque en arrière-plan.
 		_mining = false
@@ -455,6 +769,13 @@ func _on_tick(_tick_index: int) -> void:
 		return
 	var mat_name: String = GameData.material_by_runtime[material_id]
 	var mat: Dictionary = GameData.materials[mat_name]
+	# Blocs INCASSABLES (tour de donjon) : aucun outil n'en vient à bout.
+	# Un simple `durete` très élevée ne suffirait pas — la progression sans
+	# plafond (A.1) finirait par produire un outil capable de la percer.
+	if "incassable" in (mat.get("tags", []) as Array):
+		_bouncing = true
+		_progress = 0.0
+		return
 	var hardness := float(mat["stats"]["durete"])
 	var harvest: Dictionary = mat["harvest"]
 
@@ -617,7 +938,7 @@ func _region_credits(block_pos: Vector3i, cell_min: Vector3i, cells: int) -> Dic
 
 
 # --- Hotbar unifiée : outils PUIS matériaux, répartis en 9 banques de 9 ---
-# (molette : emplacement · Shift+molette ou Shift+1-9 : banque, jusqu'à 9)
+# (molette : emplacement · Ctrl+molette ou Ctrl+1-9 : banque)
 
 ## TOUTES les entrées possédées, ordre stable : objets (outils) d'abord, puis
 ## piles de matériaux triées par id. Chaque entrée : {"kind": "object",
@@ -636,13 +957,83 @@ func all_entries() -> Array[Dictionary]:
 	return entries
 
 
-## Fenêtre de 9 entrées pour la banque `bank` (0-8) — vue affichée par la hotbar.
+## Nombre de banques : au moins HOTBAR_MIN_BANKS, et assez pour couvrir la
+## plus haute liaison posée.
+func hotbar_bank_count() -> int:
+	var highest := 0
+	for index: int in hotbar_bindings:
+		highest = maxi(highest, index / HOTBAR_SLOTS + 1)
+	return maxi(HOTBAR_MIN_BANKS, highest)
+
+
+## Assigne l'entrée `entry` (issue de all_entries) à l'emplacement absolu
+## `index`. Une entrée déjà liée ailleurs est DÉPLACÉE — sans ça le même
+## objet occuperait deux emplacements et l'un des deux mentirait.
+func bind_hotbar(index: int, entry: Dictionary) -> void:
+	var binding := _binding_for(entry)
+	if binding.is_empty():
+		return
+	for existing: int in hotbar_bindings.keys():
+		if hotbar_bindings[existing] == binding:
+			hotbar_bindings.erase(existing)
+	hotbar_bindings[index] = binding
+
+
+func unbind_hotbar(index: int) -> void:
+	hotbar_bindings.erase(index)
+
+
+## Emplacement absolu occupé par `entry`, ou -1.
+func hotbar_index_of(entry: Dictionary) -> int:
+	var binding := _binding_for(entry)
+	if binding.is_empty():
+		return -1
+	for index: int in hotbar_bindings:
+		if hotbar_bindings[index] == binding:
+			return index
+	return -1
+
+
+func _binding_for(entry: Dictionary) -> Dictionary:
+	match entry.get("kind", ""):
+		"material":
+			return {"kind": "material", "id": String(entry.get("id", ""))}
+		"object":
+			var uid := int((entry.get("object", {}) as Dictionary).get("uid", -1))
+			if uid >= 0:
+				return {"kind": "object", "uid": uid}
+	return {}
+
+
+## Entrée d'inventaire visée par une liaison, ou {} si la cible n'existe plus
+## (matériau épuisé, objet consommé ou déposé).
+func _resolve_binding(binding: Dictionary) -> Dictionary:
+	match String(binding.get("kind", "")):
+		"material":
+			var id := String(binding.get("id", ""))
+			var volume := inventory.total_volume(id)
+			if volume <= 0.0001:
+				return {}
+			return {"kind": "material", "id": id,
+				"count": int(inventory.material_stacks.get(id, 0)), "volume": volume}
+		"object":
+			var obj := inventory.object_by_uid(int(binding.get("uid", -1)))
+			if obj.is_empty():
+				return {}
+			return {"kind": "object", "object": obj}
+	return {}
+
+
+## Les 9 emplacements de la banque `bank`, dans l'ordre. Un emplacement non
+## lié (ou dont la cible a disparu) rend un dictionnaire VIDE — la hotbar
+## affiche un trou, elle ne décale pas les objets suivants.
 func hotbar_entries(bank: int = -1) -> Array[Dictionary]:
 	var start := (active_hotbar if bank < 0 else bank) * HOTBAR_SLOTS
-	var entries := all_entries()
-	if start >= entries.size():
-		return []
-	return entries.slice(start, mini(start + HOTBAR_SLOTS, entries.size()))
+	var result: Array[Dictionary] = []
+	for slot in HOTBAR_SLOTS:
+		var binding: Variant = hotbar_bindings.get(start + slot)
+		result.append(_resolve_binding(binding) if binding != null else {})
+	return result
 
 
 ## Clé de nom localisée de l'objet/du matériau en main ("" si rien).
@@ -652,7 +1043,7 @@ func held_name_key() -> String:
 		"object":
 			return entry["object"]["name_key"]
 		"material":
-			return GameData.materials[entry["id"]]["name_key"]
+			return String(GameData.stackable(entry["id"]).get("name_key", ""))
 	return ""
 
 
@@ -662,10 +1053,8 @@ func held_entry() -> Dictionary:
 
 
 func _selected_entry() -> Dictionary:
-	var entries := hotbar_entries()
-	if selected_slot < entries.size():
-		return entries[selected_slot]
-	return {}
+	var binding: Variant = hotbar_bindings.get(active_hotbar * HOTBAR_SLOTS + selected_slot)
+	return _resolve_binding(binding) if binding != null else {}
 
 
 ## L'outil EN MAIN s'il correspond à la catégorie demandée, sinon vide
@@ -695,6 +1084,11 @@ func _placement_cell() -> Vector3i:
 
 func _placement_valid() -> bool:
 	if not (_target_valid and _target_normal != Vector3i.ZERO and _selected_material() != ""):
+		return false
+	# Une RESSOURCE (viande, peau — 7.7) n'est pas un bloc : elle n'a pas d'id
+	# runtime et ne peut pas exister dans le monde. Garde-fou explicite en plus
+	# de l'absence d'id, pour que l'aperçu de pose ne s'affiche même pas.
+	if not GameData.is_placeable(_selected_material()):
 		return false
 	if active_res == 32:
 		var cell := _placement_cell()
@@ -746,7 +1140,242 @@ func _try_stock_stall() -> void:
 	if ShopManager.stock_item(_target, mat_name, inventory):
 		var price := ShopManager.suggested_price(mat_name)
 		EventBus.ui_notification.emit(tr("ui.toast.etal_stock").format({
-			"item": tr(GameData.materials[mat_name]["name_key"]), "prix": str(price)}))
+			"item": tr(String(GameData.stackable(mat_name).get("name_key", ""))), "prix": str(price)}))
+
+
+## Ramasse la cache d'objets au sol la plus proche (A.10).
+func _try_pickup() -> void:
+	var index := DropManager.nearest_cache(get_position_for_ai())
+	if index < 0:
+		return
+	var count: int = (DropManager.caches[index]["objects"] as Array).size()
+	var recovered := DropManager.collect(index, inventory)
+	gold += recovered
+	EventBus.ui_notification.emit(tr("ui.toast.ramasse").format({
+		"objets": str(count), "or": str(recovered)}))
+
+
+## Crédite les bonus de potentiel d'un plat (A.9.1) :
+##   potentiel_gagné(stat) = bonus * (nutrition / 100)
+## La qualité du plat (A.3) n'entre pas encore en jeu : la cuisine ne produit
+## pas de qualité variable pour l'instant, ce serait un facteur toujours égal
+## à 1 — à brancher quand la qualité d'artisanat s'appliquera aux plats.
+func _credit_potential(bonuses: Dictionary, nutrition: float) -> void:
+	if bonuses.is_empty():
+		return
+	var credited := {}
+	for stat_id: String in bonuses:
+		var gain := float(bonuses[stat_id]) * (nutrition / 100.0)
+		if gain <= 0.0:
+			continue
+		stat_potentials[stat_id] = minf(POTENTIAL_MAX,
+				float(stat_potentials.get(stat_id, POTENTIAL_BASE)) + gain)
+		credited[stat_id] = gain
+	if credited.is_empty():
+		return
+	var parts: Array[String] = []
+	for stat_id: String in credited:
+		parts.append("%s +%.1f" % [tr("stat." + stat_id + ".name"), credited[stat_id]])
+	EventBus.ui_notification.emit(tr("ui.toast.potentiel").format({
+		"details": ", ".join(parts)}))
+
+
+# --- Sommeil (E.21) ---
+
+## Dort dans le LIT visé. Refuse hors de la nuit (rien à sauter) et sans lit
+## à portée. Le temps sauté est réellement simulé, par paquets de ticks.
+func _try_sleep() -> void:
+	if not _target_valid:
+		EventBus.ui_notification.emit("ui.toast.pas_de_lit")
+		return
+	var block_id := WorldManager.block_at_world(_target)
+	if block_id == 0 or GameData.material_by_runtime[block_id] != "lit":
+		EventBus.ui_notification.emit("ui.toast.pas_de_lit")
+		return
+	if not DayNightManager.is_night():
+		EventBus.ui_notification.emit("ui.toast.pas_la_nuit")
+		return
+
+	var ticks := DayNightManager.ticks_until(DayNightManager.HOUR_DAWN)
+	# Le lit sert aussi d'ancre de résurrection (A.10 : « dernier lit ou
+	# claim activé ») — c'est le lit qui prime, il est plus précis.
+	ClaimManager.respawn_cell = current_cell()
+	ClaimManager.has_respawn = true
+
+	var pushed := 0
+	while pushed < ticks:
+		var batch := mini(SLEEP_TICK_BATCH, ticks - pushed)
+		TickManager.push_ticks(batch)
+		pushed += batch
+	# Régénération x4 pendant le sommeil (E.21) : appliquée en bloc sur la
+	# durée dormie plutôt que tick par tick (le résultat est le même, sans
+	# payer 8 000 passes de régénération).
+	var regen := float(ticks) / float(HEALTH_REGEN_INTERVAL_TICKS) * HEALTH_REGEN_AMOUNT * 4.0
+	health = minf(health_max, health + regen)
+	rested_until_tick = TickManager.tick_index + RESTED_DURATION_TICKS
+	fatigue = fatigue_max
+	EventBus.ui_notification.emit("ui.toast.reveil")
+
+
+## true tant que le buff « Reposé » court (E.21).
+func is_rested() -> bool:
+	return TickManager.tick_index < rested_until_tick
+
+
+## Multiplicateur d'XP dû à l'état du personnage : bonus « Reposé » (+5 %,
+## E.21) et malus de fatigue (-10 % sous 50). Les deux se composent.
+func xp_state_multiplier() -> float:
+	var factor := 1.0
+	if is_rested():
+		factor *= 1.0 + RESTED_XP_BONUS
+	if fatigue < FATIGUE_TIRED:
+		factor *= FATIGUE_XP_MALUS
+	return factor
+
+
+# --- Équipement (6.2 / A.4.2) ---
+
+## Équipe l'objet EN MAIN, ou le retire s'il est déjà porté. La pièce
+## remplacée retourne à l'inventaire — jamais de perte, jamais de doublon
+## (l'instance est DÉPLACÉE, pas copiée).
+func _try_equip() -> void:
+	var entry := _selected_entry()
+	if entry.get("kind", "") != "object":
+		return
+	var instance: Dictionary = entry["object"]
+	var item: Dictionary = GameData.items.get(instance.get("item_id", ""), {})
+	var slot := equipment.resolve_slot(String(item.get("equip_slot", "")))
+	if slot == "":
+		EventBus.ui_notification.emit("ui.toast.pas_equipable")
+		return
+	inventory.objects.erase(instance)
+	var replaced := equipment.equip(instance)
+	if not replaced.is_empty():
+		inventory.add_object(replaced)
+	_clamp_selection()
+	EventBus.ui_notification.emit(tr("ui.toast.equipe").format({
+		"item": tr(String(instance.get("name_key", "")))}))
+
+
+## Retire la pièce de `slot` et la remet à l'inventaire (API pour l'UI).
+func unequip_slot(slot: String) -> void:
+	var instance := equipment.unequip(slot)
+	if instance.is_empty():
+		return
+	inventory.add_object(instance)
+	EventBus.ui_notification.emit(tr("ui.toast.desequipe").format({
+		"item": tr(String(instance.get("name_key", "")))}))
+
+
+## Les emplacements de hotbar sont FIXES depuis qu'ils sont assignés
+## explicitement : retirer un objet vide son emplacement, il ne décale plus
+## rien. Ne reste qu'à purger les liaisons devenues orphelines.
+func _clamp_selection() -> void:
+	for index: int in hotbar_bindings.keys():
+		if _resolve_binding(hotbar_bindings[index]).is_empty():
+			hotbar_bindings.erase(index)
+
+
+## Capacité de port (A.4.2) — la charge compte l'inventaire ET l'équipement.
+func carry_capacity() -> float:
+	return Inventory.capacity_for(effective_stat("force"))
+
+
+func carried_weight() -> float:
+	return inventory.total_weight() + equipment.total_weight()
+
+
+## Dés de réduction totaux du joueur, au format E.3 ("" = aucune armure).
+func armor_dice() -> String:
+	return equipment.total_armor_dice()
+
+
+## Malus de défense dû au poids de l'équipement (A.4.2).
+func armor_malus() -> int:
+	return equipment.defense_malus(carry_capacity())
+
+
+# --- Faim et nourriture (A.9 / A.9.1) ---
+
+## Effets de seuil de la faim, une passe par tick (E.1) : régénération de
+## santé modulée, puis famine à 0. La famine « ne tue pas en dessous de
+## 1 PV » (A.9) — le clamp bas est donc à 1, pas à 0.
+func _hunger_tick_effects() -> void:
+	_regen_tick_counter += 1
+	if _regen_tick_counter >= HEALTH_REGEN_INTERVAL_TICKS:
+		_regen_tick_counter = 0
+		if hunger >= HUNGER_STARVING and fatigue >= FATIGUE_EXHAUSTED and health < health_max:
+			var regen := HEALTH_REGEN_AMOUNT
+			if hunger < HUNGER_REGEN_PENALTY:
+				regen *= 0.9
+			if fatigue < FATIGUE_TIRED:
+				regen *= 0.9
+			health = minf(health_max, health + regen)
+	if hunger > 0.0:
+		_starve_tick_counter = 0
+		return
+	_starve_tick_counter += 1
+	if _starve_tick_counter >= STARVE_INTERVAL_TICKS:
+		_starve_tick_counter = 0
+		# AMENDÉ le 2026-07-27 (demande de l'auteur) : la famine PEUT tuer.
+		# A.9 disait « ne tue pas en dessous de 1 PV » ; la mort est
+		# désormais possible, notamment en traversant la carte du monde sans
+		# surveiller ses jauges. take_damage déclenche die() (A.10 : perte
+		# d'or, objets tombés, réapparition à l'ancre) — jamais un game over.
+		take_damage(int(ceil(health_max * STARVE_HEALTH_FRACTION)))
+
+
+## Stat EFFECTIVE (A.9) : -10 % à toutes les stats sous 25 de faim. Toute
+## lecture de stat destinée à une formule de gameplay doit passer par ici —
+## `stats` reste la valeur de base (fiche de personnage, sauvegarde).
+func effective_stat(stat_id: String) -> int:
+	var value := float(stats.get(stat_id, 0))
+	if hunger < HUNGER_STARVING:
+		value *= HUNGER_STAT_MALUS
+	if fatigue < FATIGUE_EXHAUSTED:
+		value *= FATIGUE_STAT_MALUS
+	return int(floor(value))
+
+
+## Mange le matériau comestible EN MAIN (1 unité). A.9.1 : un ingrédient cru
+## ne rend que 50 % de sa nutrition et n'accorde aucun bonus de potentiel —
+## le rendement plein passera par la cuisine (7.7), pas encore implémentée.
+## Le risque d'infection du cru (F.5) attend le système de statuts (F.4).
+func _try_eat() -> void:
+	# Comestible EN MAIN : soit une instance (viande — modèle objet), soit un
+	# matériau empilé (blé, tubercule — récolte de bloc).
+	var entry := _selected_entry()
+	var instance: Dictionary = entry.get("object", {}) if entry.get("kind", "") == "object" else {}
+	var mat: Dictionary = instance
+	var mat_name := ""
+	if instance.is_empty():
+		mat_name = _selected_material()
+		if mat_name == "":
+			return
+		mat = GameData.stackable(mat_name)
+	if not (mat.get("nutrition", {}) as Dictionary).has("faim"):
+		EventBus.ui_notification.emit("ui.toast.pas_comestible")
+		return
+	if hunger >= hunger_max:
+		EventBus.ui_notification.emit("ui.toast.rassasie")
+		return
+	if instance.is_empty():
+		if not inventory.remove_material(mat_name, 1):
+			return
+	elif not inventory.remove_object_units(instance, 1):
+		return
+	var nutrition: Dictionary = mat["nutrition"]
+	var gain := float(nutrition["faim"])
+	if not bool(nutrition["cuit"]):
+		gain *= 0.5
+	hunger = minf(hunger_max, hunger + gain)
+	# Bonus de POTENTIEL (A.9.1) : réservés aux plats CUISINÉS — manger cru
+	# n'en donne aucun. C'est ce qui rend la cuisine rentable au-delà de la
+	# simple survie (6.4 : le potentiel est le cœur de la progression).
+	if bool(nutrition["cuit"]):
+		_credit_potential(mat.get("potentiel", {}), float(nutrition["faim"]))
+	EventBus.ui_notification.emit(tr("ui.toast.mange").format({
+		"item": tr(String(mat["name_key"])), "faim": str(int(round(gain)))}))
 
 
 func _try_collect_stall() -> void:

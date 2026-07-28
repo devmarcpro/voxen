@@ -23,6 +23,8 @@ ExplorationManager="*res://autoload/ExplorationManager.gd"
 NetworkManager="*res://autoload/NetworkManager.gd"
 DungeonManager="*res://autoload/DungeonManager.gd"
 ShopManager="*res://autoload/ShopManager.gd"
+DropManager="*res://autoload/DropManager.gd"
+DayNightManager="*res://autoload/DayNightManager.gd"
 BlockPreview="*res://autoload/BlockPreview.gd"
 
 [display]
@@ -32,7 +34,7 @@ window/size/viewport_height=900
 
 [internationalization]
 
-locale/translations=PackedStringArray("res://locale/fr.fr.translation", "res://locale/en.en.translation")
+locale/translations=PackedStringArray("res://locale/fr.fr.translation", "res://locale/en.en.translation", "res://locale/ja.ja.translation", "res://locale/zh_Hans.zh_Hans.translation")
 locale/fallback="en"
 
 [rendering]

@@ -30,6 +30,8 @@ extends Node
 ## désormais name/params/last_saved en plus de la graine/ticks/table.
 const SAVES_ROOT := "user://saves"
 const SAVE_DIR := "user://saves/monde"  # Monde par défaut (modes directs/bench, compat).
+## Dossier des sondes de sauvegarde — isolé des vrais mondes du joueur.
+const PROBE_SAVE_DIR := "user://saves/_sondes"
 const SAVE_VERSION := 1
 const AUTOSAVE_INTERVAL := 300.0  # 5 min réelles (E.10).
 ## Modes de mesure/test : la persistance est coupée (mesures et mondes de
@@ -38,7 +40,14 @@ const AUTOSAVE_INTERVAL := 300.0  # 5 min réelles (E.10).
 const DISABLED_ARGS: Array[String] = [
 	"--bench", "--statique", "--bench-mutation", "--bench-creatures",
 	"--probe", "--probe-subdiv", "--probe-dungeon", "--probe-params",
-	"--probe-city", "--probe-ore", "--test-input", "--test-menu", "--test-ore", "--bench-network-client", "--join",
+	"--probe-city", "--probe-ore", "--probe-faim", "--probe-equipement", "--probe-mort", "--probe-faune", "--probe-butin", "--probe-mesh", "--probe-invui", "--probe-survie", "--probe-saves", "--test-input", "--test-menu", "--test-ore", "--bench-network-client", "--join",
+	# 2026-07-28 : oublier une sonde ici n'est PAS bénin. `--probe-heure` appelle
+	# prepare_new_world() et, sans cette ligne, la sauvegarde de sortie créait un
+	# vrai dossier de monde bidon dans user://saves/ À CHAQUE EXÉCUTION *et*
+	# réécrivait `dernier.json` — le « continuer » du joueur pointait alors sur le
+	# monde de test au lieu de sa partie. Toute nouvelle sonde qui touche à
+	# SaveManager doit être ajoutée ici.
+	"--probe-heure", "--probe-tour", "--probe-etages",
 ]
 
 var enabled := true
@@ -87,6 +96,41 @@ func _ready() -> void:
 		_custom_dir = true  # Dossier de test : jamais mémorisé comme « dernier monde ».
 		if not load_world_at(save_dir):
 			active_config = {"name": "test", "seed": 1337, "params": {}}
+		return
+	# Sondes de sauvegarde SANS --save-dir explicite (2026-07-27) : dossier
+	# DÉDIÉ, remis à zéro par --probe-save. Elles tombaient sinon sur le monde
+	# par défaut (« monde »), qu'elles polluaient d'un run à l'autre : la paire
+	# n'était pas idempotente et --probe-save-verify échouait au deuxième
+	# passage (rôle de claim cyclé deux fois, minerai cumulé) — un ÉCHEC DE
+	# TEST sans aucun bug dans le code testé, le pire des cas.
+	if "--probe-save" in args or "--probe-save-verify" in args or "--probe-save-incr" in args:
+		save_dir = PROBE_SAVE_DIR
+		_custom_dir = true
+		if "--probe-save" in args or "--probe-save-incr" in args:
+			_wipe_probe_dir()
+			# `active_config` DOIT être posé ici : sans lui,
+			# prepare_default_if_needed() (mode direct) se croit sur un monde
+			# neuf et réécrase save_dir avec SAVE_DIR — la sonde repartait
+			# écrire dans le monde par défaut malgré tout.
+			active_config = {"name": "sonde", "seed": 1337, "params": {}}
+		elif not load_world_at(save_dir):
+			active_config = {"name": "sonde", "seed": 1337, "params": {}}
+
+
+## Vide le dossier des sondes. Ne touche JAMAIS à un autre dossier : les vrais
+## mondes du joueur et les dossiers passés en --save-dir sont hors d'atteinte.
+func _wipe_probe_dir() -> void:
+	var dir := DirAccess.open(PROBE_SAVE_DIR)
+	if dir == null:
+		return
+	for sub in dir.get_directories():
+		var nested := DirAccess.open(PROBE_SAVE_DIR + "/" + sub)
+		if nested != null:
+			for nested_file in nested.get_files():
+				nested.remove(nested_file)
+		dir.remove(sub)
+	for file_name in dir.get_files():
+		dir.remove(file_name)
 
 
 ## Monde par défaut des modes DIRECTS (bench/probe/host/join, sans menu) :
@@ -99,6 +143,10 @@ func prepare_default_if_needed() -> void:
 		load_world_at(save_dir)
 	else:
 		active_config = {"name": "monde", "seed": 1337, "params": {}}
+		# Monde par défaut NEUF (mode direct : benchs, captures) : même heure de
+		# départ que par le menu, sinon les deux chemins de création divergeaient
+		# et une capture de bench se prenait en pleine nuit.
+		TickManager.tick_index = DayNightManager.start_tick()
 
 
 ## Liste des mondes sauvegardés : [{ "dir", "name", "seed", "ticks",
@@ -125,6 +173,43 @@ func list_worlds() -> Array[Dictionary]:
 	result.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return int(a["last_saved"]) > int(b["last_saved"]))
 	return result
+
+
+## Supprime DÉFINITIVEMENT le monde stocké dans `dir`.
+##
+## Garde-fou : refuse tout chemin hors de SAVES_ROOT, et refuse de supprimer
+## le monde ACTUELLEMENT CHARGÉ (on effacerait le sol sous les pieds du
+## joueur, et l'autosave suivante le recréerait à moitié). Retourne false et
+## n'écrit rien si l'une des deux conditions n'est pas remplie.
+func delete_world(dir_path: String) -> bool:
+	if not dir_path.begins_with(SAVES_ROOT + "/"):
+		push_error("SaveManager : suppression refusée hors de %s (« %s »)." % [SAVES_ROOT, dir_path])
+		return false
+	if world_active and dir_path == save_dir:
+		push_warning("SaveManager : refus de supprimer le monde en cours de jeu.")
+		return false
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		return false
+	# Les chunks vivent dans un sous-dossier : vider avant de retirer.
+	for sub_name in dir.get_directories():
+		var nested := DirAccess.open(dir_path + "/" + sub_name)
+		if nested != null:
+			for nested_file in nested.get_files():
+				nested.remove(nested_file)
+		dir.remove(sub_name)
+	for file_name in dir.get_files():
+		dir.remove(file_name)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(dir_path))
+
+	# « Continuer » ne doit plus pointer un monde disparu — sinon le bouton
+	# du menu échouerait silencieusement.
+	var bytes := _read_bytes(SAVES_ROOT + "/dernier.json")
+	if not bytes.is_empty():
+		var data: Variant = JSON.parse_string(bytes.get_string_from_utf8())
+		if data is Dictionary and String((data as Dictionary).get("dir", "")) == dir_path:
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVES_ROOT + "/dernier.json"))
+	return true
 
 
 ## « Continuer » : recharge le dernier monde joué (dernier.json). false si aucun.
@@ -155,6 +240,10 @@ func prepare_new_world(world_name: String, seed_value: int, params: Dictionary) 
 		dir = SAVES_ROOT + "/" + slug + "_%d" % suffix
 		suffix += 1
 	save_dir = dir
+	# Dossier NEUF : rien sur disque, donc tout est à écrire (l'écriture
+	# incrémentale ne peut se fier au disque que si on y a déjà écrit).
+	if WorldManager != null:
+		WorldManager.mark_all_chunks_dirty()
 	active_config = {"name": world_name, "seed": seed_value, "params": params}
 	world_loaded = false
 	pending_character = {}  # Rempli ensuite par l'UI de création de personnage.
@@ -162,7 +251,10 @@ func prepare_new_world(world_name: String, seed_value: int, params: Dictionary) 
 	_pending_sub_edits = {}
 	_pending_state = {}
 	_last_player_state = {}
-	TickManager.tick_index = 0
+	# Partie neuve : l'horloge démarre à 8 h du matin, pas à 0 h (voir
+	# DayNightManager.START_HOUR). Un monde chargé écrase cette valeur avec le
+	# `ticks` de sa sauvegarde — seul le monde NEUF est concerné.
+	TickManager.tick_index = DayNightManager.start_tick()
 
 
 func _process(delta: float) -> void:
@@ -232,11 +324,14 @@ func save_now(sync: bool = false) -> void:
 		"material_table": GameData.material_by_runtime,
 	}, "\t").to_utf8_buffer()
 
+	# Chunks : uniquement ceux RETOUCHÉS depuis la dernière écriture. Les
+	# autres sont déjà sur disque et n'ont pas changé (2026-07-27) — sans ça
+	# le coût d'un autosave croissait avec tout ce que le joueur avait bâti.
 	var edits: Dictionary = WorldManager.edits_for_save()
 	var sub_edits: Dictionary = WorldManager.sub_edits_for_save()
-	for ck: Vector3i in edits:
+	for ck: Vector3i in WorldManager.take_dirty_save_chunks():
 		files["chunks/%d_%d_%d.bin" % [ck.x, ck.y, ck.z]] = _encode_chunk(
-			edits[ck], sub_edits.get(ck, {}))
+			edits.get(ck, {}), sub_edits.get(ck, {}))
 
 	files["state.json"] = JSON.stringify(_gather_state(), "\t").to_utf8_buffer()
 
@@ -285,6 +380,7 @@ func _gather_state() -> Dictionary:
 		"exploration": ExplorationManager.save_state(),
 		"shops": ShopManager.save_state(),
 		"dungeons": DungeonManager.save_state(),
+		"drops": DropManager.save_state(),
 	}
 	# Filet : si le joueur n'est plus joignable (sauvegarde de sortie après
 	# libération de la scène), on réécrit son DERNIER état connu plutôt que
@@ -450,6 +546,7 @@ func apply_pending_state() -> void:
 	ExplorationManager.restore_state(_pending_state.get("exploration", []))
 	ShopManager.restore_state(_pending_state.get("shops", {}))
 	DungeonManager.restore_state(_pending_state.get("dungeons", {}))
+	DropManager.restore_state(_pending_state.get("drops", []))
 	var player := get_node_or_null("/root/Main/Player")
 	var player_state: Variant = _pending_state.get("player")
 	if player != null and player_state is Dictionary:

@@ -1,0 +1,20 @@
+{
+  "id": "fab_lit",
+  "name_key": "transformation.fab_lit.name",
+  "station": "etabli",
+  "skill": "menuiserie",
+  "inputs": [
+    {
+      "category": "bois",
+      "amount": 4
+    },
+    {
+      "category": "textile",
+      "amount": 2
+    }
+  ],
+  "output": {
+    "material": "lit",
+    "amount": 1
+  }
+}

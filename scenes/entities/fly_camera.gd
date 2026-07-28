@@ -78,7 +78,53 @@ func _unhandled_input(event: InputEvent) -> void:
 		rotation = Vector3(_pitch, _yaw, 0.0)
 
 
+## --- Voyage rapide GRADUEL (carte, 2026-07-26) : téléporte progressivement
+## vers la cible pendant que le TEMPS DE JEU s'écoule (ticks réellement simulés
+## → mana régénère, faim, etc.). Accéléré (quelques secondes réelles), on reste
+## sur la carte. `total_ticks` = coût de temps du trajet (fourni par le joueur).
+const TRAVEL_MAX_SECONDS := 6.0     # durée réelle max de l'animation de voyage.
+const TRAVEL_MIN_TICKS_PER_SEC := 1000.0
+var _travel_active := false
+var _travel_from := Vector2.ZERO
+var _travel_target := Vector2.ZERO
+var _travel_total := 0
+var _travel_done := 0
+var _travel_rate := 0.0
+func travel_to(wx: int, wz: int, total_ticks: int) -> void:
+	_travel_from = Vector2(position.x, position.z)
+	_travel_target = Vector2(float(wx), float(wz))
+	_travel_total = maxi(total_ticks, 1)
+	_travel_done = 0
+	_travel_rate = maxf(TRAVEL_MIN_TICKS_PER_SEC, float(_travel_total) / TRAVEL_MAX_SECONDS)
+	_travel_active = true
+
+
+func is_traveling() -> bool:
+	return _travel_active
+
+
+func _process_travel(delta: float) -> void:
+	var k := mini(int(ceil(_travel_rate * delta)), _travel_total - _travel_done)
+	if k > 0:
+		TickManager.push_ticks(k)  # simule vraiment le temps (mana/faim/IA…).
+		_travel_done += k
+	var frac := float(_travel_done) / float(_travel_total)
+	var xz := _travel_from.lerp(_travel_target, frac)
+	var h := 24.0
+	if WorldManager.generator != null:
+		h = float(WorldManager.generator.height_at(int(xz.x), int(xz.y)))
+	position = Vector3(xz.x + 0.5, h + 2.9, xz.y + 0.5)
+	_vertical_velocity = 0.0
+	_grounded = true
+	if _travel_done >= _travel_total:
+		_travel_active = false
+
+
 func _process(delta: float) -> void:
+	if _travel_active:
+		_process_travel(delta)
+		WorldManager.update_center(global_position)
+		return
 	if bench:
 		# Vol automatique rectiligne horizontal, altitude asservie au relief
 		# (suit les montagnes/vallées — traversée continue de nouveaux chunks).
@@ -126,11 +172,18 @@ func _process_flight(delta: float) -> void:
 ## Téléportation (voyage rapide, entrée/sortie de donjon — DungeonManager) :
 ## réinitialise l'état de chute pour éviter tout comportement bizarre (chute
 ## résiduelle, faux plafond) après un saut de position instantané.
-func teleport_to(pos: Vector3) -> void:
+## `yaw_degrees` : orientation horizontale imposée à l'arrivée, ou NAN pour
+## conserver celle du joueur (défaut — une téléportation ne doit pas lui faire
+## tourner la tête sans raison). Utilisé par l'entrée en donjon, qui dépose le
+## joueur DOS à l'orifice de remontée (2026-07-28).
+func teleport_to(pos: Vector3, yaw_degrees: float = NAN) -> void:
 	position = pos
 	_vertical_velocity = 0.0
 	_grounded = false
-	_travel_active = false  # une téléportation (donjon…) annule le voyage carte.
+	if not is_nan(yaw_degrees):
+		_yaw = deg_to_rad(yaw_degrees)
+		_pitch = 0.0
+		rotation = Vector3(_pitch, _yaw, 0.0)
 
 
 ## Un bloc plein bloque le joueur (l'eau ne bloque pas — traversable/nageable).
@@ -220,14 +273,6 @@ func _body_blocked_at(x: float, z: float, feet_y: float) -> bool:
 ## décalé, donc chaque bordure de bloc voisine touchait le corps trop tôt).
 ## Balayage vertical (pas un seul test au point d'arrivée) pour ne jamais
 ## traverser un bloc en un seul pas si la chute est rapide (façon Minecraft).
-## Voyage progressif (carte) : marche automatique vers (wx,wz) à mi-vitesse.
-var _travel_active := false
-var _travel_target := Vector2.ZERO
-func travel_to(wx: int, wz: int) -> void:
-	_travel_target = Vector2(float(wx), float(wz))
-	_travel_active = true
-
-
 func _process_walk(delta: float) -> void:
 	var forward := Vector3(global_basis.z.x, 0, global_basis.z.z).normalized()
 	var right := Vector3(global_basis.x.x, 0, global_basis.x.z).normalized()

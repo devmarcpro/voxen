@@ -30,8 +30,8 @@
     "arme"
   ],
   "sprites": {
-    "manche": "res://assets/tools/masse_manche.png",
-    "tete": "res://assets/tools/masse_tete.png"
+    "manche": "res://assets/weapons/masse_manche.png",
+    "tete": "res://assets/weapons/masse_tete.png"
   },
   "sprite_tint": {
     "manche": "bois",

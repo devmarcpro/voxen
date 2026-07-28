@@ -1,0 +1,55 @@
+{
+  "id": "souverain",
+  "name_key": "creature.souverain.name",
+  "skeleton_template": "humanoide",
+  "parts_pool": {
+    "tete": [
+      1
+    ],
+    "torse": [
+      1
+    ],
+    "bras": [
+      1
+    ],
+    "jambes": [
+      1
+    ]
+  },
+  "race": "humain",
+  "base_stats": {
+    "sante": 75,
+    "force": 22,
+    "volonte": 10,
+    "vitesse": 9,
+    "dexterite": 13,
+    "endurance": 18
+  },
+  "equip_slots": "humanoide_standard",
+  "inventory_table": null,
+  "ai_profile": "civil",
+  "jobs_compatible": [],
+  "housing_default": "normal",
+  "recruitable": {
+    "method": "dressage",
+    "threshold": 90
+  },
+  "leadership_role": "souverain_royaume",
+  "succession_rule": "heir",
+  "rare_chance": 0.0,
+  "combat": {
+    "functionality": "mains_nues",
+    "modules": [
+      "frappe_lourde"
+    ],
+    "durete_naturelle": 8.0
+  },
+  "niveau_combat": 25,
+  "world_gen": {
+    "biome_tags": []
+  },
+  "tags": [
+    "civil",
+    "humanoide"
+  ]
+}

@@ -12,25 +12,39 @@ extends Node
 ##   annule ; à zéro, ÉCRAN DE CHARGEMENT puis téléportation dedans.
 ## - Carte du monde : voyager sur la cellule = entrée DIRECTE (chargement,
 ##   sans compte à rebours) — voir Player.fast_travel_to_cell.
-## - La cellule donjon est couverte de BROUILLARD dans l'overworld (boîtes
-##   translucides — le renderer Compatibility n'a pas de vrai brouillard
-##   volumétrique, machine cible oblige).
+## - Aucun marquage visuel de la cellule dans l'overworld (2026-07-28, demande
+##   explicite) : les boîtes translucides de « brouillard » qui la couvraient
+##   ont été supprimées. Le donjon est déjà matérialisé par sa termitière, qui
+##   se voit de loin — la nappe grise n'ajoutait rien et masquait le décor.
 ##
 ## GÉNÉRATION : l'étage (DungeonGenerator, graphe de salles à l'origine) est
 ## construit en blocs dans les chunks de la dimension au moment de l'entrée,
 ## sous l'écran de chargement, puis meshé d'un coup (ChunkMesher avec
 ## générateur NULL = monde vide, la coquille vient des chunks voisins).
 ## Le vide autour des salles est de l'air — ambiance de fosse assumée.
+## Les salles sont bâties dans la MÊME matière démoniaque marbrée que la
+## termitière visible depuis l'overworld (2026-07-28) — plus la pierre grise.
+##
+## ÉTAGES (E.29, 2026-07-28) : un donjon compte 2, 4 ou 6 étages selon le danger
+## de sa cellule. Chaque étage a son propre plan (graine = cellule + profondeur)
+## et son propre diff de blocs. On change d'étage par des ORIFICES — pas des
+## escaliers : des ouvertures organiques franchies en marchant dessus.
+##   - remontée (os pâle) : salle d'entrée ; ramène à l'étage du dessus, ou
+##     dehors depuis le premier ;
+##   - descente (veines rouges) : salle la plus éloignée de l'entrée, ce que le
+##     joueur doit CHERCHER ; absente au dernier étage.
+## À chaque arrivée, le joueur est déposé DOS à l'orifice de remontée.
+## Le boss n'existe QU'AU DERNIER ÉTAGE : lui seul déclenche le nettoyage.
 ##
 ## PERSISTANCE (E.10/3.5 « les changements suivent la sauvegarde
 ## différentielle standard ») : les blocs minés/posés DANS un donjon sont un
-## diff par cellule (`_dungeon_edits`), sauvegardé en ids TEXTE dans
+## diff par ÉTAGE (`_dungeon_edits`, clé cellule+profondeur), sauvegardé en ids TEXTE dans
 ## state.json (immune au glissement des ids runtime) et réappliqué à chaque
 ## reconstruction. SIMPLIFICATION ASSUMÉE : le boss renaît à chaque entrée
 ## tant que le donjon n'est pas nettoyé ; pas de subdivision fine en donjon.
 ##
 ## NETTOYAGE (3.5) : à la mort du boss, délai de 1,5 jour in-game puis la
-## cellule redevient normale/claimable (le brouillard disparaît aussi).
+## cellule redevient normale/claimable.
 
 const PERIMETER_WIDTH := 8.0
 ## Compte à rebours d'entrée à pied (demande explicite : 3 s + infos).
@@ -41,11 +55,22 @@ const RETRIGGER_COOLDOWN := 1.5
 ## 1,5 jour in-game (3.5/E.29) — délai avant qu'un donjon nettoyé (boss
 ## vaincu) redevienne une cellule normale/claimable.
 const CLEANUP_DELAY_TICKS := int(1.5 * 24000)
-## Brouillard : rayon de scan en cellules autour du joueur, et hauteur de la
-## nappe au-dessus du terrain.
-const FOG_SCAN_RADIUS := 2
-const FOG_HEIGHT := 36.0
 
+## --- Étages (E.29, 2026-07-28) ---
+## Nombre d'étages par niveau de danger de la cellule (danger_level : 0/1/2).
+## Le dernier étage n'a PAS d'orifice de descente : c'est le fond, et le seul à
+## porter le boss.
+const FLOORS_BY_DANGER: Array[int] = [2, 4, 6]
+## Rayon de déclenchement d'un orifice. Nettement inférieur à la distance entre
+## le point d'arrivée et l'orifice de remontée (4,2 blocs) : sinon le joueur
+## repartirait aussitôt d'où il vient, en boucle.
+const ORIFICE_RADIUS := 1.6
+## Matériaux des orifices — ils ne sont pas des escaliers mais des ouvertures
+## organiques dans la chair du nid (demande explicite : « style roguelite, pas
+## juste des escaliers classiques »).
+const ORIFICE_DOWN_RING := "scorie_ardente"   # veines rouges : on descend vers le cœur.
+const ORIFICE_UP_RING := "os_calcine"         # os pâle : on remonte vers la sortie.
+const ORIFICE_CORE := "chair_noire"
 var _player: Node
 var _in_dungeon := false
 var _current_dungeon_cell := Vector2i.ZERO
@@ -53,22 +78,19 @@ var _return_position := Vector3.ZERO
 var _cooldown := 0.0
 var _cached_cell := Vector2i(1 << 30, 0)
 var _cached_donjon_neighbors: Array[Vector2i] = []
-var _floors := {}              # Vector2i cellule -> Dictionary (DungeonGenerator.generate_floor), une fois par session.
+## Étage COURANT dans le donjon actif (0 = premier, le plus proche de la sortie).
+var _current_depth := 0
+var _floors := {}              # Vector3i (cellule.x, cellule.y, profondeur) -> Dictionary (DungeonGenerator.generate_floor).
 var _cleaned_cells := {}       # Vector2i cellule -> true (boss vaincu + délai écoulé).
 var _cleanup_pending := {}     # Vector2i cellule -> tick cible.
 
 ## --- Dimension donjon (chunks/meshes du donjon ACTIF uniquement) ---
 var _dungeon_chunks := {}      # Vector3i -> ChunkData
 var _dungeon_meshes := {}      # Vector3i -> MeshInstance3D
-## Diff persistant par cellule : Vector2i -> { Vector3i chunk -> { indice -> id runtime } }.
+## Diff persistant par ÉTAGE : Vector3i (cellule.x, cellule.y, profondeur) -> { Vector3i chunk -> { indice -> id runtime } }.
 var _dungeon_edits := {}
 var _dungeon_root: Node3D
 var _dungeon_material: ShaderMaterial
-
-## --- Brouillard overworld sur les cellules donjon ---
-var _fog_root: Node3D
-var _fog_boxes := {}           # Vector2i cellule -> MeshInstance3D
-var _fog_material: StandardMaterial3D
 
 ## --- Ambiance de la dimension (2026-07-21, retour visuel) ---
 ## Sans ça, une salle close est éclairée par l'AMBIANCE DU CIEL de l'overworld :
@@ -98,16 +120,9 @@ var _must_leave := false
 
 func _ready() -> void:
 	EventBus.creature_killed.connect(_on_creature_killed)
-	TickManager.tick.connect(_on_tick)
+	TickManager.tick_world.connect(_on_tick)
 	_dungeon_root = Node3D.new()
 	add_child(_dungeon_root)
-	_fog_root = Node3D.new()
-	add_child(_fog_root)
-	_fog_material = StandardMaterial3D.new()
-	_fog_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_fog_material.albedo_color = Color(0.72, 0.72, 0.78, 0.4)
-	_fog_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_fog_material.cull_mode = BaseMaterial3D.CULL_DISABLED  # Visible aussi depuis l'intérieur de la nappe.
 	_dungeon_env = Environment.new()
 	_dungeon_env.background_mode = Environment.BG_COLOR
 	_dungeon_env.background_color = Color(0.01, 0.01, 0.015)
@@ -131,7 +146,7 @@ func _process(delta: float) -> void:
 		return
 	var pos: Vector3 = _player.get_position_for_ai()
 	if _in_dungeon:
-		_check_exit(pos)
+		_check_transitions(pos)
 	else:
 		_update_cell_cache(pos)
 		_update_entry(pos, delta)
@@ -139,22 +154,30 @@ func _process(delta: float) -> void:
 
 # --- Entrée à pied : périmètre → compte à rebours → chargement ---
 
-## Recalcule les cellules donjon voisines + le brouillard seulement quand la
-## CELLULE du joueur change (`biome_at`/`pois_at_cell` jamais par frame).
+## Recalcule les cellules donjon voisines seulement quand la CELLULE du joueur
+## change (`biome_at`/`pois_at_cell` jamais par frame).
 func _update_cell_cache(pos: Vector3) -> void:
 	var cell := ClaimManager.cell_of_block(int(pos.x), int(pos.z))
 	if cell == _cached_cell:
 		return
 	_cached_cell = cell
 	_cached_donjon_neighbors = _donjon_cells_near(cell)
-	_update_fog(cell)
 
 
 func _update_entry(pos: Vector3, delta: float) -> void:
 	var target := Vector2i.ZERO
 	var found := false
+	# Entrée par la TERMITIÈRE (2026-07-27) : le donjon est matérialisé par
+	# une masse organique occupant toute sa cellule. On y entre en s'enfonçant
+	# dans une de ses CAVITÉS, plus en traversant un périmètre invisible —
+	# rien n'indiquait jusqu'ici où commençait la zone de déclenchement.
 	for dc in _cached_donjon_neighbors:
-		if _distance_to_cell(pos, dc) <= PERIMETER_WIDTH:
+		var ground := 0
+		if WorldManager.generator != null:
+			var centre := POIGenerator.cell_center_world(dc)
+			ground = int(floor(WorldManager.generator.height_at(centre.x, centre.y)))
+		if DungeonTower.inside_interior(dc, floori(pos.x), floori(pos.y), floori(pos.z),
+				ground, WorldManager.world_seed):
 			target = dc
 			found = true
 			break
@@ -178,10 +201,13 @@ func _update_entry(pos: Vector3, delta: float) -> void:
 func _start_countdown(cell: Vector2i) -> void:
 	_countdown = ENTRY_COUNTDOWN
 	_countdown_cell = cell
-	_ensure_floor_data(cell)
+	_ensure_floor_data(cell, 0)
 	var center := POIGenerator.cell_center_world(cell)
 	var danger := WorldManager.generator.danger_level(center.x, center.y)
-	var rooms: int = (_floors.get(cell, {}) as Dictionary).get("rooms", []).size()
+	# Salles du PREMIER étage : c'est ce que le joueur s'apprête à découvrir. La
+	# profondeur totale n'est volontairement pas annoncée — la trouver fait
+	# partie de l'exploration.
+	var rooms: int = (_floors.get(_floor_key(cell, 0), {}) as Dictionary).get("rooms", []).size()
 	_entry_title.text = tr("ui.donjon.titre")
 	_entry_info.text = tr("ui.donjon.infos").format({
 		"danger": tr("ui.donjon.danger.%d" % danger), "salles": str(rooms)})
@@ -220,49 +246,88 @@ func _begin_entry(cell: Vector2i, return_pos: Vector3) -> void:
 
 
 func _enter_dungeon(cell: Vector2i, return_pos: Vector3) -> void:
-	_ensure_floor_data(cell)
-	if (_floors.get(cell, {}) as Dictionary).is_empty():
+	_ensure_floor_data(cell, 0)
+	if (_floors.get(_floor_key(cell, 0), {}) as Dictionary).is_empty():
 		push_warning("DungeonManager : étage vide pour la cellule %s — entrée annulée." % cell)
 		return
 	_return_position = return_pos
 	_current_dungeon_cell = cell
+	_current_depth = 0
 	# Bascule AVANT la construction : le boss spawné pendant le build
 	# appartient ainsi à la dimension donjon (CreatureManager.spawn).
 	WorldManager.set_active_dimension(&"donjon")
-	_build_dimension(cell)
+	_install_floor(cell, 0)
+
+
+## Construit un étage et y dépose le joueur. Partagé par l'entrée, la descente
+## et la remontée — un seul endroit décide de la position et de l'orientation
+## d'arrivée, sinon les trois divergeraient.
+func _install_floor(cell: Vector2i, depth: int) -> void:
+	_ensure_floor_data(cell, depth)
+	_build_dimension(cell, depth)
+	_current_depth = depth
 	_in_dungeon = true
 	_cooldown = RETRIGGER_COOLDOWN
-	_fog_root.visible = false
 	_set_dungeon_ambience(true)
 	var center := _entrance_center()
+	var orifice := _ascent_orifice_position()
 	# Pieds sur le sommet du sol de la salle, + hauteur des yeux (convention
-	# fly_camera.gd : feet_y = sommet du bloc).
-	_player.teleport_to(Vector3(center.x, center.y + 2.9, center.z))
+	# fly_camera.gd : feet_y = sommet du bloc). Le joueur arrive DOS à l'orifice
+	# de remontée : il doit chercher la descente (demande explicite).
+	_player.teleport_to(Vector3(center.x, center.y + 2.9, center.z),
+		_arrival_yaw(orifice, center))
+	print("[DONJON] cellule %s — étage %d/%d%s." % [
+		cell, depth + 1, _floor_count(cell),
+		" (fond : boss présent)" if depth == _floor_count(cell) - 1 else ""])
 
 
-# --- Sortie ---
+# --- Franchissement des orifices (descente / remontée / sortie) ---
 
-## Zone de retour au centre du marqueur de sortie (bloc d'or au sol).
-func _check_exit(pos: Vector3) -> void:
-	# Distance HORIZONTALE seulement (pos.y est la caméra à hauteur des yeux,
-	# ~2.9 blocs au-dessus du sol où repose le marqueur — une distance 3D
-	# aurait donc toujours dépassé le seuil, peu importe la position X/Z :
-	# bug réel trouvé en testant ce mécanisme, corrigé).
-	var exit_center := _exit_marker_position(_current_dungeon_cell)
-	var dx := pos.x - exit_center.x
-	var dz := pos.z - exit_center.z
-	if sqrt(dx * dx + dz * dz) <= 2.0:
+## Le joueur est-il sur un orifice ? Distance HORIZONTALE seulement (pos.y est la
+## caméra à hauteur des yeux, ~2,9 blocs au-dessus du sol où repose l'orifice —
+## une distance 3D aurait donc toujours dépassé le seuil, peu importe la position
+## X/Z : bug réel trouvé en testant ce mécanisme, corrigé).
+func _on_orifice(pos: Vector3, orifice: Vector3) -> bool:
+	var dx := pos.x - orifice.x
+	var dz := pos.z - orifice.z
+	return sqrt(dx * dx + dz * dz) <= ORIFICE_RADIUS
+
+
+func _check_transitions(pos: Vector3) -> void:
+	if _on_orifice(pos, _ascent_orifice_position()):
+		_ascend()
+		return
+	var key := _floor_key(_current_dungeon_cell, _current_depth)
+	if _current_depth < _floor_count(_current_dungeon_cell) - 1:
+		if _on_orifice(pos, _descent_orifice_position(key)):
+			_descend()
+
+
+## Descend d'un étage. Les créatures de l'étage quitté sont retirées : chaque
+## étage a sa propre population, et un monstre laissé derrière continuerait de
+## vivre dans une dimension que plus personne n'occupe.
+func _descend() -> void:
+	CreatureManager.despawn_dimension(&"donjon")
+	_install_floor(_current_dungeon_cell, _current_depth + 1)
+
+
+## Remonte d'un étage — ou sort du donjon depuis le premier.
+func _ascend() -> void:
+	if _current_depth <= 0:
 		_exit_dungeon()
+		return
+	CreatureManager.despawn_dimension(&"donjon")
+	_install_floor(_current_dungeon_cell, _current_depth - 1)
 
 
 func _exit_dungeon() -> void:
 	_in_dungeon = false
+	_current_depth = 0  # La prochaine entrée repart du premier étage.
 	_cooldown = RETRIGGER_COOLDOWN
 	_must_leave = true  # Ne pas relancer un compte à rebours tant qu'on n'a pas quitté le périmètre.
 	CreatureManager.despawn_dimension(&"donjon")
 	_free_dimension()
 	WorldManager.set_active_dimension(&"overworld")
-	_fog_root.visible = true
 	_set_dungeon_ambience(false)
 	_player.teleport_to(_return_position)
 
@@ -302,9 +367,12 @@ func dimension_apply_block(pos: Vector3i, material_id: int) -> bool:
 	if old_id == material_id:
 		return false
 	data.set_block_by_index(index, material_id)
-	# Diff persistant (E.10/3.5) — réappliqué à chaque reconstruction.
-	var cell_edits: Dictionary = _dungeon_edits.get_or_add(_current_dungeon_cell, {})
-	(cell_edits.get_or_add(ck, {}) as Dictionary)[index] = material_id
+	# Diff persistant (E.10/3.5) — réappliqué à chaque reconstruction. Indexé par
+	# ÉTAGE et non par cellule (2026-07-28) : sans la profondeur dans la clé, un
+	# bloc miné au 3e étage réapparaîtrait au 1er, aux mêmes coordonnées locales.
+	var floor_edits: Dictionary = _dungeon_edits.get_or_add(
+		_floor_key(_current_dungeon_cell, _current_depth), {})
+	(floor_edits.get_or_add(ck, {}) as Dictionary)[index] = material_id
 	# Remesh synchrone du chunk + des voisins de face touchés (les meshes de
 	# donjon sont petits/creux — quelques ms, acceptable sans file asynchrone).
 	_remesh_dungeon_chunk(ck)
@@ -330,34 +398,62 @@ func dimension_apply_block(pos: Vector3i, material_id: int) -> bool:
 	return true
 
 
-func _ensure_floor_data(cell: Vector2i) -> void:
-	if _floors.has(cell):
+## Clé d'un étage : la cellule + sa profondeur. Tout ce qui est propre à UN
+## étage (géométrie, diff des blocs modifiés) est indexé par cette clé et non
+## plus par la seule cellule (2026-07-28, multi-étage).
+static func _floor_key(cell: Vector2i, depth: int) -> Vector3i:
+	return Vector3i(cell.x, cell.y, depth)
+
+
+## Nombre d'étages du donjon de `cell`, d'après le danger de la cellule (E.29).
+func _floor_count(cell: Vector2i) -> int:
+	if WorldManager.generator == null:
+		return FLOORS_BY_DANGER[0]
+	var centre := POIGenerator.cell_center_world(cell)
+	var danger := WorldManager.generator.danger_level(centre.x, centre.y)
+	return FLOORS_BY_DANGER[clampi(danger, 0, FLOORS_BY_DANGER.size() - 1)]
+
+
+func _ensure_floor_data(cell: Vector2i, depth: int = 0) -> void:
+	var key := _floor_key(cell, depth)
+	if _floors.has(key):
 		return
-	# Graine déterministe par cellule (même monde → même donjon, G.1).
-	var seed_value := NoiseGenerator.pcg_hash(cell.x, cell.y, WorldManager.world_seed + 77441)
-	_floors[cell] = DungeonGenerator.generate_floor(seed_value)
+	# Graine déterministe par cellule ET par profondeur (même monde → même
+	# donjon, G.1) : deux étages d'un même donjon ont des plans DIFFÉRENTS, mais
+	# chacun reste identique d'une visite à l'autre.
+	var seed_value := NoiseGenerator.pcg_hash(cell.x, cell.y, WorldManager.world_seed + 77441 + depth * 1013)
+	_floors[key] = DungeonGenerator.generate_floor(seed_value)
 
 
 ## Construit chunks + meshes + boss de la dimension pour `cell` (sous l'écran
 ## de chargement). L'étage vit à l'origine (salle d'entrée en (0,0,0)).
-func _build_dimension(cell: Vector2i) -> void:
+func _build_dimension(cell: Vector2i, depth: int = 0) -> void:
 	_free_dimension()
-	var floor_data: Dictionary = _floors[cell]
-	var pierre: int = GameData.material_runtime_ids.get("pierre", 0)
-	var or_id: int = GameData.material_runtime_ids.get("or", pierre)
+	var key := _floor_key(cell, depth)
+	var floor_data: Dictionary = _floors[key]
+	# Matière du nid : la MÊME palette démoniaque que la termitière visible
+	# depuis l'overworld (2026-07-28, demande explicite). Les salles étaient
+	# jusqu'ici en pierre grise, sans rapport visuel avec la structure qu'on
+	# vient de traverser pour entrer.
+	var palette := _nest_palette_ids()
+	var seed_value := NoiseGenerator.pcg_hash(cell.x, cell.y, WorldManager.world_seed + 77441 + depth * 1013)
 
 	for room: Dictionary in floor_data["rooms"]:
-		_carve_room(room["origin"], room["size"], room["doors"], pierre)
+		_carve_room(room["origin"], room["size"], room["doors"], palette, seed_value)
 	for corridor: Dictionary in floor_data["corridors"]:
-		_carve_corridor(corridor["origin"], corridor["dir"], corridor["length"], pierre)
+		_carve_corridor(corridor["origin"], corridor["dir"], corridor["length"], palette, seed_value)
 
-	# Marqueur de sortie (or) — décalé du point de spawn : s'il coïncidait,
-	# le joueur serait re-téléporté dehors dès l'expiration du cooldown.
-	var exit_marker := _exit_marker_position(cell)
-	_set_dungeon_block(Vector3i(int(exit_marker.x), int(exit_marker.y), int(exit_marker.z)), or_id)
+	# Orifice de REMONTÉE, dans la salle d'entrée : ramène à l'étage précédent,
+	# ou dehors depuis le premier. Décalé du point d'arrivée du joueur, sinon il
+	# repartirait aussitôt (voir ORIFICE_RADIUS).
+	_carve_orifice(_ascent_orifice_position(), ORIFICE_UP_RING)
+	# Orifice de DESCENTE, dans la salle la plus éloignée de l'entrée — c'est ce
+	# que le joueur doit CHERCHER. Absent au dernier étage : c'est le fond.
+	if depth < _floor_count(cell) - 1:
+		_carve_orifice(_descent_orifice_position(key), ORIFICE_DOWN_RING)
 
 	# Diff persistant du joueur (blocs minés/posés lors de visites passées).
-	var cell_edits: Dictionary = _dungeon_edits.get(cell, {})
+	var cell_edits: Dictionary = _dungeon_edits.get(key, {})
 	for ck: Vector3i in cell_edits:
 		var data: ChunkData = _dungeon_chunks.get(ck)
 		if data == null:
@@ -369,13 +465,15 @@ func _build_dimension(cell: Vector2i) -> void:
 	for ck: Vector3i in _dungeon_chunks:
 		_remesh_dungeon_chunk(ck)
 
-	# Boss (E.29 : la salle la plus distante) — un SEUL monstre, faute d'un
-	# vrai profil de peuplement par donjon (F.3/F.7, non fait ici).
-	var boss_room: Dictionary = floor_data["rooms"][floor_data["boss_room_index"]]
-	var boss_center: Vector3i = (boss_room["origin"] as Vector3i) + (boss_room["size"] as Vector3i) / 2
-	var boss := CreatureManager.spawn("sanglier", Vector3(boss_center.x + 0.5, boss_center.y + 1.0, boss_center.z + 0.5))
-	if boss != null:
-		boss.set_meta("dungeon_boss_cell", cell)
+	# Boss : UNIQUEMENT au dernier étage (choix utilisateur 2026-07-28). Les
+	# étages intermédiaires sont une descente sans climax — c'est le fond du nid
+	# qui tient le combat, et lui seul libère la cellule à sa mort.
+	if depth == _floor_count(cell) - 1:
+		var boss_room: Dictionary = floor_data["rooms"][floor_data["boss_room_index"]]
+		var boss_center: Vector3i = (boss_room["origin"] as Vector3i) + (boss_room["size"] as Vector3i) / 2
+		var boss := CreatureManager.spawn("sanglier", Vector3(boss_center.x + 0.5, boss_center.y + 1.0, boss_center.z + 0.5))
+		if boss != null:
+			boss.set_meta("dungeon_boss_cell", cell)
 
 
 func _free_dimension() -> void:
@@ -394,8 +492,33 @@ func _set_dungeon_block(pos: Vector3i, id: int) -> void:
 	data.set_block_by_index((pos.x & 15) | ((pos.z & 15) << 4) | ((pos.y & 15) << 8), id)
 
 
+## Ids runtime de la palette démoniaque (DungeonTower.PALETTE), résolus une
+## seule fois. Le générateur de monde a le sien pour la termitière ; le donjon
+## garde le sien parce qu'il doit fonctionner même sans monde overworld actif
+## (dimension séparée) — jamais un accès à un membre privé du générateur.
+var _palette_cache := PackedInt32Array()
+
+
+func _nest_palette_ids() -> PackedInt32Array:
+	if _palette_cache.is_empty():
+		for id: String in DungeonTower.PALETTE:
+			_palette_cache.append(int(GameData.material_runtime_ids.get(id, 0)))
+	return _palette_cache
+
+
+## Matière du nid en (wx,wy,wz) : marbrures de la palette démoniaque, comme la
+## termitière de l'overworld. `palette` vide (données manquantes) → repli sur la
+## pierre, pour ne jamais produire un donjon en air.
+func _nest_material(pos: Vector3i, palette: PackedInt32Array, seed_value: int) -> int:
+	if palette.is_empty():
+		return GameData.material_runtime_ids.get("pierre", 0)
+	return DungeonTower.interior_material(pos.x, pos.y, pos.z, seed_value, palette)
+
+
 ## Sol/murs/plafond pleins, portes ouvertes (air) sur 3 blocs de hauteur.
-func _carve_room(origin: Vector3i, size: Vector3i, doors: Array, pierre: int) -> void:
+## La matière est celle du NID (palette démoniaque marbrée), plus la pierre grise
+## d'origine — les salles font désormais visuellement partie de la termitière.
+func _carve_room(origin: Vector3i, size: Vector3i, doors: Array, palette: PackedInt32Array, seed_value: int) -> void:
 	var door_cols := {}  # "x_z" -> true, colonnes où percer la porte.
 	for door: Dictionary in doors:
 		door_cols["%d_%d" % [int(door["position"][0]), int(door["position"][2])]] = true
@@ -404,17 +527,18 @@ func _carve_room(origin: Vector3i, size: Vector3i, doors: Array, pierre: int) ->
 			var is_wall := x == 0 or x == size.x - 1 or z == 0 or z == size.z - 1
 			var is_door_col: bool = is_wall and door_cols.has("%d_%d" % [x, z])
 			for y in range(0, size.y + 1):
-				var id := 0
+				var pos := origin + Vector3i(x, y, z)
+				var solid := false
 				if y == 0 or y == size.y:
-					id = pierre  # Sol/plafond.
+					solid = true  # Sol/plafond.
 				elif is_wall and not (is_door_col and y <= 3):
-					id = pierre  # Mur (sauf porte, ouverte jusqu'à 3 blocs de haut).
-				_set_dungeon_block(origin + Vector3i(x, y, z), id)
+					solid = true  # Mur (sauf porte, ouverte jusqu'à 3 blocs de haut).
+				_set_dungeon_block(pos, _nest_material(pos, palette, seed_value) if solid else 0)
 
 
 ## Corridor 3 blocs de large × 5 de haut, creusé en ligne droite depuis
 ## `origin` sur `length` blocs dans la direction `dir`.
-func _carve_corridor(origin: Vector3i, dir: String, length: int, pierre: int) -> void:
+func _carve_corridor(origin: Vector3i, dir: String, length: int, palette: PackedInt32Array, seed_value: int) -> void:
 	var d: Vector3i = DungeonGenerator.DIRS[dir]
 	var perp := Vector3i(1, 0, 0) if d.x == 0 else Vector3i(0, 0, 1)
 	for i in length:
@@ -422,12 +546,13 @@ func _carve_corridor(origin: Vector3i, dir: String, length: int, pierre: int) ->
 		for p: int in [-1, 0, 1]:
 			var col := center + perp * p
 			for y in range(0, 5):
-				var id := 0
+				var pos := col + Vector3i(0, y, 0)
+				var solid := false
 				if y == 0 or y == 4:
-					id = pierre  # Sol/plafond.
+					solid = true  # Sol/plafond.
 				elif p != 0:
-					id = pierre  # Mur latéral.
-				_set_dungeon_block(col + Vector3i(0, y, 0), id)
+					solid = true  # Mur latéral.
+				_set_dungeon_block(pos, _nest_material(pos, palette, seed_value) if solid else 0)
 
 
 ## (Re)meshe un chunk de la dimension : générateur NULL (monde vide), la
@@ -493,37 +618,6 @@ func _dimension_material() -> ShaderMaterial:
 	return _dungeon_material
 
 
-# --- Brouillard overworld (cellules donjon) ---
-
-func _update_fog(center_cell: Vector2i) -> void:
-	var wanted := {}
-	for dz in range(-FOG_SCAN_RADIUS, FOG_SCAN_RADIUS + 1):
-		for dx in range(-FOG_SCAN_RADIUS, FOG_SCAN_RADIUS + 1):
-			var c := center_cell + Vector2i(dx, dz)
-			if _is_donjon_cell(c):
-				wanted[c] = true
-	for c: Vector2i in _fog_boxes.keys():
-		if not wanted.has(c):
-			_fog_boxes[c].queue_free()
-			_fog_boxes.erase(c)
-	for c: Vector2i in wanted:
-		if _fog_boxes.has(c):
-			continue
-		var cs := ClaimManager.CELL_SIZE
-		var cx := c.x * cs + cs / 2
-		var cz := c.y * cs + cs / 2
-		var h := WorldManager.generator.height_at(cx, cz)
-		var box := BoxMesh.new()
-		box.size = Vector3(cs, FOG_HEIGHT, cs)
-		var instance := MeshInstance3D.new()
-		instance.mesh = box
-		instance.material_override = _fog_material
-		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		instance.position = Vector3(float(cx), h + FOG_HEIGHT * 0.35, float(cz))
-		_fog_root.add_child(instance)
-		_fog_boxes[c] = instance
-
-
 # --- Cellules donjon / nettoyage ---
 
 func _donjon_cells_near(cell: Vector2i) -> Array[Vector2i]:
@@ -570,10 +664,63 @@ func _entrance_center() -> Vector3:
 	return Vector3(float(entree_size[0]) * 0.5, 0.0, float(entree_size[2]) * 0.5)
 
 
-## Position du marqueur de sortie — coin de la salle d'entrée, à distance
-## sûre (> seuil de sortie 2.0) du point d'arrivée central.
-func _exit_marker_position(_cell: Vector2i) -> Vector3:
+# --- Orifices d'étage (2026-07-28) ---
+#
+# Ce ne sont PAS des escaliers : ce sont des ouvertures dans la chair du nid, à
+# la façon d'un roguelite (demande explicite). On les FRANCHIT en marchant
+# dessus — même mécanique de proximité que l'ancien marqueur de sortie en or,
+# qu'ils remplacent tous les deux.
+
+## Ouverture de REMONTÉE : toujours au même coin de la salle d'entrée, qui est
+## identique à chaque étage. Le joueur y arrive DOS TOURNÉ (voir _arrival_yaw).
+func _ascent_orifice_position() -> Vector3:
 	return Vector3(1.5, 0.0, 1.5)
+
+
+## Ouverture de DESCENTE : au centre de la salle la plus éloignée de l'entrée
+## (`boss_room_index` = résultat du BFS de profondeur). C'est elle que le joueur
+## doit trouver pour s'enfoncer.
+func _descent_orifice_position(key: Vector3i) -> Vector3:
+	var floor_data: Dictionary = _floors.get(key, {})
+	var rooms: Array = floor_data.get("rooms", [])
+	if rooms.is_empty():
+		return Vector3(5.5, 0.0, 5.5)
+	var room: Dictionary = rooms[int(floor_data.get("boss_room_index", 0))]
+	var origin: Vector3i = room["origin"]
+	var size: Vector3i = room["size"]
+	return Vector3(origin.x + size.x * 0.5, float(origin.y), origin.z + size.z * 0.5)
+
+
+## Pose une ouverture : disque de 3×3 dans le SOL, cœur d'une autre matière.
+## Purement visuel — le franchissement est déclenché par la proximité.
+func _carve_orifice(pos: Vector3, ring_material: String) -> void:
+	var ring: int = GameData.material_runtime_ids.get(ring_material, 0)
+	var core: int = GameData.material_runtime_ids.get(ORIFICE_CORE, ring)
+	if ring == 0:
+		return
+	var base := Vector3i(int(floor(pos.x)), int(pos.y), int(floor(pos.z)))
+	for dx: int in [-1, 0, 1]:
+		for dz: int in [-1, 0, 1]:
+			var is_core := dx == 0 and dz == 0
+			_set_dungeon_block(base + Vector3i(dx, 0, dz), core if is_core else ring)
+
+
+## Orientation à l'arrivée sur un étage : le joueur regarde À L'OPPOSÉ de
+## l'orifice de remontée (demande explicite — « il est dos à l'escalier de
+## sortie »). Un Node3D regarde le long de son -Z, d'où le atan2 sur les
+## composantes négatées.
+func _arrival_yaw(from_orifice: Vector3, to_player: Vector3) -> float:
+	var dir := (to_player - from_orifice).normalized()
+	if dir.length_squared() < 0.001:
+		return 0.0
+	return rad_to_deg(atan2(-dir.x, -dir.z))
+
+
+## Position du « marqueur de sortie ». Conservé comme ALIAS de l'orifice de
+## remontée (2026-07-28) : depuis l'étage 0, le franchir fait bien sortir dans
+## l'overworld, et les sondes existantes s'y réfèrent encore sous ce nom.
+func _exit_marker_position(_cell: Vector2i) -> Vector3:
+	return _ascent_orifice_position()
 
 
 func _on_creature_killed(_killer: Variant, victim: Node) -> void:
@@ -594,11 +741,8 @@ func _on_tick(tick_index: int) -> void:
 	for cell in done:
 		_cleanup_pending.erase(cell)
 		_cleaned_cells[cell] = true
-		# La cellule redevient normale : son brouillard disparaît, et le cache
-		# de voisinage est invalidé (recalculé au prochain déplacement).
-		if _fog_boxes.has(cell):
-			_fog_boxes[cell].queue_free()
-			_fog_boxes.erase(cell)
+		# La cellule redevient normale : le cache de voisinage est invalidé
+		# (recalculé au prochain déplacement du joueur).
 		_cached_cell = Vector2i(1 << 30, 0)
 		EventBus.dungeon_cleared.emit(cell)
 
@@ -618,15 +762,18 @@ func save_state() -> Dictionary:
 	for cell: Vector2i in _cleanup_pending:
 		pending.append([cell.x, cell.y, int(_cleanup_pending[cell])])
 	var edits_out := {}
-	for cell: Vector2i in _dungeon_edits:
+	# Clé « x,z,profondeur » depuis 2026-07-28 (multi-étage). L'ancien format
+	# « x,z » reste relu (voir restore_state) : une sauvegarde antérieure garde
+	# donc ses blocs modifiés, rattachés au premier étage.
+	for key: Vector3i in _dungeon_edits:
 		var chunks_out := {}
-		for ck: Vector3i in _dungeon_edits[cell]:
+		for ck: Vector3i in _dungeon_edits[key]:
 			var blocks_out := {}
-			for index: int in _dungeon_edits[cell][ck]:
-				var rid: int = _dungeon_edits[cell][ck][index]
+			for index: int in _dungeon_edits[key][ck]:
+				var rid: int = _dungeon_edits[key][ck][index]
 				blocks_out[str(index)] = GameData.material_by_runtime[rid] if rid < GameData.material_by_runtime.size() else "air"
 			chunks_out["%d,%d,%d" % [ck.x, ck.y, ck.z]] = blocks_out
-		edits_out["%d,%d" % [cell.x, cell.y]] = chunks_out
+		edits_out["%d,%d,%d" % [key.x, key.y, key.z]] = chunks_out
 	return {"cleaned": cleaned, "pending": pending, "edits": edits_out}
 
 
@@ -643,9 +790,17 @@ func restore_state(data: Dictionary) -> void:
 	var edits_in: Dictionary = data.get("edits", {})
 	for cell_key: String in edits_in:
 		var cell_parts := cell_key.split(",")
-		if cell_parts.size() != 2:
+		# « x,z,profondeur » (format courant) ou « x,z » (sauvegardes d'avant le
+		# multi-étage, 2026-07-28) : ces dernières sont rattachées à l'étage 0,
+		# le seul qui existait alors. Une sauvegarde ancienne garde ainsi ses
+		# blocs modifiés au lieu de les perdre silencieusement.
+		var floor_key: Vector3i
+		if cell_parts.size() == 3:
+			floor_key = Vector3i(int(cell_parts[0]), int(cell_parts[1]), int(cell_parts[2]))
+		elif cell_parts.size() == 2:
+			floor_key = Vector3i(int(cell_parts[0]), int(cell_parts[1]), 0)
+		else:
 			continue
-		var cell := Vector2i(int(cell_parts[0]), int(cell_parts[1]))
 		var chunks_in: Dictionary = edits_in[cell_key]
 		var cell_edits := {}
 		for ck_key: String in chunks_in:
@@ -658,7 +813,7 @@ func restore_state(data: Dictionary) -> void:
 			for index_key: String in blocks_in:
 				chunk_edits[int(index_key)] = GameData.material_runtime_ids.get(String(blocks_in[index_key]), 0)
 			cell_edits[ck] = chunk_edits
-		_dungeon_edits[cell] = cell_edits
+		_dungeon_edits[floor_key] = cell_edits
 
 
 # --- UI ---

@@ -1,0 +1,57 @@
+{
+  "id": "bouquetin",
+  "name_key": "creature.bouquetin.name",
+  "skeleton_template": "quadrupede",
+  "parts_pool": {
+    "tete": [
+      1
+    ],
+    "torse": [
+      1
+    ],
+    "patte": [
+      1
+    ]
+  },
+  "race": "bouquetin",
+  "base_stats": {
+    "sante": 20,
+    "force": 6,
+    "volonte": 2,
+    "vitesse": 8,
+    "dexterite": 5,
+    "endurance": 5
+  },
+  "equip_slots": "quadrupede",
+  "inventory_table": null,
+  "ai_profile": "fuit",
+  "jobs_compatible": [],
+  "housing_default": "betail",
+  "recruitable": {
+    "method": "dressage",
+    "threshold": 38
+  },
+  "leadership_role": null,
+  "succession_rule": null,
+  "rare_chance": 0.02,
+  "combat": {
+    "functionality": "morsure",
+    "modules": [
+      "morsure_simple"
+    ],
+    "durete_naturelle": 10.0
+  },
+  "niveau_combat": 4,
+  "world_gen": {
+    "biome_tags": [
+      "montagne",
+      "rocheux"
+    ],
+    "activite": "jour"
+  },
+  "tags": [
+    "bete",
+    "fuit",
+    "quadrupede"
+  ]
+}

@@ -32,6 +32,9 @@ signal chunk_explored(chunk: Vector3i)
 @warning_ignore("unused_signal")
 signal dungeon_cleared(cell: Vector2i)
 
+## Mort du joueur (A.10) : lieu, nombre d'objets tombés, or perdu.
+signal player_died(position: Vector3, dropped_count: int, lost_gold: int)
+
 # --- Signaux techniques (hors gameplay) ---
 
 ## Émis après un rechargement des données (hot-reload F5, D.2) —

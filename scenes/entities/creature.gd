@@ -7,6 +7,13 @@ extends Node3D
 ## par points d'attache, 12.1, arrivent avec la bibliothèque de parties).
 
 const AGGRO_RANGE := 14.0
+## Malus de vision nocturne (E.21) : « le joueur voit moins loin, MAIS les
+## ennemis aussi ». Le rayon d'agression est réduit la nuit — la nuit devient
+## à la fois plus dangereuse (plus de spawns) et plus discrète (on peut
+## passer à côté d'un prédateur sans le réveiller).
+const AGGRO_NIGHT_FACTOR := 0.6
+## Distance à laquelle une bête craintive (profil "fuit") s'écarte.
+const FLEE_RANGE := 10.0
 const WANDER_RADIUS := 4.0
 
 var creature_id: String
@@ -28,6 +35,8 @@ var _home: Vector3
 var _attack_cooldown_ticks := 0
 var _wander_target: Vector3
 var _mesh: MeshInstance3D
+## Bête sauvage ayant reçu un coup : passe hostile pour de bon (voir provoke).
+var _provoked := false
 
 
 ## Configure l'instance depuis les données GameData (D.2 : « se configure
@@ -48,7 +57,23 @@ func setup(id: String, spawn_position: Vector3) -> void:
 	_build_visual(data)
 
 
+## Modèle Blockbench (12.1, amendé 2026-07-26) : une créature porte un `model`
+## glTF/.glb complet et riggé. Tant qu'aucun modèle n'est fourni, on retombe
+## sur la capsule colorée provisoire — le jour où un .glb est posé dans
+## models/creatures/ et référencé en données, il s'affiche sans toucher au code.
 func _build_visual(data: Dictionary) -> void:
+	var model_path := String(data.get("model", ""))
+	if model_path != "" and ResourceLoader.exists(model_path):
+		var scene: PackedScene = load(model_path)
+		if scene != null:
+			var instance := scene.instantiate()
+			add_child(instance)
+			return
+	_build_placeholder_visual(data)
+
+
+## Visuel PROVISOIRE : capsule teintée par race, en attendant les modèles.
+func _build_placeholder_visual(data: Dictionary) -> void:
 	_mesh = MeshInstance3D.new()
 	var capsule := CapsuleMesh.new()
 	capsule.radius = 0.35
@@ -68,8 +93,28 @@ func is_dead() -> bool:
 	return health <= 0.0
 
 
+## Agressive à vue. Les profils F.3 se répartissent ainsi :
+##   "hostile"       : attaque dès qu'elle voit le joueur ;
+##   "bete_sauvage"  : neutre, mais riposte une fois blessée (ours, loups,
+##                     ermite, braconnier — « acculée », « si dérangé ») ;
+##   "fuit"          : ne se bat jamais, s'écarte du joueur (cerf, renne...) ;
+##   "civil"/"garde" : pacifiques ici (la vie de village, 3.4/E.25, n'existe
+##                     pas encore — ils ne spawnent pas naturellement).
 func is_hostile() -> bool:
-	return ai_profile == "hostile"
+	return ai_profile == "hostile" or (ai_profile == "bete_sauvage" and _provoked)
+
+
+## Fuit le joueur au lieu de l'ignorer (profil "fuit", F.3).
+func is_skittish() -> bool:
+	return ai_profile == "fuit"
+
+
+## Une bête sauvage devient hostile DÉFINITIVEMENT dès le premier coup reçu
+## (F.3 : « acculée », « hostile si dérangé ») — appelé par qui inflige les
+## dégâts, la créature ne surveille pas sa propre santé.
+func provoke() -> void:
+	if ai_profile == "bete_sauvage":
+		_provoked = true
 
 
 ## Combat : niveau d'arme, dureté/qualité de l'« arme » (naturelle = fixe).
@@ -107,7 +152,10 @@ func tick_step(player_position: Vector3, player_ref: Node) -> Dictionary:
 	to_player_flat.y = 0.0
 	var dist_flat := to_player_flat.length()
 
-	if is_hostile() and dist3d <= AGGRO_RANGE:
+	var aggro_range := AGGRO_RANGE
+	if DayNightManager.is_night():
+		aggro_range *= AGGRO_NIGHT_FACTOR
+	if is_hostile() and dist3d <= aggro_range:
 		var functionality := combat_functionality()
 		var reach: float = functionality.get("portee", 1.5)
 		if dist3d <= reach + 0.5:
@@ -122,6 +170,14 @@ func tick_step(player_position: Vector3, player_ref: Node) -> Dictionary:
 			var step := to_player_flat.normalized() * (float(stats.get("vitesse", 5)) * 0.02)
 			logical_position += step
 			logical_position.y = _ground_height()
+	elif is_skittish() and dist3d <= FLEE_RANGE:
+		# Fuite : s'écarter du joueur, à plat (même contrainte que la
+		# poursuite — une bête terrestre ne s'envole pas pour fuir).
+		if dist_flat > 0.01:
+			var away := -to_player_flat.normalized() * (float(stats.get("vitesse", 5)) * 0.03)
+			logical_position += away
+			logical_position.y = _ground_height()
+			_wander_target = logical_position
 	else:
 		_wander(player_position)
 	return {}

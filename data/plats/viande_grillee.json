@@ -1,0 +1,25 @@
+{
+  "id": "viande_grillee",
+  "name_key": "plat.viande_grillee.name",
+  "nutrition": {
+    "faim": 30,
+    "cuit": true
+  },
+  "potentiel": {
+    "force": 2,
+    "endurance": 1
+  },
+  "color": "#A85B32",
+  "valeur_base": 13,
+  "densite": 2,
+  "recipe": {
+    "station": "fourneau",
+    "skill": "cuisine",
+    "inputs": [
+      {
+        "tag": "viande",
+        "amount": 2
+      }
+    ]
+  }
+}

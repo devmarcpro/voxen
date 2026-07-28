@@ -1,0 +1,39 @@
+{
+  "id": "basalte_maudit",
+  "name_key": "material.basalte_maudit.name",
+  "category": "construction",
+  "stats": {
+    "durete": 200,
+    "densite": 38,
+    "valeur_base": 0,
+    "conductivite_mana": 70,
+    "flammabilite": 0,
+    "isolation": 55,
+    "conductivite_electrique": 0,
+    "flottabilite": 0,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 0,
+    "friction": 62
+  },
+  "tags": [
+    "structure",
+    "incassable",
+    "demoniaque"
+  ],
+  "color": "#141218",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 960,
+    "amplitude": 0.1,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "none"
+  }
+}

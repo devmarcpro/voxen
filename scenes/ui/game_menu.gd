@@ -34,6 +34,13 @@ var _current_tab := "inventaire"
 var _inv_sort_option: OptionButton
 var _inv_desc := false
 var _inv_list: VBoxContainer
+## Hotbar intégrée à l'inventaire (2026-07-27) : bande d'emplacements
+## assignables, cible du glisser-déposer depuis la liste.
+var _inv_hotbar: HBoxContainer
+var _inv_bank := 0
+var _inv_bank_label: Label
+## Entrée d'inventaire dont le menu contextuel est ouvert.
+var _context_entry := {}
 ## Onglets à contenu simple (labels rafraîchis).
 var _perso_label: Label
 var _royaume_label: Label
@@ -147,6 +154,11 @@ func _build() -> void:
 
 
 func _select_tab(tab: String) -> void:
+	# L'onglet Carte n'a pas de contenu propre : il bascule sur la carte du
+	# monde plein écran, qui EST la carte du jeu (touche M).
+	if tab == "carte":
+		_open_map()
+		return
 	_current_tab = tab
 	for t: String in _panels:
 		(_panels[t] as Control).visible = t == tab
@@ -173,6 +185,10 @@ func _build_royaume() -> Control:
 	return _scroll_with(_royaume_label)
 
 
+## Onglet Carte — DEUX cartes coexistaient (une miniature embarquée ici, et la
+## vraie carte du monde sur M) avec des fonctionnalités divergentes : calques,
+## POI, zoom et déplacement n'existaient que sur la seconde. L'onglet ouvre
+## désormais CETTE carte (2026-07-27) ; la miniature est retirée.
 func _build_carte() -> Control:
 	var box := VBoxContainer.new()
 	box.visible = false
@@ -181,16 +197,10 @@ func _build_carte() -> Control:
 	label.text = tr("ui.menu.carte_aide")
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(label)
-	# Carte EMBARQUÉE (2026-07-26) : joueur au centre, clic = voyage progressif.
-	var center := HBoxContainer.new()
-	center.alignment = BoxContainer.ALIGNMENT_CENTER
-	var map: Control = preload("res://scenes/ui/menu_map.gd").new()
-	map.setup(_player)
-	map.travel_requested.connect(func(wx: int, wz: int) -> void:
-		_player.fast_travel_to_world(wx, wz)
-		_close())
-	center.add_child(map)
-	box.add_child(center)
+	var open_button := Button.new()
+	open_button.text = tr("ui.menu.ouvrir_carte")
+	open_button.pressed.connect(_open_map)
+	box.add_child(open_button)
 	return box
 
 
@@ -275,7 +285,105 @@ func _build_inventaire() -> Control:
 	_inv_list.add_theme_constant_override("separation", 2)
 	scroll.add_child(_inv_list)
 	box.add_child(scroll)
+
+	# Bande de hotbar : cible du glisser-déposer, et rappel permanent de ce
+	# qui est réellement accessible en jeu.
+	var hotbar_header := HBoxContainer.new()
+	var hotbar_title := Label.new()
+	hotbar_title.text = tr("ui.menu.hotbar")
+	hotbar_header.add_child(hotbar_title)
+	var prev := Button.new()
+	prev.text = "<"
+	prev.pressed.connect(func() -> void: _change_bank(-1))
+	hotbar_header.add_child(prev)
+	_inv_bank_label = Label.new()
+	hotbar_header.add_child(_inv_bank_label)
+	var next := Button.new()
+	next.text = ">"
+	next.pressed.connect(func() -> void: _change_bank(1))
+	hotbar_header.add_child(next)
+	var hint := Label.new()
+	hint.text = tr("ui.menu.hotbar_aide")
+	hint.modulate = Color(0.7, 0.72, 0.78)
+	hotbar_header.add_child(hint)
+	box.add_child(hotbar_header)
+
+	_inv_hotbar = HBoxContainer.new()
+	_inv_hotbar.add_theme_constant_override("separation", 6)
+	for slot in _player.HOTBAR_SLOTS:
+		_inv_hotbar.add_child(_hotbar_slot(slot))
+	box.add_child(_inv_hotbar)
 	return box
+
+
+func _change_bank(delta: int) -> void:
+	_inv_bank = wrapi(_inv_bank + delta, 0, _player.hotbar_bank_count())
+	_refresh_inventory()
+
+
+## Un emplacement de hotbar : accepte le dépôt d'une entrée d'inventaire,
+## clic droit pour le vider.
+func _hotbar_slot(slot: int) -> Control:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(SWATCH_SIZE + 12, SWATCH_SIZE + 12)
+	panel.set_meta("slot", slot)
+	var icon := TextureRect.new()
+	icon.name = "Icon"
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	panel.add_child(icon)
+	# Numéro de la touche (1-9) : la bande de l'inventaire doit se lire comme
+	# la hotbar en jeu, sinon on assigne à l'aveugle.
+	var key_label := Label.new()
+	key_label.text = str(slot + 1)
+	key_label.add_theme_font_size_override("font_size", 11)
+	key_label.modulate = Color(1, 1, 1, 0.55)
+	key_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	key_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	key_label.offset_left = 4
+	key_label.offset_top = 1
+	panel.add_child(key_label)
+	# Le glisser-déposer de Godot passe par ces trois rappels sur la CIBLE.
+	panel.set_drag_forwarding(Callable(), _can_drop_on_slot.bind(panel), _drop_on_slot.bind(panel))
+	panel.gui_input.connect(_on_slot_input.bind(slot))
+	return panel
+
+
+func _can_drop_on_slot(_pos: Vector2, data: Variant, _panel: Control) -> bool:
+	return data is Dictionary and (data as Dictionary).has("entry")
+
+
+func _drop_on_slot(_pos: Vector2, data: Variant, panel: Control) -> void:
+	var slot := int(panel.get_meta("slot", 0))
+	_player.bind_hotbar(_inv_bank * _player.HOTBAR_SLOTS + slot, (data as Dictionary)["entry"])
+	_refresh_inventory()
+
+
+## Clic DROIT sur un emplacement : le libérer (l'objet reste en inventaire).
+func _on_slot_input(event: InputEvent, slot: int) -> void:
+	var button := event as InputEventMouseButton
+	if button != null and button.pressed and button.button_index == MOUSE_BUTTON_RIGHT:
+		_player.unbind_hotbar(_inv_bank * _player.HOTBAR_SLOTS + slot)
+		_refresh_inventory()
+
+
+## Rafraîchit la bande de hotbar depuis les liaisons du joueur.
+func _refresh_hotbar_strip() -> void:
+	if _inv_hotbar == null:
+		return
+	_inv_bank = mini(_inv_bank, _player.hotbar_bank_count() - 1)
+	_inv_bank_label.text = "%d / %d" % [_inv_bank + 1, _player.hotbar_bank_count()]
+	var entries: Array[Dictionary] = _player.hotbar_entries(_inv_bank)
+	for slot in _inv_hotbar.get_child_count():
+		var panel := _inv_hotbar.get_child(slot) as PanelContainer
+		var icon := panel.get_node("Icon") as TextureRect
+		var entry: Dictionary = entries[slot] if slot < entries.size() else {}
+		if entry.is_empty():
+			icon.texture = null
+			panel.tooltip_text = tr("ui.menu.hotbar_vide")
+			continue
+		icon.texture = _entry_icon(entry, int(SWATCH_SIZE))
+		panel.tooltip_text = _entry_name(entry)
 
 
 # --- Rafraîchissement ---
@@ -299,6 +407,25 @@ func _refresh_personnage() -> void:
 	lines.append(tr("ui.hud.sante").format({"pv": str(int(_player.health)), "pv_max": str(int(_player.health_max))}))
 	lines.append(tr("ui.hud.mana").format({"mana": str(int(_player.mana.current)), "mana_max": str(int(_player.mana.max_mana()))}))
 	lines.append(tr("ui.hud.or").format({"or": str(_player.gold)}))
+	# Équipement porté (6.2) : les 13 emplacements, avec les dés de réduction
+	# totaux (A.4.2) — un emplacement vide reste affiché, c'est la liste des
+	# possibilités autant que l'état courant.
+	lines.append("")
+	lines.append(tr("ui.equipement.titre"))
+	var equipment: Equipment = _player.equipment
+	for slot in Equipment.SLOTS:
+		var piece: Dictionary = equipment.equipped(slot)
+		var label := tr("ui.equipement.vide")
+		if not piece.is_empty():
+			label = "%s (%s)" % [tr(String(piece.get("name_key", ""))),
+					tr(ItemFactory.quality_tier_key(float(piece.get("quality", 1.0))))]
+			var dice := Equipment.piece_dice(piece, slot)
+			if dice != "":
+				label += " %s" % dice
+		lines.append("%s : %s" % [tr("ui.slot." + slot), label])
+	var total_dice: String = equipment.total_armor_dice()
+	lines.append(tr("ui.equipement.protection").format({
+		"des": total_dice if total_dice != "" else "—"}))
 	# Niveaux dérivés (6.0 : moyenne des 5 meilleures par catégorie).
 	lines.append("")
 	lines.append(tr("ui.menu.niveau_combat").format({"niveau": str(_derived_level("combat"))}))
@@ -371,6 +498,7 @@ func _refresh_royaume() -> void:
 
 
 func _refresh_inventory() -> void:
+	_refresh_hotbar_strip()
 	if _inv_list == null:
 		return
 	for child in _inv_list.get_children():
@@ -398,8 +526,18 @@ func _refresh_inventory() -> void:
 ## Ligne d'inventaire : icône de bloc en CUBE (texturée si prête, sinon couleur)
 ## à gauche + nom/infos à droite (2026-07-26).
 func _inventory_row(entry: Dictionary) -> Control:
+	# Bouton plutôt que conteneur nu : la ligne est cliquable (menu d'actions)
+	# ET source de glisser-déposer vers la hotbar.
+	var button := Button.new()
+	button.flat = true
+	button.custom_minimum_size = Vector2(0, SWATCH_SIZE + 8)
+	button.pressed.connect(_open_entry_menu.bind(entry, button))
+	button.set_drag_forwarding(_drag_entry.bind(entry, button), Callable(), Callable())
 	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	row.add_theme_constant_override("separation", 10)
+	button.add_child(row)
 	var swatch := TextureRect.new()
 	var rid: int = entry.get("rid", -1)
 	var tex: Texture2D = null
@@ -427,7 +565,159 @@ func _inventory_row(entry: Dictionary) -> Control:
 	info_label.modulate = Color(0.72, 0.75, 0.8)
 	texts.add_child(info_label)
 	row.add_child(texts)
-	return row
+	# Emplacement de hotbar occupé : le rappeler sur la ligne, sinon rien
+	# n'indique qu'un objet est déjà accessible en jeu.
+	var bound: int = _player.hotbar_index_of(_entry_to_player(entry))
+	if bound >= 0:
+		var badge := Label.new()
+		badge.text = tr("ui.menu.hotbar_badge").format({
+			"banque": str(bound / _player.HOTBAR_SLOTS + 1),
+			"slot": str(bound % _player.HOTBAR_SLOTS + 1)})
+		badge.modulate = Color(0.6, 0.85, 1.0)
+		badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(badge)
+	return button
+
+
+## Convertit une entrée d'AFFICHAGE (liste triable) en entrée telle que le
+## joueur la manipule (all_entries) — les deux structures diffèrent, et les
+## liaisons de hotbar raisonnent sur la seconde.
+func _entry_to_player(entry: Dictionary) -> Dictionary:
+	if entry.get("kind", "") == "object":
+		return {"kind": "object", "object": entry.get("obj", {})}
+	return {"kind": "material", "id": String(entry.get("id", ""))}
+
+
+## Données emportées par le glisser-déposer d'une ligne d'inventaire.
+func _drag_entry(_pos: Vector2, entry: Dictionary, source: Control) -> Variant:
+	var preview := TextureRect.new()
+	preview.texture = _entry_icon(_entry_to_player(entry), int(SWATCH_SIZE))
+	preview.custom_minimum_size = Vector2(SWATCH_SIZE, SWATCH_SIZE)
+	# set_drag_preview appartient à Control : le menu est un CanvasLayer, c'est
+	# le bouton SOURCE du glisser qui doit porter l'aperçu.
+	source.set_drag_preview(preview)
+	return {"entry": _entry_to_player(entry)}
+
+
+## Icône d'une entrée (bloc texturé, outil teinté, ou pastille de ressource).
+func _entry_icon(entry: Dictionary, size: int) -> Texture2D:
+	if entry.get("kind", "") == "object":
+		var obj: Dictionary = entry.get("object", {})
+		var item: Dictionary = GameData.items.get(obj.get("item_id", ""), {})
+		var tex := ToolSprite.item_icon(item, obj.get("materials", {}), size)
+		if tex != null:
+			return tex
+		return BlockIcon.item_texture(_object_color(obj), size)
+	var id := String(entry.get("id", ""))
+	var rid: int = GameData.material_runtime_ids.get(id, -1)
+	if rid >= 0:
+		var block_tex := BlockPreview.icon(rid)
+		if block_tex != null:
+			return block_tex
+	var mat: Dictionary = GameData.stackable(id)
+	return BlockIcon.cube_texture(Color.html(String(mat.get("color", "#888888"))), size)
+
+
+func _entry_name(entry: Dictionary) -> String:
+	if entry.get("kind", "") == "object":
+		return tr(String((entry.get("object", {}) as Dictionary).get("name_key", "?")))
+	return tr(String(GameData.stackable(String(entry.get("id", ""))).get("name_key", "?")))
+
+
+## Menu d'ACTIONS d'une entrée (demande explicite 2026-07-27) : déposer,
+## équiper, assigner à un emplacement de hotbar, détails. Les entrées non
+## applicables sont désactivées plutôt que masquées — on voit ce qui existe.
+func _open_entry_menu(entry: Dictionary, anchor: Control) -> void:
+	_context_entry = entry
+	var player_entry := _entry_to_player(entry)
+	var menu := PopupMenu.new()
+	add_child(menu)
+
+	menu.add_item(tr("ui.menu.action.infos"), 0)
+
+	var obj: Dictionary = entry.get("obj", {})
+	var item: Dictionary = GameData.items.get(obj.get("item_id", ""), {})
+	var equipable: bool = not obj.is_empty() and String(item.get("equip_slot", "")) != ""
+	menu.add_item(tr("ui.menu.action.equiper"), 1)
+	menu.set_item_disabled(menu.get_item_index(1), not equipable)
+
+	# Sous-menu hotbar : banque -> emplacement.
+	var hotbar_menu := PopupMenu.new()
+	hotbar_menu.name = "HotbarMenu"
+	for bank in _player.hotbar_bank_count():
+		var bank_menu := PopupMenu.new()
+		bank_menu.name = "Bank%d" % bank
+		for slot in _player.HOTBAR_SLOTS:
+			bank_menu.add_item(tr("ui.menu.action.slot").format({"slot": str(slot + 1)}),
+					bank * _player.HOTBAR_SLOTS + slot)
+		bank_menu.id_pressed.connect(func(index: int) -> void:
+			_player.bind_hotbar(index, player_entry)
+			menu.hide()
+			_refresh_inventory())
+		hotbar_menu.add_child(bank_menu)
+		hotbar_menu.add_submenu_item(tr("ui.menu.action.banque").format({"banque": str(bank + 1)}), bank_menu.name)
+	menu.add_child(hotbar_menu)
+	menu.add_submenu_item(tr("ui.menu.action.hotbar"), hotbar_menu.name)
+
+	var bound: int = _player.hotbar_index_of(player_entry)
+	menu.add_item(tr("ui.menu.action.retirer_hotbar"), 2)
+	menu.set_item_disabled(menu.get_item_index(2), bound < 0)
+
+	menu.add_separator()
+	menu.add_item(tr("ui.menu.action.deposer"), 3)
+
+	menu.id_pressed.connect(func(id: int) -> void:
+		match id:
+			0: _show_entry_details(entry)
+			1: _equip_entry(player_entry)
+			2: _player.unbind_hotbar(bound)
+			3: _drop_entry(player_entry)
+		_refresh_inventory())
+	menu.popup_hide.connect(menu.queue_free)
+	menu.position = Vector2i(anchor.get_screen_position()) + Vector2i(int(SWATCH_SIZE), int(anchor.size.y))
+	menu.popup()
+
+
+func _equip_entry(player_entry: Dictionary) -> void:
+	if player_entry.get("kind", "") != "object":
+		return
+	_player.equip_instance(player_entry.get("object", {}))
+
+
+## Dépose au sol (A.10 : même mécanisme que les caches de mort).
+func _drop_entry(player_entry: Dictionary) -> void:
+	_player.drop_entry(player_entry)
+
+
+func _show_entry_details(entry: Dictionary) -> void:
+	var dialog := AcceptDialog.new()
+	dialog.title = String(entry.get("name", "?"))
+	dialog.dialog_text = "%s\n%s" % [entry.get("info", ""), _entry_detail_text(entry)]
+	add_child(dialog)
+	dialog.confirmed.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
+	dialog.popup_centered()
+
+
+## Détail long : nutrition, bonus de potentiel, emplacement d'équipement.
+func _entry_detail_text(entry: Dictionary) -> String:
+	var lines: Array[String] = []
+	var obj: Dictionary = entry.get("obj", {})
+	var source: Dictionary = obj if not obj.is_empty() else GameData.stackable(String(entry.get("id", "")))
+	var nutrition: Dictionary = source.get("nutrition", {})
+	if nutrition.has("faim"):
+		lines.append(tr("ui.menu.detail.nutrition").format({
+			"faim": str(int(nutrition["faim"])),
+			"cru": str(int(float(nutrition["faim"]) * 0.5))}))
+	var potentiel: Dictionary = source.get("potentiel", {})
+	for stat_id: String in potentiel:
+		lines.append(tr("ui.menu.detail.potentiel").format({
+			"stat": tr("stat." + stat_id + ".name"), "valeur": str(potentiel[stat_id])}))
+	var item: Dictionary = GameData.items.get(obj.get("item_id", ""), {})
+	if String(item.get("equip_slot", "")) != "":
+		lines.append(tr("ui.menu.detail.emplacement").format({
+			"slot": tr("ui.slot." + String(item["equip_slot"]))}))
+	return "\n".join(lines)
 
 
 ## Construit les entrées unifiées (objets + piles de matériaux) avec valeurs
@@ -455,7 +745,7 @@ func _build_inventory_entries() -> Array[Dictionary]:
 			"sort": {
 				"nom": tr(obj.get("name_key", "?")),
 				"categorie": tr("ui.type." + type_key),
-				"quantite": 1,
+				"quantite": int(obj.get("count", 1)),
 				"durete": float(obj.get("base_hardness", 0.0)),
 				"densite": 0.0,
 				"valeur": 0.0,
@@ -464,7 +754,10 @@ func _build_inventory_entries() -> Array[Dictionary]:
 		})
 
 	for id: String in inv.material_ids():
-		var mat: Dictionary = GameData.materials.get(id, {})
+		# stackable() et non materials : sans ça les RESSOURCES (viandes,
+		# peaux) disparaissaient purement et simplement de l'écran
+		# d'inventaire — détenues, mais invisibles.
+		var mat: Dictionary = GameData.stackable(id)
 		if mat.is_empty():
 			continue
 		var stats: Dictionary = mat["stats"]
@@ -476,6 +769,11 @@ func _build_inventory_entries() -> Array[Dictionary]:
 		var densite := float(stats["densite"])
 		entries.append({
 			"kind": "material",
+			# `id` INDISPENSABLE : sans lui, _entry_to_player() renvoyait
+			# {"kind":"material","id":""} pour TOUTES les lignes, donc la même
+			# liaison — d'où le badge de hotbar affiché sur chaque matériau
+			# (bug visuel signalé le 2026-07-27).
+			"id": id,
 			"rid": GameData.material_runtime_ids.get(id, -1),
 			"name": "%s × %s" % [tr(mat["name_key"]), Inventory.format_volume(count)],
 			"swatch": Color.html(mat["color"]),
@@ -979,6 +1277,10 @@ func _do_craft(item_id: String, recipe: Dictionary, craft_skill: String) -> void
 ## Couleur de vignette d'un objet : celle de son matériau principal (première
 ## entrée de `materials`), gris si indéterminé.
 func _object_color(obj: Dictionary) -> Color:
+	# Ressource (viande, peau) : couleur portée par l'instance elle-même,
+	# dérivée de l'espèce source — elle n'a pas de matériaux de craft.
+	if obj.has("color"):
+		return Color.html(String(obj["color"]))
 	var materials: Dictionary = obj.get("materials", {})
 	for category in materials:
 		var mat: Dictionary = GameData.materials.get(materials[category], {})

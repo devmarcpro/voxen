@@ -1,0 +1,39 @@
+{
+  "id": "lit",
+  "name_key": "material.lit.name",
+  "category": "construction",
+  "stats": {
+    "durete": 4,
+    "densite": 6,
+    "valeur_base": 12,
+    "conductivite_mana": 2,
+    "flammabilite": 55,
+    "isolation": 40,
+    "conductivite_electrique": 2,
+    "flottabilite": 30,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 45,
+    "friction": 35
+  },
+  "tags": [
+    "meuble",
+    "lit"
+  ],
+  "color": "#8C3B4A",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 940,
+    "amplitude": 0.05,
+    "scale": 2
+  },
+  "harvest": {
+    "tool_category": "mains_nues",
+    "skill": "menuiserie"
+  },
+  "world_gen": {
+    "mode": "aucun",
+    "biome_tags": []
+  }
+}

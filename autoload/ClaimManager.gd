@@ -10,6 +10,14 @@ const ROLES: Array[String] = ["base", "habitation", "champs", "ressources_nature
 ## Vector2i (cellule) -> String (rôle, un des ROLES).
 var claims := {}
 
+## Dernière cellule revendiquée — point de résurrection (A.10 : « respawn au
+## dernier lit/claim activé »). Les LITS n'existent pas encore (F.6, meubles
+## non implémentés) : seul le claim sert de point de retour pour l'instant.
+## Vector2i(0, 0) avec `has_respawn` false = aucun point, on retombe sur le
+## spawn du monde.
+var respawn_cell := Vector2i.ZERO
+var has_respawn := false
+
 
 static func cell_of_block(wx: int, wz: int) -> Vector2i:
 	return Vector2i(floori(float(wx) / CELL_SIZE), floori(float(wz) / CELL_SIZE))
@@ -34,6 +42,8 @@ func claim(cell: Vector2i) -> bool:
 		EventBus.ui_notification.emit("ui.toast.cellule_donjon")
 		return false
 	claims[cell] = "base"
+	respawn_cell = cell
+	has_respawn = true
 	EventBus.cell_role_changed.emit(cell, "base")
 	return true
 
@@ -42,6 +52,13 @@ func unclaim(cell: Vector2i) -> bool:
 	if not claims.has(cell):
 		return false
 	claims.erase(cell)
+	if has_respawn and respawn_cell == cell:
+		# Le point de retour disparaît avec la case : on retombe sur la case
+		# revendiquée restante la plus récente, sinon sur le spawn du monde.
+		has_respawn = false
+		for remaining: Vector2i in claims:
+			respawn_cell = remaining
+			has_respawn = true
 	EventBus.cell_role_changed.emit(cell, "")
 	return true
 
@@ -61,15 +78,29 @@ func cycle_role(cell: Vector2i) -> String:
 
 ## Clés JSON = "x,z" (un Vector2i ne survit pas à JSON.stringify).
 func save_state() -> Dictionary:
-	var out := {}
+	var cells := {}
 	for cell: Vector2i in claims:
-		out["%d,%d" % [cell.x, cell.y]] = claims[cell]
-	return out
+		cells["%d,%d" % [cell.x, cell.y]] = claims[cell]
+	return {
+		"cells": cells,
+		"respawn": [respawn_cell.x, respawn_cell.y] if has_respawn else [],
+	}
 
 
 func restore_state(data: Dictionary) -> void:
 	claims.clear()
-	for key: String in data:
+	has_respawn = false
+	respawn_cell = Vector2i.ZERO
+	# Format historique (avant 2026-07-26) : le dictionnaire ÉTAIT la table des
+	# cases. Les sauvegardes existantes doivent continuer à se charger.
+	var cells: Dictionary = data.get("cells", data)
+	for key: String in cells:
+		if key == "respawn":
+			continue
 		var parts := key.split(",")
 		if parts.size() == 2:
-			claims[Vector2i(int(parts[0]), int(parts[1]))] = String(data[key])
+			claims[Vector2i(int(parts[0]), int(parts[1]))] = String(cells[key])
+	var respawn: Variant = data.get("respawn", [])
+	if respawn is Array and (respawn as Array).size() == 2:
+		respawn_cell = Vector2i(int(respawn[0]), int(respawn[1]))
+		has_respawn = true

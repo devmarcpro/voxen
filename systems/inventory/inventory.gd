@@ -39,7 +39,42 @@ func remove_material(material_id: String, amount: int) -> bool:
 
 
 func add_object(object_instance: Dictionary) -> void:
+	# Regroupement des ressources IDENTIQUES (même espèce, même type) : sans
+	# lui, chaque chasse ajoute une ligne et l'inventaire devient illisible.
+	# Les objets craftés ne sont jamais regroupés — deux épées de même recette
+	# diffèrent par leur qualité et doivent rester distinctes.
+	var resource_id := String(object_instance.get("resource_id", ""))
+	if resource_id != "":
+		for existing in objects:
+			if String(existing.get("resource_id", "")) == resource_id:
+				existing["count"] = int(existing.get("count", 1)) + int(object_instance.get("count", 1))
+				return
 	objects.append(object_instance)
+
+
+## Retire `count` unités d'une instance (l'entrée disparaît à zéro).
+## Retourne false si l'instance est absente ou la quantité insuffisante.
+func remove_object_units(instance: Dictionary, count: int = 1) -> bool:
+	var index := objects.find(instance)
+	if index < 0:
+		return false
+	var held := int(instance.get("count", 1))
+	if held < count:
+		return false
+	if held == count:
+		objects.remove_at(index)
+	else:
+		instance["count"] = held - count
+	return true
+
+
+## Instance portant l'uid demandé, ou {} — les liaisons de hotbar désignent
+## les objets par uid (stable au tri, à la sauvegarde et au rechargement).
+func object_by_uid(uid: int) -> Dictionary:
+	for obj in objects:
+		if int(obj.get("uid", -1)) == uid:
+			return obj
+	return {}
 
 
 ## Volume total détenu d'un matériau, en blocs (entiers + fraction).
@@ -130,13 +165,14 @@ func restore_state(data: Dictionary) -> void:
 func total_weight() -> float:
 	var weight := 0.0
 	for id in material_stacks:
-		var mat: Variant = GameData.materials.get(id)
+		var mat: Variant = GameData.stackable(id)
 		if mat != null:
 			weight += float(mat["stats"]["densite"]) * int(material_stacks[id])
 	for id in material_fractions:
-		var mat: Variant = GameData.materials.get(id)
+		var mat: Variant = GameData.stackable(id)
 		if mat != null:
 			weight += float(mat["stats"]["densite"]) * float(material_fractions[id])
 	for obj in objects:
-		weight += float(obj.get("weight", 0.0))
+		# `count` : les ressources regroupent plusieurs unités sur une instance.
+		weight += float(obj.get("weight", 0.0)) * float(obj.get("count", 1))
 	return weight

@@ -44,7 +44,7 @@ ui.hud.grille,Grid: {res} px
 ui.toast.budget_subdivision,Detail limit reached in this area
 ui.hud.controles1,WASD: walk · Space: jump · F: fly/walk
 ui.hud.controles2,Left click (hold): harvest/carve/attack · Right click: place
-ui.hud.controles3,1-9/wheel: select · Shift+1-9/wheel: bank · R: grid 32/16/8/4
+ui.hud.controles3,1-9/wheel: select · Ctrl+1-9/wheel: bank · R: grid 32/16/8/4
 ui.hud.controles4,J/K/L: modules · V: claim · B: role · M: map · Tab: inventory · F5: reload
 ui.hud.controles5,T: list for sale (targeted stall) · G: collect gold (targeted stall) · F1: cheat menu
 ui.toast.niveau,{competence} reached level {niveau}!
@@ -427,7 +427,7 @@ ui.menu.tri.valeur,Value
 ui.menu.tri.poids,Weight
 ui.menu.trier_par,Sort by:
 ui.menu.ordre_desc,Descending
-ui.menu.carte_aide,The world map opens fullscreen.
+ui.menu.carte_aide,WASD: walk cell by cell (time passes) · L: layers · Esc: close
 ui.menu.ouvrir_carte,Open map
 ui.menu.encyclopedie,Encyclopedia
 ui.menu.enc.biomes,Biomes
@@ -480,8 +480,6 @@ ui.menu.race,Race
 ui.menu.classe,Class
 ui.menu.points_restants,Points to spend: {restants} / {total}
 ui.menu.commencer,Begin adventure
-ui.menu.perso_resume,{race} — traits: {traits}
-{classe} — skills: {competences} · gold: {or}
 ui.menu.perso_competences,Starting skills: {competences}
 ui.menu.perso_or,Starting gold: {or}
 category.lingot.name,Ingot
@@ -610,3 +608,120 @@ skill.baton_magique.name,Magic staff
 functionality.recolte_herboristerie.name,Harvesting tool
 functionality.recolte_collecte.name,Gathering tool
 ui.menu.craft_a_la_main,By hand (inventory)
+ui.menu.voyage_en_cours,Traveling...
+ui.toast.mange,Ate {item} (+{faim} hunger)
+ui.toast.pas_comestible,Nothing edible in hand
+ui.toast.rassasie,You are not hungry
+item.casque.name,Helmet
+item.cuirasse.name,Breastplate
+item.jambieres.name,Greaves
+item.bottes.name,Boots
+item.gants.name,Gauntlets
+ui.toast.equipe,{item} equipped
+ui.toast.desequipe,{item} removed
+ui.toast.pas_equipable,This item cannot be equipped
+ui.equipement.titre,Equipment
+ui.equipement.vide,(empty)
+ui.equipement.protection,Protection: {des}
+ui.slot.tete,Head
+ui.slot.torse,Chest
+ui.slot.jambes,Legs
+ui.slot.pieds,Feet
+ui.slot.mains,Hands
+ui.slot.anneau_1,Ring 1
+ui.slot.anneau_2,Ring 2
+ui.slot.amulette,Amulet
+ui.slot.arme_1,Weapon 1
+ui.slot.arme_2,Weapon 2
+ui.slot.accessoire_1,Accessory 1
+ui.slot.accessoire_2,Accessory 2
+ui.slot.dos,Back
+ui.toast.mort,You died — {or} gold and {objets} item(s) left behind
+ui.toast.ramasse,Recovered: {objets} item(s) and {or} gold
+creature.villageois.name,Villager
+creature.fermier.name,Farmer
+creature.forgeron.name,Blacksmith
+creature.marchand_ambulant.name,Travelling merchant
+creature.garde_village.name,Village guard
+creature.pretre_sanctuaire.name,Shrine priest
+creature.erudit.name,Scholar
+creature.tavernier.name,Innkeeper
+creature.chasseur.name,Hunter
+creature.nomade.name,Nomad
+creature.maitre_guilde.name,Guild master
+creature.souverain.name,Sovereign
+creature.bandit.name,Bandit
+creature.chef_de_bande.name,Bandit chief
+creature.braconnier.name,Poacher
+creature.pillard.name,Raider
+creature.deserteur.name,Deserter
+creature.ermite.name,Hermit
+creature.loup.name,Wolf
+creature.cerf.name,Deer
+creature.renard.name,Fox
+creature.essaim_abeilles.name,Bee swarm
+creature.scorpion.name,Scorpion
+creature.vautour.name,Vulture
+creature.chameau_sauvage.name,Wild camel
+creature.ours_polaire.name,Polar bear
+creature.loup_blanc.name,White wolf
+creature.renne.name,Reindeer
+creature.morse.name,Walrus
+creature.crocodile.name,Crocodile
+creature.nuee_moustiques.name,Mosquito swarm
+creature.serpent_venimeux.name,Venomous snake
+creature.aigle.name,Eagle
+creature.ours_brun.name,Brown bear
+creature.bouquetin.name,Ibex
+creature.lynx.name,Lynx
+material.viande.name,Meat
+material.peau.name,Hide
+ui.toast.depecage,{creature} butchered: {portions} portion(s) of meat
+ui.type.viande,Meat
+ui.type.peau,Hide
+ui.type.armure,Armor
+ui.type.ressource,Resource
+ui.menu.hotbar,Quick bar
+ui.menu.hotbar_aide,Drag an item onto a slot · right click to clear · Ctrl+1-9 switches bank in game
+ui.menu.hotbar_vide,Empty slot
+ui.menu.hotbar_badge,[{banque}-{slot}]
+ui.menu.action.infos,More info
+ui.menu.action.equiper,Equip
+ui.menu.action.hotbar,Assign to quick bar
+ui.menu.action.banque,Bank {banque}
+ui.menu.action.slot,Slot {slot}
+ui.menu.action.retirer_hotbar,Remove from quick bar
+ui.menu.action.deposer,Drop on ground
+ui.menu.detail.nutrition,Nutrition: {faim} (raw: {cru})
+ui.menu.detail.potentiel,{stat} potential: +{valeur}
+ui.menu.detail.emplacement,Equips to: {slot}
+ui.toast.depose,Dropped on the ground
+material.lit.name,Bed
+transformation.fab_lit.name,Build a bed
+ui.toast.pas_de_lit,Aim at a bed to sleep
+ui.toast.pas_la_nuit,You can only sleep at night
+ui.toast.reveil,You wake at dawn, rested
+plat.viande_grillee.name,Grilled meat
+plat.ragout.name,Stew
+plat.pain.name,Bread
+plat.soupe_de_legumes.name,Vegetable soup
+skill.cuisine.name,Cooking
+material.fourneau.name,Stove
+transformation.fab_fourneau.name,Build a stove
+ui.toast.potentiel,Potential improved: {details}
+
+ui.carte.heure,{heure} — {phase}
+ui.phase.aube,Dawn
+ui.phase.jour,Day
+ui.phase.crepuscule,Dusk
+ui.phase.nuit,Night
+ui.donjon.tour,You step inside the tower...
+ui.toast.incassable,This block is indestructible
+ui.menu.supprimer,Delete
+ui.menu.supprimer_confirme,Permanently delete "{monde}"? This cannot be undone.
+ui.menu.nb_mondes,{nb} saved world(s)
+material.chair_noire.name,Black flesh
+material.os_calcine.name,Charred bone
+material.basalte_maudit.name,Cursed basalt
+material.scorie_ardente.name,Burning slag
+material.croute_demoniaque.name,Demonic crust

@@ -1,0 +1,30 @@
+{
+  "id": "bottes",
+  "name_key": "item.bottes.name",
+  "type": "armure",
+  "equip_slot": "pieds",
+  "recipe": {
+    "station": "forge",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "minerai",
+        "amount": 2
+      },
+      {
+        "category": "textile",
+        "amount": 1
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.85,
+      "textile": 0.15
+    }
+  },
+  "effects": [],
+  "tags": [
+    "armure"
+  ]
+}

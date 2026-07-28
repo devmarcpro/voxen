@@ -30,8 +30,8 @@
     "arme"
   ],
   "sprites": {
-    "manche": "res://assets/tools/dague_manche.png",
-    "tete": "res://assets/tools/dague_tete.png"
+    "manche": "res://assets/weapons/dague_manche.png",
+    "tete": "res://assets/weapons/dague_tete.png"
   },
   "sprite_tint": {
     "manche": "bois",

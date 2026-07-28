@@ -1,0 +1,54 @@
+{
+  "id": "maitre_guilde",
+  "name_key": "creature.maitre_guilde.name",
+  "skeleton_template": "humanoide",
+  "parts_pool": {
+    "tete": [
+      1
+    ],
+    "torse": [
+      1
+    ],
+    "bras": [
+      1
+    ],
+    "jambes": [
+      1
+    ]
+  },
+  "race": "humain",
+  "base_stats": {
+    "sante": 62,
+    "force": 18,
+    "volonte": 8,
+    "vitesse": 9,
+    "dexterite": 11,
+    "endurance": 15
+  },
+  "equip_slots": "humanoide_standard",
+  "inventory_table": null,
+  "ai_profile": "civil",
+  "jobs_compatible": [],
+  "housing_default": "normal",
+  "recruitable": {
+    "method": "jamais"
+  },
+  "leadership_role": "maitre_guilde",
+  "succession_rule": "next_in_rank",
+  "rare_chance": 0.0,
+  "combat": {
+    "functionality": "mains_nues",
+    "modules": [
+      "frappe_lourde"
+    ],
+    "durete_naturelle": 8.0
+  },
+  "niveau_combat": 20,
+  "world_gen": {
+    "biome_tags": []
+  },
+  "tags": [
+    "civil",
+    "humanoide"
+  ]
+}

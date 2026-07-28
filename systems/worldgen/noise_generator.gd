@@ -1457,6 +1457,158 @@ func _in_city_footprint(wx: int, wz: int, city: Dictionary) -> bool:
 	return not city.is_empty() and bool(_city_tile_type(wx, wz, city).get("in", false))
 
 
+# --- Tour de donjon (2026-07-27) ---
+
+## Ids runtime de la palette démoniaque, résolus une seule fois : une
+## recherche de dictionnaire par bloc coûterait cher sur une structure de
+## cette taille (jusqu'à ~100 000 blocs par cellule).
+var _tower_palette := PackedInt32Array()
+
+
+func _tower_palette_ids() -> PackedInt32Array:
+	if _tower_palette.is_empty():
+		for id: String in DungeonTower.PALETTE:
+			_tower_palette.append(int(GameData.material_runtime_ids.get(id, 0)))
+	return _tower_palette
+
+
+## Cellule de donjon dont la tour couvre (wx, wz), ou null. Une tour tient
+## dans UN chunk au centre de sa cellule : il suffit donc de tester la cellule
+## courante, jamais un voisinage.
+func _tower_cell_at(wx: int, wz: int) -> Variant:
+	var cell := ClaimManager.cell_of_block(wx, wz)
+	# RADIUS (56) < demi-cellule (64) : la structure ne déborde jamais chez
+	# la voisine, tester la cellule courante suffit.
+	if not DungeonTower.contains(cell, wx, wz):
+		return null
+	return cell if bool(_tower_info(cell)["donjon"]) else null
+
+
+## Hauteur de base de la tour : le terrain au CENTRE de la cellule, pour que
+## la tour soit d'aplomb même sur un relief accidenté.
+func _tower_ground(cell: Vector2i) -> int:
+	return int(_tower_info(cell)["sol"])
+
+
+## Bloc de tour en (wx, wy, wz). Retourne -1 si la position n'appartient PAS
+## au volume de la tour ; sinon le bloc, **0 compris**.
+##
+## La distinction est essentielle : l'intérieur de la tour est creux, donc 0.
+## Une première version retournait 0 dans les deux cas, si bien que l'appelant
+## ne pouvait pas distinguer « pas de tour ici » de « intérieur vide » — le
+## terrain reprenait le dessus et la tour se remplissait de roche.
+func _tower_block_at(wx: int, wy: int, wz: int) -> int:
+	var cell: Variant = _tower_cell_at(wx, wz)
+	if cell == null:
+		return -1
+	var ground := _tower_ground(cell)
+	if wy < ground or float(wy - ground) > DungeonTower.DOME_HEIGHT + DungeonTower.SPIKE_HEIGHT:
+		return -1
+	return DungeonTower.block_at(cell, wx, wy, wz, ground, world_seed, _tower_palette_ids())
+
+
+## Cellule dont la tour recouvre une partie de ce chunk, ou null. L'emprise
+## d'une tour (centrée dans sa cellule) n'est PAS alignée sur la grille de
+## chunks : elle chevauche jusqu'à 4 chunks. On teste donc les 4 coins.
+## Cache par cellule : { cellule -> { "donjon": bool, "sol": int } }.
+##
+## Sans lui, _tower_in_chunk évaluait `biome_at` (8 couches de bruit) jusqu'à
+## 4 fois PAR CHUNK GÉNÉRÉ — un coût payé partout dans le monde, y compris
+## très loin du moindre donjon. Mesuré : 245 → 63 fps.
+var _tower_cache := {}
+var _tower_cache_mutex := Mutex.new()
+
+
+func _tower_info(cell: Vector2i) -> Dictionary:
+	_tower_cache_mutex.lock()
+	var cached: Variant = _tower_cache.get(cell)
+	_tower_cache_mutex.unlock()
+	if cached != null:
+		return cached
+	var centre := POIGenerator.cell_center_world(cell)
+	var biome := biome_at(centre.x, centre.y)
+	var is_dungeon := false
+	if not biome.is_empty():
+		is_dungeon = "donjon" in POIGenerator.pois_at_cell(cell, world_seed, biome)
+	var info := {"donjon": is_dungeon,
+		"sol": int(floorf(_height(float(centre.x), float(centre.y)))) if is_dungeon else 0}
+	_tower_cache_mutex.lock()
+	if _tower_cache.size() > 512:
+		_tower_cache.clear()
+	_tower_cache[cell] = info
+	_tower_cache_mutex.unlock()
+	return info
+
+
+## Sommet ABSOLU de la tour recouvrant tout ou partie de la colonne-chunk
+## `col` (16×16 blocs), ou -1 s'il n'y en a aucune.
+##
+## POURQUOI (bug corrigé le 2026-07-28) : la termitière monte à 128 blocs
+## (DOME_HEIGHT + SPIKE_HEIGHT) au-dessus du sol, mais ni `cy_range` ni
+## `prepare_context` ne le savaient — tous deux ne renvoyaient que la hauteur du
+## TERRAIN (plus les arbres/plantes/ville). Conséquence en chaîne :
+##  - WorldManager._range_for/_missing_cys ne DEMANDAIENT jamais les chunks
+##    au-dessus de ~terrain+16 ;
+##  - _column_task calcule `cy_hi_exact` depuis `ctx["hmax"]` et sautait donc
+##    ces mêmes chunks (`if not requested and not in_exact: continue`).
+## La structure était tranchée net une quinzaine de blocs au-dessus du sol, ce
+## qui se voyait comme un COUVERCLE PLAT — d'où le « plafond » signalé. Le reste
+## du code (`_tower_in_chunk`, `generate_chunk`) gérait déjà correctement toute
+## la hauteur : il ne manquait plus que la portée verticale du streaming.
+func tower_top_for_column(col: Vector2i) -> int:
+	var t := ChunkData.SIZE
+	var x0 := col.x * t
+	var z0 := col.y * t
+	var top := -1
+	# Mêmes 4 cellules candidates et même test de distance que _tower_in_chunk :
+	# l'emprise (112 blocs de diamètre) n'est pas alignée sur la grille de chunks.
+	var cell := ClaimManager.cell_of_block(x0, z0)
+	for candidate: Vector2i in [cell, cell + Vector2i(1, 0), cell + Vector2i(0, 1), cell + Vector2i(1, 1)]:
+		var centre := POIGenerator.cell_center_world(candidate)
+		var near_x := clampi(centre.x, x0, x0 + t - 1)
+		var near_z := clampi(centre.y, z0, z0 + t - 1)
+		var dx := float(near_x - centre.x)
+		var dz := float(near_z - centre.y)
+		if dx * dx + dz * dz > DungeonTower.RADIUS * DungeonTower.RADIUS:
+			continue
+		var info := _tower_info(candidate)
+		if not bool(info["donjon"]):
+			continue
+		top = maxi(top, int(info["sol"]) + int(DungeonTower.DOME_HEIGHT + DungeonTower.SPIKE_HEIGHT))
+	return top
+
+
+func _tower_in_chunk(cpos: Vector3i) -> Variant:
+	var t := ChunkData.SIZE
+	var y0 := cpos.y * t
+	var y1 := y0 + t - 1
+	# Test par DISTANCE au centre, pas par coins : l'emprise fait 112 blocs
+	# de diamètre et un chunk peut la chevaucher sans qu'aucun de ses 4 coins
+	# ne tombe dedans (ni tous, s'il est entièrement dedans).
+	var cell := ClaimManager.cell_of_block(cpos.x * t, cpos.z * t)
+	for candidate: Vector2i in [cell, cell + Vector2i(1, 0), cell + Vector2i(0, 1), cell + Vector2i(1, 1)]:
+		var centre := POIGenerator.cell_center_world(candidate)
+		var near_x := clampi(centre.x, cpos.x * t, cpos.x * t + t - 1)
+		var near_z := clampi(centre.y, cpos.z * t, cpos.z * t + t - 1)
+		var dx := float(near_x - centre.x)
+		var dz := float(near_z - centre.y)
+		if dx * dx + dz * dz > DungeonTower.RADIUS * DungeonTower.RADIUS:
+			continue
+		var info := _tower_info(candidate)
+		if not bool(info["donjon"]):
+			continue
+		# Test VERTICAL, indispensable : sans lui, TOUS les chunks de la
+		# colonne (64 niveaux, du fond du monde au ciel) étaient considérés
+		# comme contenant la structure et perdaient leurs chemins rapides
+		# « chunk uniforme ». C'était la cause principale de la chute de
+		# performance, bien avant le coût du bruit lui-même.
+		var ground := int(info["sol"])
+		if y1 < ground or y0 > ground + int(DungeonTower.DOME_HEIGHT + DungeonTower.SPIKE_HEIGHT):
+			continue
+		return candidate
+	return null
+
+
 ## Ville présente et son centre (pour la carte 2D / HUD) — {} sinon.
 func city_at_cell(cell: Vector2i) -> Dictionary:
 	return _city_layout(cell)
@@ -1714,6 +1866,14 @@ func prepare_context(col: Vector2i) -> Dictionary:
 	if not city.is_empty():
 		top_max = maxi(top_max, int(city["plateau_y"]) + CityGenerator.B_HEIGHT + 2)
 
+	# Termitière de donjon (2026-07-28) : même raison que les bâtiments de ville
+	# juste au-dessus — sa masse dépasse largement le relief, et `hmax` pilote la
+	# bande de chunks que _column_task accepte de générer/mailler. Sans ça, la
+	# structure était tronquée quelques blocs au-dessus du sol.
+	var tower_top := tower_top_for_column(col)
+	if tower_top > 0:
+		top_max = maxi(top_max, tower_top)
+
 	return {
 		"h": heights, "surf": surfaces, "sub": subsurfaces, "trans": transitions,
 		"trees": trees, "plants": plants, "cultures": cultures, "hmin": h_min, "hmax": top_max,
@@ -1807,14 +1967,18 @@ func _speleothem_pass(blocks: PackedByteArray, heights: PackedInt32Array, y0: in
 func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 	var y0 := cpos.y * ChunkData.SIZE
 	var y1 := y0 + ChunkData.SIZE - 1
+	# Tour de donjon : elle monte à 96 blocs au-dessus du sol, donc TRÈS
+	# au-dessus de `hmax`. Sans ce test, les chemins rapides « chunk
+	# uniformément d'air » la feraient disparaître sur toute sa hauteur.
+	var tower_cell: Variant = _tower_in_chunk(cpos)
 	# Chemins rapides uniformes (G.2) — hmax inclut déjà les cimes d'arbres.
-	if y0 > int(ctx["hmax"]):
+	if y0 > int(ctx["hmax"]) and tower_cell == null:
 		return ChunkData.create_uniform(0)
 	# (Audit 2026-07-21 : la condition « aucun arbre dans la colonne » a été
 	# retirée — un arbre ne descend jamais sous la surface, donc jamais sous
 	# hmin-400 ; en forêt, elle désactivait ce fast-path pour TOUS les chunks
 	# profonds, qui allouaient leurs 8 Ko au lieu d'être uniformes.)
-	if y1 < int(ctx["hmin"]) - 400 and _strata_count > 0:
+	if y1 < int(ctx["hmin"]) - 400 and _strata_count > 0 and tower_cell == null:
 		return ChunkData.create_uniform(_strata_ids[_strata_count - 1])
 
 	var heights: PackedInt32Array = ctx["h"]
@@ -1988,6 +2152,38 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 				blocks.encode_u16(index << 1, int(bb[local_pos]))
 
 	_speleothem_pass(blocks, heights, y0, chunk_bx, chunk_bz)
+
+	# Tour de donjon : écrite EN DERNIER et de façon autoritaire — ses murs
+	# remplacent le terrain, et son intérieur creux reste creux même si le
+	# relief remonte dedans. Sans quoi la tour serait à moitié enterrée.
+	if tower_cell != null:
+		var cell: Vector2i = tower_cell
+		var ground := _tower_ground(cell)
+		var palette := _tower_palette_ids()
+		var max_height := DungeonTower.DOME_HEIGHT + DungeonTower.SPIKE_HEIGHT
+		for lz in ChunkData.SIZE:
+			var wz := chunk_bz + lz
+			for lx in ChunkData.SIZE:
+				var wx := chunk_bx + lx
+				if not DungeonTower.contains(cell, wx, wz):
+					continue
+				# Hauteur de la masse calculée UNE fois par colonne : elle ne
+				# dépend pas de y, et l'évaluer par bloc multiplierait par 16
+				# le coût du bruit sur une structure de ~100 000 blocs.
+				var top := DungeonTower.height_at(cell, wx, wz, world_seed)
+				if top <= 0.0:
+					continue
+				for ly in ChunkData.SIZE:
+					var wy := y0 + ly
+					var local_y := float(wy - ground)
+					if local_y < 0.0 or local_y > top or local_y > max_height:
+						continue
+					var depth := top - local_y
+					var id := 0
+					if not DungeonTower.is_cavity(wx, wy, wz, depth, world_seed):
+						id = DungeonTower._material_for(wx, wy, wz, depth, world_seed, palette)
+					var index := ChunkData.index_of(lx, ly, lz)
+					blocks.encode_u16(index << 1, id)
 
 	var data := ChunkData.new()
 	data.blocks = blocks
@@ -2178,6 +2374,11 @@ func block_at(wx: int, wy: int, wz: int) -> int:
 		var bid := _city_block_at(wx, wy, wz, city)
 		if bid != 0:
 			return bid
+	# Tour de donjon : posée par-dessus le terrain, elle prime (son intérieur
+	# creux doit rester creux même si le relief remonte dedans).
+	var tower_id := _tower_block_at(wx, wy, wz)
+	if tower_id >= 0:
+		return tower_id  # 0 = intérieur creux, et c'est une réponse VALIDE.
 	var terrain_id := _block_from_column(wy, r["h"], r["surf"], r["sub"], r["trans"])
 	# Filon de minerai dans la roche (G.9) — cohérent avec generate_chunk :
 	# strate résolue puis filon, avant le creusement des cavernes.
@@ -2288,4 +2489,11 @@ func cy_range(col: Vector2i) -> Vector2i:
 		var h := _height(bx + p[0], bz + p[1])
 		h_min = minf(h_min, h)
 		h_max = maxf(h_max, h)
+	# Termitière de donjon : elle monte 128 blocs au-dessus du sol, bien plus haut
+	# que la marge de 16 ci-dessus. Sans cette extension, le streaming ne demande
+	# jamais ses chunks supérieurs et la structure est tranchée (voir
+	# tower_top_for_column).
+	var tower_top := tower_top_for_column(col)
+	if tower_top > 0:
+		h_max = maxf(h_max, float(tower_top))
 	return Vector2i(floori((h_min - 48.0) / 16.0), floori((h_max + 16.0) / 16.0))

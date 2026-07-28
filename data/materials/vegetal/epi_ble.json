@@ -11,6 +11,7 @@
   "tags": ["organique", "recolte"],
   "color": "#D9B44A",
   "noise": { "type": "procedural", "seed_offset": 206, "amplitude": 0.05, "scale": 1 },
+  "nutrition": { "faim": 20, "cuit": false },
   "harvest": { "tool_category": "mains_nues", "skill": "herboristerie" },
   "world_gen": { "mode": "plante", "biome_tags": ["plaine"] }
 }

@@ -1,0 +1,58 @@
+{
+  "id": "villageois",
+  "name_key": "creature.villageois.name",
+  "skeleton_template": "humanoide",
+  "parts_pool": {
+    "tete": [
+      1
+    ],
+    "torse": [
+      1
+    ],
+    "bras": [
+      1
+    ],
+    "jambes": [
+      1
+    ]
+  },
+  "race": "humain",
+  "base_stats": {
+    "sante": 18,
+    "force": 5,
+    "volonte": 2,
+    "vitesse": 9,
+    "dexterite": 4,
+    "endurance": 5
+  },
+  "equip_slots": "humanoide_standard",
+  "inventory_table": null,
+  "ai_profile": "civil",
+  "jobs_compatible": [
+    "fermier",
+    "vendeur"
+  ],
+  "housing_default": "normal",
+  "recruitable": {
+    "method": "relation",
+    "threshold": 60
+  },
+  "leadership_role": null,
+  "succession_rule": null,
+  "rare_chance": 0.0,
+  "combat": {
+    "functionality": "mains_nues",
+    "modules": [
+      "frappe_lourde"
+    ],
+    "durete_naturelle": 8.0
+  },
+  "niveau_combat": 3,
+  "world_gen": {
+    "biome_tags": []
+  },
+  "tags": [
+    "civil",
+    "humanoide"
+  ]
+}

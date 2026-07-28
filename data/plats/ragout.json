@@ -1,0 +1,29 @@
+{
+  "id": "ragout",
+  "name_key": "plat.ragout.name",
+  "nutrition": {
+    "faim": 35,
+    "cuit": true
+  },
+  "potentiel": {
+    "endurance": 2,
+    "volonte": 1
+  },
+  "color": "#8E6B3A",
+  "valeur_base": 14,
+  "densite": 2,
+  "recipe": {
+    "station": "fourneau",
+    "skill": "cuisine",
+    "inputs": [
+      {
+        "tag": "viande",
+        "amount": 2
+      },
+      {
+        "material": "tubercule",
+        "amount": 2
+      }
+    ]
+  }
+}

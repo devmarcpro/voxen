@@ -1,0 +1,51 @@
+{
+  "id": "essaim_abeilles",
+  "name_key": "creature.essaim_abeilles.name",
+  "skeleton_template": "amorphe",
+  "parts_pool": {
+    "corps": [
+      1
+    ]
+  },
+  "race": "essaim_abeilles",
+  "base_stats": {
+    "sante": 10,
+    "force": 6,
+    "volonte": 2,
+    "vitesse": 6,
+    "dexterite": 5,
+    "endurance": 5
+  },
+  "equip_slots": "amorphe",
+  "inventory_table": null,
+  "ai_profile": "hostile",
+  "jobs_compatible": [],
+  "housing_default": "betail",
+  "recruitable": {
+    "method": "jamais"
+  },
+  "leadership_role": null,
+  "succession_rule": null,
+  "rare_chance": 0.02,
+  "combat": {
+    "functionality": "morsure",
+    "modules": [
+      "morsure_simple"
+    ],
+    "durete_naturelle": 10.0
+  },
+  "niveau_combat": 4,
+  "world_gen": {
+    "biome_tags": [
+      "foret",
+      "prairie",
+      "tempere"
+    ],
+    "activite": "jour"
+  },
+  "tags": [
+    "amorphe",
+    "bete",
+    "hostile"
+  ]
+}

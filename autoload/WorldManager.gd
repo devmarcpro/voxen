@@ -70,6 +70,14 @@ var _edits := {}
 ## Diff des sous-grilles de subdivision (4.1) :
 ## Vector3i chunk -> { indice_bloc -> PackedInt32Array(512) }.
 var _sub_edits := {}
+## Index spatial du diff (2026-07-27) : colonne Vector2i(x,z) -> { chunk -> true }.
+## _dispatch construisait son instantané en scannant _edits EN ENTIER à chaque
+## colonne lancée (jusqu'à 6 par frame). Coût nul en partie neuve, mais _edits
+## n'est JAMAIS purgé par conception : après une longue session de construction,
+## c'est des dizaines de milliers d'itérations par frame de streaming. Cet index
+## rend le coût du dispatch proportionnel au voisinage 3×3, plus à la taille du
+## monde construit. Reconstruit à la restauration d'une sauvegarde (_reindex_edits).
+var _edit_cols := {}
 ## Variantes de mesh des chunks subdivisés (LOD G.2) + état courant.
 var _fine_meshes := {}     # Vector3i -> ArrayMesh (passe fine)
 var _coarse_meshes := {}   # Vector3i -> ArrayMesh (blocs pleins dominants)
@@ -77,7 +85,11 @@ var _lod_fine := {}        # Vector3i -> bool (variante actuellement affichée)
 ## Chunks à re-mesher (compteur de version : une mutation pendant un remesh
 ## en vol déclenche un nouveau remesh, jamais de perte).
 var _dirty := {}
-var _urgent_cols: Array[Vector2i] = []
+## Colonnes à retraiter en priorité (mutations). Dictionary et non Array : le
+## test d'appartenance était un Array.has() LINÉAIRE, appelé jusqu'à 7 fois par
+## mutation (une par chunk touché) — audit 2026-07-27. L'ordre d'insertion des
+## dictionnaires Godot préserve la priorité d'arrivée.
+var _urgent_cols := {}
 ## Époque d'installation de mesh (monotone, +1 par édition) : un remesh SYNCHRONE
 ## d'édition estampille le chunk ; une tâche async plus ANCIENNE (dispatchée
 ## avant l'édition) ne peut plus réinstaller un mesh périmé par-dessus.
@@ -115,6 +127,20 @@ const DISPLAY_CFG := "user://display.cfg"
 
 
 func _load_display_setting() -> void:
+	# Les BENCHS ignorent le réglage sauvegardé : sinon deux mesures prises à
+	# des distances d'affichage différentes sont incomparables, et un écart
+	# de réglage se lit comme une régression de performance. Constaté le
+	# 2026-07-27 : un display.cfg à 14 au lieu de 8 avait triplé le nombre de
+	# chunks et fait passer le bench de 245 à 66 fps — sans qu'aucun code de
+	# rendu n'ait changé.
+	var args := OS.get_cmdline_user_args()
+	for flag in ["--bench", "--statique", "--bench-mutation", "--bench-creatures", "--probe-mesh"]:
+		if flag in args:
+			render_radius = DEFAULT_CHUNK_RADIUS
+			_evict_radius = render_radius + 2
+			_scale_budgets()
+			print("[BENCH] distance d'affichage forcée à %d (réglage joueur ignoré)." % render_radius)
+			return
 	var cfg := ConfigFile.new()
 	if cfg.load(DISPLAY_CFG) == OK:
 		render_radius = clampi(int(cfg.get_value("display", "render_distance", DEFAULT_CHUNK_RADIUS)), 4, 48)
@@ -172,6 +198,10 @@ func initialize_world() -> void:
 	if not restored.is_empty():
 		_edits = restored["edits"]
 		_sub_edits = restored["sub_edits"]
+	# Les diffs restaurés arrivent d'un bloc, sans passer par _note_edit : l'index
+	# spatial doit être reconstruit, sinon _dispatch ignorerait toutes les
+	# éditions d'une partie chargée (coutures aux frontières de chunk).
+	_reindex_edits()
 	_build_material()
 	SaveManager.world_active = true  # Arme autosave/F9/sauvegarde de sortie.
 
@@ -249,17 +279,18 @@ func set_block(pos: Vector3i, material_id: int) -> bool:
 	return true
 
 
-## Application RÉELLE de la mutation (identique sur toutes les machines,
-## D.2). Ne jamais appeler directement depuis le gameplay — passer par
-## set_block() pour que le routage réseau reste correct.
-func _apply_block(pos: Vector3i, material_id: int) -> bool:
-	if active_dimension != &"overworld":
-		return DungeonManager.dimension_apply_block(pos, material_id)
+## Écriture DONNÉES d'une mutation : cache chunk + diff (_edits) + index spatial
+## + suivi de sauvegarde. AUCUN remesh, AUCUN signal — c'est la partie commune au
+## chemin instantané (_apply_block) et au chemin batché (set_block_batched), pour
+## qu'il n'existe qu'UNE seule écriture du diff (deux copies divergeraient).
+## Retourne l'ancien id, ou -1 si la mutation est refusée (hors bornes, ou aucun
+## changement).
+func _write_block_data(pos: Vector3i, material_id: int) -> int:
 	if pos.y < WORLD_Y_MIN or pos.y > WORLD_Y_MAX:
-		return false
+		return -1
 	var old_id := block_at_world(pos)
 	if old_id == material_id:
-		return false
+		return -1
 
 	var ck := Vector3i(pos.x >> 4, pos.y >> 4, pos.z >> 4)
 	var index := (pos.x & 15) | ((pos.z & 15) << 4) | ((pos.y & 15) << 8)
@@ -268,11 +299,22 @@ func _apply_block(pos: Vector3i, material_id: int) -> bool:
 	if not _edits.has(ck):
 		_edits[ck] = {}
 	_edits[ck][index] = material_id
+	_note_edit(ck)
+	_dirty_save[ck] = true
+	# Un bloc plein remplace toute subdivision (diff nettoyé en conséquence).
+	# Fait ICI, avant le remesh, et non après comme auparavant : un instantané de
+	# tâche pris entre les deux verrait une sous-grille déjà effacée du chunk mais
+	# encore présente dans le diff, et la ré-attacherait par-dessus le bloc plein.
+	if _sub_edits.has(ck):
+		_sub_edits[ck].erase(index)
+	return old_id
 
-	# Remesh du chunk + des voisins partageant la face modifiée. On collecte
-	# la liste pour un remesh SYNCHRONE immédiat (voir plus bas) : passer par
-	# la file async du streaming ajoutait un délai énorme (l'édition attendait
-	# un slot de worker libre derrière de longues tâches de streaming).
+
+## Chunks à remesher pour une mutation en `pos` : le chunk porteur, plus les
+## voisins qui partagent la face modifiée (sans quoi une couture apparaît à la
+## frontière). Facteur commun aux deux chemins de mutation.
+func _touched_chunks(pos: Vector3i) -> Array[Vector3i]:
+	var ck := Vector3i(pos.x >> 4, pos.y >> 4, pos.z >> 4)
 	var touched: Array[Vector3i] = [ck]
 	var lx := pos.x & 15
 	var ly := pos.y & 15
@@ -289,19 +331,33 @@ func _apply_block(pos: Vector3i, material_id: int) -> bool:
 		touched.append(ck + Vector3i(0, 0, -1))
 	elif lz == 15:
 		touched.append(ck + Vector3i(0, 0, 1))
+	return touched
+
+
+## Application RÉELLE de la mutation JOUEUR (identique sur toutes les machines,
+## D.2). Ne jamais appeler directement depuis le gameplay — passer par
+## set_block() pour que le routage réseau reste correct.
+## Remesh SYNCHRONE immédiat : c'est ce qui donne l'édition instantanée (passer
+## par la file async ajoutait un délai énorme, l'édition attendant un slot de
+## worker libre derrière de longues tâches de streaming). Pour une mutation de
+## SIMULATION (fluides, intégrité, croissance), utiliser set_block_batched().
+func _apply_block(pos: Vector3i, material_id: int) -> bool:
+	if active_dimension != &"overworld":
+		return DungeonManager.dimension_apply_block(pos, material_id)
+	var old_id := _write_block_data(pos, material_id)
+	if old_id < 0:
+		return false
+
+	var touched := _touched_chunks(pos)
 	for tck: Vector3i in touched:
 		_mark_dirty(tck)
-	# Remesh SYNCHRONE immédiat sur le thread principal (édition instantanée) :
-	# seuls les chunks déjà chargés. _remesh_chunk_now efface leur drapeau dirty,
-	# la file async ne les reprend donc pas.
+	# Remesh SYNCHRONE sur le thread principal : seuls les chunks déjà chargés.
+	# _remesh_chunk_now efface leur drapeau dirty, la file async ne les reprend
+	# donc pas.
 	_install_epoch += 1
 	for tck: Vector3i in touched:
 		if _meshes.has(tck) or _chunks.has(tck):
 			_remesh_chunk_now(tck, _install_epoch)
-
-	# Un bloc plein remplace toute subdivision (diff nettoyé en conséquence).
-	if _sub_edits.has(ck):
-		_sub_edits[ck].erase(index)
 
 	# Couplage inter-systèmes par l'EventBus uniquement (E.12).
 	if old_id != 0:
@@ -309,6 +365,92 @@ func _apply_block(pos: Vector3i, material_id: int) -> bool:
 	if material_id != 0:
 		EventBus.block_placed.emit(pos, material_id)
 	return true
+
+
+# --- Mutations de SIMULATION : batching (2026-07-27) ---
+#
+# Pourquoi : _apply_block remaille SYNCHRONEMENT jusqu'à 7 chunks (+ autant de
+# recalculs de LightField) par appel. C'est le bon compromis pour l'édition
+# manuelle — un clic, une réponse immédiate. C'est ruineux pour un système de
+# simulation : un fluide s'écoulant sur 20 blocs par tick produirait jusqu'à 140
+# remesh synchrones à 10 Hz. Les mutations de simulation accumulent donc leurs
+# chunks touchés et ne paient QU'UN remesh par chunk et par tick, quel que soit
+# le nombre de blocs écrits dedans.
+#
+# LIMITE CONNUE : le flush reste synchrone. Si un tick touche 200 chunks
+# DISTINCTS, les 200 remesh tombent dans la même frame. Le batching supprime la
+# redondance (cas normal : beaucoup de blocs, peu de chunks), pas ce pic
+# pathologique — le budget de flush par frame viendra si la mesure le réclame.
+
+## Chunks touchés depuis le dernier flush (Vector3i -> true).
+var _batch_touched := {}
+## Mutations batchées en attente de signal : [pos, old_id, new_id]. Émettre
+## depuis la boucle de simulation exposerait les abonnés à un monde à moitié muté.
+var _batch_events: Array = []
+
+
+## Mutation SANS remesh immédiat, destinée aux systèmes de simulation (fluides,
+## intégrité structurelle, croissance/fertilité). Le diff, le cache chunk et le
+## suivi de sauvegarde sont mis à jour TOUT DE SUITE — un block_at_world() juste
+## après voit bien la nouvelle valeur. Seuls le meshing et les signaux sont
+## différés jusqu'à flush_batched_edits().
+##
+## NON ROUTÉ EN RÉSEAU : la simulation est déterministe et rejoue à l'identique
+## sur chaque machine depuis le même tick_index (E.11). Router chaque bloc de
+## fluide en RPC saturerait le lien.
+##
+## LIMITE ASSUMÉE : hors overworld, l'appel retombe sur DungeonManager, qui
+## remaille SYNCHRONEMENT — le batching n'y produit aucun gain. Sans objet tant
+## qu'aucun système de simulation ne tourne en donjon (3.5) ; à revoir le jour où
+## un fluide devra couler dans une salle.
+func set_block_batched(pos: Vector3i, material_id: int) -> bool:
+	if generator == null:
+		return false
+	if active_dimension != &"overworld":
+		return DungeonManager.dimension_apply_block(pos, material_id)
+	var old_id := _write_block_data(pos, material_id)
+	if old_id < 0:
+		return false
+	# Le chunk porteur ET ses voisins de bordure : un chunk touché 500 fois
+	# n'apparaît qu'une seule fois dans le dictionnaire — c'est là qu'est le gain.
+	for tck: Vector3i in _touched_chunks(pos):
+		_batch_touched[tck] = true
+	_batch_events.append([pos, old_id, material_id])
+	return true
+
+
+## Y a-t-il des mutations batchées en attente ? (évite au TickManager de payer un
+## appel de fonction et une itération pour rien au tick le plus courant)
+func has_batched_edits() -> bool:
+	return not _batch_touched.is_empty()
+
+
+## Vide le lot : UN remesh par chunk touché, puis les signaux. À appeler une fois
+## par tick, en fin de phase monde (TickManager) — jamais depuis un système de
+## simulation lui-même, sinon on retombe sur le coût par-bloc qu'on évitait.
+func flush_batched_edits() -> void:
+	if _batch_touched.is_empty():
+		return
+	_install_epoch += 1
+	var epoch := _install_epoch
+	for tck: Vector3i in _batch_touched:
+		_mark_dirty(tck)
+		# Chunk non chargé : le drapeau dirty suffit, la file de streaming le
+		# remaillera à son arrivée. Le forcer ici paierait un generate_chunk
+		# complet sur le thread principal pour un chunk que personne ne voit.
+		if _meshes.has(tck) or _chunks.has(tck):
+			_remesh_chunk_now(tck, epoch)
+	_batch_touched.clear()
+
+	# Signaux APRÈS le remesh : un abonné qui lit le monde le voit cohérent.
+	var events := _batch_events
+	_batch_events = []
+	for e: Array in events:
+		var pos: Vector3i = e[0]
+		if int(e[1]) != 0:
+			EventBus.block_destroyed.emit(pos, int(e[1]))
+		if int(e[2]) != 0:
+			EventBus.block_placed.emit(pos, int(e[2]))
 
 
 ## Diffusion autoritaire (E.11 : "host autoritaire... diffuse le résultat").
@@ -369,17 +511,20 @@ func _apply_sub_region(block_pos: Vector3i, cell_min: Vector3i, cell_size: int, 
 		_edits[ck] = {}
 	if not _sub_edits.has(ck):
 		_sub_edits[ck] = {}
+	_note_edit(ck)
 	var uniform := SubdivGrid.uniform_value(grid)
 	if uniform.x == 1:
 		# Redevenu uniforme (plein ou vide) : re-fusion en bloc simple.
 		data.set_block_by_index(index, uniform.y)
 		_edits[ck][index] = uniform.y
 		_sub_edits[ck].erase(index)
+		_dirty_save[ck] = true
 	else:
 		var dominant := SubdivGrid.dominant_id(grid)
 		data.set_subdiv(index, grid, dominant)
 		_edits[ck][index] = dominant
 		_sub_edits[ck][index] = grid.duplicate()
+		_dirty_save[ck] = true
 
 	# Remesh ; voisins si la région touche une face du bloc. Comme _apply_block,
 	# on REMAILLE SYNCHRONEMENT tout de suite (sinon le bloc subdivisé n'apparaît
@@ -462,8 +607,37 @@ func base_material() -> ShaderMaterial:
 ## Accès lecture des diffs pour SaveManager (E.10) — thread principal
 ## uniquement, jamais depuis une tâche (l'instantané en octets est construit
 ## avant tout passage en thread d'écriture).
+## Chunks à réécrire à la prochaine sauvegarde (voir take_dirty_save_chunks).
+var _dirty_save := {}
+
+
 func edits_for_save() -> Dictionary:
 	return _edits
+
+
+## Chunks dont les modifications ont changé DEPUIS LA DERNIÈRE ÉCRITURE, puis
+## remise à zéro du suivi (2026-07-27).
+##
+## Pourquoi : l'autosave réécrivait TOUS les chunks modifiés depuis le début de
+## la partie, toutes les 5 minutes. Le coût grandissait indéfiniment avec ce
+## que le joueur avait construit — après une longue session de construction,
+## chaque autosave repassait des milliers de fichiers alors que deux ou trois
+## avaient bougé. Les fichiers déjà écrits restent valides sur disque : ne
+## réécrire que le delta est exact ET borné.
+func take_dirty_save_chunks() -> Dictionary:
+	var dirty := _dirty_save
+	_dirty_save = {}
+	return dirty
+
+
+## Re-signale TOUS les chunks modifiés comme à écrire — utilisé quand on ne
+## peut pas se fier à l'état du disque (nouveau dossier de sauvegarde).
+func mark_all_chunks_dirty() -> void:
+	_dirty_save = {}
+	# Une seule passe via l'index spatial : il couvre déjà _edits ET _sub_edits.
+	for col: Vector2i in _edit_cols:
+		for ck: Vector3i in (_edit_cols[col] as Dictionary):
+			_dirty_save[ck] = true
 
 
 func sub_edits_for_save() -> Dictionary:
@@ -492,9 +666,12 @@ func stats() -> Dictionary:
 ## Construit le ShaderMaterial partagé : palette de couleurs + paramètres de
 ## bruit par id matériau runtime (9.1/G.2), depuis les données GameData.
 func _build_material() -> void:
-	var palette_img := Image.create_empty(256, 1, false, Image.FORMAT_RGBA8)
-	var noise_img := Image.create_empty(256, 1, false, Image.FORMAT_RGBAF)
-	var style_img := Image.create_empty(256, 1, false, Image.FORMAT_R8) # 2026-07-24
+	# Largeur pilotée par le catalogue (GameData.palette_size) et non figée à
+	# 256 : le shader lit ces textures en texelFetch par index exact (2026-07-27).
+	var palette_width := GameData.palette_size()
+	var palette_img := Image.create_empty(palette_width, 1, false, Image.FORMAT_RGBA8)
+	var noise_img := Image.create_empty(palette_width, 1, false, Image.FORMAT_RGBAF)
+	var style_img := Image.create_empty(palette_width, 1, false, Image.FORMAT_R8) # 2026-07-24
 	style_img.fill(Color(0,0,0,0)) # Assure un style 0 (basic_noise) par défaut
 
 	for id in GameData.materials:
@@ -633,11 +810,32 @@ func _missing_cys(col: Vector2i) -> PackedInt32Array:
 	return missing
 
 
+## Enregistre un chunk édité dans l'index spatial. Appelé par TOUTE écriture de
+## _edits / _sub_edits — un oubli se traduirait par des coutures aux frontières
+## de chunk (les éditions manquantes de l'instantané ne seraient pas surimposées
+## à la coquille du mesher).
+func _note_edit(ck: Vector3i) -> void:
+	var col := Vector2i(ck.x, ck.z)
+	var set: Variant = _edit_cols.get(col)
+	if set == null:
+		set = {}
+		_edit_cols[col] = set
+	(set as Dictionary)[ck] = true
+
+
+## Reconstruit l'index depuis _edits/_sub_edits (restauration de sauvegarde : les
+## diffs arrivent d'un bloc, sans passer par _note_edit).
+func _reindex_edits() -> void:
+	_edit_cols.clear()
+	for ck: Vector3i in _edits:
+		_note_edit(ck)
+	for ck: Vector3i in _sub_edits:
+		_note_edit(ck)
+
+
 func _mark_dirty(ck: Vector3i) -> void:
 	_dirty[ck] = int(_dirty.get(ck, 0)) + 1
-	var col := Vector2i(ck.x, ck.z)
-	if not _urgent_cols.has(col):
-		_urgent_cols.append(col)
+	_urgent_cols[Vector2i(ck.x, ck.z)] = true
 
 
 ## Chunk présent en cache, sinon généré de façon synchrone (mutation : on a
@@ -677,12 +875,20 @@ func station_in_cell(wx: int, wz: int, material_id: int) -> bool:
 	var cx0 := cell.x * (ClaimManager.CELL_SIZE / ChunkData.SIZE)  # chunk de départ
 	var cz0 := cell.y * (ClaimManager.CELL_SIZE / ChunkData.SIZE)
 	var span := ClaimManager.CELL_SIZE / ChunkData.SIZE            # chunks par côté de cellule
-	for key: Vector3i in _edits:
-		if key.x < cx0 or key.x >= cx0 + span or key.z < cz0 or key.z >= cz0 + span:
-			continue
-		for idx: int in _edits[key]:
-			if int(_edits[key][idx]) == material_id:
-				return true
+	# Parcours par INDEX SPATIAL : seules les colonnes DE LA CELLULE sont visitées,
+	# au lieu de scanner tout le diff du monde à chaque test de craft.
+	for cx in range(cx0, cx0 + span):
+		for cz in range(cz0, cz0 + span):
+			var near: Variant = _edit_cols.get(Vector2i(cx, cz))
+			if near == null:
+				continue
+			for key: Vector3i in (near as Dictionary):
+				var chunk_edits: Variant = _edits.get(key)
+				if chunk_edits == null:
+					continue
+				for idx: int in (chunk_edits as Dictionary):
+					if int((chunk_edits as Dictionary)[idx]) == material_id:
+						return true
 	return false
 
 
@@ -709,17 +915,19 @@ func _remesh_chunk_now(ck: Vector3i, epoch: int) -> void:
 
 
 func _launch_tasks() -> void:
-	# 1. Colonnes urgentes d'abord (mutations → remesh réactif).
-	var i := 0
-	while _in_flight.size() < _max_columns_in_flight and i < _urgent_cols.size():
-		var col := _urgent_cols[i]
-		if _in_flight.has(col):
-			i += 1
-			continue
-		_urgent_cols.remove_at(i)
-		var cys := _missing_cys(col)
-		if not cys.is_empty():
-			_dispatch(col, cys, true)
+	# 1. Colonnes urgentes d'abord (mutations → remesh réactif). Instantané des
+	# clés : on efface pendant l'itération. Une colonne déjà en vol reste dans le
+	# dictionnaire et sera retentée au prochain passage.
+	if not _urgent_cols.is_empty():
+		for col: Vector2i in _urgent_cols.keys():
+			if _in_flight.size() >= _max_columns_in_flight:
+				break
+			if _in_flight.has(col):
+				continue
+			_urgent_cols.erase(col)
+			var cys := _missing_cys(col)
+			if not cys.is_empty():
+				_dispatch(col, cys, true)
 	# 2. File de streaming normale.
 	while _in_flight.size() < _max_columns_in_flight and _queue_idx < _queue.size():
 		var col: Vector2i = _queue[_queue_idx]
@@ -737,17 +945,27 @@ func _launch_tasks() -> void:
 func _dispatch(col: Vector2i, cys: PackedInt32Array, urgent: bool) -> void:
 	# Instantanés pour le thread : éditions des colonnes 3×3 voisines (pour
 	# la coquille du mesher) + versions dirty des chunks demandés.
+	# Parcours par INDEX SPATIAL (2026-07-27) : un scan complet de _edits ici
+	# rendait le coût du dispatch proportionnel à la taille du monde construit.
+	# Sélection strictement identique à l'ancienne (|dx| <= 1 et |dz| <= 1), seul
+	# le chemin d'accès change.
 	var edits_snapshot := {}
-	for key: Vector3i in _edits:
-		if absi(key.x - col.x) <= 1 and absi(key.z - col.y) <= 1:
-			edits_snapshot[key] = (_edits[key] as Dictionary).duplicate()
 	var sub_edits_snapshot := {}
-	for key: Vector3i in _sub_edits:
-		if absi(key.x - col.x) <= 1 and absi(key.z - col.y) <= 1:
-			var grids := {}
-			for index: int in _sub_edits[key]:
-				grids[index] = (_sub_edits[key][index] as PackedInt32Array).duplicate()
-			if not grids.is_empty():
+	for dx in [-1, 0, 1]:
+		for dz in [-1, 0, 1]:
+			var near: Variant = _edit_cols.get(col + Vector2i(dx, dz))
+			if near == null:
+				continue
+			for key: Vector3i in (near as Dictionary):
+				var chunk_edits: Variant = _edits.get(key)
+				if chunk_edits != null:
+					edits_snapshot[key] = (chunk_edits as Dictionary).duplicate()
+				var chunk_subs: Variant = _sub_edits.get(key)
+				if chunk_subs == null or (chunk_subs as Dictionary).is_empty():
+					continue
+				var grids := {}
+				for index: int in (chunk_subs as Dictionary):
+					grids[index] = ((chunk_subs as Dictionary)[index] as PackedInt32Array).duplicate()
 				sub_edits_snapshot[key] = grids
 	var dirty_versions := {}
 	for cy in cys:
@@ -858,13 +1076,23 @@ func _upload_ready_meshes() -> void:
 	var batch := []
 	var budget := _uploads_per_frame
 	_mutex.lock()
-	while not _results.is_empty():
-		var front: Dictionary = _results[0]
+	# Drain à CURSEUR (2026-07-27) : pop_front() est O(n) sur un Array GDScript,
+	# et il était appelé EN SECTION CRITIQUE — à gros rayon, avec des centaines de
+	# résultats en attente, le drain devenait quadratique tout en bloquant les
+	# workers qui veulent déposer les leurs. On avance un curseur, puis on ne
+	# recopie qu'une fois la queue restante.
+	var cursor := 0
+	var count := _results.size()
+	while cursor < count:
+		var front: Dictionary = _results[cursor]
 		if not front.has("done") and not (front["arrays"] as Array).is_empty():
 			if budget == 0:
 				break
 			budget -= 1
-		batch.append(_results.pop_front())
+		batch.append(front)
+		cursor += 1
+	if cursor > 0:
+		_results = _results.slice(cursor)
 	_mutex.unlock()
 
 	for result: Dictionary in batch:
@@ -877,8 +1105,7 @@ func _upload_ready_meshes() -> void:
 				_in_flight.erase(col)
 			for key: Vector3i in _dirty:
 				if key.x == col.x and key.z == col.y:
-					if not _urgent_cols.has(col):
-						_urgent_cols.append(col)
+					_urgent_cols[col] = true
 					break
 			continue
 		if result["gen"] != _generation:
@@ -1001,8 +1228,16 @@ func _forget_lod(key: Vector3i) -> void:
 	_lod_fine.erase(key)
 
 
-func _exit_tree() -> void:
-	# Attendre proprement les tâches encore en vol.
+## Attend la fin de toutes les tâches de meshing en vol. À appeler avant TOUTE
+## mutation des données que ces tâches lisent (GameData) : elles y accèdent
+## sans verrou, ce qui n'est sûr que parce que GameData est en lecture seule
+## une fois chargé. Le hot-reload F5 rompait cette garantie — il réécrivait
+## `materials` / `material_by_runtime` pendant que des threads les parcouraient.
+func wait_for_in_flight() -> void:
 	for col in _in_flight:
 		WorkerThreadPool.wait_for_task_completion(_in_flight[col])
 	_in_flight.clear()
+
+
+func _exit_tree() -> void:
+	wait_for_in_flight()

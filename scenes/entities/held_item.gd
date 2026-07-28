@@ -28,7 +28,10 @@ func _process(_delta: float) -> void:
 	match entry.get("kind", ""):
 		"object":
 			var obj: Dictionary = entry["object"]
-			key = "obj:%s:%s" % [obj["item_id"], obj["materials"]]
+			# `get` et non l'accès direct : une RESSOURCE (viande, peau) est une
+			# instance sans matériaux de craft — l'accès brut plantait dès
+			# qu'on en prenait une en main (2026-07-27).
+			key = "obj:%s:%s" % [obj.get("item_id", ""), obj.get("materials", obj.get("resource_id", ""))]
 		"material":
 			key = "mat:" + String(entry["id"])
 	if key == _current_key:
@@ -42,10 +45,16 @@ func _rebuild(entry: Dictionary) -> void:
 	match entry.get("kind", ""):
 		"object":
 			var obj: Dictionary = entry["object"]
-			var item: Dictionary = GameData.items.get(obj["item_id"], {})
+			var item: Dictionary = GameData.items.get(obj.get("item_id", ""), {})
+			var obj_materials: Dictionary = obj.get("materials", {})
+			# Ressource tenue en main : aucun modèle 3D (ce n'est ni un outil
+			# ni un bloc). Rien à afficher tant qu'il n'y a pas de visuel dédié.
+			if obj.has("resource_id"):
+				visible = false
+				return
 			# Nouveau pipeline sprite→3D (2026-07-26) si l'objet définit `sprites`
 			# (manche + tête teintés par bois/minerai, extrudés) ; sinon .vox.
-			if item.has("sprites") and _build_sprite_tool(item, obj["materials"]):
+			if item.has("sprites") and _build_sprite_tool(item, obj_materials):
 				position = TOOL_POSITION
 				visible = true
 				return
@@ -55,7 +64,7 @@ func _rebuild(entry: Dictionary) -> void:
 				return
 			mesh = VoxLoader.build_mesh(model)
 			var vox_slots: Dictionary = item.get("vox_slots", {})
-			material_override = _build_remapped_material(model, obj["materials"], vox_slots)
+			material_override = _build_remapped_material(model, obj_materials, vox_slots)
 			position = TOOL_POSITION
 			visible = true
 		"material":

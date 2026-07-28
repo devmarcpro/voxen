@@ -1,0 +1,20 @@
+{
+  "id": "fab_fourneau",
+  "name_key": "transformation.fab_fourneau.name",
+  "station": "aucune",
+  "skill": "minage",
+  "inputs": [
+    {
+      "category": "roche",
+      "amount": 6
+    },
+    {
+      "category": "bois",
+      "amount": 2
+    }
+  ],
+  "output": {
+    "material": "fourneau",
+    "amount": 1
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "jambieres",
+  "name_key": "item.jambieres.name",
+  "type": "armure",
+  "equip_slot": "jambes",
+  "recipe": {
+    "station": "forge",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "minerai",
+        "amount": 4
+      },
+      {
+        "category": "textile",
+        "amount": 2
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.85,
+      "textile": 0.15
+    }
+  },
+  "effects": [],
+  "tags": [
+    "armure"
+  ]
+}

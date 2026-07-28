@@ -1,0 +1,57 @@
+{
+  "id": "nomade",
+  "name_key": "creature.nomade.name",
+  "skeleton_template": "humanoide",
+  "parts_pool": {
+    "tete": [
+      1
+    ],
+    "torse": [
+      1
+    ],
+    "bras": [
+      1
+    ],
+    "jambes": [
+      1
+    ]
+  },
+  "race": "humain",
+  "base_stats": {
+    "sante": 33,
+    "force": 10,
+    "volonte": 4,
+    "vitesse": 9,
+    "dexterite": 7,
+    "endurance": 8
+  },
+  "equip_slots": "humanoide_standard",
+  "inventory_table": null,
+  "ai_profile": "civil",
+  "jobs_compatible": [
+    "vendeur"
+  ],
+  "housing_default": "normal",
+  "recruitable": {
+    "method": "relation",
+    "threshold": 65
+  },
+  "leadership_role": null,
+  "succession_rule": null,
+  "rare_chance": 0.0,
+  "combat": {
+    "functionality": "mains_nues",
+    "modules": [
+      "frappe_lourde"
+    ],
+    "durete_naturelle": 8.0
+  },
+  "niveau_combat": 9,
+  "world_gen": {
+    "biome_tags": []
+  },
+  "tags": [
+    "civil",
+    "humanoide"
+  ]
+}

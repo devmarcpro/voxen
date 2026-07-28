@@ -67,7 +67,16 @@ func restore_state(data: Dictionary) -> void:
 
 ## Gagne de l'XP par l'usage. Le potentiel module le gain (A.1.1) et se
 ## consomme à chaque level up. Émet EventBus.skill_level_up.
+## Modificateur d'XP dû à l'ÉTAT du personnage (repos, fatigue — E.21).
+## Porté par le propriétaire (le joueur), jamais par les compétences.
+func _rested_multiplier() -> float:
+	if owner_entity != null and owner_entity.has_method("xp_state_multiplier"):
+		return float(owner_entity.xp_state_multiplier())
+	return 1.0
+
+
 func gain_xp(skill_id: String, xp: float) -> void:
+	xp *= _rested_multiplier()
 	var s: Variant = skills.get(skill_id)
 	if s == null:
 		push_warning("PlayerSkills : compétence inconnue « %s »." % skill_id)

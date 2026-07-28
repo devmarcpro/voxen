@@ -30,8 +30,8 @@
     "arme"
   ],
   "sprites": {
-    "manche": "res://assets/tools/baton_magique_manche.png",
-    "tete": "res://assets/tools/baton_magique_tete.png"
+    "manche": "res://assets/weapons/baton_magique_manche.png",
+    "tete": "res://assets/weapons/baton_magique_tete.png"
   },
   "sprite_tint": {
     "manche": "bois",

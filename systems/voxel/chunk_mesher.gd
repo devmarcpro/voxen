@@ -11,6 +11,20 @@ extends RefCounted
 ## L'id matériau est encodé dans UV.x ; le bruit par voxel est généré en
 ## shader depuis (position monde, id matériau, graine) — G.2.
 
+## Profilage par PHASE (2026-07-27) — désactivé par défaut : le budget E.14
+## est « < 4 ms par chunk » et le bench global ne dit que le total, pas OÙ il
+## part. Activé par la sonde --probe-mesh, coût nul sinon (un booléen testé
+## quatre fois par chunk).
+static var profiling := false
+static var phase_us := {"coquille": 0, "interieur": 0, "greedy": 0, "subdiv": 0}
+static var profiled_chunks := 0
+
+
+static func reset_profile() -> void:
+	phase_us = {"coquille": 0, "interieur": 0, "greedy": 0, "subdiv": 0}
+	profiled_chunks = 0
+
+
 const WATER_DROP := 0.14     # Abaissement de la surface des liquides (2026-07-24).
 const T := 16                # Taille de chunk (ChunkData.SIZE).
 const P := 18                # Taille du tableau padded (T + 2).
@@ -18,6 +32,23 @@ const P := 18                # Taille du tableau padded (T + 2).
 const SX := 1
 const SY := 324
 const SZ := 18
+## Strides indexés par axe (0=x, 1=y, 2=z) et strides d'une sous-grille 8³.
+## MESURÉ le 2026-07-28 : ces tableaux sont RECOPIÉS EN LOCALES en tête de
+## mesh_chunk, jamais lus directement. Un accès à une `static var` passe par le
+## stockage statique du script et coûte sensiblement plus qu'une locale — les
+## lire dans le balayage greedy (des dizaines de milliers d'itérations par
+## chunk) avait fait passer la sonde subdiv de 59 à 83 ms. La copie est
+## gratuite (PackedInt32Array est copie-sur-écriture) et rend l'accès local.
+static var STRIDES := PackedInt32Array([SX, SY, SZ])
+static var GRID_STRIDES := PackedInt32Array([1, 64, 8])
+## Les 6 directions de voisinage de la coquille. Étaient allouées comme Array
+## littéral À L'INTÉRIEUR de la boucle de _apply_shell_edits — 6 allocations de
+## 6 Vector3i par appel, pour une donnée constante.
+const SHELL_DIRS: Array[Vector3i] = [
+	Vector3i(-1, 0, 0), Vector3i(1, 0, 0),
+	Vector3i(0, -1, 0), Vector3i(0, 1, 0),
+	Vector3i(0, 0, -1), Vector3i(0, 0, 1),
+]
 
 
 ## Maille un chunk. Retourne les arrays de surface (Mesh.ARRAY_MAX) ou un
@@ -34,6 +65,10 @@ const SZ := 18
 ## `fine` : true = les blocs subdivisés sont meshés par leurs sous-grilles
 ## (passe fine) ; false = variante LOD où ils sont rendus comme blocs pleins
 ## de leur id dominant (G.2 : la subdivision n'est jamais meshée au loin).
+## `light` : champ de lumière du chunk (G.3), 4 096 niveaux 0-15, ou vide
+## (obscurité). Cuit dans la COULEUR DE SOMMET — G.3 : « la lumière est
+## cuite dans les vertex ». Le shader n'a plus qu'à lire COLOR.r, sans
+## aucune boucle de lumière (le terrain est unshaded).
 static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerator, ctx: Dictionary, neighbor_edits: Dictionary = {}, fine: bool = true) -> Array:
 	var uniform := data.is_uniform()
 	if uniform and data.uniform_id == 0:
@@ -43,6 +78,7 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 	# (permet de rejeter un chunk uniforme enterré sans remplir l'intérieur)
 	var pad := PackedInt32Array()
 	pad.resize(P * P * P)
+	var t_phase := Time.get_ticks_usec() if profiling else 0
 	var shell_air := true  # Dimension vide : la coquille (pad zéroé) est d'air.
 	if generator != null:
 		shell_air = generator.fill_shell(cpos, pad, ctx)
@@ -51,9 +87,15 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 		# coquille : le OU est conservateur (jamais de face manquée).
 		shell_air = _apply_shell_edits(pad, cpos, neighbor_edits) or shell_air
 
+	if profiling:
+		phase_us["coquille"] += Time.get_ticks_usec() - t_phase
+		t_phase = Time.get_ticks_usec()
+
 	# Rejet rapide : chunk uniforme solide entièrement enterré → aucune face,
 	# l'intérieur n'est même pas copié (cas majoritaire du sous-sol).
 	if uniform and not shell_air:
+		if profiling:
+			profiled_chunks += 1
 		return []
 
 	# Intérieur + nombre de blocs solides par niveau Y (pour les sauts rapides).
@@ -88,28 +130,49 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 					src += 1
 			level_solid[y] = count
 
+	# Lumière de bloc (G.3), calculée depuis le pad : il porte exactement le
+	# chunk + son voisinage immédiat, soit toute l'occlusion nécessaire.
+	# Retourne un tableau vide (donc gratuit) pour les chunks sans source.
+	var light := LightField.compute_from_pad(pad)
+
+	if profiling:
+		phase_us["interieur"] += Time.get_ticks_usec() - t_phase
+		t_phase = Time.get_ticks_usec()
+
 	# --- 2. Balayage greedy par axe ---
 	# Tableaux pré-alloués + curseurs (vc/ic) — jamais d'append par sommet.
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var uvs := PackedVector2Array()
+	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
 	vertices.resize(1024)
 	normals.resize(1024)
 	uvs.resize(1024)
+	colors.resize(1024)
 	indices.resize(1536)
 	var vc := 0
 	var ic := 0
 	var mask := PackedInt32Array()
 	mask.resize(T * T)
-	var strides := [SX, SY, SZ]
+	# Copies LOCALES des tables de strides (voir leur commentaire) : une seule
+	# par chunk, puis tous les accès des boucles chaudes sont des locales.
+	var strides := STRIDES
+	var grid_strides := GRID_STRIDES
+	# Masque des liquides hissé en LOCALE : il était lu par `GameData.liquid_mask`
+	# À CHAQUE QUAD ÉMIS, soit un accès autoload (résolution de singleton +
+	# propriété) des dizaines de milliers de fois par chunk. Une seule résolution
+	# par chunk suffit — GameData est en lecture seule une fois chargé, et
+	# wait_for_in_flight() garantit qu'aucun thread ne tourne pendant un reload.
+	var liquid_mask := GameData.liquid_mask
+	var liquid_count := liquid_mask.size()
 
 	for d in 3:
 		var u := (d + 1) % 3
 		var v := (d + 2) % 3
-		var sd: int = strides[d]
-		var su: int = strides[u]
-		var sv: int = strides[v]
+		var sd := strides[d]
+		var su := strides[u]
+		var sv := strides[v]
 
 		# `cut` est la frontière entre les cellules locales cut et cut+1.
 		for cut in range(-1, T):
@@ -119,6 +182,13 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 				var solid_below := cut >= 0 and level_solid[cut] > 0
 				var solid_above := cut + 1 <= T - 1 and level_solid[cut + 1] > 0
 				if not solid_below and not solid_above:
+					continue
+				# Symétrique du saut ci-dessus (2026-07-27) : deux niveaux
+				# ENTIÈREMENT pleins ne portent aucune face entre eux (tout
+				# a != 0 ET tout b != 0 → valeur toujours nulle). Cas très
+				# fréquent sous terre, où l'ancien code balayait quand même
+				# les 256 cellules du masque pour n'y trouver que des zéros.
+				if cut >= 0 and cut + 1 <= T - 1 and level_solid[cut] == T * T and level_solid[cut + 1] == T * T:
 					continue
 
 			# Remplissage du masque des faces visibles sur cette frontière.
@@ -184,6 +254,7 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 						vertices.resize(new_size)
 						normals.resize(new_size)
 						uvs.resize(new_size)
+						colors.resize(new_size)
 					if ic + 6 > indices.size():
 						indices.resize(maxi(indices.size() * 2, 1536))
 					var normal := Vector3.ZERO
@@ -208,7 +279,12 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 					vertices[vc + 3] = origin + dv
 					# Liquides « moins grands » (2026-07-24) : abaisse l'arête supérieure
 					# (surface) — face du dessus entière, arête haute des faces latérales.
-					if GameData.liquid_mask[absi(c)] == 1 and not (d == 1 and c < 0):
+					# Borne explicite : `c` vient du pad, donc de données pouvant
+					# provenir d'une sauvegarde antérieure ou d'un catalogue
+					# modifié. Un dépassement ici planterait un THREAD worker,
+					# le pire endroit pour diagnostiquer (2026-07-27).
+					var cid := absi(c)
+					if cid < liquid_count and liquid_mask[cid] == 1 and not (d == 1 and c < 0):
 						var top_y := vertices[vc].y
 						for k in 4:
 							top_y = maxf(top_y, vertices[vc + k].y)
@@ -225,9 +301,20 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 						owner[v] = j
 						host = int(data.block_host.get(ChunkData.index_of(owner.x, owner.y, owner.z), 0))
 					var uv := Vector2(float(absi(c)), float(host))
+					# Lumière de bloc (G.3) : échantillonnée du côté AIR de la
+					# face — c'est la cellule éclairée, le bloc porteur étant
+					# opaque. Cuite dans la couleur de sommet, le shader n'a
+					# plus qu'à la lire (terrain unshaded, aucune boucle).
+					var lit := Vector3i.ZERO
+					lit[d] = cut + 1 if c > 0 else cut
+					lit[u] = i
+					lit[v] = j
+					var level := float(LightField.level_at(light, lit)) / float(LightField.MAX_LEVEL)
+					var vertex_color := Color(level, level, level, 1.0)
 					for k in 4:
 						normals[vc + k] = normal
 						uvs[vc + k] = uv
+						colors[vc + k] = vertex_color
 					indices[ic] = vc
 					indices[ic + 1] = vc + 1
 					indices[ic + 2] = vc + 2
@@ -241,6 +328,10 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 							mask[(j + jj) * T + i + kk] = 0
 					i += w
 
+	if profiling:
+		phase_us["greedy"] += Time.get_ticks_usec() - t_phase
+		t_phase = Time.get_ticks_usec()
+
 	# --- 3. Passe FINE : sous-grilles des blocs subdivisés (4.1/G.2) ---
 	# Greedy meshing par sous-grille 8×8×8 (cellules de 4 px = 1/8 bloc).
 	# Culling aux bords : une face bordière est cachée si le bloc voisin est
@@ -249,7 +340,6 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 	if fine and not data.subdivs.is_empty():
 		var sub_mask := PackedInt32Array()
 		sub_mask.resize(64)
-		var grid_strides := [1, 64, 8]  # strides sous-grille : x, y, z
 		for block_index: int in data.subdivs:
 			var grid: PackedInt32Array = data.subdivs[block_index]
 			var bx := block_index & 15
@@ -260,10 +350,10 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 			for d in 3:
 				var u := (d + 1) % 3
 				var v := (d + 2) % 3
-				var gd: int = grid_strides[d]
-				var gu: int = grid_strides[u]
-				var gv: int = grid_strides[v]
-				var pad_stride: int = strides[d]
+				var gd := grid_strides[d]
+				var gu := grid_strides[u]
+				var gv := grid_strides[v]
+				var pad_stride := strides[d]
 				for cut in range(-1, 8):
 					# Bord contre un bloc voisin plein : faces cachées.
 					if cut == -1 and pad[pad_center - pad_stride] != 0:
@@ -312,6 +402,7 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 								vertices.resize(new_size)
 								normals.resize(new_size)
 								uvs.resize(new_size)
+								colors.resize(new_size)
 							if ic + 6 > indices.size():
 								indices.resize(maxi(indices.size() * 2, 1536))
 							var normal := Vector3.ZERO
@@ -333,9 +424,17 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 							vertices[vc + 2] = origin + du + dv
 							vertices[vc + 3] = origin + dv
 							var uv := Vector2(float(absi(c)), 0.0)
+							# Lumière du BLOC hôte (G.3) : une sous-grille est
+							# contenue dans un bloc, elle prend son éclairage.
+							# Sans cette écriture, les sommets garderaient la
+							# couleur par défaut (noir) et toute sculpture
+							# apparaîtrait dans le noir absolu.
+							var sub_level := float(LightField.level_at(light, Vector3i(bx, by, bz))) 									/ float(LightField.MAX_LEVEL)
+							var sub_color := Color(sub_level, sub_level, sub_level, 1.0)
 							for k in 4:
 								normals[vc + k] = normal
 								uvs[vc + k] = uv
+								colors[vc + k] = sub_color
 							indices[ic] = vc
 							indices[ic + 1] = vc + 1
 							indices[ic + 2] = vc + 2
@@ -349,18 +448,24 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 									sub_mask[(j + jj) * 8 + i + kk] = 0
 							i += w
 
+	if profiling:
+		phase_us["subdiv"] += Time.get_ticks_usec() - t_phase
+		profiled_chunks += 1
+
 	if ic == 0:
 		return []
 
 	vertices.resize(vc)
 	normals.resize(vc)
 	uvs.resize(vc)
+	colors.resize(vc)
 	indices.resize(ic)
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_COLOR] = colors
 	arrays[Mesh.ARRAY_INDEX] = indices
 	return arrays
 
@@ -372,12 +477,7 @@ static func _apply_shell_edits(pad: PackedInt32Array, cpos: Vector3i, edits: Dic
 	# Pour chaque direction : voisin, condition de bordure côté voisin, et
 	# fonction de projection vers l'indice pad.
 	for dir_index in 6:
-		var dir := [
-			Vector3i(-1, 0, 0), Vector3i(1, 0, 0),
-			Vector3i(0, -1, 0), Vector3i(0, 1, 0),
-			Vector3i(0, 0, -1), Vector3i(0, 0, 1),
-		][dir_index] as Vector3i
-		var neighbor_key := cpos + dir
+		var neighbor_key := cpos + SHELL_DIRS[dir_index]
 		if not edits.has(neighbor_key):
 			continue
 		var neighbor_edits: Dictionary = edits[neighbor_key]
