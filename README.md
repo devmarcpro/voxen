@@ -15,7 +15,7 @@ extras (boutique passive, menu de triche). ~15 000 lignes de GDScript.
 | Domaine | État |
 |---|---|
 | Data-driven (`GameData`) | 242 matériaux (blocs) + 68 **ressources** paramétriques (viandes/peaux, hors palette), 24 biomes, 20 compétences, 15 fonctionnalités, 18 objets (dont 5 armures), 41 transformations, 38 arbres, 6 plantes, 6 races, 6 classes, 4 modules, 37 créatures |
-| Localisation (10.1) | `fr` / `en` complets et validés clé par clé ; `ja` / `zh_Hans` en cours (23 %), repli automatique sur l'anglais + rapport de couverture au boot |
+| Localisation (10.1) | `fr` / `en` complets et validés clé par clé ; `ja` / `zh_Hans` en cours, repli automatique sur l'anglais + rapport de couverture au boot. **Police CJK (2026-08-01)** : aucun caractère chinois ou japonais ne s'affichait — le repli de police pointait sur la police intégrée de Godot, latine elle aussi. Les 1327 idéogrammes des traductions sont désormais rastérisés en cellules 12×12 depuis Noto Sans SC (SIL OFL) par `tools/generate_pixel_font.py`, sans embarquer de `.ttf` (+45 Ko). Jeu de glyphes figé sur les traductions du jour, gardé par `--probe-police` |
 | Génération du monde (E.2) | continents/océans, rivières & littoraux, strates, filons, grottes, biomes, arbres, plantes, POI, villes (coques de bâtiments), noms de monde |
 | Voxel (4, G.2) | chunks multithreadés, meshing greedy, subdivision 32→16→8→4, LOD, ombrage voxel maison, édition instantanée |
 | Joueur | déplacement, raycast bloc + sous-bloc, casser/poser/sculpter, récolte + XP, inventaire volumétrique, hotbar multi-banques, PV, mana |
@@ -197,6 +197,7 @@ Chaque lot livré porte sa sonde headless, exécutable sans interface :
 
 ```
 godot --headless --path . -- --probe-touches      # commandes : aucune collision, remappe, persistance
+godot --headless --path . -- --probe-police       # tout caractère traduit a bien un glyphe
 godot --headless --path . -- --probe-butin        # paramétriques, couleurs uniques, palette, dépeçage
 godot --headless --path . -- --probe-faune        # catalogue + cohérence des biomes + profils d'IA
 godot --headless --path . -- --probe-faim         # A.9/A.9.1 : manger, seuils, famine

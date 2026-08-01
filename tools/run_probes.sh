@@ -37,6 +37,7 @@ LIST_ONLY=0
 SETUP="--probe-save"
 
 PROBES="--probe-touches
+--probe-police
 --probe-heure
 --probe-tour
 --probe-etages

@@ -47,6 +47,7 @@ const PROBES := {
 	"--test-ore":             "res://tools/probes/ore_visual_probe.gd",
 	"--test-input":           "res://tools/probes/input_smoke_probe.gd",
 	"--probe-touches":        "res://tools/probes/input_bindings_probe.gd",
+	"--probe-police":         "res://tools/probes/font_coverage_probe.gd",
 	"--bench-network-client": "res://tools/probes/network_bench_probe.gd",
 }
 
