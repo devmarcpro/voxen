@@ -5,9 +5,14 @@
   "hands": 2,
   "combat_skill": "arbalete",
   "degats_des": "3d6",
-  "crit_range": 20,
+  "penetration": 0.35,
+  "windup_ratio": 0.7,
   "vitesse_base": 0.8,
-  "portee": 30,
+  "portee": 1.5,
   "type_degats": "percant",
-  "poids_reference": 60
+  "poids_reference": 60,
+  "parts": {
+    "manche": "arbalete",
+    "tete": "arc_arbalete"
+  }
 }

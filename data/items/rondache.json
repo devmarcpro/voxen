@@ -1,0 +1,40 @@
+{
+  "id": "rondache",
+  "name_key": "item.rondache.name",
+  "type": "bouclier",
+  "equip_slot": "bouclier",
+  "hands": 1,
+  "functionality": "rondache",
+  "parts": {
+    "manche": "poignee",
+    "tete": "rondache"
+  },
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 1
+      },
+      {
+        "category": "minerai",
+        "amount": 2
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.7,
+      "bois": 0.3
+    }
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  },
+  "effects": [],
+  "tags": [
+    "bouclier"
+  ]
+}

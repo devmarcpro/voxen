@@ -2,16 +2,38 @@
   "id": "calotte_glaciaire",
   "name_key": "biome.calotte_glaciaire.name",
   "conditions": {
-    "altitude": [0.0, 1.0],
-    "temperature": [0.0, 0.06],
-    "humidite": [0.0, 1.0]
+    "altitude": [
+      0.0,
+      1.0
+    ],
+    "temperature": [
+      0.0,
+      0.06
+    ],
+    "humidite": [
+      0.0,
+      1.0
+    ]
   },
   "priority": 6,
   "surface_material": "neige",
   "subsurface_material": "glace",
   "vegetation": [],
-  "village_palette": { "mur": "glace", "toit": "glace", "sol": "neige" },
-  "poi_weights": { "village": 1, "donjon": 5, "camp": 3 },
+  "village_palette": {
+    "mur": "glace",
+    "toit": "ardoise",
+    "sol": "neige",
+    "poutre": "sapin",
+    "pave": "pierre_taillee"
+  },
+  "poi_weights": {
+    "village": 1,
+    "donjon": 5
+  },
   "farming_yield": 0.05,
-  "tags": ["glacial", "froid", "polaire"]
+  "tags": [
+    "glacial",
+    "froid",
+    "polaire"
+  ]
 }

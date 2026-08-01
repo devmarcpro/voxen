@@ -1,0 +1,40 @@
+{
+  "id": "faux_de_guerre",
+  "name_key": "item.faux_de_guerre.name",
+  "type": "arme",
+  "equip_slot": "arme",
+  "hands": 2,
+  "functionality": "faux_de_guerre",
+  "parts": {
+    "manche": "tres_long",
+    "tete": "faux"
+  },
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 1
+      },
+      {
+        "category": "minerai",
+        "amount": 4
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.9,
+      "bois": 0.1
+    }
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  },
+  "effects": [],
+  "tags": [
+    "arme"
+  ]
+}

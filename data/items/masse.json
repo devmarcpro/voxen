@@ -5,6 +5,10 @@
   "equip_slot": "arme",
   "hands": 1,
   "functionality": "masse",
+  "parts": {
+    "manche": "moyen",
+    "tete": "masse"
+  },
   "recipe": {
     "station": "etabli",
     "craft_skill": "forge",
@@ -25,6 +29,10 @@
       "bois": 0.1
     }
   },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  },
   "effects": [],
   "tags": [
     "arme"
@@ -32,9 +40,5 @@
   "sprites": {
     "manche": "res://assets/weapons/masse_manche.png",
     "tete": "res://assets/weapons/masse_tete.png"
-  },
-  "sprite_tint": {
-    "manche": "bois",
-    "tete": "minerai"
   }
 }

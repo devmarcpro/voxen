@@ -377,6 +377,7 @@ func _encode_chunk(chunk_edits: Dictionary, chunk_subs: Dictionary) -> PackedByt
 func _gather_state() -> Dictionary:
 	var state := {
 		"claims": ClaimManager.save_state(),
+		"villages": VillageManager.save_state(),
 		"exploration": ExplorationManager.save_state(),
 		"shops": ShopManager.save_state(),
 		"dungeons": DungeonManager.save_state(),
@@ -543,6 +544,7 @@ func apply_pending_state() -> void:
 	if _pending_state.is_empty():
 		return  # Rien à appliquer (monde neuf, ou déjà appliqué).
 	ClaimManager.restore_state(_pending_state.get("claims", {}))
+	VillageManager.restore_state(_pending_state.get("villages", {}))
 	ExplorationManager.restore_state(_pending_state.get("exploration", []))
 	ShopManager.restore_state(_pending_state.get("shops", {}))
 	DungeonManager.restore_state(_pending_state.get("dungeons", {}))

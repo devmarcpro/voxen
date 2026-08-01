@@ -1,6 +1,7 @@
 {
   "id": "braconnier",
   "name_key": "creature.braconnier.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "humanoide",
   "parts_pool": {
     "tete": [

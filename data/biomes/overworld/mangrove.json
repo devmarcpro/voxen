@@ -1,17 +1,55 @@
 {
   "id": "mangrove",
   "name_key": "biome.mangrove.name",
-  "conditions": { "altitude": [0.0, 0.14], "temperature": [0.72, 1.0], "humidite": [0.68, 1.0] },
+  "conditions": {
+    "altitude": [
+      0.0,
+      0.14
+    ],
+    "temperature": [
+      0.72,
+      1.0
+    ],
+    "humidite": [
+      0.68,
+      1.0
+    ]
+  },
   "priority": 5,
   "surface_material": "herbe",
   "subsurface_material": "terre",
-  "grass_tint": [0.7, 1.0, 0.6],
-  "vegetation": [
-    { "id": "palmier", "density": 0.012 }
+  "grass_tint": [
+    0.7,
+    1.0,
+    0.6
   ],
-  "village_palette": { "mur": "terre", "toit": "chaume_tresse", "sol": "terre" },
-  "poi_weights": { "village": 2, "donjon": 6, "camp": 6 },
+  "vegetation": [
+    {
+      "id": "palmier",
+      "density": 0.012
+    }
+  ],
+  "village_palette": {
+    "mur": "terre",
+    "toit": "chaume_tresse",
+    "sol": "terre",
+    "poutre": "chene",
+    "pave": "pierre_taillee"
+  },
+  "poi_weights": {
+    "village": 2,
+    "donjon": 6
+  },
   "farming_yield": 0.7,
-  "tags": ["tropical", "cotier", "humide"],
-  "plantes_sol": [ { "material_id": "fougere", "density": 0.02 } ]
+  "tags": [
+    "tropical",
+    "cotier",
+    "humide"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "fougere",
+      "density": 0.02
+    }
+  ]
 }

@@ -1,0 +1,18 @@
+{
+  "id": "hallebarde",
+  "name_key": "functionality.hallebarde.name",
+  "kind": "arme",
+  "hands": 2,
+  "combat_skill": "hallebarde",
+  "degats_des": "2d10",
+  "penetration": 0.25,
+  "windup_ratio": 0.55,
+  "vitesse_base": 1.2,
+  "portee": 1.5,
+  "type_degats": "tranchant",
+  "poids_reference": 75,
+  "parts": {
+    "manche": "tres_long",
+    "tete": "hallebarde"
+  }
+}

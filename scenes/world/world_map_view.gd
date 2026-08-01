@@ -147,7 +147,7 @@ func _ready() -> void:
 	# pas qu'il s'épuise en traversant le monde.
 	_clock_label = Label.new()
 	_clock_label.position = Vector2(12.0, 34.0)
-	_clock_label.add_theme_font_size_override("font_size", 18)
+	_clock_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_clock_label.add_theme_constant_override("outline_size", 4)
 	_clock_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 	_root.add_child(_clock_label)
@@ -170,7 +170,7 @@ func _ready() -> void:
 	# visuel, la carte semblait figée le temps du calcul synchrone.
 	_loading_label = Label.new()
 	_loading_label.text = "Chargement..."
-	_loading_label.add_theme_font_size_override("font_size", 32)
+	_loading_label.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
 	_loading_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_loading_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_loading_label.visible = false
@@ -443,7 +443,18 @@ var _mosaic_generation := 0
 ## l'utilisateur). Construite CELLULE PAR CELLULE avec un `await` dès que ce
 ## budget est dépassé — jamais plus d'~1 frame de travail sans rendre la
 ## main, quelle que soit la taille de la grille affichée.
-const BUILD_BUDGET_MS := 8.0
+## Temps de calcul accordé par frame pendant la construction.
+##
+## 8 ms était le réglage d'un travail de FOND, à faire pendant que le joueur
+## joue. Mais la carte est MODALE : elle occupe tout l'écran, affiche
+## « Chargement… », et rien d'autre n'a besoin de la frame. Se brider à 8 ms
+## revenait à ne travailler qu'un huitième du temps — mesuré le 2026-08-01,
+## 22,5 s de temps réel pour 10,6 s de calcul, soit près de 12 s passées à
+## attendre la frame suivante pour rien.
+##
+## 30 ms laisse encore tourner l'affichage à ~30 images/s, largement assez pour
+## un écran de chargement, et rend au calcul les trois quarts du temps perdu.
+const BUILD_BUDGET_MS := 30.0
 
 ## Construit la mosaïque 2D (survol simplifié, jamais la source de vérité —
 ## E.2) : chaque cellule normale (128 blocs) devient un carré de CELL_PIXELS
@@ -489,7 +500,6 @@ func _build_mosaic() -> void:
 				budget_start = Time.get_ticks_msec()
 	if my_gen != _mosaic_generation:
 		return
-
 	_texture_rect.texture = ImageTexture.create_from_image(img)
 
 	# Ajuste l'affichage pour occuper la zone dispo (hors sidebar de stats),
@@ -538,6 +548,11 @@ func _render_cell(tile: Vector2i, g: NoiseGenerator, cs: int) -> Image:
 	# sont déjà mis en cache par NoiseGenerator, voir rivers_near/
 	# river_carve_at, 2026-07-21 — affichage de l'eau).
 	var rivers := g.rivers_near(base_wx, base_wx + cs, base_wz, base_wz + cs)
+	# Le village de la cellule, résolu UNE fois : les seize échantillons qui
+	# suivent tombent tous dans la même cellule de village, donc dans le même
+	# layout. Le résoudre par échantillon prenait un mutex seize fois pour rien
+	# — 2,5 s sur une construction complète de carte (mesuré le 2026-08-01).
+	var city := g.city_at_cell(tile)
 	var block := CELL_PIXELS / SAMPLE_DIV
 	var sample_span := cs / SAMPLE_DIV
 	for sy in SAMPLE_DIV:
@@ -548,7 +563,7 @@ func _render_cell(tile: Vector2i, g: NoiseGenerator, cs: int) -> Image:
 			# de surface réel ensemble) — jamais `height_at()`+`block_at()`
 			# séparés (double calcul redondant, bug de perf réel corrigé le
 			# 2026-07-21).
-			var sample := g.sample_surface(wx, wz)
+			var sample := g.sample_surface(wx, wz, city)
 			var h: int = sample["h"]
 			var surf_id: int = sample["surf"]
 			# Ombrage approximatif (relief lisible, jamais un vrai terrain) :
@@ -616,6 +631,7 @@ func _update_poi_markers() -> void:
 	if g == null:
 		return
 	var cell_px := CELL_PIXELS * _display_scale
+	_draw_kingdom_territories(g, cell_px)
 	for cz in _side:
 		for cx in _side:
 			var tile := _center_tile + Vector2i(cx - _radius, cz - _radius)
@@ -632,6 +648,25 @@ func _update_poi_markers() -> void:
 			var pois := POIGenerator.pois_at_cell(tile, WorldManager.world_seed, biome)
 			if pois.is_empty():
 				continue
+			# LE MARQUEUR DOIT CORRESPONDRE À UN VILLAGE QUI EXISTE.
+			#
+			# Bug signalé par l'auteur (« je crois que les villages ne se
+			# génèrent pas ») et mesuré par --probe-villages : sur 59 cellules
+			# désignées « village » par le tirage de POI, 12 seulement passent
+			# les contraintes de site (au sec, assez plat). La carte dessinait
+			# pourtant les 59. Le joueur marchait vers un marqueur, ne trouvait
+			# rien, et en concluait que la génération était cassée — alors que
+			# c'est la CARTE qui mentait.
+			#
+			# On interroge donc le vrai calcul. Il est coûteux, mais uniquement
+			# pour les 2,5 % de cellules déjà désignées, et il est mis en cache
+			# par le générateur : on reste très loin du piège de perf documenté
+			# plus haut (350 000 requêtes de terrain).
+			if "village" in pois and g.city_at_cell(tile).is_empty():
+				pois = pois.duplicate()
+				pois.erase("village")
+				if pois.is_empty():
+					continue
 			var base_pos := _origin + Vector2(cx, cz) * cell_px
 			var mark_size := cell_px * 0.28
 			var next_slot := 0
@@ -671,9 +706,6 @@ func _poi_color(poi_type: String) -> Color:
 	match poi_type:
 		"village": return Color(0.95, 0.85, 0.3)
 		"donjon": return Color(0.75, 0.1, 0.1)
-		"camp": return Color(0.9, 0.5, 0.15)
-		"sanctuaire": return Color(0.6, 0.25, 0.85)
-		"filon_majeur": return Color(0.25, 0.85, 0.85)
 		_: return Color.WHITE
 
 
@@ -715,3 +747,80 @@ func _try_select(mouse_pos: Vector2) -> void:
 	# rapide ne peut cibler que l'entrée, jamais un point arbitraire.
 	_player.fast_travel_to_cell(tile)
 	_close()
+
+
+## Teinte de TERRITOIRE : chaque royaume colore ses cellules (14.4/E.27).
+##
+## Un voile translucide plutôt qu'un aplat : la carte doit rester lisible EN
+## DESSOUS. Le joueur a besoin de voir simultanément le relief et l'autorité —
+## c'est précisément la superposition des deux qui lui apprend qu'un royaume
+## s'arrête devant une montagne, et qui rend la frontière signifiante plutôt
+## qu'arbitraire.
+##
+## Les royaumes lointains s'affichent AVANT toute visite : c'est la propriété
+## qu'E.27 achète en interdisant tout calcul dépendant du terrain généré, et
+## c'est ce qui donne au joueur une raison d'aller quelque part.
+const KINGDOM_TINT_ALPHA := 0.30
+const KINGDOM_BORDER_ALPHA := 0.85
+
+
+func _draw_kingdom_territories(g: NoiseGenerator, cell_px: float) -> void:
+	# UNE requête par cellule visible, pas cinq. La première version interrogeait
+	# aussi les quatre voisines pour tracer les frontières : sur une grille de
+	# 37×37, cela faisait près de 7 000 requêtes là où 1 369 suffisent. On relève
+	# d'abord la carte politique dans un dictionnaire local, puis on en DÉDUIT
+	# les frontières — un voisin hors champ n'a pas besoin d'être calculé, il
+	# suffit de le traiter comme « pas le même royaume ».
+	var owners := {}
+	for cz in _side:
+		for cx in _side:
+			var tile := _center_tile + Vector2i(cx - _radius, cz - _radius)
+			var kingdom := g.kingdom_at_cell(tile)
+			if not kingdom.is_empty():
+				owners[Vector2i(cx, cz)] = kingdom
+
+	for grid_pos: Vector2i in owners:
+		var kingdom: Dictionary = owners[grid_pos]
+		var base_pos := _origin + Vector2(grid_pos) * cell_px
+		var tint := ColorRect.new()
+		tint.color = Color(kingdom["color"], KINGDOM_TINT_ALPHA)
+		tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tint.size = Vector2.ONE * cell_px
+		tint.position = base_pos
+		_poi_layer.add_child(tint)
+
+		# FRONTIÈRE : un liseré sur les côtés qui donnent sur autre chose. Sans
+		# lui, deux royaumes voisins de teintes proches se lisent comme un seul
+		# bloc, et l'information politique la plus utile — où s'arrête
+		# l'autorité — disparaît.
+		for offset: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0),
+				Vector2i(0, 1), Vector2i(0, -1)]:
+			var neighbour: Dictionary = owners.get(grid_pos + offset, {})
+			if String(neighbour.get("id", "")) == String(kingdom["id"]):
+				continue
+			var edge := ColorRect.new()
+			edge.color = Color(kingdom["color"], KINGDOM_BORDER_ALPHA)
+			edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var thickness: float = maxf(1.0, cell_px * 0.08)
+			if offset.x != 0:
+				edge.size = Vector2(thickness, cell_px)
+				edge.position = base_pos + Vector2(
+					cell_px - thickness if offset.x > 0 else 0.0, 0.0)
+			else:
+				edge.size = Vector2(cell_px, thickness)
+				edge.position = base_pos + Vector2(0.0,
+					cell_px - thickness if offset.y > 0 else 0.0)
+			_poi_layer.add_child(edge)
+
+
+## Nom du royaume d'une cellule, pour l'infobulle de la carte. Vide en terre
+## sauvage — et c'est une information : « hors royaume = aucune loi » (14.4).
+func kingdom_label_at(tile: Vector2i) -> String:
+	var g := WorldManager.generator
+	if g == null:
+		return ""
+	var kingdom := g.kingdom_at_cell(tile)
+	if kingdom.is_empty():
+		return ""
+	return "%s (%s)" % [String(kingdom["name"]),
+		tr("gouvernance." + String(kingdom["government_type"]))]

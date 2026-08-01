@@ -1,0 +1,40 @@
+{
+  "id": "ecu",
+  "name_key": "item.ecu.name",
+  "type": "bouclier",
+  "equip_slot": "bouclier",
+  "hands": 1,
+  "functionality": "ecu",
+  "parts": {
+    "manche": "poignee",
+    "tete": "ecu"
+  },
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 3
+      },
+      {
+        "category": "minerai",
+        "amount": 3
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.7,
+      "bois": 0.3
+    }
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  },
+  "effects": [],
+  "tags": [
+    "bouclier"
+  ]
+}

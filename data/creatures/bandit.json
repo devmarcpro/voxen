@@ -16,6 +16,7 @@
       1
     ]
   },
+  "model": "res://models/creatures/humanoide.glb",
   "race": "humain",
   "base_stats": {
     "sante": 36,

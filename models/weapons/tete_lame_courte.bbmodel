@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "tete_lame_courte",
+  "model_identifier": "tete_lame_courte",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "tete_lame_courte_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -2,
+        0,
+        -1
+      ],
+      "to": [
+        2,
+        12,
+        1
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "2da8980d-13cc-5b00-8d09-2a441c3e6186"
+    },
+    {
+      "name": "tete_lame_courte_1",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -3,
+        0,
+        -1.5
+      ],
+      "to": [
+        3,
+        2,
+        1.5
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "7706eb04-71b4-59e1-a67a-ffd774969581"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "tete_lame_courte",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "e1249065-86dd-5ec1-9a0a-52b244280109",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "2da8980d-13cc-5b00-8d09-2a441c3e6186",
+        "7706eb04-71b4-59e1-a67a-ffd774969581"
+      ]
+    }
+  ],
+  "textures": []
+}

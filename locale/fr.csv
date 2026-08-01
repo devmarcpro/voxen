@@ -725,3 +725,202 @@ material.os_calcine.name,Os calciné
 material.basalte_maudit.name,Basalte maudit
 material.scorie_ardente.name,Scorie ardente
 material.croute_demoniaque.name,Croûte démoniaque
+item.epee_courte.name,Épée courte
+functionality.epee_courte.name,Épée courte
+item.espadon.name,Espadon
+functionality.espadon.name,Espadon
+item.rapiere.name,Rapière
+functionality.rapiere.name,Rapière
+item.hachette.name,Hachette
+functionality.hachette.name,Hachette
+item.hache_double.name,Hache double
+functionality.hache_double.name,Hache double
+item.hallebarde.name,Hallebarde
+functionality.hallebarde.name,Hallebarde
+item.trident.name,Trident
+functionality.trident.name,Trident
+item.faux_de_guerre.name,Faux de guerre
+functionality.faux_de_guerre.name,Faux de guerre
+item.marteau_guerre.name,Marteau de guerre
+functionality.marteau_guerre.name,Marteau de guerre
+item.masse_ailettes.name,Masse à ailettes
+functionality.masse_ailettes.name,Masse à ailettes
+item.gourdin.name,Gourdin
+functionality.gourdin.name,Gourdin
+item.pioche_combat.name,Pioche de combat
+functionality.pioche_combat.name,Pioche de combat
+item.baton_ferre.name,Bâton ferré
+functionality.baton_ferre.name,Bâton ferré
+ui.combat.coup_glissant,"Coup glissant — trop près, frappé au manche"
+ui.combat.chambering,"Parade parfaite — les armes s'entrechoquent"
+ui.menu.craft_gemme,"Gemme (sertissage)"
+ui.menu.gemme_aucune,"aucune"
+ui.menu.gemme_sans,"Sans gemme : l'arme ne pourra pas être enchantée."
+ui.menu.gemme_effet,"Sertie : conductivité de mana {mana} · +{poids} kg. Aucun effet sur les dégâts."
+ui.menu.section_etat,"État"
+ui.menu.section_attributs,"Attributs"
+ui.gauge.vie,"Vie"
+ui.gauge.mana,"Mana"
+ui.gauge.faim,"Faim"
+ui.gauge.fatigue,"Fatigue"
+ui.gauge.endurance,"Endurance"
+ui.hud.bloc_systeme,"Système"
+ui.hud.bloc_lieu,"Lieu"
+ui.hud.bloc_cible,"Cible"
+ui.hud.bloc_modules,"Modules"
+ui.hud.cle.fps,"FPS"
+ui.hud.cle.chunks,"Chunks"
+ui.hud.cle.meshing,"Meshing"
+ui.hud.cle.position,"Position"
+ui.hud.cle.biome,"Biome"
+ui.hud.cle.temperature,"Température"
+ui.hud.cle.fertilite,"Fertilité"
+ui.hud.cle.cellule,"Cellule"
+ui.hud.cle.grille,"Grille"
+ui.hud.cle.materiau,"Bloc"
+ui.hud.cle.outil,"Outil"
+ui.hud.cle.creature,"Créature"
+ui.hud.cle.module_j,"Touche J"
+ui.hud.cle.module_k,"Touche K"
+ui.hud.cle.module_l,"Touche L"
+ui.hud.chunks_valeur,"{meshes} · {cache} en cache · {file} en file"
+ui.hud.meshing_valeur,"{moyen} ms · {max} ms max"
+ui.hud.grille_valeur,"{res} px"
+ui.hud.module_valeur,"{nom} ({cout} mana)"
+ui.hud.cible_rebond_valeur,"{materiau} — l'outil rebondit !"
+ui.hud.aide_bascule,"F3 : masquer cette aide"
+skill.baton_ferre.name,Bâton ferré
+skill.epee_courte.name,Épée courte
+skill.espadon.name,Espadon
+skill.faux_de_guerre.name,Faux de guerre
+skill.gourdin.name,Gourdin
+skill.hache_double.name,Hache double
+skill.hachette.name,Hachette
+skill.hallebarde.name,Hallebarde
+skill.marteau_guerre.name,Marteau de guerre
+skill.masse_ailettes.name,Masse à ailettes
+skill.pioche_combat.name,Pioche de combat
+skill.rapiere.name,Rapière
+skill.trident.name,Trident
+skill.tranchant.name,Tranchant
+skill.percant.name,Perçant
+skill.contondant.name,Contondant
+skill.dual_wielding.name,Deux armes
+skill.bouclier.name,Bouclier
+skill.deux_mains.name,Deux mains
+skill.magie_offensive.name,Magie offensive
+skill.magie_defensive.name,Magie défensive
+skill.discretion.name,Discrétion
+skill.athletisme.name,Athlétisme
+skill.lecture.name,Lecture
+skill.negociation.name,Négociation
+skill.leadership.name,Leadership
+skill.dressage.name,Dressage
+skill.agriculture.name,Agriculture
+skill.elevage.name,Élevage
+skill.navigation.name,Navigation
+skill.alchimie.name,Alchimie
+skill.couture.name,Couture
+item.rondache.name,"Rondache"
+functionality.rondache.name,"Rondache"
+item.ecu.name,"Écu"
+functionality.ecu.name,"Écu"
+item.pavois.name,"Pavois"
+functionality.pavois.name,"Pavois"
+ui.toast.collection_don,"Pièce ajoutée à la collection — l'objet est détruit."
+ui.menu.onglet.collection,"Collection"
+ui.collection.progression,"{offerts} / {total} pièces ({pct} %)"
+ui.collection.page,"Page {page} / {pages}"
+ui.collection.manquant,"manquant"
+ui.collection.offrir,"Offrir (détruit l'objet)"
+ui.collection.deja_mieux,"Déjà en collection, en meilleure qualité"
+ui.collection.rien_a_offrir,"Aucun exemplaire en inventaire"
+ui.collection.tri,"Trier par :"
+ui.collection.tri_nom,"Nom"
+ui.collection.tri_type,"Type"
+ui.collection.tri_etat,"Manquants d'abord"
+ui.collection.tri_qualite,"Qualité"
+ui.collection.qualite,"qualité {palier}"
+dialogue.salut_neutre,"Bonjour, voyageur."
+dialogue.meteo,"Le temps sera clément, je crois."
+dialogue.occupe,"Je n'ai guère le temps de bavarder."
+dialogue.matin,"Debout de bonne heure, à ce que je vois."
+dialogue.soir,"La nuit tombe. Rentrez donc."
+dialogue.nuit,"Que faites-vous dehors à cette heure ?"
+dialogue.hostile_1,"Vous ! Éloignez-vous de moi."
+dialogue.hostile_2,"On sait ce que vous avez fait."
+dialogue.mefiant_1,"Je vous ai à l'œil."
+dialogue.mefiant_2,"Passez votre chemin."
+dialogue.amical_1,"Content de vous revoir !"
+dialogue.amical_2,"Vous êtes toujours le bienvenu ici."
+dialogue.devoue_1,"Si vous avez besoin de quoi que ce soit, demandez."
+dialogue.devoue_2,"On parle de vous en bien, par ici."
+dialogue.forgeron_1,"La forge ne s'éteint jamais complètement."
+dialogue.forgeron_2,"Apportez-moi du bon minerai, on verra."
+dialogue.garde_1,"Rien à signaler. Tant mieux."
+dialogue.garde_2,"Gardez vos armes rangées en ville."
+dialogue.fermier_1,"La terre donne ce qu'on lui donne."
+dialogue.fermier_2,"Encore une saison comme celle-ci et je souffle."
+dialogue.vendeur_1,"Jetez donc un œil à ma marchandise."
+dialogue.vendeur_2,"Tout se négocie. Presque tout."
+dialogue.cuisinier_1,"Ça mijote. Repassez plus tard."
+dialogue.mineur_1,"La roche est dure par ici."
+dialogue.bucheron_1,"Le bois vert ne vaut rien, souvenez-vous-en."
+dialogue.eleveur_1,"Les bêtes se portent bien."
+dialogue.herboriste_1,"Chaque plante a son usage. Et son heure."
+dialogue.couturier_1,"Une bonne étoffe vaut une bonne armure."
+dialogue.transporteur_1,"Les routes ne sont plus si sûres."
+ui.dialogue.parler,"Parler"
+ui.dialogue.offrir,"Offrir un cadeau"
+ui.dialogue.commercer,"Commercer"
+ui.dialogue.quetes,"Quêtes"
+ui.dialogue.recruter,"Recruter"
+ui.dialogue.fermer,"Prendre congé"
+ui.dialogue.metier,"{metier}"
+ui.dialogue.relation,"Relation : {palier}"
+ui.dialogue.deja_parle,"Vous avez déjà parlé aujourd'hui"
+ui.dialogue.rien_a_offrir,"Rien à offrir"
+ui.dialogue.pas_marchand,"Ce n'est pas un marchand"
+ui.dialogue.pas_de_quetes,"N'a rien à proposer"
+ui.dialogue.pas_recrutable,"Ne vous suivra pas"
+ui.dialogue.cadeau_accepte,"{nom} accepte votre présent."
+ui.dialogue.interagir,"E : parler"
+relation.hostile,"hostile"
+relation.mefiant,"méfiant"
+relation.neutre,"neutre"
+relation.amical,"amical"
+relation.devoue,"dévoué"
+job.garde,"Garde"
+job.fermier,"Fermier"
+job.forgeron,"Forgeron"
+job.vendeur,"Marchand"
+job.cuisinier,"Cuisinier"
+job.mineur,"Mineur"
+job.bucheron,"Bûcheron"
+job.eleveur,"Éleveur"
+job.couturier,"Couturier"
+job.herboriste,"Herboriste"
+job.transporteur,"Transporteur"
+ui.toast.villageois_tue,"Un habitant du village est mort."
+gouvernance.monarchie_hereditaire,"monarchie héréditaire"
+gouvernance.republique_elue,"république élue"
+gouvernance.theocratie,"théocratie"
+gouvernance.ploutocratie,"ploutocratie"
+gouvernance.dictature_militaire,"dictature militaire"
+gouvernance.anarchie,"anarchie"
+taille_royaume.hameau_etat,"hameau-État"
+taille_royaume.cite_etat,"cité-État"
+taille_royaume.petit_royaume,"petit royaume"
+taille_royaume.grand_royaume,"grand royaume"
+ui.hud.cle.royaume,"Royaume"
+ui.hud.terres_sauvages,"terres sauvages (sans loi)"
+ui.loi.amende,"Amende prélevée : la loi locale l'interdit."
+ui.loi.confiscation,"Objet confisqué : il est illégal ici."
+ui.loi.saisie,"Faute de pouvoir payer, un bien vous est saisi."
+ui.loi.gardes_hostiles,"Les gardes du royaume vous cherchent."
+ui.hud.cle.lois,"Lois"
+ui.loi.aucune,"aucune (anarchie)"
+ui.loi.interdit,"{objet} interdit"
+loi.meurtre,"meurtre puni"
+loi.vol,"vol puni"
+loi.agression,"agression punie"

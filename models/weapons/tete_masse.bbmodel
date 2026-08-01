@@ -1,0 +1,112 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "tete_masse",
+  "model_identifier": "tete_masse",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "tete_masse_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -3.5,
+        0,
+        -3.5
+      ],
+      "to": [
+        3.5,
+        9,
+        3.5
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "a2eae6d6-9d53-59a5-8f50-33bdbf5d6e64"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "tete_masse",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "407625a9-b1f7-5d94-8fea-f03af7649e28",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "a2eae6d6-9d53-59a5-8f50-33bdbf5d6e64"
+      ]
+    }
+  ],
+  "textures": []
+}

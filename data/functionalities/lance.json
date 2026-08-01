@@ -5,9 +5,14 @@
   "hands": 2,
   "combat_skill": "lance",
   "degats_des": "2d8",
-  "crit_range": 20,
+  "penetration": 0.3,
+  "windup_ratio": 0.4,
   "vitesse_base": 1.5,
-  "portee": 2.5,
+  "portee": 1.5,
   "type_degats": "percant",
-  "poids_reference": 50
+  "poids_reference": 50,
+  "parts": {
+    "manche": "tres_long",
+    "tete": "pointe"
+  }
 }

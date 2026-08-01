@@ -28,10 +28,21 @@ const GRAVITY := 32.0
 const JUMP_SPEED := 8.95       # sqrt(2×32×1,25) → apex à ~1,25 bloc (MC).
 const TERMINAL_VELOCITY := 78.0
 ## Joueur = 2 blocs de haut (pieds + tête, demande explicite, façon
-## Minecraft), bloqué par les blocs pleins devant lui — pas de pas
-## automatique, seul un saut manuel (Espace) permet de franchir un bloc.
+## Minecraft), bloqué par les blocs pleins devant lui.
+## FRANCHISSEMENT AUTOMATIQUE (2026-07-28) : révision assumée de la règle
+## précédente (« pas de pas automatique, seul un saut manuel permet de franchir
+## un bloc »). Le combat directionnel repose à moitié sur le jeu de jambes
+## (reculer pour esquiver, avancer pour punir) ; devoir sauter à chaque marche
+## d'un bloc rend ce jeu de jambes impraticable sur un terrain voxel. Le
+## terrain, lui, ne change PAS : pas de lissage en sous-voxels (le greedy
+## meshing de chunk_mesher.gd et l'éparsité de chunk_data.gd sont préservés) —
+## c'est le contrôleur qui s'adapte, pas la géométrie du monde.
 const PLAYER_RADIUS := 0.35
 const PLAYER_HEIGHT := 2.0
+## Hauteur maximale franchie sans sauter. 1.0 = exactement une marche d'un
+## bloc ; au-delà il faut toujours sauter (une falaise de 2 blocs reste un
+## obstacle, sinon le relief perd tout sens tactique).
+const STEP_HEIGHT := 1.0
 ## Vue légèrement sous PLAYER_HEIGHT pour que les yeux restent DANS le bloc
 ## de tête plutôt que pile à sa limite supérieure (évite un clignotement de
 ## collision contre un plafond) — PLAYER_HEIGHT reste la source de vérité.
@@ -147,7 +158,10 @@ func _process(delta: float) -> void:
 		_network_sync_timer += delta
 		if _network_sync_timer >= NETWORK_SYNC_INTERVAL:
 			_network_sync_timer = 0.0
-			NetworkManager.rpc_broadcast_position.rpc(global_position)
+			# Position de l'oeil + REGARD : sans le lacet et le tangage, on ne
+			# voit pas ou l'autre joueur vise, ce qui rend un combat
+			# directionnel illisible.
+			NetworkManager.rpc_broadcast_pose.rpc(global_position, rotation.y, rotation.x)
 
 
 func _process_flight(delta: float) -> void:
@@ -252,6 +266,53 @@ func _body_blocked_at(x: float, z: float, feet_y: float) -> bool:
 	return _solid_at_level(x, z, foot_by) or _solid_at_level(x, z, foot_by + 1)
 
 
+## FRANCHISSEMENT AUTOMATIQUE (auto-step) : le pas vers (nx, nz) est bloqué au
+## niveau des PIEDS — peut-on le franchir en montant d'un bloc au lieu de
+## s'arrêter ? Retourne le nouveau `feet_y` si oui, NAN sinon.
+##
+## Montée INSTANTANÉE, pas de lissage (lerp) : `position.y` est l'unique
+## source de vérité de la hauteur (la caméra EST le joueur) et sert d'entrée
+## aux tests de collision de la frame suivante. Un offset visuel qui décale
+## position.y sans décaler la collision rouvrirait précisément la classe de
+## bugs de dérive corrigée le 2026-07-21. Minecraft franchit d'ailleurs ses
+## marches instantanément lui aussi, et personne ne le remarque.
+##
+## Aucun raycast et aucun collider : les blocs font une unité, donc la seule
+## hauteur d'arrivée candidate est le SOMMET du bloc qui bloque, soit
+## `foot_by + 1`. Tout se ramène à trois tests `_solid_at_level` déjà écrits —
+## coût nul, et surtout aucune dépendance à PhysicsServer (le projet n'a aucun
+## collider : la collision du joueur est analytique contre la grille).
+##
+## ATTENTION — MÊME PIÈGE QUE LES BUGS DU 2026-07-21 : `floori(feet_y)` est
+## calculé ici avec le MÊME epsilon `+ 0.001` que `_body_blocked_at` et
+## `_has_support_at`. L'aller-retour position.y ↔ feet_y via EYE_HEIGHT n'est
+## pas exact en virgule flottante ; au repos pile sur un entier, un floori()
+## nu tombe sur le bloc de sol SOLIDE au lieu du bloc d'air au-dessus, et
+## reproduit très exactement le « le joueur se bloque, il faut constamment
+## sauter » — ce qui serait comique pour la fonction censée le supprimer.
+func _try_step_up(nx: float, nz: float, feet_y: float) -> float:
+	var foot_by := floori(feet_y + 0.001)
+	# Obstacle à hauteur de TÊTE : ce n'est pas une marche, c'est un mur.
+	if _solid_at_level(nx, nz, foot_by + 1):
+		return NAN
+	# Rien de solide au niveau des pieds : le pas était bloqué pour une autre
+	# raison (ou plus du tout) — l'auto-step n'a rien à faire ici.
+	if not _solid_at_level(nx, nz, foot_by):
+		return NAN
+	var stepped := float(foot_by + 1)
+	if stepped - feet_y > STEP_HEIGHT + 0.001:
+		return NAN
+	# Le corps doit TENIR à l'arrivée (pieds et tête libres à la nouvelle
+	# hauteur) : sinon on monterait dans un boyau d'un bloc de haut.
+	if _body_blocked_at(nx, nz, stepped):
+		return NAN
+	# ...et le plafond au-dessus de la position ACTUELLE doit laisser monter :
+	# franchir une marche sous une corniche basse enfoncerait la tête dedans.
+	if _solid_at_level(position.x, position.z, foot_by + 2):
+		return NAN
+	return stepped
+
+
 ## Marche au sol : gravité + saut, collision RÉELLE contre les blocs du monde
 ## (2026-07-20, réécriture — l'ancienne version calait le sol sur la hauteur
 ## PROCÉDURALE pure, `generator.height_at()`, ignorant totalement les blocs
@@ -297,15 +358,34 @@ func _process_walk(delta: float) -> void:
 	if direction != Vector3.ZERO and WorldManager.generator != null:
 		var move := direction.normalized() * speed * delta
 		var feet_y := position.y - EYE_HEIGHT
+		# Franchissement automatique seulement AU SOL et hors sneak : en l'air
+		# il transformerait le saut en escalade, et le sneak est le mode
+		# « placement précis » (sa protection anti-chute au bord suppose que le
+		# joueur maîtrise exactement où il pose les pieds).
+		var can_step := _grounded and not sneaking
 		# Résolution par axe (glissement le long des murs plutôt que blocage
 		# net). En sneak au sol, un pas qui perdrait tout appui est refusé
 		# (protection anti-chute au bord, comportement Minecraft).
 		if not _body_blocked_at(position.x + move.x, position.z, feet_y) \
 				and (not sneaking or not _grounded or _has_support_at(position.x + move.x, position.z, feet_y)):
 			position.x += move.x
+		elif can_step:
+			var stepped := _try_step_up(position.x + move.x, position.z, feet_y)
+			if not is_nan(stepped):
+				position.x += move.x
+				feet_y = stepped   # l'axe Z suivant doit tester à la NOUVELLE hauteur.
+				position.y = stepped + EYE_HEIGHT
+				_vertical_velocity = 0.0
 		if not _body_blocked_at(position.x, position.z + move.z, feet_y) \
 				and (not sneaking or not _grounded or _has_support_at(position.x, position.z + move.z, feet_y)):
 			position.z += move.z
+		elif can_step:
+			var stepped := _try_step_up(position.x, position.z + move.z, feet_y)
+			if not is_nan(stepped):
+				position.z += move.z
+				feet_y = stepped
+				position.y = stepped + EYE_HEIGHT
+				_vertical_velocity = 0.0
 	elif direction != Vector3.ZERO:
 		position += direction.normalized() * speed * delta
 

@@ -2,22 +2,53 @@
   "id": "steppe",
   "name_key": "biome.steppe.name",
   "conditions": {
-    "altitude": [0.0, 0.55],
-    "temperature": [0.3, 0.5],
-    "humidite": [0.0, 0.25]
+    "altitude": [
+      0.0,
+      0.55
+    ],
+    "temperature": [
+      0.3,
+      0.5
+    ],
+    "humidite": [
+      0.0,
+      0.25
+    ]
   },
   "priority": 3,
   "surface_material": "herbe_seche",
   "subsurface_material": "terre",
   "vegetation": [
-    { "id": "robinier", "density": 0.001 }
+    {
+      "id": "robinier",
+      "density": 0.001
+    }
   ],
   "plantes_sol": [
-    { "material_id": "herbe_seche", "density": 0.02 },
-    { "material_id": "buisson", "density": 0.004 }
+    {
+      "material_id": "herbe_seche",
+      "density": 0.02
+    },
+    {
+      "material_id": "buisson",
+      "density": 0.004
+    }
   ],
-  "village_palette": { "mur": "terre_fertile", "toit": "paille", "sol": "terre" },
-  "poi_weights": { "village": 3, "donjon": 5, "camp": 7 },
+  "village_palette": {
+    "mur": "terre_fertile",
+    "toit": "paille",
+    "sol": "terre",
+    "poutre": "chene",
+    "pave": "pierre_taillee"
+  },
+  "poi_weights": {
+    "village": 3,
+    "donjon": 5
+  },
   "farming_yield": 0.55,
-  "tags": ["steppe", "froid", "sec"]
+  "tags": [
+    "steppe",
+    "froid",
+    "sec"
+  ]
 }

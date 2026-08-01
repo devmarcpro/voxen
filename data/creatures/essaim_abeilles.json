@@ -1,6 +1,7 @@
 {
   "id": "essaim_abeilles",
   "name_key": "creature.essaim_abeilles.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "amorphe",
   "parts_pool": {
     "corps": [

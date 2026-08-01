@@ -1,6 +1,7 @@
 {
   "id": "maitre_guilde",
   "name_key": "creature.maitre_guilde.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "humanoide",
   "parts_pool": {
     "tete": [
@@ -28,7 +29,9 @@
   "equip_slots": "humanoide_standard",
   "inventory_table": null,
   "ai_profile": "civil",
-  "jobs_compatible": [],
+  "jobs_compatible": [
+    "vendeur"
+  ],
   "housing_default": "normal",
   "recruitable": {
     "method": "jamais"

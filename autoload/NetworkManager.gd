@@ -66,34 +66,62 @@ func _on_peer_connected(id: int) -> void:
 func _on_peer_disconnected(id: int) -> void:
 	print("[NET] Pair déconnecté : %d" % id)
 	peer_left.emit(id)
-	if _remote_markers.has(id):
-		_remote_markers[id].queue_free()
-		_remote_markers.erase(id)
+	if _remote_bodies.has(id):
+		_remote_bodies[id].queue_free()
+		_remote_bodies.erase(id)
 
 
-# --- Réplication de position (E.11 : non-fiable 10-20 Hz) ---
-## Vue minimale des autres joueurs : un simple repère 3D par pair — pas
-## d'avatar complet (aucun modèle de personnage n'existe encore, 12).
+# --- Réplication de pose (E.11 : non-fiable 10-20 Hz) ---
+## AVATARS COMPLETS depuis le 2026-07-28 : les autres joueurs étaient des
+## boîtes bleues (« aucun modèle de personnage n'existe encore »). Le gabarit
+## humanoïde existe maintenant, et c'est LE MÊME corps que celui du joueur
+## local — un seul nœud à maintenir, aucune divergence possible entre ce qu'on
+## voit de soi et ce que les autres voient.
+##
+## Le LACET et le TANGAGE sont répliqués en plus de la position. Ce n'est pas
+## cosmétique : dans un combat directionnel, ne pas voir où l'adversaire
+## regarde, c'est ne pas voir arriver son coup. La position transmise est celle
+## de l'ŒIL (ce que la caméra connaît) ; les pieds s'en déduisent.
 
-var _remote_markers := {}  # peer_id -> Node3D
+var _remote_bodies := {}  # peer_id -> PlayerBody (ou Node3D de repli)
 
 
 @rpc("any_peer", "unreliable")
-func rpc_broadcast_position(pos: Vector3) -> void:
+func rpc_broadcast_pose(pos: Vector3, yaw: float, pitch: float) -> void:
 	var sender := multiplayer.get_remote_sender_id()
 	if sender == 0:
 		return  # Appel local direct (ne devrait pas arriver) : ignoré.
-	_marker_for(sender).global_position = pos
+	var body := _body_for(sender)
+	if body == null:
+		return
+	if body.has_method("apply_remote_pose"):
+		body.apply_remote_pose(pos - Vector3(0.0, FlyCamera.EYE_HEIGHT, 0.0), yaw, pitch)
+	else:
+		body.global_position = pos
 
 
-func _marker_for(id: int) -> Node3D:
-	if _remote_markers.has(id):
-		return _remote_markers[id]
+func _body_for(id: int) -> Node3D:
+	if _remote_bodies.has(id):
+		return _remote_bodies[id]
+	# `false` : ce n'est pas le joueur local, sa tête reste VISIBLE (on ne
+	# masque le crâne que pour celui dont la caméra est dedans).
+	var body: Node3D = preload("res://scenes/entities/player_body.gd").new()
+	body.name = "JoueurDistant%d" % id
+	get_tree().current_scene.add_child(body)
+	if not body.setup(false):
+		# Modèle absent : repli sur l'ancien repère plutôt que rien du tout —
+		# mieux vaut une boîte visible qu'un joueur invisible.
+		body.queue_free()
+		body = _fallback_marker()
+	_remote_bodies[id] = body
+	return body
+
+
+func _fallback_marker() -> Node3D:
 	var marker := CSGBox3D.new()
 	marker.size = Vector3(0.6, 1.8, 0.6)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.2, 0.6, 1.0)
 	marker.material = mat
 	get_tree().current_scene.add_child(marker)
-	_remote_markers[id] = marker
 	return marker

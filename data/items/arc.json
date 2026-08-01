@@ -5,25 +5,33 @@
   "equip_slot": "arme",
   "hands": 2,
   "functionality": "arc",
+  "parts": {
+    "manche": "arc",
+    "tete": "branches_arc"
+  },
   "recipe": {
     "station": "etabli",
     "craft_skill": "forge",
     "inputs": [
       {
         "category": "bois",
-        "amount": 2
+        "amount": 1
       },
       {
-        "category": "textile",
+        "category": "minerai",
         "amount": 1
       }
     ]
   },
   "stat_weights": {
     "durete": {
-      "bois": 0.7,
-      "textile": 0.3
+      "minerai": 0.9,
+      "bois": 0.1
     }
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
   },
   "effects": [],
   "tags": [
@@ -32,9 +40,5 @@
   "sprites": {
     "manche": "res://assets/weapons/arc_manche.png",
     "tete": "res://assets/weapons/arc_tete.png"
-  },
-  "sprite_tint": {
-    "manche": "bois",
-    "tete": "bois"
   }
 }

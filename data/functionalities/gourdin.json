@@ -1,0 +1,18 @@
+{
+  "id": "gourdin",
+  "name_key": "functionality.gourdin.name",
+  "kind": "arme",
+  "hands": 1,
+  "combat_skill": "gourdin",
+  "degats_des": "1d6",
+  "penetration": 0.05,
+  "windup_ratio": 0.35,
+  "vitesse_base": 2.4,
+  "portee": 1.5,
+  "type_degats": "contondant",
+  "poids_reference": 22,
+  "parts": {
+    "manche": "court",
+    "tete": "gourdin"
+  }
+}

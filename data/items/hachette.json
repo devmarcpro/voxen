@@ -1,0 +1,40 @@
+{
+  "id": "hachette",
+  "name_key": "item.hachette.name",
+  "type": "arme",
+  "equip_slot": "arme",
+  "hands": 1,
+  "functionality": "hachette",
+  "parts": {
+    "manche": "court",
+    "tete": "hache"
+  },
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 1
+      },
+      {
+        "category": "minerai",
+        "amount": 2
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.9,
+      "bois": 0.1
+    }
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  },
+  "effects": [],
+  "tags": [
+    "arme"
+  ]
+}

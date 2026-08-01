@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "tete_rondache",
+  "model_identifier": "tete_rondache",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "tete_rondache_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -7,
+        -7,
+        0
+      ],
+      "to": [
+        7,
+        7,
+        1.5
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "bd142109-d408-588d-a002-d78fcaa9d16c"
+    },
+    {
+      "name": "tete_rondache_1",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -2,
+        -2,
+        1.5
+      ],
+      "to": [
+        2,
+        2,
+        3
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "62c544f6-1a4f-5d52-a715-540e376db132"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "tete_rondache",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "b0f26892-7250-553a-b902-2fbc1f6c366a",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "bd142109-d408-588d-a002-d78fcaa9d16c",
+        "62c544f6-1a4f-5d52-a715-540e376db132"
+      ]
+    }
+  ],
+  "textures": []
+}

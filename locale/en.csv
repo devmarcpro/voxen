@@ -725,3 +725,202 @@ material.os_calcine.name,Charred bone
 material.basalte_maudit.name,Cursed basalt
 material.scorie_ardente.name,Burning slag
 material.croute_demoniaque.name,Demonic crust
+item.epee_courte.name,Short sword
+functionality.epee_courte.name,Short sword
+item.espadon.name,Greatsword
+functionality.espadon.name,Greatsword
+item.rapiere.name,Rapier
+functionality.rapiere.name,Rapier
+item.hachette.name,Hatchet
+functionality.hachette.name,Hatchet
+item.hache_double.name,Double axe
+functionality.hache_double.name,Double axe
+item.hallebarde.name,Halberd
+functionality.hallebarde.name,Halberd
+item.trident.name,Trident
+functionality.trident.name,Trident
+item.faux_de_guerre.name,War scythe
+functionality.faux_de_guerre.name,War scythe
+item.marteau_guerre.name,Warhammer
+functionality.marteau_guerre.name,Warhammer
+item.masse_ailettes.name,Flanged mace
+functionality.masse_ailettes.name,Flanged mace
+item.gourdin.name,Club
+functionality.gourdin.name,Club
+item.pioche_combat.name,War pick
+functionality.pioche_combat.name,War pick
+item.baton_ferre.name,Iron-shod staff
+functionality.baton_ferre.name,Iron-shod staff
+ui.combat.coup_glissant,"Glancing blow — too close, struck with the haft"
+ui.combat.chambering,"Perfect chamber — blades clash"
+ui.menu.craft_gemme,"Gem (setting)"
+ui.menu.gemme_aucune,"none"
+ui.menu.gemme_sans,"No gem: this weapon cannot be enchanted."
+ui.menu.gemme_effet,"Set: mana conductivity {mana} · +{poids} kg. No effect on damage."
+ui.menu.section_etat,"Status"
+ui.menu.section_attributs,"Attributes"
+ui.gauge.vie,"Health"
+ui.gauge.mana,"Mana"
+ui.gauge.faim,"Hunger"
+ui.gauge.fatigue,"Fatigue"
+ui.gauge.endurance,"Stamina"
+ui.hud.bloc_systeme,"System"
+ui.hud.bloc_lieu,"Location"
+ui.hud.bloc_cible,"Target"
+ui.hud.bloc_modules,"Modules"
+ui.hud.cle.fps,"FPS"
+ui.hud.cle.chunks,"Chunks"
+ui.hud.cle.meshing,"Meshing"
+ui.hud.cle.position,"Position"
+ui.hud.cle.biome,"Biome"
+ui.hud.cle.temperature,"Temperature"
+ui.hud.cle.fertilite,"Fertility"
+ui.hud.cle.cellule,"Cell"
+ui.hud.cle.grille,"Grid"
+ui.hud.cle.materiau,"Block"
+ui.hud.cle.outil,"Tool"
+ui.hud.cle.creature,"Creature"
+ui.hud.cle.module_j,"Key J"
+ui.hud.cle.module_k,"Key K"
+ui.hud.cle.module_l,"Key L"
+ui.hud.chunks_valeur,"{meshes} · {cache} cached · {file} queued"
+ui.hud.meshing_valeur,"{moyen} ms · {max} ms max"
+ui.hud.grille_valeur,"{res} px"
+ui.hud.module_valeur,"{nom} ({cout} mana)"
+ui.hud.cible_rebond_valeur,"{materiau} — the tool bounces off!"
+ui.hud.aide_bascule,"F3: hide this help"
+skill.baton_ferre.name,Iron-shod staff
+skill.epee_courte.name,Short sword
+skill.espadon.name,Greatsword
+skill.faux_de_guerre.name,War scythe
+skill.gourdin.name,Club
+skill.hache_double.name,Double axe
+skill.hachette.name,Hatchet
+skill.hallebarde.name,Halberd
+skill.marteau_guerre.name,War hammer
+skill.masse_ailettes.name,Flanged mace
+skill.pioche_combat.name,War pick
+skill.rapiere.name,Rapier
+skill.trident.name,Trident
+skill.tranchant.name,Cutting
+skill.percant.name,Piercing
+skill.contondant.name,Blunt
+skill.dual_wielding.name,Dual wielding
+skill.bouclier.name,Shield
+skill.deux_mains.name,Two-handed
+skill.magie_offensive.name,Offensive magic
+skill.magie_defensive.name,Defensive magic
+skill.discretion.name,Stealth
+skill.athletisme.name,Athletics
+skill.lecture.name,Reading
+skill.negociation.name,Bartering
+skill.leadership.name,Leadership
+skill.dressage.name,Taming
+skill.agriculture.name,Farming
+skill.elevage.name,Animal husbandry
+skill.navigation.name,Navigation
+skill.alchimie.name,Alchemy
+skill.couture.name,Tailoring
+item.rondache.name,"Buckler"
+functionality.rondache.name,"Buckler"
+item.ecu.name,"Kite shield"
+functionality.ecu.name,"Kite shield"
+item.pavois.name,"Tower shield"
+functionality.pavois.name,"Tower shield"
+ui.toast.collection_don,"Added to the collection — the item is destroyed."
+ui.menu.onglet.collection,"Collection"
+ui.collection.progression,"{offerts} / {total} pieces ({pct}%)"
+ui.collection.page,"Page {page} / {pages}"
+ui.collection.manquant,"missing"
+ui.collection.offrir,"Donate (destroys the item)"
+ui.collection.deja_mieux,"Already collected, at a better quality"
+ui.collection.rien_a_offrir,"No copy in inventory"
+ui.collection.tri,"Sort by:"
+ui.collection.tri_nom,"Name"
+ui.collection.tri_type,"Type"
+ui.collection.tri_etat,"Missing first"
+ui.collection.tri_qualite,"Quality"
+ui.collection.qualite,"quality {palier}"
+dialogue.salut_neutre,"Good day, traveller."
+dialogue.meteo,"Fair weather ahead, I reckon."
+dialogue.occupe,"I've little time to chat."
+dialogue.matin,"Up early, I see."
+dialogue.soir,"Night's falling. Get yourself home."
+dialogue.nuit,"What are you doing out at this hour?"
+dialogue.hostile_1,"You! Stay away from me."
+dialogue.hostile_2,"We know what you've done."
+dialogue.mefiant_1,"I'm keeping an eye on you."
+dialogue.mefiant_2,"Move along."
+dialogue.amical_1,"Good to see you again!"
+dialogue.amical_2,"You're always welcome here."
+dialogue.devoue_1,"If you need anything at all, just ask."
+dialogue.devoue_2,"They speak well of you around here."
+dialogue.forgeron_1,"The forge never goes fully cold."
+dialogue.forgeron_2,"Bring me good ore and we'll talk."
+dialogue.garde_1,"Nothing to report. All the better."
+dialogue.garde_2,"Keep your weapons sheathed in town."
+dialogue.fermier_1,"The soil gives what you give it."
+dialogue.fermier_2,"One more season like this and I can rest."
+dialogue.vendeur_1,"Have a look at my wares."
+dialogue.vendeur_2,"Everything's negotiable. Almost everything."
+dialogue.cuisinier_1,"It's simmering. Come back later."
+dialogue.mineur_1,"The rock is hard around here."
+dialogue.bucheron_1,"Green wood is worthless. Remember that."
+dialogue.eleveur_1,"The animals are doing well."
+dialogue.herboriste_1,"Every plant has its use. And its hour."
+dialogue.couturier_1,"Good cloth is worth good armour."
+dialogue.transporteur_1,"The roads aren't as safe as they were."
+ui.dialogue.parler,"Talk"
+ui.dialogue.offrir,"Offer a gift"
+ui.dialogue.commercer,"Trade"
+ui.dialogue.quetes,"Quests"
+ui.dialogue.recruter,"Recruit"
+ui.dialogue.fermer,"Take your leave"
+ui.dialogue.metier,"{metier}"
+ui.dialogue.relation,"Relation: {palier}"
+ui.dialogue.deja_parle,"You have already spoken today"
+ui.dialogue.rien_a_offrir,"Nothing to offer"
+ui.dialogue.pas_marchand,"Not a merchant"
+ui.dialogue.pas_de_quetes,"Has nothing to offer"
+ui.dialogue.pas_recrutable,"Will not follow you"
+ui.dialogue.cadeau_accepte,"{nom} accepts your gift."
+ui.dialogue.interagir,"E: talk"
+relation.hostile,"hostile"
+relation.mefiant,"wary"
+relation.neutre,"neutral"
+relation.amical,"friendly"
+relation.devoue,"devoted"
+job.garde,"Guard"
+job.fermier,"Farmer"
+job.forgeron,"Blacksmith"
+job.vendeur,"Merchant"
+job.cuisinier,"Cook"
+job.mineur,"Miner"
+job.bucheron,"Woodcutter"
+job.eleveur,"Herder"
+job.couturier,"Tailor"
+job.herboriste,"Herbalist"
+job.transporteur,"Carrier"
+ui.toast.villageois_tue,"A villager has died."
+gouvernance.monarchie_hereditaire,"hereditary monarchy"
+gouvernance.republique_elue,"elected republic"
+gouvernance.theocratie,"theocracy"
+gouvernance.ploutocratie,"plutocracy"
+gouvernance.dictature_militaire,"military dictatorship"
+gouvernance.anarchie,"anarchy"
+taille_royaume.hameau_etat,"hamlet-state"
+taille_royaume.cite_etat,"city-state"
+taille_royaume.petit_royaume,"small kingdom"
+taille_royaume.grand_royaume,"great kingdom"
+ui.hud.cle.royaume,"Kingdom"
+ui.hud.terres_sauvages,"wilderness (lawless)"
+ui.loi.amende,"Fine levied: local law forbids it."
+ui.loi.confiscation,"Item confiscated: it is illegal here."
+ui.loi.saisie,"Unable to pay, one of your goods is seized."
+ui.loi.gardes_hostiles,"The kingdom's guards are after you."
+ui.hud.cle.lois,"Laws"
+ui.loi.aucune,"none (anarchy)"
+ui.loi.interdit,"{objet} banned"
+loi.meurtre,"murder punished"
+loi.vol,"theft punished"
+loi.agression,"assault punished"

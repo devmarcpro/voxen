@@ -1,0 +1,272 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "tete_hache_double",
+  "model_identifier": "tete_hache_double",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "tete_hache_double_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        1,
+        0,
+        -1.5
+      ],
+      "to": [
+        9,
+        10,
+        1.5
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "6663f15f-831c-512b-8956-a8bdb65920a6"
+    },
+    {
+      "name": "tete_hache_double_1",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -9,
+        0,
+        -1.5
+      ],
+      "to": [
+        -1,
+        10,
+        1.5
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "3296d55a-9f1c-5539-8176-f28c5ad8798c"
+    },
+    {
+      "name": "tete_hache_double_2",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -1.5,
+        -1,
+        -1.5
+      ],
+      "to": [
+        1.5,
+        11,
+        1.5
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "7958b50f-7f4b-5e8f-9435-8c288d56465b"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "tete_hache_double",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "0413b69b-c621-5869-aabf-5acbfa202c6d",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "6663f15f-831c-512b-8956-a8bdb65920a6",
+        "3296d55a-9f1c-5539-8176-f28c5ad8798c",
+        "7958b50f-7f4b-5e8f-9435-8c288d56465b"
+      ]
+    }
+  ],
+  "textures": []
+}

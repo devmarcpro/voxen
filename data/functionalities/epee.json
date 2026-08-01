@@ -5,9 +5,14 @@
   "hands": 1,
   "combat_skill": "epee",
   "degats_des": "2d6",
-  "crit_range": 20,
+  "penetration": 0.1,
+  "windup_ratio": 0.45,
   "vitesse_base": 2.0,
   "portee": 1.5,
   "type_degats": "tranchant",
-  "poids_reference": 40
+  "poids_reference": 40,
+  "parts": {
+    "manche": "moyen",
+    "tete": "lame_moyenne"
+  }
 }

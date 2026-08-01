@@ -65,10 +65,12 @@ func run() -> void:
 	print("[PROBE] calotte glaciaire générée quelque part sur une période de latitude : %s à %s" % [icecap_found, icecap_pos])
 
 	# Vérification du placement de POI (E.2) : compte les types trouvés sur un
-	# échantillon de cellules (128 blocs chacune), doit rester proche des
-	# poi_weights par défaut du GDD (village 4 %, donjon 6 %, camp 8 %,
-	# sanctuaire 3 %, filon_majeur 6 % — modulés par la disponibilité de
-	# poi_weights par biome, tous n'en ont pas forcément).
+	# échantillon de cellules (128 blocs chacune).
+	#
+	# DEUX TYPES SEULEMENT depuis le 2026-08-01 — village et donjon. Les camps,
+	# sanctuaires et filons majeurs du GDD ont été retirés : ils n'avaient aucun
+	# contenu en jeu et leurs pastilles menaient à du vide. Les poids restants
+	# ne sont donc plus ceux du GDD, c'est voulu.
 	var poi_counts := {}
 	var poi_cells := 0
 	for pcz in range(-50, 51):

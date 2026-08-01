@@ -1,6 +1,7 @@
 {
   "id": "renne",
   "name_key": "creature.renne.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "quadrupede",
   "parts_pool": {
     "tete": [

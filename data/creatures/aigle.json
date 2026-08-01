@@ -1,6 +1,7 @@
 {
   "id": "aigle",
   "name_key": "creature.aigle.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "volant",
   "parts_pool": {
     "tete": [

@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "tete_marteau",
+  "model_identifier": "tete_marteau",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "tete_marteau_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -4,
+        0,
+        -4
+      ],
+      "to": [
+        4,
+        11,
+        4
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "71ec2daf-1337-572d-b224-61b1a0419e6f"
+    },
+    {
+      "name": "tete_marteau_1",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -6,
+        3,
+        -2
+      ],
+      "to": [
+        6,
+        8,
+        2
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "6ceb005c-bf09-5606-a188-590d3ea7f4c8"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "tete_marteau",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "797bac77-8eb0-5dd9-9206-2dbe26b8d725",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "71ec2daf-1337-572d-b224-61b1a0419e6f",
+        "6ceb005c-bf09-5606-a188-590d3ea7f4c8"
+      ]
+    }
+  ],
+  "textures": []
+}

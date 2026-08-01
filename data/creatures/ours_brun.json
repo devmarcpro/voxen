@@ -1,6 +1,7 @@
 {
   "id": "ours_brun",
   "name_key": "creature.ours_brun.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "quadrupede",
   "parts_pool": {
     "tete": [

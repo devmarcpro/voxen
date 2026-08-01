@@ -40,6 +40,9 @@ var _mutation_count := 0
 var _start_pos := Vector2i.ZERO
 
 @onready var camera: Camera3D = $FlyCamera
+## Corps visible du joueur — construit dans _ready (peut rester null si le
+## modèle est absent : on joue alors sans corps plutôt que de planter).
+var player_body: Node3D
 
 
 func _ready() -> void:
@@ -50,6 +53,14 @@ func _ready() -> void:
 	var status_bars: Control = preload("res://scenes/ui/status_bars.gd").new()
 	$HUD.add_child(status_bars)
 	status_bars.setup($Player, $FlyCamera)
+	# Indicateur de combat directionnel + chiffres de dégâts (2026-07-28) :
+	# sans eux le combat est mécaniquement complet mais ILLISIBLE.
+	var combat_hud: Control = preload("res://scenes/ui/combat_hud.gd").new()
+	$HUD.add_child(combat_hud)
+	combat_hud.setup($Player)
+	var damage_numbers: Node3D = preload("res://scenes/world/damage_numbers.gd").new()
+	damage_numbers.name = "DamageNumbers"
+	add_child(damage_numbers)
 	# Rotations posées en code (plus lisible qu'une matrice dans le .tscn).
 	# Orientation initiale seulement : le cycle jour/nuit (E.21) reprend la
 	# main dès la première frame — voir DayNightManager, seule source de
@@ -62,6 +73,38 @@ func _ready() -> void:
 	# GPU sur la machine cible (G.1 : architecturer pour l'optimisation).
 	$Sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	$Sun.directional_shadow_max_distance = 100.0
+
+	# Corps visible du joueur (2026-07-28) : première personne AVEC pieds et
+	# bras. Instancié en CODE, comme les menus — le cache de classes globales
+	# n'est régénéré que par l'éditeur, un lancement headless après ajout d'un
+	# fichier ne connaîtrait pas encore « PlayerBody ».
+	# Le corps SUIT la caméra ; il ne la porte pas et ne participe à aucune
+	# collision (voir l'en-tête de player_body.gd).
+	player_body = preload("res://scenes/entities/player_body.gd").new()
+	player_body.name = "PlayerBody"
+	add_child(player_body)
+	if player_body.setup(true):
+		# L'arme est PORTÉE PAR LA MAIN et non plus posée devant l'objectif :
+		# avec de vrais bras, un viewmodel flottant serait visiblement faux.
+		var hand: Node3D = player_body.hand_attachment()
+		if hand != null:
+			var held: Node = $FlyCamera/HeldItem
+			held.reparent(hand, false)
+			held.set("in_hand", true)
+		# BOUCLIER : même objet d'affichage, accroché à l'autre main. Il ne suit
+		# PAS la hotbar mais l'ÉQUIPEMENT — d'où un second HeldItem plutôt qu'un
+		# partage du premier, qui se reconstruirait à chaque changement d'objet
+		# en main et ferait clignoter le bouclier.
+		var offhand: Node3D = player_body.offhand_attachment()
+		if offhand != null:
+			shield_item = preload("res://scenes/entities/held_item.gd").new()
+			shield_item.name = "ShieldItem"
+			offhand.add_child(shield_item)
+			shield_item.set("in_hand", true)
+			shield_item.set("source", "bouclier")
+	else:
+		player_body.queue_free()
+		player_body = null
 
 	# Démarrage DIRECT (benchs/sondes/tests/réseau CLI) : le monde démarre
 	# immédiatement avec le profil par défaut, sans menu — les mesures et les
@@ -224,6 +267,10 @@ func _start_world(args: Array) -> void:
 	# Menu de jeu à onglets (Tab) — instancié en code (comme le menu de
 	# démarrage) : preload du script, pas le class_name global (cache de
 	# classes non régénéré hors éditeur).
+	if get_node_or_null("DialoguePanel") == null:
+		var dialogue: CanvasLayer = preload("res://scenes/ui/dialogue_panel.gd").new()
+		dialogue.name = "DialoguePanel"
+		add_child(dialogue)
 	if get_node_or_null("GameMenu") == null:
 		var game_menu: CanvasLayer = preload("res://scenes/ui/game_menu.gd").new()
 		game_menu.name = "GameMenu"
@@ -265,7 +312,36 @@ func _start_world(args: Array) -> void:
 		print("[BENCH] démarrage (%s) : échauffement puis mesure %.0f s." % [mode, BENCH_DURATION])
 
 
+## Objet d'affichage du bouclier, accroché à la main gauche. Il se rafraîchit
+## tout seul (HeldItem.source == "bouclier") : rien à piloter d'ici.
+var shield_item: MeshInstance3D
+
+
 func _process(delta: float) -> void:
+	# Le corps suit la caméra : purement VISUEL, donc _process est légitime
+	# (E.1 réserve le tick au gameplay, pas à l'affichage). Placé avant tout
+	# retour anticipé — un bench ne doit pas figer le corps en l'air.
+	if player_body != null:
+		player_body.follow_camera(camera, FlyCamera.EYE_HEIGHT, delta)
+		# IK. L'ORDRE COMPTE : les jambes d'abord, parce qu'elles peuvent
+		# ABAISSER le bassin (bord de bloc) et donc déplacer les épaules ;
+		# les bras ensuite, qui visent des cibles en espace MONDE et doivent
+		# partir de la position d'épaule définitive.
+		player_body.solve_legs()
+		var targets: Dictionary = $Player.hand_targets(
+			player_body.HAND_ARC_RADIUS, player_body.OFFHAND_ALONG_WEAPON, delta)
+		for side: String in targets:
+			player_body.solve_arm(side, targets[side])
+		# N'afficher que les membres réellement utilisés : la main gauche
+		# n'apparaît que si l'arme la mobilise (deux mains). `hand_targets`
+		# la renseigne précisément dans ce cas — une seule source de vérité.
+		player_body.set_local_limbs(targets.has("gauche"))
+		# La main PORTE l'arme, l'axe de VISÉE l'oriente : héritée de l'os,
+		# elle pointait là où pointait l'avant-bras, donc en travers.
+		var part_scale: float = preload("res://scenes/entities/held_item.gd").PART_SCALE
+		player_body.point_weapon($Player.weapon_direction(), part_scale)
+		player_body.point_shield(-camera.global_basis.z, part_scale)
+
 	# Instrumentation de mesure uniquement — aucune logique de gameplay ici (E.1).
 	if not bench or _bench_done:
 		return

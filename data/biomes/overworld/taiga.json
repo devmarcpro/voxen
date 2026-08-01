@@ -18,7 +18,11 @@
   "priority": 3,
   "surface_material": "herbe",
   "subsurface_material": "pierre",
-  "grass_tint": [0.85, 0.95, 1.05],
+  "grass_tint": [
+    0.85,
+    0.95,
+    1.05
+  ],
   "vegetation": [
     {
       "id": "epicea",
@@ -39,13 +43,14 @@
   ],
   "village_palette": {
     "mur": "sapin",
-    "toit": "sapin",
-    "sol": "pierre"
+    "toit": "ardoise",
+    "sol": "pierre",
+    "poutre": "epicea",
+    "pave": "pierre_taillee"
   },
   "poi_weights": {
     "village": 2,
-    "donjon": 6,
-    "camp": 6
+    "donjon": 6
   },
   "farming_yield": 0.6,
   "tags": [

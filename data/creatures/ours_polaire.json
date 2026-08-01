@@ -1,6 +1,7 @@
 {
   "id": "ours_polaire",
   "name_key": "creature.ours_polaire.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "quadrupede",
   "parts_pool": {
     "tete": [

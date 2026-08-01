@@ -1,0 +1,40 @@
+{
+  "id": "pavois",
+  "name_key": "item.pavois.name",
+  "type": "bouclier",
+  "equip_slot": "bouclier",
+  "hands": 1,
+  "functionality": "pavois",
+  "parts": {
+    "manche": "poignee",
+    "tete": "pavois"
+  },
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 5
+      },
+      {
+        "category": "minerai",
+        "amount": 5
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.7,
+      "bois": 0.3
+    }
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  },
+  "effects": [],
+  "tags": [
+    "bouclier"
+  ]
+}

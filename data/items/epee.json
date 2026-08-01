@@ -5,6 +5,10 @@
   "equip_slot": "arme",
   "hands": 1,
   "functionality": "epee",
+  "parts": {
+    "manche": "moyen",
+    "tete": "lame_moyenne"
+  },
   "recipe": {
     "station": "etabli",
     "craft_skill": "forge",
@@ -25,10 +29,9 @@
       "bois": 0.1
     }
   },
-  "vox_model": "models/weapons/epee.vox",
-  "vox_slots": {
-    "#00FF00": "bois",
-    "#FF00FF": "minerai"
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
   },
   "effects": [],
   "tags": [
@@ -38,8 +41,9 @@
     "manche": "res://assets/weapons/epee_manche.png",
     "tete": "res://assets/weapons/epee_tete.png"
   },
-  "sprite_tint": {
-    "manche": "bois",
-    "tete": "minerai"
+  "vox_model": "models/weapons/epee.vox",
+  "vox_slots": {
+    "#00FF00": "bois",
+    "#FF00FF": "minerai"
   }
 }

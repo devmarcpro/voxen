@@ -1,0 +1,18 @@
+{
+  "id": "epee_courte",
+  "name_key": "functionality.epee_courte.name",
+  "kind": "arme",
+  "hands": 1,
+  "combat_skill": "epee_courte",
+  "degats_des": "1d8",
+  "penetration": 0.12,
+  "windup_ratio": 0.38,
+  "vitesse_base": 2.6,
+  "portee": 1.5,
+  "type_degats": "tranchant",
+  "poids_reference": 28,
+  "parts": {
+    "manche": "court",
+    "tete": "lame_moyenne"
+  }
+}

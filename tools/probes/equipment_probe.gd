@@ -69,8 +69,8 @@ func run() -> void:
 	var raw_total := 0
 	var mitigated_total := 0
 	for i in 400:
-		raw_total += int(CombatResolver.resolve_attack(5, 5, 5, 0, 0, "2d6", 20.0, 1.0, false, "")["damage"])
-		mitigated_total += int(CombatResolver.resolve_attack(5, 5, 5, 0, 0, "2d6", 20.0, 1.0, false, dice)["damage"])
+		raw_total += int(CombatResolver.resolve_hit(5, 5, "2d6", 20.0, 1.0, false, "")["damage"])
+		mitigated_total += int(CombatResolver.resolve_hit(5, 5, "2d6", 20.0, 1.0, false, dice)["damage"])
 	var mitigation_ok := mitigated_total < raw_total
 	print("[EQUIP] dégâts cumulés sur 400 coups : sans armure=%d avec=%d (réduction=%s)" % [
 			raw_total, mitigated_total, mitigation_ok])

@@ -1,0 +1,18 @@
+{
+  "id": "trident",
+  "name_key": "functionality.trident.name",
+  "kind": "arme",
+  "hands": 2,
+  "combat_skill": "trident",
+  "degats_des": "2d8",
+  "penetration": 0.3,
+  "windup_ratio": 0.4,
+  "vitesse_base": 1.6,
+  "portee": 1.5,
+  "type_degats": "percant",
+  "poids_reference": 55,
+  "parts": {
+    "manche": "tres_long",
+    "tete": "trident"
+  }
+}

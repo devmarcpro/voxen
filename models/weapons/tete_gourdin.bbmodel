@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "tete_gourdin",
+  "model_identifier": "tete_gourdin",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "tete_gourdin_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -3,
+        0,
+        -3
+      ],
+      "to": [
+        3,
+        10,
+        3
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "201c35ca-45bf-5d85-a3f2-878d90534546"
+    },
+    {
+      "name": "tete_gourdin_1",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -2,
+        -4,
+        -2
+      ],
+      "to": [
+        2,
+        0,
+        2
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "2b0b68e1-b8c1-5785-84ef-bba1e6152a0b"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "tete_gourdin",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "e8634564-5b34-5168-99ca-1b333c6818d6",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "201c35ca-45bf-5d85-a3f2-878d90534546",
+        "2b0b68e1-b8c1-5785-84ef-bba1e6152a0b"
+      ]
+    }
+  ],
+  "textures": []
+}

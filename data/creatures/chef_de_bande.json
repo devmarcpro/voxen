@@ -1,6 +1,7 @@
 {
   "id": "chef_de_bande",
   "name_key": "creature.chef_de_bande.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "humanoide",
   "parts_pool": {
     "tete": [

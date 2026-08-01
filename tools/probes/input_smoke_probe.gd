@@ -57,8 +57,20 @@ func run() -> void:
 	player.selected_slot = 3  # L'épée (4e entrée : pioche/hache/pelle/épée).
 	await main.get_tree().process_frame
 	print("[TEST] créature spawnée, distance=%.1f" % camera.global_position.distance_to(boar.position))
+	# COMBAT DIRECTIONNEL (2026-07-28) : un clic ne porte plus un coup instantané
+	# sur une cible verrouillée — il DÉCLENCHE un cycle préparation → frappe →
+	# récupération, et la lame touche ce qu'elle croise. Cadencer les clics
+	# toutes les 150 ms n'a donc plus de sens : les clics tombant pendant un
+	# cycle en cours sont simplement ignorés. On attend la fin de chaque cycle.
+	#
+	# NOTE : en `--headless`, les événements de souris synthétiques n'atteignent
+	# pas le jeu (voir « souris capturée : false » plus haut) — cette section
+	# ne mesure donc réellement quelque chose qu'en mode FENÊTRÉ. La couverture
+	# logique du combat est assurée par `-- --probe-combat`, qui pilote la
+	# machine à états directement et vaut en headless.
 	var attacks := 0
-	while attacks < 60 and is_instance_valid(boar) and not boar.is_dead():
+	var hp_start: float = boar.health
+	while attacks < 12 and is_instance_valid(boar) and not boar.is_dead():
 		# Re-viser à chaque coup (2026-07-21, test durci) : le sanglier CHASSE
 		# et finit sous la caméra — sans suivi, le rayon de visée pointait
 		# encore sur son point de spawn et minait le sol à la place.
@@ -72,10 +84,21 @@ func run() -> void:
 		release.button_index = MOUSE_BUTTON_LEFT
 		release.pressed = false
 		Input.parse_input_event(release)
-		await main.get_tree().create_timer(0.15).timeout
+		# Laisser le cycle d'attaque se dérouler entièrement (borné : une
+		# machine qui ne rendrait jamais la main ne doit pas figer la sonde).
+		var waited := 0.0
+		while waited < 2.0:
+			await main.get_tree().create_timer(0.1).timeout
+			waited += 0.1
+			if not (player.get("_attack") as MeleeAttack).is_busy():
+				break
 		attacks += 1
-	print("[TEST] combat : %d clics, sanglier mort=%s (PV joueur=%d/%d)" % [
-		attacks, not is_instance_valid(boar) or boar.is_dead(), int(player.health), int(player.health_max)])
+	var boar_hp: float = boar.health if is_instance_valid(boar) else 0.0
+	print("[TEST] combat directionnel : %d cycles, sanglier %d → %d PV, mort=%s (PV joueur=%d/%d, endurance=%d/%d)" % [
+		attacks, int(hp_start), int(boar_hp),
+		not is_instance_valid(boar) or boar.is_dead(),
+		int(player.health), int(player.health_max),
+		int(player.stamina), int(player.stamina_max)])
 	# Spawn naturel (hors bench) : ~5 s d'attente réelle doit produire au
 	# moins une créature autour du joueur (CreatureManager.SPAWN_INTERVAL_TICKS).
 	print("[TEST] créatures avant attente spawn naturel : %d" % CreatureManager.creatures.size())

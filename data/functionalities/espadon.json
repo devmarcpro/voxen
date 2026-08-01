@@ -1,0 +1,18 @@
+{
+  "id": "espadon",
+  "name_key": "functionality.espadon.name",
+  "kind": "arme",
+  "hands": 2,
+  "combat_skill": "espadon",
+  "degats_des": "3d8",
+  "penetration": 0.15,
+  "windup_ratio": 0.55,
+  "vitesse_base": 1.1,
+  "portee": 1.5,
+  "type_degats": "tranchant",
+  "poids_reference": 85,
+  "parts": {
+    "manche": "long",
+    "tete": "lame_longue"
+  }
+}

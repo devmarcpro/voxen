@@ -1,0 +1,14 @@
+{
+  "id": "rondache",
+  "name_key": "functionality.rondache.name",
+  "kind": "bouclier",
+  "hands": 1,
+  "combat_skill": "bouclier",
+  "couverture": 0,
+  "absorption": 0.35,
+  "poids_reference": 18,
+  "parts": {
+    "manche": "poignee",
+    "tete": "rondache"
+  }
+}

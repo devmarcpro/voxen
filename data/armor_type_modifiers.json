@@ -1,0 +1,16 @@
+{
+  "_comment": "Efficacite d'une armure SELON le type de degat recu (combat directionnel, 2026-07-28). Multiplie la MITIGATION (le jet de des de protection), jamais les degats : une plaque n'encaisse pas moins face a une masse, elle protege moins bien. C'est ce qui rend le triplet tranchant/percant/contondant du GDD reel sans toucher aux 200+ fiches de materiau : la categorie du materiau DOMINANT de la piece suffit a exprimer 'la plaque arrete l'epee et subit le marteau'.",
+  "_convention": "Cle = categorie du materiau dominant de la piece d'armure (data/material_categories.json). La cle _defaut sert aux categories non listees : neutre, jamais un bonus cache.",
+  "modifiers": {
+    "minerai": { "tranchant": 1.3, "percant": 0.9, "contondant": 0.5 },
+    "roche": { "tranchant": 1.2, "percant": 1.0, "contondant": 0.6 },
+    "cristal": { "tranchant": 1.3, "percant": 1.0, "contondant": 0.4 },
+    "fossile": { "tranchant": 1.0, "percant": 0.9, "contondant": 0.8 },
+    "textile": { "tranchant": 0.7, "percant": 0.5, "contondant": 1.4 },
+    "vegetal": { "tranchant": 0.7, "percant": 0.5, "contondant": 1.3 },
+    "cuir": { "tranchant": 1.0, "percant": 0.8, "contondant": 1.1 },
+    "bois": { "tranchant": 0.9, "percant": 0.8, "contondant": 1.0 },
+    "planches": { "tranchant": 0.9, "percant": 0.8, "contondant": 1.0 },
+    "_defaut": { "tranchant": 1.0, "percant": 1.0, "contondant": 1.0 }
+  }
+}

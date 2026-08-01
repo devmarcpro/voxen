@@ -1,6 +1,7 @@
 {
   "id": "nuee_moustiques",
   "name_key": "creature.nuee_moustiques.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "amorphe",
   "parts_pool": {
     "corps": [

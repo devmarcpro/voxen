@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "tete_lame_moyenne",
+  "model_identifier": "tete_lame_moyenne",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "tete_lame_moyenne_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -2.5,
+        0,
+        -1
+      ],
+      "to": [
+        2.5,
+        24,
+        1
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "f260dc4a-6bd9-5fb0-b401-ec332fab2be2"
+    },
+    {
+      "name": "tete_lame_moyenne_1",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -4,
+        0,
+        -1.5
+      ],
+      "to": [
+        4,
+        2,
+        1.5
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "23aa86dd-0517-5a9b-9e16-5cf605b374b9"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "tete_lame_moyenne",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "56b1cbe0-a2cd-5bc7-9e78-52e39b53b2a2",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "f260dc4a-6bd9-5fb0-b401-ec332fab2be2",
+        "23aa86dd-0517-5a9b-9e16-5cf605b374b9"
+      ]
+    }
+  ],
+  "textures": []
+}

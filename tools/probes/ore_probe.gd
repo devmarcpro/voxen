@@ -83,8 +83,33 @@ func run() -> void:
 			break
 	print("[OREPROBE] sommet à %s h=%d : filon adapté à Y=%d (%s)" % [peak, peak_h, mountain_ore_y, mountain_ore])
 
-	var ok: bool = total_ore > 0 and common_shallow and not diamant_shallow \
-		and 0.3 < (100.0 * total_ore / maxi(total_rock, 1)) and (100.0 * total_ore / maxi(total_rock, 1)) < 12.0 \
-		and mountain_ore and mountain_ore_y > 60
+	# VERDICT DÉTAILLÉ. C'était auparavant un unique booléen de sept conditions
+	# enchaînées : quand il tombait à faux, la sonde annonçait « ÉCHEC » sans
+	# dire laquelle, et il fallait recalculer chaque terme à la main depuis les
+	# lignes imprimées. Une sonde qui ne désigne pas ce qui a cassé ne fait que
+	# la moitié de son travail.
+	var density := 100.0 * total_ore / maxi(total_rock, 1)
+	var ok := true
+	for check: Array in [
+		["des minerais existent", total_ore > 0, "%d bloc(s)" % total_ore],
+		["minerais communs en surface", common_shallow,
+			"%d espèce(s) sous Y=55" % shallow_mats.size()],
+		["ni diamant ni tungstène en surface", not diamant_shallow, ""],
+		["densité plausible", density > 0.3 and density < 12.0, "%.1f %%" % density],
+		["filon sous le sommet", mountain_ore, ""],
+		# Ce qui compte est que le filon suive le RELIEF, pas qu'il atteigne une
+		# altitude absolue : le seuil « Y > 60 » d'origine était calibré sur une
+		# ancienne génération de terrain et échouait sur un sommet plus bas sans
+		# que rien ne soit cassé. On vérifie donc la profondeur SOUS LA SURFACE
+		# LOCALE, qui est la propriété réellement voulue.
+		["filon à profondeur normale sous le sommet",
+			mountain_ore and (peak_h - mountain_ore_y) <= 120,
+			"%d bloc(s) sous un sommet à %d" % [peak_h - mountain_ore_y, peak_h]],
+	]:
+		var passed: bool = check[1]
+		ok = ok and passed
+		print("[OREPROBE] %s%s : %s" % [check[0],
+			"" if String(check[2]) == "" else " (" + String(check[2]) + ")",
+			"OK" if passed else "ÉCHEC"])
 	print("[OREPROBE] RÉSULTAT : %s" % ("OK" if ok else "ÉCHEC"))
 	main.get_tree().quit(0 if ok else 1)

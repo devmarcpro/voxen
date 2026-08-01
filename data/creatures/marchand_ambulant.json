@@ -1,6 +1,7 @@
 {
   "id": "marchand_ambulant",
   "name_key": "creature.marchand_ambulant.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "humanoide",
   "parts_pool": {
     "tete": [
@@ -29,7 +30,8 @@
   "inventory_table": null,
   "ai_profile": "civil",
   "jobs_compatible": [
-    "vendeur"
+    "vendeur",
+    "transporteur"
   ],
   "housing_default": "normal",
   "recruitable": {

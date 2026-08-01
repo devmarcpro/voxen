@@ -1,6 +1,7 @@
 {
   "id": "lynx",
   "name_key": "creature.lynx.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "quadrupede",
   "parts_pool": {
     "tete": [

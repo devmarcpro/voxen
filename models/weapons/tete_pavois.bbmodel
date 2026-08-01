@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "tete_pavois",
+  "model_identifier": "tete_pavois",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "tete_pavois_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -11,
+        -15,
+        0
+      ],
+      "to": [
+        11,
+        17,
+        2
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "15d85978-10d0-5773-a7dc-3ecc9e0a4f98"
+    },
+    {
+      "name": "tete_pavois_1",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -3,
+        -3,
+        2
+      ],
+      "to": [
+        3,
+        3,
+        3
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "72dfd3c8-a620-53d0-8596-5fc2145b025c"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "tete_pavois",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "14765ad5-ee05-50ae-b6d2-6f6346a17827",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "15d85978-10d0-5773-a7dc-3ecc9e0a4f98",
+        "72dfd3c8-a620-53d0-8596-5fc2145b025c"
+      ]
+    }
+  ],
+  "textures": []
+}

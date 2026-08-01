@@ -18,7 +18,11 @@
   "priority": 3,
   "surface_material": "herbe",
   "subsurface_material": "gres",
-  "grass_tint": [1.25, 1.1, 0.55],
+  "grass_tint": [
+    1.25,
+    1.1,
+    0.55
+  ],
   "vegetation": [
     {
       "id": "acacia",
@@ -36,12 +40,13 @@
   "village_palette": {
     "mur": "terre",
     "toit": "chaume_tresse",
-    "sol": "terre"
+    "sol": "terre",
+    "poutre": "chene",
+    "pave": "pierre_taillee"
   },
   "poi_weights": {
     "village": 3,
-    "donjon": 6,
-    "camp": 7
+    "donjon": 6
   },
   "farming_yield": 0.6,
   "tags": [

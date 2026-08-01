@@ -109,7 +109,7 @@ func _build_main() -> VBoxContainer:
 	var box := _panel_box()
 	var title := Label.new()
 	title.text = tr("ui.menu.titre")
-	title.add_theme_font_size_override("font_size", 52)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	box.add_child(_spacer(24))
@@ -638,7 +638,7 @@ func _panel_box() -> VBoxContainer:
 func _title_label(key: String) -> Label:
 	var label := Label.new()
 	label.text = tr(key)
-	label.add_theme_font_size_override("font_size", 28)
+	label.add_theme_font_size_override("font_size", UITheme.FONT_HEADING)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return label
 

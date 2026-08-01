@@ -31,13 +31,14 @@
   ],
   "village_palette": {
     "mur": "gres",
-    "toit": "gres",
-    "sol": "gres"
+    "toit": "ardoise",
+    "sol": "gres",
+    "poutre": "meleze",
+    "pave": "pierre_taillee"
   },
   "poi_weights": {
     "village": 2,
-    "donjon": 6,
-    "camp": 6
+    "donjon": 6
   },
   "farming_yield": 0.3,
   "tags": [

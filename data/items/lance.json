@@ -5,13 +5,17 @@
   "equip_slot": "arme",
   "hands": 2,
   "functionality": "lance",
+  "parts": {
+    "manche": "tres_long",
+    "tete": "pointe"
+  },
   "recipe": {
     "station": "etabli",
     "craft_skill": "forge",
     "inputs": [
       {
         "category": "bois",
-        "amount": 2
+        "amount": 1
       },
       {
         "category": "minerai",
@@ -21,9 +25,13 @@
   },
   "stat_weights": {
     "durete": {
-      "minerai": 0.7,
-      "bois": 0.3
+      "minerai": 0.9,
+      "bois": 0.1
     }
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
   },
   "effects": [],
   "tags": [
@@ -32,9 +40,5 @@
   "sprites": {
     "manche": "res://assets/weapons/lance_manche.png",
     "tete": "res://assets/weapons/lance_tete.png"
-  },
-  "sprite_tint": {
-    "manche": "bois",
-    "tete": "minerai"
   }
 }

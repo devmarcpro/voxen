@@ -1,6 +1,7 @@
 {
   "id": "fermier",
   "name_key": "creature.fermier.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "humanoide",
   "parts_pool": {
     "tete": [
@@ -29,7 +30,8 @@
   "inventory_table": null,
   "ai_profile": "civil",
   "jobs_compatible": [
-    "fermier"
+    "fermier",
+    "eleveur"
   ],
   "housing_default": "normal",
   "recruitable": {

@@ -1,0 +1,112 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "manche_tres_long",
+  "model_identifier": "manche_tres_long",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "manche_tres_long_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -2.0,
+        0,
+        -2.0
+      ],
+      "to": [
+        2.0,
+        70,
+        2.0
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "34563dcf-0243-55f0-9e98-7de90ec543a7"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "manche_tres_long",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "08c834e5-ba63-5564-9b39-fcedf14bbda6",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "34563dcf-0243-55f0-9e98-7de90ec543a7"
+      ]
+    }
+  ],
+  "textures": []
+}

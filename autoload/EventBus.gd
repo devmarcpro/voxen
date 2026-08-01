@@ -32,6 +32,22 @@ signal chunk_explored(chunk: Vector3i)
 @warning_ignore("unused_signal")
 signal dungeon_cleared(cell: Vector2i)
 
+## TÉLÉGRAPHIE d'attaque (combat directionnel, 2026-07-28) : émis dès que la
+## direction d'une frappe est verrouillée, AVANT que la lame parte. C'est
+## l'unique canal de perception du combat pour l'IA — un adversaire ne
+## « regarde » pas le joueur, il reçoit sa déclaration d'intention et dispose
+## du wind-up pour y répondre. Un temps de réaction propre à chaque profil
+## empêche l'IA de parer parfaitement à chaque fois.
+@warning_ignore("unused_signal")
+signal attack_telegraphed(attacker, direction: String)
+
+## Dégâts infligés, AU POINT D'IMPACT (2026-07-28). Le retour visuel de
+## combat en dépend : sans lui le joueur ne perçoit pas l'effet de son coup,
+## et ne peut donc corriger ni sa distance, ni sa visée, ni son timing.
+## `glancing` = coup porté au manche (aucun dégât, erreur de DISTANCE).
+@warning_ignore("unused_signal")
+signal damage_dealt(world_position: Vector3, amount: int, critical: bool, glancing: bool)
+
 ## Mort du joueur (A.10) : lieu, nombre d'objets tombés, or perdu.
 signal player_died(position: Vector3, dropped_count: int, lost_gold: int)
 

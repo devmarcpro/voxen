@@ -8,6 +8,9 @@ extends Probe
 ## laisse les chunks se streamer, capture. Mesure aussi le fps statique
 ## au-dessus de la ville (perf de la génération de villes).
 func run() -> void:
+	# PLEIN JOUR : une capture de nuit ne montre ni les toits ni les habitants,
+	# qui sont alors rentres chez eux. On veut voir le village vivant.
+	TickManager.tick_index = int(DayNightManager.TICKS_PER_DAY / 2)
 	await main.get_tree().process_frame
 	var g := WorldManager.generator
 	var found := Vector2i.ZERO
@@ -45,4 +48,20 @@ func run() -> void:
 	await main.get_tree().create_timer(1.0).timeout
 	await screenshot("city_screenshot.png")
 	print("[CITYCAP] capture : city_screenshot.png (streaming en %.1f s)" % waited)
+	# DIALOGUE : le menu contextuel ne se juge pas par assertion — il faut voir
+	# la réplique, les options et celles qui sont grisées avec leur raison.
+	var panel := main.get_node_or_null("DialoguePanel")
+	var villager: Node = null
+	for creature in CreatureManager.creatures:
+		if creature != null and is_instance_valid(creature) 				and String(creature.ai_profile) in ["civil", "garde"]:
+			villager = creature
+			break
+	if panel != null and villager != null:
+		panel.call("open_with", villager)
+		await wait_seconds(0.4)
+		await screenshot("dialogue.png")
+		print("[CITYCAP] capture : dialogue.png (%s)" % tr(villager.display_name_key))
+		panel.call("close")
+	else:
+		print("[CITYCAP] aucun habitant à qui parler (panneau=%s)" % (panel != null))
 	main.get_tree().quit(0)

@@ -21,7 +21,7 @@ const SORT_KEYS: Array = [
 	["ui.menu.tri.valeur", "valeur"],
 	["ui.menu.tri.poids", "poids"],
 ]
-const TABS: Array = ["personnage", "inventaire", "craft", "carte", "royaume", "monde"]
+const TABS: Array = ["personnage", "inventaire", "craft", "collection", "carte", "royaume", "monde"]
 
 var is_open := false
 
@@ -146,6 +146,7 @@ func _build() -> void:
 	_panels["personnage"] = _build_personnage()
 	_panels["inventaire"] = _build_inventaire()
 	_panels["craft"] = _build_craft()
+	_panels["collection"] = _build_collection()
 	_panels["carte"] = _build_carte()
 	_panels["royaume"] = _build_royaume()
 	_panels["monde"] = _build_monde()
@@ -175,9 +176,140 @@ func _scroll_with(child: Control) -> ScrollContainer:
 	return scroll
 
 
+## Attributs du personnage, dans l'ordre de la fiche. Constante partagée par la
+## construction et le rafraîchissement : deux listes parallèles finiraient par
+## diverger et une ligne afficherait la valeur d'une autre.
+const STAT_IDS: Array = ["force", "dexterite", "endurance", "volonte", "perception", "charisme"]
+
+## Valeur d'attribut correspondant à une barre pleine. Les attributs n'ont pas de
+## maximum dans les règles ; il en faut pourtant un pour dessiner une jauge, et
+## le choisir haut évite qu'un personnage avancé sature toutes ses barres et
+## qu'elles cessent d'informer.
+const STAT_BAR_MAX := 20.0
+
+## Références vivantes de la fiche de personnage. La fiche est CONSTRUITE une
+## fois et seulement MISE À JOUR ensuite : elle se rafraîchit trois fois par
+## seconde tant que le menu est ouvert, et reconstruire une centaine de nœuds à
+## cette cadence pour changer six chiffres est un gaspillage pur.
+var _perso_stat_bars := {}
+var _perso_vitals := {}
+var _perso_equip_rows := {}
+var _perso_protection: Label
+var _perso_levels: Label
+var _perso_gold: Label
+var _perso_skills: VBoxContainer
+
+
+## Fiche de personnage en TROIS COLONNES. Auparavant : un unique Label de
+## cinquante lignes empilées, qui obligeait à lire de haut en bas pour trouver
+## une information et laissait les trois quarts de l'écran vides. Les trois
+## colonnes correspondent à trois questions distinctes — « comment je vais »,
+## « ce que je porte », « ce que je sais faire » — et tiennent sans défilement.
 func _build_personnage() -> Control:
-	_perso_label = Label.new()
-	return _scroll_with(_perso_label)
+	var columns := HBoxContainer.new()
+	columns.visible = false
+	columns.add_theme_constant_override("separation", UITheme.PAD_WIDE)
+	columns.alignment = BoxContainer.ALIGNMENT_BEGIN
+
+	columns.add_child(_perso_column_state())
+	columns.add_child(_perso_column_equipment())
+	columns.add_child(_perso_column_skills())
+	return columns
+
+
+## Colonne 1 — l'état immédiat : jauges vitales puis attributs. Les jauges
+## d'abord parce que ce sont les seules valeurs qui changent en combat.
+func _perso_column_state() -> Control:
+	var box := _perso_section()
+	box.add_child(UITheme.heading(tr("ui.menu.section_etat")))
+	box.add_child(UITheme.rule())
+	for gauge: Array in [["vie", "vie"], ["mana", "mana"], ["faim", "faim"],
+			["fatigue", "fatigue"]]:
+		var bar := StatBar.new()
+		bar.setup(tr("ui.gauge." + String(gauge[0])), String(gauge[1]))
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		box.add_child(bar)
+		_perso_vitals[String(gauge[0])] = bar
+
+	_perso_gold = Label.new()
+	_perso_gold.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	_perso_gold.add_theme_color_override("font_color", UITheme.TEXT_ACCENT)
+	box.add_child(_perso_gold)
+
+	box.add_child(UITheme.heading(tr("ui.menu.section_attributs")))
+	box.add_child(UITheme.rule())
+	for stat_id: String in STAT_IDS:
+		var bar := StatBar.new()
+		bar.setup(tr("stat." + stat_id + ".name"), "progression")
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		box.add_child(bar)
+		_perso_stat_bars[stat_id] = bar
+
+	_perso_levels = Label.new()
+	_perso_levels.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	_perso_levels.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	box.add_child(_perso_levels)
+	return box.get_parent()
+
+
+## Colonne 2 — l'équipement. Les treize emplacements sont TOUJOURS affichés,
+## vides compris : la fiche sert autant à savoir ce qu'on porte qu'à voir ce
+## qu'on pourrait porter.
+func _perso_column_equipment() -> Control:
+	var box := _perso_section()
+	box.add_child(UITheme.heading(tr("ui.equipement.titre")))
+	box.add_child(UITheme.rule())
+	for slot: String in Equipment.SLOTS:
+		var row := UITheme.field(tr("ui.slot." + slot), "", 110)
+		box.add_child(row)
+		_perso_equip_rows[slot] = row.get_child(1)
+	box.add_child(UITheme.rule())
+	_perso_protection = Label.new()
+	_perso_protection.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	_perso_protection.add_theme_color_override("font_color", UITheme.TEXT_ACCENT)
+	box.add_child(_perso_protection)
+	return box.get_parent()
+
+
+## Colonne 3 — les compétences progressées, avec leur barre d'XP. Une compétence
+## se lit à sa progression vers le niveau suivant, pas à son total d'XP brut :
+## « 340 XP » ne dit rien, une barre aux trois quarts pleine dit tout.
+func _perso_column_skills() -> Control:
+	var box := _perso_section()
+	box.add_child(UITheme.heading(tr("ui.inv.competences")))
+	box.add_child(UITheme.rule())
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_perso_skills = VBoxContainer.new()
+	_perso_skills.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_perso_skills)
+	scroll.custom_minimum_size = Vector2(0, 260)
+	box.add_child(scroll)
+	return box.get_parent()
+
+
+## Une colonne = un BLOC ENCADRÉ, pas une zone flottante. Le cadre n'est pas
+## décoratif : sans lui, la valeur d'une jauge alignée à droite venait toucher
+## l'intitulé de la colonne voisine et on lisait « 39/60 Tête ». Le fond et le
+## filet disent où une colonne s'arrête.
+##
+## Retourne le VBox INTÉRIEUR : l'appelant remplit le contenu sans savoir qu'il
+## y a un cadre autour, et `_build_personnage` ajoute quand même le bon nœud à
+## l'arbre puisque le cadre est un ancêtre.
+var _perso_frames: Array[Control] = []
+
+
+func _perso_section() -> VBoxContainer:
+	var frame := PanelContainer.new()
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var panel := VBoxContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_constant_override("separation", UITheme.GAP)
+	frame.add_child(panel)
+	_perso_frames.append(frame)
+	return panel
 
 
 func _build_royaume() -> Control:
@@ -219,7 +351,7 @@ func _build_monde() -> Control:
 	box.add_theme_constant_override("separation", 4)
 	var header := Label.new()
 	header.text = tr("ui.menu.encyclopedie")
-	header.add_theme_font_size_override("font_size", 22)
+	header.add_theme_font_size_override("font_size", UITheme.FONT_HEADING)
 	box.add_child(header)
 	box.add_child(_encyclo_section("ui.menu.enc.biomes", GameData.biomes))
 	box.add_child(_encyclo_section("ui.menu.enc.creatures", GameData.creatures))
@@ -239,7 +371,7 @@ func _encyclo_section(title_key: String, collection: Dictionary) -> VBoxContaine
 	var section := VBoxContainer.new()
 	var title := Label.new()
 	title.text = "%s (%d)" % [tr(title_key), collection.size()]
-	title.add_theme_font_size_override("font_size", 17)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	section.add_child(title)
 	var names: Array[String] = []
 	for id in collection:
@@ -302,9 +434,10 @@ func _build_inventaire() -> Control:
 	next.text = ">"
 	next.pressed.connect(func() -> void: _change_bank(1))
 	hotbar_header.add_child(next)
-	var hint := Label.new()
-	hint.text = tr("ui.menu.hotbar_aide")
-	hint.modulate = Color(0.7, 0.72, 0.78)
+	# Petite taille : c'est une aide, pas une donnée. En taille courante, cette
+	# phrase à elle seule dépassait la largeur du panneau et se faisait rogner.
+	var hint := UITheme.dim(tr("ui.menu.hotbar_aide"))
+	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hotbar_header.add_child(hint)
 	box.add_child(hotbar_header)
 
@@ -336,7 +469,7 @@ func _hotbar_slot(slot: int) -> Control:
 	# la hotbar en jeu, sinon on assigne à l'aveugle.
 	var key_label := Label.new()
 	key_label.text = str(slot + 1)
-	key_label.add_theme_font_size_override("font_size", 11)
+	key_label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	key_label.modulate = Color(1, 1, 1, 0.55)
 	key_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	key_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -395,63 +528,88 @@ func _refresh() -> void:
 		"personnage": _refresh_personnage()
 		"inventaire": _refresh_inventory()
 		"craft": _refresh_craft()
+		"collection": _refresh_collection()
 		"royaume": _refresh_royaume()
 
 
+## Met à jour les VALEURS de la fiche, sans jamais toucher à sa structure.
 func _refresh_personnage() -> void:
-	var lines: Array[String] = [tr("ui.menu.onglet.personnage"), ""]
-	const STAT_IDS: Array = ["force", "dexterite", "endurance", "volonte", "perception", "charisme"]
+	if _perso_gold == null:
+		return
+	_perso_vitals["vie"].set_values(_player.health, _player.health_max)
+	_perso_vitals["mana"].set_values(float(_player.mana.current), float(_player.mana.max_mana()))
+	_perso_vitals["faim"].set_values(_player.hunger, _player.hunger_max)
+	_perso_vitals["fatigue"].set_values(_player.fatigue, _player.fatigue_max)
+	_perso_gold.text = tr("ui.hud.or").format({"or": str(_player.gold)})
+
 	for stat_id: String in STAT_IDS:
-		lines.append("%s : %d" % [tr("stat." + stat_id + ".name"), int(_player.stats[stat_id])])
-	lines.append("")
-	lines.append(tr("ui.hud.sante").format({"pv": str(int(_player.health)), "pv_max": str(int(_player.health_max))}))
-	lines.append(tr("ui.hud.mana").format({"mana": str(int(_player.mana.current)), "mana_max": str(int(_player.mana.max_mana()))}))
-	lines.append(tr("ui.hud.or").format({"or": str(_player.gold)}))
-	# Équipement porté (6.2) : les 13 emplacements, avec les dés de réduction
-	# totaux (A.4.2) — un emplacement vide reste affiché, c'est la liste des
-	# possibilités autant que l'état courant.
-	lines.append("")
-	lines.append(tr("ui.equipement.titre"))
+		var value := float(_player.stats[stat_id])
+		var bar: StatBar = _perso_stat_bars[stat_id]
+		bar.set_values(value, STAT_BAR_MAX)
+
+	_perso_levels.text = "%s   %s" % [
+		tr("ui.menu.niveau_combat").format({"niveau": str(_derived_level("combat"))}),
+		tr("ui.menu.niveau_general").format({"niveau": str(_derived_level("general"))})]
+
+	# Équipement (6.2) : les 13 emplacements, dés de réduction compris (A.4.2).
 	var equipment: Equipment = _player.equipment
-	for slot in Equipment.SLOTS:
+	for slot: String in Equipment.SLOTS:
 		var piece: Dictionary = equipment.equipped(slot)
-		var label := tr("ui.equipement.vide")
-		if not piece.is_empty():
-			label = "%s (%s)" % [tr(String(piece.get("name_key", ""))),
-					tr(ItemFactory.quality_tier_key(float(piece.get("quality", 1.0))))]
-			var dice := Equipment.piece_dice(piece, slot)
-			if dice != "":
-				label += " %s" % dice
-		lines.append("%s : %s" % [tr("ui.slot." + slot), label])
-	var total_dice: String = equipment.total_armor_dice()
-	lines.append(tr("ui.equipement.protection").format({
-		"des": total_dice if total_dice != "" else "—"}))
-	# Niveaux dérivés (6.0 : moyenne des 5 meilleures par catégorie).
-	lines.append("")
-	lines.append(tr("ui.menu.niveau_combat").format({"niveau": str(_derived_level("combat"))}))
-	lines.append(tr("ui.menu.niveau_general").format({"niveau": str(_derived_level("general"))}))
-	# Compétences progressées.
-	lines.append("")
-	lines.append(tr("ui.inv.competences"))
-	var skills: PlayerSkills = _player.skills
-	var skill_ids: Array = skills.skills.keys()
-	skill_ids.sort()
-	var any := false
-	for id: String in skill_ids:
-		var s: Dictionary = skills.skills[id]
-		if int(s["level"]) <= 0:
+		var cell: Label = _perso_equip_rows[slot]
+		if piece.is_empty():
+			cell.text = tr("ui.equipement.vide")
+			cell.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 			continue
-		any = true
-		lines.append(tr("ui.inv.competence_ligne").format({
-			"nom": tr(GameData.skills[id]["name_key"]),
-			"niveau": str(s["level"]),
-			"xp": "%.0f" % float(s["xp"]),
-			"xp_max": "%.0f" % PlayerSkills.xp_next(int(s["level"])),
-			"potentiel": "%.0f" % float(s["potential"]),
-		}))
-	if not any:
-		lines.append(tr("ui.menu.aucune_competence"))
-	_perso_label.text = "\n".join(lines)
+		var text := "%s (%s)" % [tr(String(piece.get("name_key", ""))),
+			tr(ItemFactory.quality_tier_key(float(piece.get("quality", 1.0))))]
+		var dice := Equipment.piece_dice(piece, slot)
+		if dice != "":
+			text += " %s" % dice
+		cell.text = text
+		cell.add_theme_color_override("font_color", UITheme.TEXT)
+	var total_dice: String = equipment.total_armor_dice()
+	_perso_protection.text = tr("ui.equipement.protection").format({
+		"des": total_dice if total_dice != "" else "—"})
+
+	_refresh_skill_list()
+
+
+## Liste des compétences progressées. Reconstruite seulement quand sa COMPOSITION
+## change : gagner de l'XP met à jour des barres existantes, débloquer une
+## nouvelle compétence est le seul événement qui justifie de recréer des nœuds.
+var _skill_bars := {}
+
+
+func _refresh_skill_list() -> void:
+	var skills: PlayerSkills = _player.skills
+	var active: Array[String] = []
+	for id: String in skills.skills:
+		if int((skills.skills[id] as Dictionary)["level"]) > 0:
+			active.append(id)
+	active.sort()
+
+	if active.hash() != _skill_bars.keys().hash():
+		for child in _perso_skills.get_children():
+			child.queue_free()
+		_skill_bars.clear()
+		if active.is_empty():
+			_perso_skills.add_child(UITheme.dim(tr("ui.menu.aucune_competence")))
+		for id: String in active:
+			var bar := StatBar.new()
+			bar.setup(tr(GameData.skills[id]["name_key"]), "xp")
+			bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			_perso_skills.add_child(bar)
+			_skill_bars[id] = bar
+
+	for id: String in _skill_bars:
+		var skill: Dictionary = skills.skills[id]
+		var level := int(skill["level"])
+		var bar: StatBar = _skill_bars[id]
+		# Le CHIFFRE affiché est le niveau, la BARRE est la progression vers le
+		# suivant : c'est la seule combinaison qui répond d'un coup d'œil aux
+		# deux questions qu'on se pose (« j'en suis où » et « c'est loin »).
+		bar.set_values(float(skill["xp"]), PlayerSkills.xp_next(level))
+		bar.set_label("%s %d" % [tr(GameData.skills[id]["name_key"]), level])
 
 
 ## Niveau dérivé (6.0/A.1) : moyenne des 5 meilleures compétences de la
@@ -530,7 +688,12 @@ func _inventory_row(entry: Dictionary) -> Control:
 	# ET source de glisser-déposer vers la hotbar.
 	var button := Button.new()
 	button.flat = true
-	button.custom_minimum_size = Vector2(0, SWATCH_SIZE + 8)
+	# Hauteur = vignette OU les deux lignes de texte, selon ce qui est le plus
+	# haut. Avec la police pixel, un nom en taille courante plus un détail en
+	# petite taille dépassent la vignette : à hauteur figée sur la seule
+	# vignette, chaque ligne mordait sur la suivante.
+	button.custom_minimum_size = Vector2(0,
+		maxf(SWATCH_SIZE, UITheme.FONT_BODY + UITheme.FONT_SMALL + UITheme.GAP * 3) + UITheme.GAP)
 	button.pressed.connect(_open_entry_menu.bind(entry, button))
 	button.set_drag_forwarding(_drag_entry.bind(entry, button), Callable(), Callable())
 	var row := HBoxContainer.new()
@@ -556,13 +719,16 @@ func _inventory_row(entry: Dictionary) -> Control:
 	row.add_child(swatch)
 	var texts := VBoxContainer.new()
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	texts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	texts.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	var name_label := Label.new()
 	name_label.text = entry["name"]
-	name_label.add_theme_font_size_override("font_size", 16)
+	name_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	texts.add_child(name_label)
 	var info_label := Label.new()
 	info_label.text = entry["info"]
-	info_label.modulate = Color(0.72, 0.75, 0.8)
+	info_label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	info_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	texts.add_child(info_label)
 	row.add_child(texts)
 	# Emplacement de hotbar occupé : le rappeler sur la ligne, sinon rien
@@ -573,8 +739,11 @@ func _inventory_row(entry: Dictionary) -> Control:
 		badge.text = tr("ui.menu.hotbar_badge").format({
 			"banque": str(bound / _player.HOTBAR_SLOTS + 1),
 			"slot": str(bound % _player.HOTBAR_SLOTS + 1)})
-		badge.modulate = Color(0.6, 0.85, 1.0)
+		badge.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+		badge.add_theme_color_override("font_color", Color(0.6, 0.85, 1.0))
 		badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		badge.custom_minimum_size = Vector2(70, 0)
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		row.add_child(badge)
 	return button
 
@@ -913,7 +1082,7 @@ func _refresh_craft() -> void:
 		var header := Label.new()
 		var name := tr("ui.menu.craft_a_la_main") if station == "aucune" else tr("ui.station." + station)
 		header.text = name if avail else "%s  (%s)" % [name, tr("ui.menu.station_absente")]
-		header.add_theme_font_size_override("font_size", 18)
+		header.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		header.modulate = Color(0.9, 0.9, 0.95) if avail else Color(0.7, 0.55, 0.55)
 		_craft_sections.add_child(header)
 		var grid := GridContainer.new()
@@ -931,7 +1100,7 @@ func _refresh_craft() -> void:
 			var ok := _recipe_craftable(recipe)
 			var mark := Label.new()
 			mark.text = "✓" if ok else "✗"
-			mark.add_theme_font_size_override("font_size", 15)
+			mark.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 			mark.add_theme_color_override("font_color", Color(0.3, 1.0, 0.35) if ok else Color(1.0, 0.3, 0.3))
 			mark.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 			mark.add_theme_constant_override("outline_size", 4)
@@ -1036,7 +1205,7 @@ func _detail_header(icon: Texture2D, name_text: String) -> void:
 	head.add_child(ic)
 	var title := Label.new()
 	title.text = name_text
-	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HEADING)
 	head.add_child(title)
 	_craft_detail.add_child(head)
 
@@ -1097,6 +1266,8 @@ func _build_item_detail(item_id: String) -> void:
 				can_craft = false
 		hb.add_child(option)
 		_craft_detail.add_child(hb)
+
+	_gem_selector(item_id)
 
 	var btn := Button.new()
 	btn.text = tr("ui.menu.fabriquer")
@@ -1206,7 +1377,7 @@ func _stats_block(title: String, material_id: String) -> void:
 		return
 	var head := Label.new()
 	head.text = "%s : %s" % [title, tr(mat["name_key"])]
-	head.add_theme_font_size_override("font_size", 15)
+	head.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	_craft_detail.add_child(head)
 	var grid := GridContainer.new()
 	grid.columns = 3
@@ -1214,7 +1385,7 @@ func _stats_block(title: String, material_id: String) -> void:
 	for key: String in STAT_NAMES:
 		var l := Label.new()
 		l.text = "%s : %s" % [STAT_NAMES[key], str(stats.get(key, 0))]
-		l.add_theme_font_size_override("font_size", 12)
+		l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		l.modulate = Color(0.7, 0.73, 0.78)
 		l.custom_minimum_size = Vector2(120, 0)
 		grid.add_child(l)
@@ -1228,6 +1399,71 @@ const CATEGORY_ALSO_ACCEPTS := {"minerai": ["lingot"]}
 
 
 ## Matériaux possédés de la catégorie donnée (+ catégories équivalentes), triés.
+## Clé de choix du LOGEMENT DE GEMME. Distincte de la clé de catégorie
+## `item_id + ":cristal"` : la gemme n'est pas une entrée de recette, et les
+## confondre ferait consommer la pierre comme un composant obligatoire.
+func _gem_choice_key(item_id: String) -> String:
+	return item_id + ":gemme"
+
+
+func _gem_choice(item_id: String) -> String:
+	return String(_craft_choices.get(_gem_choice_key(item_id), ""))
+
+
+## Logement de gemme FACULTATIF, affiché seulement sur les armes assemblées.
+## Première entrée = « aucune », et c'est le défaut : sertir doit être un choix
+## délibéré, pas quelque chose qu'on subit parce qu'on avait un quartz.
+func _gem_selector(item_id: String) -> void:
+	if not ItemFactory.accepts_gem(item_id):
+		return
+	var owned: Array[String] = []
+	for mat_id: String in ItemFactory.gem_materials():
+		if int(_player.inventory.material_stacks.get(mat_id, 0)) >= 1:
+			owned.append(mat_id)
+
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 8)
+	var lab := Label.new()
+	lab.text = tr("ui.menu.craft_gemme")
+	lab.custom_minimum_size = Vector2(130, 0)
+	hb.add_child(lab)
+
+	var option := OptionButton.new()
+	option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	option.add_item(tr("ui.menu.gemme_aucune"))
+	for mat_id: String in owned:
+		option.add_item("%s (%s)" % [tr(GameData.materials[mat_id]["name_key"]),
+			Inventory.format_volume(_player.inventory.total_volume(mat_id))])
+	var key := _gem_choice_key(item_id)
+	var chosen := _gem_choice(item_id)
+	var index := owned.find(chosen)
+	# Une gemme dépensée entre deux ouvertures du menu ne doit pas laisser un
+	# choix fantôme : on retombe sur « aucune ».
+	if index < 0:
+		_craft_choices[key] = ""
+	option.selected = index + 1 if index >= 0 else 0
+	var owned_ref := owned
+	option.item_selected.connect(func(i: int) -> void:
+		_craft_choices[key] = "" if i == 0 else owned_ref[i - 1]
+		_build_craft_detail())
+	hb.add_child(option)
+	_craft_detail.add_child(hb)
+
+	# Ce que la pierre apporte VRAIMENT, écrit noir sur blanc : elle ne change
+	# ni les dégâts ni la dureté, elle ouvre l'enchantement et alourdit un peu.
+	var note := Label.new()
+	var current := _gem_choice(item_id)
+	if current == "":
+		note.text = tr("ui.menu.gemme_sans")
+	else:
+		var stats: Dictionary = (GameData.materials[current] as Dictionary)["stats"]
+		note.text = tr("ui.menu.gemme_effet").format({
+			"mana": str(int(stats.get("conductivite_mana", 0))),
+			"poids": "%.2f" % (float(stats.get("densite", 0.0)) * ItemFactory.GEM_WEIGHT_SHARE)})
+	note.modulate = Color(0.70, 0.74, 0.80)
+	_craft_detail.add_child(note)
+
+
 func _owned_of_category(category: String) -> Array[String]:
 	var accepted := [category]
 	accepted.append_array(CATEGORY_ALSO_ACCEPTS.get(category, []))
@@ -1257,8 +1493,21 @@ func _do_craft(item_id: String, recipe: Dictionary, craft_skill: String) -> void
 			return
 		choices[category] = chosen
 		total_amount += amount
+	# GEMME facultative : vérifiée dans le même temps que le reste, pour ne
+	# jamais consommer les composants d'une arme dont la pierre a disparu entre
+	# l'affichage et le clic.
+	var gem := _gem_choice(item_id)
+	if gem != "" and ItemFactory.accepts_gem(item_id):
+		if int(_player.inventory.material_stacks.get(gem, 0)) < 1:
+			return
+		choices[ItemFactory.GEM_CATEGORY] = gem
+	else:
+		gem = ""
+
 	for input: Dictionary in inputs:
 		_player.inventory.remove_material(choices[input["category"]], int(input["amount"]))
+	if gem != "":
+		_player.inventory.remove_material(gem, 1)
 
 	var quality := ItemFactory.craft_quality(_player.skills.level(craft_skill))
 	var obj := ItemFactory.craft(item_id, choices, quality)
@@ -1287,3 +1536,272 @@ func _object_color(obj: Dictionary) -> Color:
 		if not mat.is_empty():
 			return Color.html(mat["color"])
 	return Color(0.5, 0.5, 0.5)
+
+
+# --- Collection (2026-08-01) -------------------------------------------------
+#
+# « Un des objectifs du joueur est de collectionner tous les items du jeu. »
+# Cet onglet est donc une VITRINE, pas une liste : on doit voir d'un coup d'œil
+# ce qui manque, et le manque doit se lire comme un trou dans une étagère.
+#
+# PAGINATION plutôt que défilement. Le catalogue est un objet qu'on parcourt,
+# pas un flux : la page 3 reste la page 3 et le joueur s'en souvient. Un long
+# défilement effacerait ce repère, et une grille de plusieurs centaines de
+# vignettes n'a de toute façon pas de forme lisible.
+
+## Vignettes par page. 8 colonnes × 5 rangées : la grille reste carrée à l'œil
+## et une page entière tient sans défilement à la définition de référence.
+const COLLECTION_COLUMNS := 8
+const COLLECTION_ROWS := 5
+const COLLECTION_PER_PAGE := COLLECTION_COLUMNS * COLLECTION_ROWS
+
+## Critères de tri : (clé de langue, identifiant interne).
+const COLLECTION_SORTS: Array = [
+	["ui.collection.tri_etat", "etat"],
+	["ui.collection.tri_nom", "nom"],
+	["ui.collection.tri_type", "type"],
+	["ui.collection.tri_qualite", "qualite"],
+]
+
+var _collection_grid: GridContainer
+var _collection_progress: StatBar
+var _collection_page_label: Label
+var _collection_detail: VBoxContainer
+var _collection_page := 0
+var _collection_sort := 0
+var _collection_selected := ""
+
+
+func _build_collection() -> Control:
+	var root := HBoxContainer.new()
+	root.visible = false
+	root.add_theme_constant_override("separation", UITheme.PAD_WIDE)
+
+	# --- Colonne gauche : la vitrine ---
+	var left := PanelContainer.new()
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", UITheme.GAP)
+	left.add_child(box)
+
+	_collection_progress = StatBar.new()
+	_collection_progress.setup(tr("ui.menu.onglet.collection"), "xp")
+	_collection_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(_collection_progress)
+	box.add_child(UITheme.rule())
+
+	var controls := HBoxContainer.new()
+	controls.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	controls.add_child(UITheme.dim(tr("ui.collection.tri")))
+	var sort_option := OptionButton.new()
+	for entry: Array in COLLECTION_SORTS:
+		sort_option.add_item(tr(String(entry[0])))
+	sort_option.selected = _collection_sort
+	sort_option.item_selected.connect(func(index: int) -> void:
+		_collection_sort = index
+		# Retour à la première page : après un tri, la page 3 ne contient plus
+		# ce qu'elle contenait, et y rester désoriente.
+		_collection_page = 0
+		_refresh_collection())
+	controls.add_child(sort_option)
+
+	var previous := Button.new()
+	previous.text = "<"
+	previous.pressed.connect(func() -> void: _turn_collection_page(-1))
+	controls.add_child(previous)
+	_collection_page_label = Label.new()
+	_collection_page_label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	_collection_page_label.custom_minimum_size = Vector2(130, 0)
+	_collection_page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_collection_page_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	controls.add_child(_collection_page_label)
+	var next := Button.new()
+	next.text = ">"
+	next.pressed.connect(func() -> void: _turn_collection_page(1))
+	controls.add_child(next)
+	box.add_child(controls)
+
+	_collection_grid = GridContainer.new()
+	_collection_grid.columns = COLLECTION_COLUMNS
+	box.add_child(_collection_grid)
+	root.add_child(left)
+
+	# --- Colonne droite : la pièce sélectionnée ---
+	var right := PanelContainer.new()
+	right.custom_minimum_size = Vector2(360, 0)
+	right.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_collection_detail = VBoxContainer.new()
+	_collection_detail.add_theme_constant_override("separation", UITheme.GAP)
+	right.add_child(_collection_detail)
+	root.add_child(right)
+	return root
+
+
+func _turn_collection_page(delta: int) -> void:
+	var pages := _collection_pages()
+	_collection_page = wrapi(_collection_page + delta, 0, pages)
+	_refresh_collection()
+
+
+func _collection_pages() -> int:
+	return maxi(1, ceili(float(Collection.catalogue().size()) / float(COLLECTION_PER_PAGE)))
+
+
+## Catalogue trié selon le critère courant.
+func _collection_sorted() -> Array[String]:
+	var collection: Collection = _player.collection
+	var keys := Collection.catalogue()
+	var mode := String(COLLECTION_SORTS[_collection_sort][1])
+	match mode:
+		"nom":
+			keys.sort_custom(func(a: String, b: String) -> bool:
+				return tr(Collection.name_key_of(a)) < tr(Collection.name_key_of(b)))
+		"type":
+			keys.sort_custom(func(a: String, b: String) -> bool:
+				var ka := Collection.kind_of(a)
+				var kb := Collection.kind_of(b)
+				if ka == kb:
+					return tr(Collection.name_key_of(a)) < tr(Collection.name_key_of(b))
+				return ka < kb)
+		"etat":
+			# MANQUANTS D'ABORD : c'est le tri d'un collectionneur, celui qui
+			# répond à « qu'est-ce qu'il me reste à trouver ».
+			keys.sort_custom(func(a: String, b: String) -> bool:
+				var ha := collection.has(a)
+				var hb := collection.has(b)
+				if ha == hb:
+					return tr(Collection.name_key_of(a)) < tr(Collection.name_key_of(b))
+				return not ha)
+		"qualite":
+			keys.sort_custom(func(a: String, b: String) -> bool:
+				var qa := collection.quality_of(a)
+				var qb := collection.quality_of(b)
+				if is_equal_approx(qa, qb):
+					return tr(Collection.name_key_of(a)) < tr(Collection.name_key_of(b))
+				return qa > qb)
+	return keys
+
+
+func _refresh_collection() -> void:
+	if _collection_grid == null:
+		return
+	var collection: Collection = _player.collection
+	var progress := collection.progress()
+	_collection_progress.set_values(float(progress["offerts"]), float(progress["total"]))
+
+	var pages := _collection_pages()
+	_collection_page = clampi(_collection_page, 0, pages - 1)
+	_collection_page_label.text = tr("ui.collection.page").format({
+		"page": str(_collection_page + 1), "pages": str(pages)})
+
+	for child in _collection_grid.get_children():
+		child.queue_free()
+	var keys := _collection_sorted()
+	var start := _collection_page * COLLECTION_PER_PAGE
+	for offset in COLLECTION_PER_PAGE:
+		var index := start + offset
+		if index >= keys.size():
+			break
+		_collection_grid.add_child(_collection_slot(keys[index]))
+	_build_collection_detail()
+
+
+## Une vignette. Une pièce OFFERTE s'affiche en couleur ; une pièce manquante
+## reste une silhouette éteinte — c'est ce contraste, et lui seul, qui fait
+## qu'une étagère incomplète se voit sans être lue.
+func _collection_slot(key: String) -> Control:
+	var collection: Collection = _player.collection
+	var owned := collection.has(key)
+	var button := Button.new()
+	button.custom_minimum_size = Vector2(UITheme.SLOT + 12, UITheme.SLOT + 12)
+	button.tooltip_text = tr(Collection.name_key_of(key))
+	button.pressed.connect(func() -> void:
+		_collection_selected = key
+		_build_collection_detail())
+	var icon := TextureRect.new()
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon.texture = _collection_icon(key)
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Silhouette : la même icône, presque noire. Pas d'icône « point
+	# d'interrogation » — la forme de ce qui manque est déjà une information,
+	# et c'est ce qui donne envie d'aller le chercher.
+	icon.modulate = Color.WHITE if owned else Color(0.16, 0.17, 0.21, 0.85)
+	button.add_child(icon)
+	if key == _collection_selected:
+		button.add_theme_stylebox_override("normal", button.get_theme_stylebox("pressed"))
+	return button
+
+
+func _collection_icon(key: String) -> Texture2D:
+	var item: Dictionary = GameData.items.get(key, {})
+	if not item.is_empty():
+		var tex: Texture2D = ToolSprite.item_icon(item,
+			{"bois": "chene", "minerai": "fer", "textile": "lin"}, int(SWATCH_SIZE))
+		if tex != null:
+			return tex
+	var resource: Dictionary = GameData.resources.get(key, {})
+	var color := Color.html(String(resource.get("color", "#8A8A8A")))
+	return BlockIcon.cube_texture(color, int(SWATCH_SIZE))
+
+
+## Panneau de droite : ce qu'on sait de la pièce, et le bouton qui la sacrifie.
+func _build_collection_detail() -> void:
+	if _collection_detail == null:
+		return
+	for child in _collection_detail.get_children():
+		child.queue_free()
+	if _collection_selected == "":
+		_collection_detail.add_child(UITheme.dim(tr("ui.collection.manquant"), false))
+		return
+
+	var key := _collection_selected
+	var collection: Collection = _player.collection
+	_collection_detail.add_child(UITheme.heading(tr(Collection.name_key_of(key))))
+	_collection_detail.add_child(UITheme.rule())
+	_collection_detail.add_child(UITheme.field(
+		tr("ui.collection.tri_type"), Collection.kind_of(key), 110))
+
+	if collection.has(key):
+		var entry: Dictionary = collection.entries[key]
+		var owned_quality := float(entry.get("quality", 1.0))
+		_collection_detail.add_child(UITheme.field(tr("ui.collection.tri_qualite"),
+			"%.2f — %s" % [owned_quality, tr(ItemFactory.quality_tier_key(owned_quality))], 110))
+	else:
+		_collection_detail.add_child(UITheme.dim(tr("ui.collection.manquant")))
+
+	# Le MEILLEUR exemplaire en inventaire : c'est celui qu'on proposera, parce
+	# qu'offrir le pire alors qu'on a mieux ne sert à rien et qu'obliger le
+	# joueur à trier lui-même serait une corvée.
+	var best := _best_owned_for(key)
+	if best.is_empty():
+		_collection_detail.add_child(UITheme.dim(tr("ui.collection.rien_a_offrir")))
+		return
+	if not collection.would_improve(best):
+		_collection_detail.add_child(UITheme.dim(tr("ui.collection.deja_mieux")))
+		return
+
+	var quality := float(best.get("quality", 1.0))
+	_collection_detail.add_child(UITheme.dim(tr("ui.collection.qualite").format({
+		"palier": tr(ItemFactory.quality_tier_key(quality))})))
+	var donate := Button.new()
+	donate.text = tr("ui.collection.offrir")
+	donate.add_theme_color_override("font_color", UITheme.TEXT_WARN)
+	var uid := int(best["uid"])
+	donate.pressed.connect(func() -> void:
+		_player.donate_to_collection(uid)
+		_refresh_collection())
+	_collection_detail.add_child(donate)
+
+
+## Meilleur exemplaire possédé de ce type, ou {}.
+func _best_owned_for(key: String) -> Dictionary:
+	var best := {}
+	for instance: Dictionary in _player.inventory.objects:
+		if Collection.key_of(instance) != key:
+			continue
+		if best.is_empty() or float(instance.get("quality", 1.0)) > float(best.get("quality", 1.0)):
+			best = instance
+	return best

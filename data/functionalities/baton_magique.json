@@ -5,9 +5,14 @@
   "hands": 1,
   "combat_skill": "baton_magique",
   "degats_des": "1d4",
-  "crit_range": 20,
+  "penetration": 0.0,
+  "windup_ratio": 0.4,
   "vitesse_base": 1.8,
-  "portee": 1,
+  "portee": 1.5,
   "type_degats": "contondant",
-  "poids_reference": 25
+  "poids_reference": 25,
+  "parts": {
+    "manche": "baton",
+    "tete": "cristal"
+  }
 }

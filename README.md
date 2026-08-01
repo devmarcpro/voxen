@@ -52,26 +52,39 @@ fonctionnels dans le code actuel. Références de section entre parenthèses.
 Ces points sont dans le périmètre MVP (section 15) mais absents ou à l'état de stub.
 
 - **Créatures : les modèles (12.1)** — les 37 fiches de F.3 existent (stats, IA, biomes, recrutement), mais le rendu reste des **capsules colorées**. Pipeline figé le 2026-07-26 : **Blockbench → glTF/`.glb`** (voir [models/creatures/](models/creatures/)) ; `creature.gd` charge déjà le champ `model` s'il est renseigné, il ne manque que les modèles.
-- **PNJ dans la boucle** — les 12 civils (villageois, forgeron, garde...) sont en données mais **ne spawnent jamais** : ils dépendent de la population de village (3.4/E.25), non implémentée.
+- **PNJ dans la boucle** — *fait le 2026-08-01* : les villages se peuplent d'habitants dérivés de (cellule, graine), chacun rattaché à un bâtiment, avec un métier parmi les 11 de 8.4 et une routine jour/nuit. Ce sont des `Creature` ordinaires — aucune classe PNJ, conformément à 12.1. Restent le dialogue, la relation qui évolue, le commerce et la persistance des morts (décimation).
 - **Modules de compétences (F.2, B.4)** — 4 modules sur **48**. Pas de système d'assemblage de compétences (5.1), pas de coût en mana assemblé (A.6).
-- **Emplacements d'équipement (6.2)** — *partiel* : les 13 emplacements, l'armure et la mitigation A.4.2 fonctionnent. Restent les **compétences d'emplacements d'armes** (Dual Wielding / Bouclier / Deux Mains — absentes de `data/skills/`, et le combat utilise encore l'objet en main plutôt que les slots `arme_1`/`arme_2`), les **morphologies non-humanoïdes** (`equip_slots` de B.5) et les **boucliers**.
+- **Emplacements d'équipement (6.2)** — *partiel* : les 13 emplacements, l'armure et la mitigation A.4.2 fonctionnent. Les **boucliers** (3 modèles, blocage élargi, absorption d'endurance) et les **53 compétences** (une par arme, maîtrises de type de dégâts, Dual Wielding / Bouclier / Deux Mains) existent depuis le 2026-08-01 ; Deux Mains et Bouclier progressent, Dual Wielding attend son système. Restent les **morphologies non-humanoïdes** (`equip_slots` de B.5) et l'usage des slots `arme_1`/`arme_2` par le combat, qui lit encore l'objet en main.
 - **Effets d'équipement passifs (A.4.4)**, **pools de loot (F.7)** et **stats étendues des matériaux (A.4.5)** — non appliqués : anneaux, amulettes, accessoires et dos s'équipent mais ne font encore rien. Le butin de créature se limite à viande + peau ; pas d'objets, d'or, ni la **statue 1:1** de F.3.
-- **Contenu des POI** — `POIGenerator` ne pose que des **icônes et emprises** ; camps, sanctuaires et filons majeurs n'ont aucun contenu en jeu. Les villes n'ont que des coques de bâtiments (pas d'intérieur, de mobilier ni d'habitants).
+- **Contenu des POI** — camps, sanctuaires et filons majeurs ont été **RETIRÉS** le 2026-08-01 (décision de l'auteur) : ils n'avaient aucun contenu et leurs pastilles menaient à du vide. Il ne reste que **village** et **donjon**. Pour les réintroduire, voir le commentaire de `POIGenerator.POI_TYPES` — l'ordre de la liste est signifiant. Les **villages**, eux, ont été refaits le 2026-08-01 : six archétypes de bâtiment, toitures en pente, fenêtres, planchers, place pavée, champs, et des habitants. Restent l'**intérieur** (aucun mobilier) et la fonction des bâtiments (voir « Différé »).
 - **Donjons (E.29)** — bibliothèque réduite (3 salles / 1 connecteur), un seul étage, pas de boss ni de cycle complet « clear → disparition → réapparition ».
 - **Progression par le potentiel (6.4)** — *à moitié* : les plats cuisinés créditent maintenant le potentiel **de stat**, mais **rien ne le consomme** — 6.4 prévoit que les stats gagnent de l'XP multipliée par leur potentiel, or les stats sont figées à la création. La progression de stats est la moitié manquante, et le GDD ne chiffre aucune source d'XP de stat : c'est une décision de design à prendre. Le potentiel de **compétence**, lui, est bien consommé aux montées de niveau.
 
+### Différé volontairement (décision de l'auteur, 2026-08-01)
+
+- **Fonction des bâtiments de village** — un bâtiment est aujourd'hui un volume
+  clos sans rôle déclaré : ni forge, ni taverne, ni étal, ni ferme. Tant que
+  cette fonction n'existe pas, `VillagePopulation.work_position` envoie TOUS les
+  habitants sur la place centrale, quel que soit leur métier. C'est provisoire
+  et assumé : un village où les gens convergent le matin et rentrent le soir est
+  déjà lisible, alors qu'un habitant planté devant sa porte ne raconterait rien.
+  Cette brique débloquera d'un coup le vrai lieu de travail (8.4), le commerce
+  sur place et la halle comme point de revendication (3.4).
+
+- **Royaumes PNJ (14.4 / E.27 / B.9)** — *fait le 2026-08-01* : génération déterministe par secteurs de 64×64 cellules, 0-2 capitales par secteur placées sur les sites favorables, quatre tailles, six gouvernances, race dominante issue du biome, territoire par croissance à coût (il contourne les massifs et s'arrête devant l'eau). Aucune génération de terrain n'est nécessaire — la carte affiche les royaumes lointains avant toute visite, et `--probe-royaumes` le vérifie. Mesuré : ~1,3 % du monde sous autorité, 9 royaumes sur 39 km². Les **lois** (E.26) sont générées par royaume — meurtre, vol, agression, plus une interdiction arbitraire d'objet dans un royaume sur deux — avec détection par témoin (jet Discrétion contre Perception : sans témoin, l'infraction est ignorée) et conséquences réelles (amende, saisie, gardes hostiles). Une anarchie n'a aucune loi, faute de pouvoir les faire appliquer. Restent les **douanes** (tarifs par catégorie), la **diplomatie** (14.4), la **succession** (12.3) et le **royaume du joueur** (14.1/14.5).
+
 ### Priorité 2 — Systèmes de vie simulée (sections 7, 12, 14)
 
-- **PNJ vivants** — pas de population, pas de LOD de simulation à 3 niveaux (E.18), pas d'abstraction hors-site (E.6).
-- **Dialogue PNJ (E.23)** — totalement absent (aucune occurrence dans le code).
-- **Réputation et relations (7.2)** — absente ; `ShopManager` utilise un facteur neutre codé en dur.
+- **PNJ vivants** — *population faite* (voir Priorité 1). Restent le LOD de simulation à 3 niveaux (E.18) et l'abstraction hors-site (E.6) : hors de portée du joueur, un village cesse purement et simplement d'exister.
+- **Dialogue PNJ (E.23)** — *fait le 2026-08-01* : menu contextuel (pas d'arbre), 29 gabarits de répliques d'ambiance data-driven à conditions (métier, relation, heure), tirage pondéré et anti-répétition. Options **Parler** et **Offrir un cadeau** actives ; Commercer, Quêtes et Recruter affichées désactivées avec leur raison — leurs systèmes n'existent pas. Restent les **préférences de cadeau par tags** et les conditions sur **événements récents**.
+- **Réputation et relations (7.2)** — *fait le 2026-08-01* : les cinq niveaux (individuel, race, village, **royaume**, global), les paliers du GDD, la propagation d'une action sur les échelons collectifs, l'hostilité à vue sous −50 et le prix marchand. Reste le contrecoup chez les **races rivales**, implémenté mais sans données (`rivals` est `null` partout).
 - **Quêtes et guildes (7.3, B.7)** — aucun `data/quest_templates/`, aucune des 12 guildes.
 - **Agriculture et élevage (7.4)** — absents (les 6 plantes ne sont que récoltables).
 - **Habitat / détection de pièces (7.5, E.5)** — absents.
 - **Meubles (F.6, 16)** — aucun : d'où l'absence de **lits**, que A.10 désigne pourtant comme point de résurrection principal (seul le claim sert de point de retour), et de coffres, garde-manger, bibliothèques, etc.
 - **Cuisine, alchimie et nourriture (7.7)** — les **viandes paramétriques** existent et portent leurs bonus de potentiel, mais rien ne les consomme encore : il manque la **station Cuisine et les recettes de plats** (tout se mange cru à 50 %, et les bonus de potentiel A.9.1 ne sont donc **jamais crédités** — c'est l'étape qui débloque la boucle 6.4), les **parties d'alchimie** (yeux, griffes, os) et l'**alambic**. Aucune donnée pour les **18 consommables (F.5)**, **12 potions (F.9)**, **16 meubles (F.6)**, **14 statuts (F.4)** — d'où l'absence du risque d'infection du cru.
 - **Économie et flux d'or (7.6, A.8.1)** — pas de portefeuilles PNJ, ni taxes, ni entretien.
-- **Villages : population, décimation, conquête, succession (3.4, 12.3, E.25)** — absents.
+- **Villages : conquête et succession (3.4, 12.3)** — la **population** et la **décimation** existent depuis le 2026-08-01 : les morts sont persistés (on n'enregistre que les absences, un village intact ne coûte rien), un village entièrement vidé devient un POI abandonné, et le repeuplement hebdomadaire d'E.25 tourne. Restent la **conquête** (halle comme point de revendication, jet de Leadership) et la **succession**. La **capacité** est dérivée du nombre de bâtiments, pas encore de la détection de pièces d'E.5.
 - **Âge des PNJ (12.2)**, **familles/statuts (12.3)**, **monstres rares (12.4)** — absents.
 - **Génération de noms culturels (12.5, E.31, B.11)** — `world_namer.gd` nomme le monde uniquement ; aucun `data/name_cultures/` (les 10 cultures de C.9 restent à écrire).
 - **Compagnons (E.17)** et recrutement — le signal `creature_recruited` n'est émis nulle part.

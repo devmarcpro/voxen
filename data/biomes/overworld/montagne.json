@@ -35,12 +35,13 @@
   "village_palette": {
     "mur": "pierre",
     "toit": "ardoise",
-    "sol": "pierre"
+    "sol": "pierre",
+    "poutre": "chene",
+    "pave": "pierre_taillee"
   },
   "poi_weights": {
     "village": 2,
-    "donjon": 7,
-    "camp": 6
+    "donjon": 7
   },
   "farming_yield": 0.7,
   "tags": [

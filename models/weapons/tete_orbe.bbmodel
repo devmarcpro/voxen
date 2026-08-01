@@ -1,0 +1,112 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "tete_orbe",
+  "model_identifier": "tete_orbe",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "tete_orbe_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -4,
+        1,
+        -4
+      ],
+      "to": [
+        4,
+        9,
+        4
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "09d6ba65-9d3f-5d63-b31a-d6636f73315d"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "tete_orbe",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "06094c49-5de6-5d51-9f7f-34213e22a86a",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "09d6ba65-9d3f-5d63-b31a-d6636f73315d"
+      ]
+    }
+  ],
+  "textures": []
+}

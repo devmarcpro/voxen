@@ -29,6 +29,12 @@ const SLOT_GROUPS := {
 	"anneau": ["anneau_1", "anneau_2"],
 	"arme": ["arme_1", "arme_2"],
 	"accessoire": ["accessoire_1", "accessoire_2"],
+	# Un BOUCLIER va toujours en main gauche (arme_2), jamais en main forte.
+	# Il n'est pas dans le groupe « arme » exprès : sans ça, un bouclier posé
+	# dans le premier emplacement libre pouvait atterrir en arme_1 et l'on se
+	# retrouvait à frapper avec — un cas absurde qu'aucune règle ne rattrapait
+	# plus ensuite.
+	"bouclier": ["arme_2"],
 }
 
 ## Facteur de protection par emplacement (A.4.2, copié à la lettre). Les
@@ -119,6 +125,32 @@ func total_armor_dice() -> String:
 	return "%dd%d" % [count, maxi(2, faces)]
 
 
+## Catégorie de matériau DOMINANTE de l'armure portée (combat directionnel,
+## 2026-07-28) — celle qui décide si la protection est de type « plaque » ou
+## « rembourré » face au tranchant/perçant/contondant (WeaponStats.
+## armor_type_modifier). On prend la pièce de TORSE : c'est le facteur de
+## protection le plus élevé (1.0 ci-dessus) et ce qui définit une panoplie.
+## Retourne "" si le torse est nu — l'appelant tombe alors sur la ligne
+## « _defaut », neutre.
+func dominant_armor_category() -> String:
+	var torso: Dictionary = slots.get("torse", {})
+	if torso.is_empty():
+		return ""
+	var materials: Dictionary = torso.get("materials", {})
+	var best_category := ""
+	var best_amount := 0
+	# La recette liste ses entrées par catégorie ; la catégorie la plus
+	# fournie est celle qui donne son caractère à la pièce.
+	var item: Dictionary = GameData.items.get(torso.get("item_id", ""), {})
+	for input: Variant in item.get("recipe", {}).get("inputs", []):
+		var category := String((input as Dictionary).get("category", ""))
+		var amount := int((input as Dictionary).get("amount", 0))
+		if materials.has(category) and amount > best_amount:
+			best_amount = amount
+			best_category = category
+	return best_category
+
+
 ## Poids total de l'équipement porté — compte dans la capacité (A.4.2 :
 ## « inclut inventaire ET équipement »).
 func total_weight() -> float:
@@ -150,4 +182,8 @@ func restore_state(data: Dictionary) -> void:
 	slots.clear()
 	for slot: Variant in data:
 		if String(slot) in SLOTS and data[slot] is Dictionary:
+			# Une pièce équipée porte un uid de la session précédente : sans le
+			# déclarer, un craft ultérieur pourrait le réattribuer et deux objets
+			# distincts deviendraient indiscernables.
+			ItemFactory.note_uid(int((data[slot] as Dictionary).get("uid", 0)))
 			slots[String(slot)] = data[slot]

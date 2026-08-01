@@ -18,7 +18,11 @@
   "priority": 4,
   "surface_material": "herbe",
   "subsurface_material": "argile",
-  "grass_tint": [0.8, 0.85, 0.6],
+  "grass_tint": [
+    0.8,
+    0.85,
+    0.6
+  ],
   "vegetation": [
     {
       "id": "saule",
@@ -36,12 +40,13 @@
   "village_palette": {
     "mur": "aulne",
     "toit": "chaume_tresse",
-    "sol": "argile"
+    "sol": "argile",
+    "poutre": "aulne",
+    "pave": "pierre_taillee"
   },
   "poi_weights": {
     "village": 2,
-    "donjon": 7,
-    "camp": 6
+    "donjon": 7
   },
   "farming_yield": 0.8,
   "tags": [

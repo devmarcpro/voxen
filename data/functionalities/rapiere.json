@@ -1,0 +1,18 @@
+{
+  "id": "rapiere",
+  "name_key": "functionality.rapiere.name",
+  "kind": "arme",
+  "hands": 1,
+  "combat_skill": "rapiere",
+  "degats_des": "1d10",
+  "penetration": 0.28,
+  "windup_ratio": 0.3,
+  "vitesse_base": 3.0,
+  "portee": 1.5,
+  "type_degats": "percant",
+  "poids_reference": 26,
+  "parts": {
+    "manche": "moyen",
+    "tete": "rapiere"
+  }
+}

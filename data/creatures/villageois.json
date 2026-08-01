@@ -1,6 +1,7 @@
 {
   "id": "villageois",
   "name_key": "creature.villageois.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "humanoide",
   "parts_pool": {
     "tete": [
@@ -30,7 +31,14 @@
   "ai_profile": "civil",
   "jobs_compatible": [
     "fermier",
-    "vendeur"
+    "vendeur",
+    "cuisinier",
+    "mineur",
+    "bucheron",
+    "eleveur",
+    "couturier",
+    "herboriste",
+    "transporteur"
   ],
   "housing_default": "normal",
   "recruitable": {

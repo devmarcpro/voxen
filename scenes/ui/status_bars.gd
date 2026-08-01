@@ -4,22 +4,21 @@ extends Control
 ## (un Control sous un CanvasLayer n'a pas de taille → les ancres ne marchent
 ## pas ; on place tout à la main depuis la taille du viewport).
 
-const BAR_W := 190.0
+## Les jauges sont désormais des StatBar : intitulé + barre + chiffre. Avant,
+## c'étaient quatre rectangles colorés anonymes — il fallait connaître l'ordre
+## par cœur pour savoir lequel était la faim, et aucun ne donnait de valeur. Une
+## barre à moitié pleine ne dit pas s'il reste 30 PV ou 3.
+const BAR_W := 300.0
 const BAR_H := 14.0
-const GAP := 4.0
+const GAP := 2.0
 const TICKS_PER_DAY := 24000.0
 const HOTBAR_MARGIN := 118.0   # hauteur réservée en bas (hotbar + label objet).
 
 var _player: Node
 var _camera: Node3D
-var _pv_bg: ColorRect
-var _mana_bg: ColorRect
-var _faim_bg: ColorRect
-var _fatigue_bg: ColorRect
-var _pv_fill: ColorRect
-var _mana_fill: ColorRect
-var _faim_fill: ColorRect
-var _fatigue_fill: ColorRect
+var _bars := {}
+var _frame: PanelContainer
+var _stack: VBoxContainer
 var _temp_label: Label
 var _clock: Control
 
@@ -32,11 +31,22 @@ func setup(player: Node, camera: Node3D) -> void:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	position = Vector2.ZERO
-	var pv := _make_bar(Color(0.85, 0.2, 0.2)); _pv_bg = pv[0]; _pv_fill = pv[1]
-	var mn := _make_bar(Color(0.25, 0.5, 0.95)); _mana_bg = mn[0]; _mana_fill = mn[1]
-	var fm := _make_bar(Color(0.9, 0.62, 0.2)); _faim_bg = fm[0]; _faim_fill = fm[1]
+	# Un CADRE autour des jauges : posées à nu sur le monde, elles flottaient et
+	# leur zone n'était pas lisible. Le cadre les désigne comme un ensemble.
+	_frame = PanelContainer.new()
+	_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stack = VBoxContainer.new()
+	_stack.add_theme_constant_override("separation", GAP)
+	_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_frame.add_child(_stack)
+	add_child(_frame)
 	# Fatigue (amendement E.21) — bleu-violet, distincte de la faim.
-	var ft := _make_bar(Color(0.55, 0.5, 0.85)); _fatigue_bg = ft[0]; _fatigue_fill = ft[1]
+	for gauge: String in ["vie", "mana", "faim", "fatigue"]:
+		var bar := StatBar.new()
+		bar.setup(tr("ui.gauge." + gauge), gauge)
+		bar.custom_minimum_size = Vector2(BAR_W, StatBar.LINE_H)
+		_stack.add_child(bar)
+		_bars[gauge] = bar
 	_clock = Control.new()
 	_clock.custom_minimum_size = Vector2(52, 52)
 	_clock.size = Vector2(52, 52)
@@ -44,23 +54,8 @@ func _ready() -> void:
 	_clock.draw.connect(_draw_clock)
 	add_child(_clock)
 	_temp_label = Label.new()
-	_temp_label.add_theme_font_size_override("font_size", 15)
+	_temp_label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	add_child(_temp_label)
-
-
-func _make_bar(color: Color) -> Array:
-	var bg := ColorRect.new()
-	bg.color = Color(0, 0, 0, 0.55)
-	bg.size = Vector2(BAR_W, BAR_H)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var fill := ColorRect.new()
-	fill.color = color
-	fill.position = Vector2(2, 2)
-	fill.size = Vector2(BAR_W - 4, BAR_H - 4)
-	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bg.add_child(fill)
-	add_child(bg)
-	return [bg, fill]
 
 
 ## Maj THROTTLÉE (2026-07-26, fix perf) : ne rien recalculer à 60 fps — le coût
@@ -79,11 +74,11 @@ func _process(delta: float) -> void:
 	if vp != _last_vp:
 		_last_vp = vp
 		_layout(vp)
-	_fill(_pv_fill, _player.health / maxf(_player.health_max, 1.0))
+	_bars["vie"].set_values(_player.health, _player.health_max)
 	var m: Object = _player.mana
-	_fill(_mana_fill, float(m.current) / maxf(float(m.max_mana()), 1.0))
-	_fill(_faim_fill, _player.hunger / maxf(_player.hunger_max, 1.0))
-	_fill(_fatigue_fill, _player.fatigue / maxf(_player.fatigue_max, 1.0))
+	_bars["mana"].set_values(float(m.current), float(m.max_mana()))
+	_bars["faim"].set_values(_player.hunger, _player.hunger_max)
+	_bars["fatigue"].set_values(_player.fatigue, _player.fatigue_max)
 	_clock.queue_redraw()
 	if WorldManager.generator != null and _camera != null:
 		var pos: Vector3 = _camera.global_position
@@ -95,19 +90,14 @@ func _process(delta: float) -> void:
 
 
 func _layout(vp: Vector2) -> void:
-	var bx := vp.x * 0.5 - BAR_W - 40.0
-	# 4 barres depuis l'ajout de la fatigue (PV, mana, faim, fatigue).
-	var y0 := vp.y - HOTBAR_MARGIN - 4.0 * (BAR_H + GAP)
-	_pv_bg.position = Vector2(bx, y0)
-	_mana_bg.position = Vector2(bx, y0 + BAR_H + GAP)
-	_faim_bg.position = Vector2(bx, y0 + 2.0 * (BAR_H + GAP))
-	_fatigue_bg.position = Vector2(bx, y0 + 3.0 * (BAR_H + GAP))
-	_clock.position = Vector2(vp.x * 0.5 + 44.0, y0 - 4.0)
-	_temp_label.position = Vector2(vp.x * 0.5 + 104.0, y0 + 14.0)
-
-
-func _fill(fill: ColorRect, ratio: float) -> void:
-	fill.size.x = (BAR_W - 4) * clampf(ratio, 0.0, 1.0)
+	var bx := vp.x * 0.5 - BAR_W - 56.0
+	# 4 jauges depuis l'ajout de la fatigue (PV, mana, faim, fatigue).
+	var height := 4.0 * (StatBar.LINE_H + GAP) + UITheme.PAD * 2.0
+	var y0 := vp.y - HOTBAR_MARGIN - height
+	_frame.position = Vector2(bx, y0)
+	_frame.size = Vector2(BAR_W + UITheme.PAD * 2.0, height)
+	_clock.position = Vector2(vp.x * 0.5 + 44.0, y0)
+	_temp_label.position = Vector2(vp.x * 0.5 + 104.0, y0 + 18.0)
 
 
 ## Horloge du jour : cadran 24 h, aiguille = heure, fond jour/nuit.

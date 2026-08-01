@@ -388,6 +388,9 @@ const _CONDITION_COUNT := 4
 
 func _init(seed_value: int, params: Dictionary = {}) -> void:
 	world_seed = seed_value
+	# Les royaumes sont dérivés de la graine : un cache survivant d'un monde à
+	# l'autre mélangerait deux géographies politiques sans rien signaler.
+	KingdomGenerator.clear_cache()
 	_p_relief = clampf(float(params.get("relief", 1.0)), 0.0, 4.0)
 	world_radius = maxi(int(params.get("rayon_monde", DEFAULT_WORLD_RADIUS)), WORLD_EDGE_OCEAN + 500)
 	_land_radius = world_radius - WORLD_EDGE_OCEAN
@@ -1373,6 +1376,68 @@ func _city_layout(cell: Vector2i) -> Dictionary:
 ## Construit le layout : gate village (POI) + palette + plateau + rejet de
 ## pente + blocs de bâtiments précalculés. Pur/déterministe (thread-safe :
 ## biome_at/_height ne mutent rien).
+## Meilleure implantation du village dans sa cellule : { "offset", "plateau" },
+## ou {} si aucune position ne convient.
+##
+## Critères, dans l'ordre : le site doit être AU SEC (tout le footprint
+## au-dessus du niveau de l'eau), puis le plus PLAT possible. La hauteur du
+## plateau retenue est la MÉDIANE des sondages et non celle du centre : c'est
+## elle qui minimise le déblai et le remblai, donc la falaise artificielle au
+## bord du village.
+##
+## Le footprint peut désormais toucher le bord de cellule (décalage 0 autorisé).
+## L'ancienne marge d'au moins une tuile évitait que deux villages voisins
+## posent des plateaux d'altitudes différentes bord à bord — mais deux cellules
+## adjacentes portant chacune un village représentent moins d'un cas sur mille,
+## et on payait ce cas rarissime en refusant les trois quarts des villages.
+const CITY_SAMPLES := 4
+
+
+func _best_city_site(cell: Vector2i, t: int) -> Dictionary:
+	var max_offset := CityGenerator.TILES_PER_CELL - t
+	var best := {}
+	var best_spread := 1 << 30
+	for oz in range(max_offset + 1):
+		for ox in range(max_offset + 1):
+			var base_x := cell.x * CITY_CELL_BLOCKS + ox * 16
+			var base_z := cell.y * CITY_CELL_BLOCKS + oz * 16
+			var span := t * 16 - 1
+			var heights: Array[int] = []
+			var hmin := 1 << 30
+			var hmax := -(1 << 30)
+			for sz in CITY_SAMPLES:
+				for sx in CITY_SAMPLES:
+					@warning_ignore("integer_division")
+					var px := base_x + sx * span / (CITY_SAMPLES - 1)
+					@warning_ignore("integer_division")
+					var pz := base_z + sz * span / (CITY_SAMPLES - 1)
+					var h := int(floorf(_height(float(px), float(pz))))
+					heights.append(h)
+					hmin = mini(hmin, h)
+					hmax = maxi(hmax, h)
+			var spread := hmax - hmin
+			if spread > CITY_MAX_SLOPE:
+				continue
+			heights.sort()
+			@warning_ignore("integer_division")
+			var median := heights[heights.size() / 2]
+			# AU SEC : c'est le PLATEAU retenu qui doit être hors de l'eau, pas
+			# chaque point du terrain brut. Exiger que le point le plus bas soit
+			# déjà émergé interdisait tout village côtier — or le site est
+			# terrassé de toute façon, et un village de pêcheurs dont un coin
+			# est remblayé au-dessus de la grève est parfaitement légitime.
+			if median < water_level + 2:
+				continue
+			# Décalages INDÉPENDANTS sur les deux axes : se limiter aux positions
+			# diagonales (ox == oz) diviserait par quatre le nombre de sites
+			# examinés, et c'est justement le manque de sites qui faisait
+			# disparaître les villages.
+			if spread < best_spread:
+				best_spread = spread
+				best = {"offset": ox, "offset_z": oz, "plateau": median}
+	return best
+
+
 func _compute_city_layout(cell: Vector2i) -> Dictionary:
 	@warning_ignore("integer_division")
 	var cx := cell.x * CITY_CELL_BLOCKS + CITY_CELL_BLOCKS / 2
@@ -1383,37 +1448,49 @@ func _compute_city_layout(cell: Vector2i) -> Dictionary:
 		return {}
 	if "village" not in POIGenerator.pois_at_cell(cell, world_seed, biome):
 		return {}
-	var plateau := int(floorf(_height(float(cx), float(cz))))
-	if plateau < water_level + 2:
-		return {}  # Jamais de village dans/au bord de l'eau.
 
 	var category := CityGenerator.size_category(cell, world_seed)
 	var plan := CityGenerator.tile_plan(cell, world_seed, category)
 	var t: int = plan["T"]
-	var offset: int = plan["offset"]
-	# Rejet des sites en pente forte (4 coins du footprint) — site plat préféré.
-	var fx0 := cell.x * CITY_CELL_BLOCKS + offset * 16
-	var fz0 := cell.y * CITY_CELL_BLOCKS + offset * 16
-	var fx1 := fx0 + t * 16 - 1
-	var fz1 := fz0 + t * 16 - 1
-	var hmin := plateau
-	var hmax := plateau
-	for corner in [[fx0, fz0], [fx1, fz0], [fx0, fz1], [fx1, fz1]]:
-		var ch := int(floorf(_height(float(corner[0]), float(corner[1]))))
-		hmin = mini(hmin, ch)
-		hmax = maxi(hmax, ch)
-	if hmax - hmin > CITY_MAX_SLOPE:
+
+	# RECHERCHE DE SITE (2026-08-01). Avant, le village était posé au CENTRE de
+	# la cellule et le centre seul était testé : s'il tombait dans une baie ou
+	# sur un versant, le village entier était abandonné. Un recensement sur
+	# 39 km² a montré l'ampleur du gâchis — 59 villages tirés, 7 construits.
+	# 56 % perdus pour un centre trop bas, 32 % pour une pente, alors que la
+	# cellule fait 128 blocs et que l'emprise n'en occupe que 80 : il restait
+	# presque toujours de la place ailleurs.
+	#
+	# On essaie donc TOUTES les positions possibles dans la cellule et on garde
+	# la plus plate parmi celles qui sont au sec. C'est aussi meilleur en soi :
+	# un village s'installe sur le replat, il ne se plante pas au milieu d'une
+	# pente parce qu'un algorithme l'a décidé.
+	var site := _best_city_site(cell, t)
+	if site.is_empty():
 		return {}
+	var plateau: int = site["plateau"]
+	plan["offset"] = site["offset"]
+	plan["offset_z"] = site["offset_z"]
 
 	var vp: Dictionary = biome["village_palette"]
+	# `poutre` : bois de structure des angles et des encadrements. Absent des
+	# données de biome (il n'existait pas avant la refonte), il retombe sur le
+	# mur — une maison sans chaînage reste correcte, elle est simplement plus
+	# plate. `pave` et `terre_labouree` habillent la place et les champs.
 	var palette := {
 		"mur": GameData.material_runtime_ids.get(vp["mur"], _road_id),
 		"toit": GameData.material_runtime_ids.get(vp["toit"], _road_id),
 		"sol": GameData.material_runtime_ids.get(vp["sol"], _road_id),
+		"poutre": GameData.material_runtime_ids.get(vp.get("poutre", "poutre"),
+			GameData.material_runtime_ids.get(vp["mur"], _road_id)),
+		"pave": GameData.material_runtime_ids.get(vp.get("pave", "pierre_taillee"),
+			GameData.material_runtime_ids.get(vp["sol"], _road_id)),
+		"champ": GameData.material_runtime_ids.get("terre", _road_id),
 	}
 	var building_blocks := {}
 	for idx: int in plan["doors"]:
-		building_blocks[idx] = CityGenerator.building_blocks(plan["doors"][idx], palette)
+		building_blocks[idx] = CityGenerator.building_blocks(plan["doors"][idx], palette,
+			String((plan["archetypes"] as Dictionary).get(idx, "maison")))
 	plan["cell"] = cell
 	plan["plateau_y"] = plateau
 	plan["palette"] = palette
@@ -1430,7 +1507,7 @@ func _city_tile_type(wx: int, wz: int, city: Dictionary) -> Dictionary:
 	if lx < 0 or lx >= CITY_CELL_BLOCKS or lz < 0 or lz >= CITY_CELL_BLOCKS:
 		return {"in": false}
 	var ftx := (lx >> 4) - int(city["offset"])
-	var ftz := (lz >> 4) - int(city["offset"])
+	var ftz := (lz >> 4) - int(city.get("offset_z", city["offset"]))
 	var t: int = city["T"]
 	if ftx < 0 or ftx >= t or ftz < 0 or ftz >= t:
 		return {"in": false}
@@ -1614,6 +1691,15 @@ func city_at_cell(cell: Vector2i) -> Dictionary:
 	return _city_layout(cell)
 
 
+## Royaume possédant cette cellule (14.4/E.27), ou {} en terre sauvage.
+##
+## « Hors royaume = aucune loi, aucune douane » : un dictionnaire vide n'est pas
+## une absence de donnée, c'est l'anarchie de fait de la wilderness, et le code
+## appelant doit la traiter comme un état légitime.
+func kingdom_at_cell(cell: Vector2i) -> Dictionary:
+	return KingdomGenerator.kingdom_at_cached(cell, world_seed, self)
+
+
 ## Enveloppes publiques de _rivers_near/_river_carve_at (2026-07-21, carte du
 ## monde 2D — affichage de l'eau) : mêmes fonctions, exposées pour les
 ## systèmes hors NoiseGenerator (même convention que `pcg_hash`/`_pcg_hash` —
@@ -1651,8 +1737,18 @@ func _river_carve_at(wx: float, wz: float, rivers: Array[Dictionary]) -> int:
 ## de `height_at()` + `block_at()` séparément (double calcul redondant du
 ## terrain — bug de perf réel trouvé en testant l'affichage détaillé de la
 ## carte, la mosaïque bloquait le thread plus de 20 s).
-func sample_surface(wx: int, wz: int) -> Dictionary:
-	return _sample_column(wx, wz, _city_layout(_city_cell_of(wx, wz)))
+## `city` : layout de village DÉJÀ RÉSOLU, quand l'appelant en échantillonne
+## plusieurs points. Sans ce paramètre, chaque échantillon refaisait la
+## résolution — qui prend un mutex — alors que tous les points d'une même
+## cellule partagent forcément le même village.
+##
+## Mesuré le 2026-08-01 sur la carte du monde : 21 904 échantillons, 2,5 s
+## passées dans cette seule résolution redondante, verrou compris. C'était le
+## premier poste de coût de la construction de la carte, devant le terrain
+## lui-même.
+func sample_surface(wx: int, wz: int, city: Variant = null) -> Dictionary:
+	var layout: Dictionary = city if city is Dictionary 		else _city_layout(_city_cell_of(wx, wz))
+	return _sample_column(wx, wz, layout)
 
 
 ## Échantillonne une colonne complète : hauteur, biome, matériaux, transition.
@@ -1690,8 +1786,18 @@ func _sample_column(wx: int, wz: int, city: Dictionary = {}) -> Dictionary:
 		if tile.get("in", false):
 			h = int(city["plateau_y"])
 			var palette: Dictionary = city["palette"]
-			var road: int = _road_id if int(tile["type"]) == 1 else int(palette["sol"])
-			return {"h": h, "surf": road, "sub": int(palette["sol"]), "trans": trans}
+			# UN MATÉRIAU PAR RÔLE. Tout le footprint partageait auparavant le
+			# même sol de terre : rues, cours, champs et places se confondaient
+			# en un seul disque brun, ce qui était le plus visible des défauts.
+			var surface: int = int(palette["sol"])
+			match int(tile["type"]):
+				CityGenerator.Tile.ROUTE:
+					surface = _road_id
+				CityGenerator.Tile.PLACE:
+					surface = int(palette["pave"])
+				CityGenerator.Tile.CHAMP:
+					surface = int(palette["champ"])
+			return {"h": h, "surf": surface, "sub": int(palette["sol"]), "trans": trans}
 
 	return {"h": h, "surf": surf_pair.x, "sub": surf_pair.y, "trans": trans}
 
@@ -1864,7 +1970,7 @@ func prepare_context(col: Vector2i) -> Dictionary:
 	# Les bâtiments montent au-dessus du plateau (B_HEIGHT+2) : élargir hmax
 	# pour que leur chunk aérien ne soit pas sauté par le chemin rapide (G.2).
 	if not city.is_empty():
-		top_max = maxi(top_max, int(city["plateau_y"]) + CityGenerator.B_HEIGHT + 2)
+		top_max = maxi(top_max, int(city["plateau_y"]) + CityGenerator.MAX_BUILD_HEIGHT + 2)
 
 	# Termitière de donjon (2026-07-28) : même raison que les bâtiments de ville
 	# juste au-dessus — sa masse dépasse largement le relief, et `hmax` pilote la

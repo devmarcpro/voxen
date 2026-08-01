@@ -1,0 +1,18 @@
+{
+  "id": "pioche_combat",
+  "name_key": "functionality.pioche_combat.name",
+  "kind": "arme",
+  "hands": 1,
+  "combat_skill": "pioche_combat",
+  "degats_des": "2d8",
+  "penetration": 0.6,
+  "windup_ratio": 0.55,
+  "vitesse_base": 1.3,
+  "portee": 1.5,
+  "type_degats": "percant",
+  "poids_reference": 65,
+  "parts": {
+    "manche": "moyen",
+    "tete": "bec"
+  }
+}

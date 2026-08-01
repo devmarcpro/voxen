@@ -41,6 +41,10 @@ const SZ := 18
 ## gratuite (PackedInt32Array est copie-sur-écriture) et rend l'accès local.
 static var STRIDES := PackedInt32Array([SX, SY, SZ])
 static var GRID_STRIDES := PackedInt32Array([1, 64, 8])
+## Strides du tableau de blocs d'un chunk (16³), indexés par axe. Même rôle que
+## STRIDES pour le tableau paddé : retrouver un indice de bloc par arithmétique
+## plutôt qu'en construisant un Vector3i pour ChunkData.index_of.
+static var CHUNK_STRIDES := PackedInt32Array([1, 256, 16])
 ## Les 6 directions de voisinage de la coquille. Étaient allouées comme Array
 ## littéral À L'INTÉRIEUR de la boucle de _apply_shell_edits — 6 allocations de
 ## 6 Vector3i par appel, pour une donnée constante.
@@ -166,6 +170,14 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 	# wait_for_in_flight() garantit qu'aucun thread ne tourne pendant un reload.
 	var liquid_mask := GameData.liquid_mask
 	var liquid_count := liquid_mask.size()
+	# Tout ce qui suit était relu À CHAQUE QUAD depuis `data`, un objet, ou via
+	# un appel statique. Un chunk dense émet des dizaines de milliers de quads :
+	# c'est le seul endroit du moteur où une résolution de propriété se paie au
+	# millier près.
+	var block_host := data.block_host
+	var has_host := not block_host.is_empty()
+	var light_empty := light.is_empty()
+	var inv_light := 1.0 / float(LightField.MAX_LEVEL)
 
 	for d in 3:
 		var u := (d + 1) % 3
@@ -173,6 +185,28 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 		var sd := strides[d]
 		var su := strides[u]
 		var sv := strides[v]
+		# Vecteurs unitaires des trois axes, construits UNE FOIS par axe. Ils
+		# étaient refabriqués par quad à coups de `Vector3.ZERO` puis d'écriture
+		# indexée `normal[d] = ...` : en GDScript, indexer un Vector3 par une
+		# variable passe par le chemin dynamique et coûte bien plus qu'une
+		# multiplication.
+		var e_d := Vector3.ZERO
+		e_d[d] = 1.0
+		var e_u := Vector3.ZERO
+		e_u[u] = 1.0
+		var e_v := Vector3.ZERO
+		e_v[v] = 1.0
+		# Sens d'enroulement : il ne dépend QUE de l'axe et du signe de la face,
+		# jamais des dimensions du rectangle. Le produit vectoriel et le produit
+		# scalaire étaient pourtant recalculés à chaque quad pour retomber
+		# invariablement sur le même verdict.
+		var swap_when_positive := e_u.cross(e_v).dot(e_d) > 0.0
+		# Strides du tableau de blocs DU CHUNK (non paddé) par axe, pour
+		# retrouver le bloc hôte sans construire de Vector3i ni appeler
+		# ChunkData.index_of.
+		var hd := CHUNK_STRIDES[d]
+		var hu := CHUNK_STRIDES[u]
+		var hv := CHUNK_STRIDES[v]
 
 		# `cut` est la frontière entre les cellules locales cut et cut+1.
 		for cut in range(-1, T):
@@ -257,19 +291,14 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 						colors.resize(new_size)
 					if ic + 6 > indices.size():
 						indices.resize(maxi(indices.size() * 2, 1536))
-					var normal := Vector3.ZERO
-					normal[d] = 1.0 if c > 0 else -1.0
-					var origin := Vector3.ZERO
-					origin[d] = float(cut + 1)
-					origin[u] = float(i)
-					origin[v] = float(j)
-					var du := Vector3.ZERO
-					du[u] = float(w)
-					var dv := Vector3.ZERO
-					dv[v] = float(h)
+					var positive := c > 0
+					var normal := e_d if positive else -e_d
+					var origin := e_d * float(cut + 1) + e_u * float(i) + e_v * float(j)
+					var du := e_u * float(w)
+					var dv := e_v * float(h)
 					# Enroulement horaire vu de face (convention Godot) :
 					# cross(du, dv) doit pointer à l'OPPOSÉ de la normale.
-					if du.cross(dv).dot(normal) > 0.0:
+					if positive == swap_when_positive:
 						var tmp := du
 						du = dv
 						dv = tmp
@@ -284,7 +313,7 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 					# modifié. Un dépassement ici planterait un THREAD worker,
 					# le pire endroit pour diagnostiquer (2026-07-27).
 					var cid := absi(c)
-					if cid < liquid_count and liquid_mask[cid] == 1 and not (d == 1 and c < 0):
+					if cid < liquid_count and liquid_mask[cid] == 1 and not (d == 1 and not positive):
 						var top_y := vertices[vc].y
 						for k in 4:
 							top_y = maxf(top_y, vertices[vc + k].y)
@@ -294,22 +323,26 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 					# UV.y = roche/terre HÔTE (masque minerai/herbe, shader) — le bloc
 					# propriétaire de cette face (2026-07-24).
 					var host := 0
-					if not data.block_host.is_empty():
-						var owner := Vector3i.ZERO
-						owner[d] = cut if c > 0 else cut + 1
-						owner[u] = i
-						owner[v] = j
-						host = int(data.block_host.get(ChunkData.index_of(owner.x, owner.y, owner.z), 0))
+					if has_host:
+						host = int(block_host.get(
+							(cut if positive else cut + 1) * hd + i * hu + j * hv, 0))
 					var uv := Vector2(float(absi(c)), float(host))
 					# Lumière de bloc (G.3) : échantillonnée du côté AIR de la
 					# face — c'est la cellule éclairée, le bloc porteur étant
 					# opaque. Cuite dans la couleur de sommet, le shader n'a
 					# plus qu'à la lire (terrain unshaded, aucune boucle).
-					var lit := Vector3i.ZERO
-					lit[d] = cut + 1 if c > 0 else cut
-					lit[u] = i
-					lit[v] = j
-					var level := float(LightField.level_at(light, lit)) / float(LightField.MAX_LEVEL)
+					# Indice de lumière calculé DIRECTEMENT : le champ de
+					# lumière partage exactement les strides du pad, donc la
+					# cellule côté air est `idx` décalé d'un cran sur l'axe.
+					# L'ancien code construisait un Vector3i et passait par
+					# LightField.level_at, qui refaisait des tests de bornes
+					# déjà garantis par les boucles.
+					var level := 0.0
+					if not light_empty:
+						var lit_index := (cut + 1) * sd + (i + 1) * su + (j + 1) * sv
+						if positive:
+							lit_index += sd
+						level = float(light[lit_index]) * inv_light
 					var vertex_color := Color(level, level, level, 1.0)
 					for k in 4:
 						normals[vc + k] = normal

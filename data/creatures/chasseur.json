@@ -1,6 +1,7 @@
 {
   "id": "chasseur",
   "name_key": "creature.chasseur.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "humanoide",
   "parts_pool": {
     "tete": [
@@ -29,7 +30,8 @@
   "inventory_table": null,
   "ai_profile": "civil",
   "jobs_compatible": [
-    "garde"
+    "garde",
+    "bucheron"
   ],
   "housing_default": "normal",
   "recruitable": {

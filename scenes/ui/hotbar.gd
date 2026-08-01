@@ -71,7 +71,7 @@ func _ready() -> void:
 		key_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		key_label.offset_left = 4
 		key_label.offset_top = 1
-		key_label.add_theme_font_size_override("font_size", 11)
+		key_label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		# Coin OPPOSÉ à la quantité (bas-droite) : les deux ne se recouvrent
 		# jamais, quel que soit le nombre de chiffres.
 		key_label.modulate = Color(1, 1, 1, 0.55)

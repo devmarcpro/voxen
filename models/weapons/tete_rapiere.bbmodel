@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "tete_rapiere",
+  "model_identifier": "tete_rapiere",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "tete_rapiere_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -1,
+        0,
+        -1
+      ],
+      "to": [
+        1,
+        30,
+        1
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "37fc15d5-7f25-5146-9508-bcc39d269d32"
+    },
+    {
+      "name": "tete_rapiere_1",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -3.5,
+        0,
+        -3.5
+      ],
+      "to": [
+        3.5,
+        2,
+        3.5
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "cdb832cf-6eb3-5416-876f-bd808efde46c"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "tete_rapiere",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "7b12bd0d-5637-5384-bd3d-766127081487",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "37fc15d5-7f25-5146-9508-bcc39d269d32",
+        "cdb832cf-6eb3-5416-876f-bd808efde46c"
+      ]
+    }
+  ],
+  "textures": []
+}

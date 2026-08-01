@@ -1,0 +1,235 @@
+{
+  "lignes": [
+    {
+      "id": "salut_neutre",
+      "text_key": "dialogue.salut_neutre",
+      "weight": 1.0,
+      "conditions": {}
+    },
+    {
+      "id": "meteo",
+      "text_key": "dialogue.meteo",
+      "weight": 1.0,
+      "conditions": {}
+    },
+    {
+      "id": "occupe",
+      "text_key": "dialogue.occupe",
+      "weight": 0.8,
+      "conditions": {}
+    },
+    {
+      "id": "matin",
+      "text_key": "dialogue.matin",
+      "weight": 1.2,
+      "conditions": {
+        "hour_min": 5,
+        "hour_max": 11
+      }
+    },
+    {
+      "id": "soir",
+      "text_key": "dialogue.soir",
+      "weight": 1.2,
+      "conditions": {
+        "hour_min": 18,
+        "hour_max": 23
+      }
+    },
+    {
+      "id": "nuit",
+      "text_key": "dialogue.nuit",
+      "weight": 1.5,
+      "conditions": {
+        "hour_min": 0,
+        "hour_max": 4
+      }
+    },
+    {
+      "id": "hostile_1",
+      "text_key": "dialogue.hostile_1",
+      "weight": 2.0,
+      "conditions": {
+        "relation_max": -50
+      }
+    },
+    {
+      "id": "hostile_2",
+      "text_key": "dialogue.hostile_2",
+      "weight": 2.0,
+      "conditions": {
+        "relation_max": -50
+      }
+    },
+    {
+      "id": "mefiant_1",
+      "text_key": "dialogue.mefiant_1",
+      "weight": 1.5,
+      "conditions": {
+        "relation_min": -49,
+        "relation_max": -20
+      }
+    },
+    {
+      "id": "mefiant_2",
+      "text_key": "dialogue.mefiant_2",
+      "weight": 1.5,
+      "conditions": {
+        "relation_min": -49,
+        "relation_max": -20
+      }
+    },
+    {
+      "id": "amical_1",
+      "text_key": "dialogue.amical_1",
+      "weight": 1.5,
+      "conditions": {
+        "relation_min": 20
+      }
+    },
+    {
+      "id": "amical_2",
+      "text_key": "dialogue.amical_2",
+      "weight": 1.2,
+      "conditions": {
+        "relation_min": 20
+      }
+    },
+    {
+      "id": "devoue_1",
+      "text_key": "dialogue.devoue_1",
+      "weight": 2.0,
+      "conditions": {
+        "relation_min": 50
+      }
+    },
+    {
+      "id": "devoue_2",
+      "text_key": "dialogue.devoue_2",
+      "weight": 1.5,
+      "conditions": {
+        "relation_min": 50
+      }
+    },
+    {
+      "id": "forgeron_1",
+      "text_key": "dialogue.forgeron_1",
+      "weight": 1.5,
+      "conditions": {
+        "job": "forgeron"
+      }
+    },
+    {
+      "id": "forgeron_2",
+      "text_key": "dialogue.forgeron_2",
+      "weight": 1.2,
+      "conditions": {
+        "job": "forgeron"
+      }
+    },
+    {
+      "id": "garde_1",
+      "text_key": "dialogue.garde_1",
+      "weight": 1.5,
+      "conditions": {
+        "job": "garde"
+      }
+    },
+    {
+      "id": "garde_2",
+      "text_key": "dialogue.garde_2",
+      "weight": 1.2,
+      "conditions": {
+        "job": "garde"
+      }
+    },
+    {
+      "id": "fermier_1",
+      "text_key": "dialogue.fermier_1",
+      "weight": 1.5,
+      "conditions": {
+        "job": "fermier"
+      }
+    },
+    {
+      "id": "fermier_2",
+      "text_key": "dialogue.fermier_2",
+      "weight": 1.0,
+      "conditions": {
+        "job": "fermier"
+      }
+    },
+    {
+      "id": "vendeur_1",
+      "text_key": "dialogue.vendeur_1",
+      "weight": 1.5,
+      "conditions": {
+        "job": "vendeur"
+      }
+    },
+    {
+      "id": "vendeur_2",
+      "text_key": "dialogue.vendeur_2",
+      "weight": 1.2,
+      "conditions": {
+        "job": "vendeur"
+      }
+    },
+    {
+      "id": "cuisinier_1",
+      "text_key": "dialogue.cuisinier_1",
+      "weight": 1.5,
+      "conditions": {
+        "job": "cuisinier"
+      }
+    },
+    {
+      "id": "mineur_1",
+      "text_key": "dialogue.mineur_1",
+      "weight": 1.5,
+      "conditions": {
+        "job": "mineur"
+      }
+    },
+    {
+      "id": "bucheron_1",
+      "text_key": "dialogue.bucheron_1",
+      "weight": 1.5,
+      "conditions": {
+        "job": "bucheron"
+      }
+    },
+    {
+      "id": "eleveur_1",
+      "text_key": "dialogue.eleveur_1",
+      "weight": 1.5,
+      "conditions": {
+        "job": "eleveur"
+      }
+    },
+    {
+      "id": "herboriste_1",
+      "text_key": "dialogue.herboriste_1",
+      "weight": 1.5,
+      "conditions": {
+        "job": "herboriste"
+      }
+    },
+    {
+      "id": "couturier_1",
+      "text_key": "dialogue.couturier_1",
+      "weight": 1.5,
+      "conditions": {
+        "job": "couturier"
+      }
+    },
+    {
+      "id": "transporteur_1",
+      "text_key": "dialogue.transporteur_1",
+      "weight": 1.5,
+      "conditions": {
+        "job": "transporteur"
+      }
+    }
+  ]
+}

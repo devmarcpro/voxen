@@ -22,7 +22,11 @@
   "priority": 5,
   "surface_material": "herbe",
   "subsurface_material": "terre",
-  "grass_tint": [0.85, 1.05, 1.1],
+  "grass_tint": [
+    0.85,
+    1.05,
+    1.1
+  ],
   "vegetation": [
     {
       "id": "chene",
@@ -36,12 +40,12 @@
   "village_palette": {
     "mur": "chene",
     "toit": "chaume_tresse",
-    "sol": "calcaire"
+    "sol": "calcaire",
+    "poutre": "chene",
+    "pave": "pierre_taillee"
   },
   "poi_weights": {
-    "sanctuaire": 3,
-    "donjon": 1,
-    "camp": 1
+    "donjon": 1
   },
   "farming_yield": 1.2,
   "tags": [

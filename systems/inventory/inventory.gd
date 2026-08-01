@@ -49,6 +49,11 @@ func add_object(object_instance: Dictionary) -> void:
 			if String(existing.get("resource_id", "")) == resource_id:
 				existing["count"] = int(existing.get("count", 1)) + int(object_instance.get("count", 1))
 				return
+	# Un objet peut entrer par le craft (uid déjà alloué) comme par un
+	# chargement de sauvegarde (uid d'une session précédente). On le déclare dans
+	# les deux cas : c'est le seul goulot par lequel tout objet passe, donc le
+	# seul endroit où l'on est sûr qu'aucun uid ne sera redistribué plus tard.
+	ItemFactory.note_uid(int(object_instance.get("uid", 0)))
 	objects.append(object_instance)
 
 
@@ -158,6 +163,7 @@ func restore_state(data: Dictionary) -> void:
 		material_fractions[id] = float(fractions[id])
 	for obj: Variant in (data.get("objects", []) as Array):
 		if obj is Dictionary:
+			ItemFactory.note_uid(int((obj as Dictionary).get("uid", 0)))
 			objects.append(obj)
 
 

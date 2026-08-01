@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "tete_bec",
+  "model_identifier": "tete_bec",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "tete_bec_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        1,
+        2,
+        -1.5
+      ],
+      "to": [
+        11,
+        8,
+        1.5
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "180df6ba-edf6-50f0-bbdc-5d948d85c1a4"
+    },
+    {
+      "name": "tete_bec_1",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -4,
+        0,
+        -2
+      ],
+      "to": [
+        4,
+        4,
+        2
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "9f43be85-17d7-53f6-ba03-50c8123ae90d"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "tete_bec",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "f699ade5-d875-5444-8128-b37d1f3106f4",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "180df6ba-edf6-50f0-bbdc-5d948d85c1a4",
+        "9f43be85-17d7-53f6-ba03-50c8123ae90d"
+      ]
+    }
+  ],
+  "textures": []
+}

@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "tete_arc_arbalete",
+  "model_identifier": "tete_arc_arbalete",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "tete_arc_arbalete_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -16,
+        0,
+        -1
+      ],
+      "to": [
+        16,
+        3,
+        1
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "8d7065de-e4ea-5406-9d16-d0217a5a7049"
+    },
+    {
+      "name": "tete_arc_arbalete_1",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -2,
+        -2,
+        -2
+      ],
+      "to": [
+        2,
+        8,
+        2
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "e782d3cb-90d6-5e73-9e69-43245efe117e"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "tete_arc_arbalete",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "1db7ec9b-33ec-5318-81b3-d576090baac2",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "8d7065de-e4ea-5406-9d16-d0217a5a7049",
+        "e782d3cb-90d6-5e73-9e69-43245efe117e"
+      ]
+    }
+  ],
+  "textures": []
+}

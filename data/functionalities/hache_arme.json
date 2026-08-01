@@ -5,9 +5,14 @@
   "hands": 2,
   "combat_skill": "hache_arme",
   "degats_des": "2d10",
-  "crit_range": 20,
+  "penetration": 0.15,
+  "windup_ratio": 0.55,
   "vitesse_base": 1.4,
   "portee": 1.5,
   "type_degats": "tranchant",
-  "poids_reference": 70
+  "poids_reference": 70,
+  "parts": {
+    "manche": "long",
+    "tete": "hache"
+  }
 }

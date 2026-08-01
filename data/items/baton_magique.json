@@ -5,25 +5,33 @@
   "equip_slot": "arme",
   "hands": 1,
   "functionality": "baton_magique",
+  "parts": {
+    "manche": "baton",
+    "tete": "cristal"
+  },
   "recipe": {
     "station": "etabli",
     "craft_skill": "forge",
     "inputs": [
       {
         "category": "bois",
-        "amount": 2
+        "amount": 1
       },
       {
-        "category": "cristal",
+        "category": "minerai",
         "amount": 1
       }
     ]
   },
   "stat_weights": {
     "durete": {
-      "cristal": 0.7,
-      "bois": 0.3
+      "minerai": 0.9,
+      "bois": 0.1
     }
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
   },
   "effects": [],
   "tags": [
@@ -32,9 +40,5 @@
   "sprites": {
     "manche": "res://assets/weapons/baton_magique_manche.png",
     "tete": "res://assets/weapons/baton_magique_tete.png"
-  },
-  "sprite_tint": {
-    "manche": "bois",
-    "tete": "cristal"
   }
 }

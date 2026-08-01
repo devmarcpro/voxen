@@ -13,7 +13,7 @@ extends RefCounted
 ## ici (quel type de POI existe dans quelle cellule, et quelle emprise il
 ## occupe — requêtable à la volée comme tout le reste du monde, jamais
 ## stocké). La génération du CONTENU réel (salles de donjon E.29, bâtiments
-## de village, camps, sanctuaires, filons) reste à faire — cette étape pose
+## de village et donjons) reste à faire — cette étape pose
 ## des icônes sur la carte + le MÉCANISME d'entrée/sortie de donjon
 ## (DungeonManager), pas encore de vraie structure en jeu.
 ##
@@ -25,8 +25,48 @@ extends RefCounted
 ## (voir DungeonManager) : y entrer téléporte à l'intérieur.
 
 ## Ordre canonique = ordre de priorité en cas de plafond à 2 (GDD E.2, ordre
-## d'énumération du GDD : village/donjon/camp/sanctuaire/filon_majeur).
-const POI_TYPES: Array[String] = ["village", "donjon", "camp", "sanctuaire", "filon_majeur"]
+## RÉDUIT À DEUX TYPES le 2026-08-01, sur décision de l'auteur.
+##
+## Le GDD en énumère cinq (village, donjon, camp, sanctuaire, filon majeur),
+## mais seuls les villages et les donjons ont un CONTENU en jeu. Les trois
+## autres ne posaient qu'une pastille sur la carte : le joueur s'y rendait et
+## n'y trouvait rien. C'est exactement le défaut corrigé quelques jours plus tôt
+## sur les villages fantômes — une carte ne doit pas promettre ce qui n'existe
+## pas, et il vaut mieux retirer un marqueur que le laisser mentir.
+##
+## L'ORDRE DES DEUX RESTANTS EST PRÉSERVÉ, et ce n'est pas un détail : le tirage
+## sale le hachage avec l'INDICE du type (`i * 97`). Village reste 0, donjon
+## reste 1 — les mondes déjà générés gardent donc exactement les mêmes villages
+## et les mêmes donjons aux mêmes endroits. Réordonner cette liste, ou y
+## réinsérer un type en tête, déplacerait tout.
+##
+## Pour les réintroduire un jour : remettre le type en FIN de liste, rétablir
+## ses `poi_weights` dans data/biomes/, sa couleur dans world_map_view et son
+## bouton de téléportation dans le menu de triche.
+const POI_TYPES: Array[String] = ["village", "donjon"]
+
+## Compensation de l'ATTRITION DE SITE des villages.
+##
+## Le poids déclaré par biome (E.2 : « village 4 % par cellule ») exprime la
+## densité de villages qu'on veut VOIR dans le monde. Or un village tiré n'est
+## pas un village construit : il doit encore trouver, dans sa cellule, une
+## emprise de 80 blocs assez plate et hors de l'eau. Le recensement
+## (--probe-villages, 39 km²) donne un taux de survie mesuré d'environ 20 % :
+## sans compensation, une densité annoncée à 4 % en produit 0,8 % sur le
+## terrain, soit un village tous les 1 800 blocs au lieu de 640.
+##
+## C'est ce qui a fait dire à l'auteur que « les villages ne se génèrent pas ».
+##
+## Multiplier le tirage restaure l'intention du GDD sans toucher aux données de
+## biome. Effet secondaire VOULU : la compensation profite surtout aux biomes
+## plats, où presque tous les sites passent — les villages se concentrent donc
+## dans les plaines et restent rares en montagne, ce qui est le comportement
+## qu'on attendrait de toute façon.
+##
+## Si la géométrie du monde change (plus ou moins d'océan, relief plus doux),
+## RELANCER --probe-villages et réajuster : ce nombre est calé sur une mesure,
+## pas choisi au jugé.
+const VILLAGE_SITE_ATTRITION := 4.0
 const MAX_POI_PER_CELL := 2
 const SEED_POI := 41213
 
@@ -54,6 +94,8 @@ static func pois_at_cell(cell: Vector2i, world_seed: int, biome: Dictionary) -> 
 		var weight: float = weights.get(poi_type, 0.0)
 		if weight <= 0.0:
 			continue
+		if poi_type == "village":
+			weight *= VILLAGE_SITE_ATTRITION
 		var roll := NoiseGenerator.pcg_hash(cell.x, cell.y, world_seed + SEED_POI + i * 97) % 10000
 		if float(roll) < weight * 100.0:
 			found.append(poi_type)

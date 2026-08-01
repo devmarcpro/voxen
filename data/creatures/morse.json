@@ -1,6 +1,7 @@
 {
   "id": "morse",
   "name_key": "creature.morse.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "quadrupede",
   "parts_pool": {
     "tete": [

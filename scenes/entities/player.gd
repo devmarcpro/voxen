@@ -40,6 +40,13 @@ var inventory: Inventory
 ## Emplacements d'équipement (6.2) — l'armure portée alimente la mitigation
 ## d'E.3, jusque-là toujours nulle faute d'équipement.
 var equipment: Equipment
+## Cabinet de curiosités (2026-08-01) : tout ce que le joueur a offert, et donc
+## définitivement détruit. Porté par le PERSONNAGE et non par le monde : c'est
+## un accomplissement, il suit celui qui l'a obtenu.
+var collection: Collection
+## Réputation et relations (7.2). Portée par le personnage : c'est SA
+## réputation, elle le suit d'un monde à l'autre comme ses compétences.
+var reputation: Reputation
 ## Santé — formule validée par l'auteur (2026-07-20), par analogie avec le
 ## mana (A.5, Endurance ~ Volonté) : santé_max = 20 + Endurance * 8.
 var health_max: float
@@ -147,10 +154,55 @@ var _required := 0.0
 var _bouncing := false
 var _last_carve_region := Vector3i(-1, -1, -1)
 
-# État de combat (E.3, piloté par ticks).
-var _attack_cooldown_ticks := 0
+# État de combat. REFONTE 2026-07-28 : le combat est directionnel et
+# géométrique (voir MeleeAttack et CombatResolver). Le TIMING de la frappe
+# avance à la frame ; ses CONSÉQUENCES restent appliquées au tick, comme tout
+# le reste du jeu — _pending_hits est la frontière exacte entre les deux.
 var _module_cooldown_ticks := 0
+## Créature sous le réticule — sert UNIQUEMENT à désambiguïser « miner » de
+## « frapper » à mains nues, et à l'affichage. Ce n'est plus un verrouillage :
+## le coup touche ce que la lame traverse, pas ce que le réticule désigne.
 var _target_creature: Node = null
+var _attack := MeleeAttack.new()
+## Stats dérivées de l'arme en main (WeaponStats.derive) — recalculées au
+## CHANGEMENT d'arme seulement, jamais à la frappe ni à la frame.
+var _weapon_stats: Dictionary = {}
+var _weapon_stats_key := ""
+## Stats de la frappe EN COURS, figées à son déclenchement (voir _begin_attack).
+var _swing_stats: Dictionary = {}
+var _swing_hardness := 1.0
+var _swing_quality := 1.0
+## BRIDAGE DE ROTATION pendant la frappe. Sans lui, tourner vite sur soi-
+## meme pendant le swing ajoute cette rotation a la vitesse de la lame et
+## le bonus de vitesse se farme en tournoyant : l'« helicoptere » que Mount
+# & Blade interdit precisement. La CAMERA reste libre (on continue de
+## viser) ; c'est l'ARC DE FRAPPE qui rattrape le regard a vitesse bornee.
+const SWING_TURN_CAP := deg_to_rad(110.0)   # radians par seconde
+var _swing_basis := Basis.IDENTITY
+## Position de la pointe de l'arme à la frame précédente : le segment entre
+## les deux est ce qu'on teste contre les zones de coup.
+var _tip_previous := Vector3.ZERO
+## Coups constatés par la géométrie, en attente d'application par le tick.
+var _pending_hits: Array = []
+## Garde levée (clic droit avec une arme en main).
+var _guard_active := false
+## Horodatage (ms) de la levée de garde — sert à la fenêtre de parade : une
+## garde levée juste à temps vaut mieux qu'une garde tenue passivement.
+var _guard_raised_msec := 0
+
+## Endurance (combat directionnel) : consommée par les frappes et par les
+## coups encaissés en garde. À zéro, la garde casse (stagger). Formule alignée
+## sur celles de la santé et du mana (A.5) : dérivée de la stat Endurance.
+var stamina_max := 100.0
+var stamina := 100.0
+const STAMINA_PER_ENDURANCE := 10.0
+const STAMINA_BASE := 50.0
+## Régénération par tick (10 ticks/s → ~8 points/s à pleine régén).
+const STAMINA_REGEN_PER_TICK := 0.8
+## Ticks d'attente après une dépense avant que la régénération reprenne :
+## sans ça, enchaîner les coups ne coûterait rien.
+const STAMINA_REGEN_DELAY_TICKS := 8
+var _stamina_regen_block := 0
 
 
 ## Race/classe choisies (6.1) — posées par apply_character, sauvegardées.
@@ -167,6 +219,8 @@ func _ready() -> void:
 	skills.owner_entity = self
 	inventory = Inventory.new()
 	equipment = Equipment.new()
+	collection = Collection.new()
+	reputation = Reputation.new()
 	_recompute_derived()
 	_camera = get_node("../FlyCamera") as FlyCamera
 	TickManager.tick_entities.connect(_on_tick)
@@ -177,6 +231,8 @@ func _ready() -> void:
 func _recompute_derived() -> void:
 	health_max = 20.0 + int(stats["endurance"]) * 8.0
 	health = health_max
+	stamina_max = STAMINA_BASE + int(stats["endurance"]) * STAMINA_PER_ENDURANCE
+	stamina = stamina_max
 	mana = ManaPool.new(int(stats["volonte"]), skills.level("meditation"))
 
 
@@ -266,6 +322,8 @@ func save_state() -> Dictionary:
 		"skills": skills.save_state(),
 		"inventory": inventory.save_state(),
 		"equipment": equipment.save_state(),
+		"collection": collection.save_state(),
+		"reputation": reputation.save_state(),
 		"hotbar": _hotbar_for_save(),
 		"rested_until": rested_until_tick,
 		"stat_potentials": stat_potentials.duplicate(),
@@ -288,6 +346,8 @@ func restore_state(data: Dictionary) -> void:
 	skills.xp_modifier = float(data.get("xp_modifier", 1.0))
 	inventory.restore_state(data.get("inventory", {}))
 	equipment.restore_state(data.get("equipment", {}))
+	collection.restore_state(data.get("collection", {}))
+	reputation.restore_state(data.get("reputation", {}))
 	rested_until_tick = int(data.get("rested_until", 0))
 	var saved_potentials: Dictionary = data.get("stat_potentials", {})
 	for stat_id: String in stat_potentials:
@@ -388,17 +448,40 @@ func _respawn() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if input_locked:
 		return
+	# Geste de souris de l'attaque directionnelle : cumulé pendant la fenêtre
+	# de lecture qui suit le clic (MeleeAttack l'ignore hors de cette fenêtre,
+	# donc aucune condition à écrire ici).
+	var motion := event as InputEventMouseMotion
+	if motion != null:
+		_attack.feed_gesture(motion.relative)
+		# Le MÊME geste oriente la garde : on choisit sa parade à la souris,
+		# exactement comme on choisit son attaque — et, comme elle, seulement
+		# pendant la fenêtre de lecture qui suit la levée de garde.
+		if _guard_active and not _guard_locked:
+			_guard_gesture += motion.relative
 	var button := event as InputEventMouseButton
 	if button != null and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		if button.button_index == MOUSE_BUTTON_LEFT:
-			if button.pressed and _target_creature != null:
-				_try_melee_attack()  # Créature visée : un coup par clic (cooldown E.1).
+			if _wants_combat():
+				# MAINTENIR arme le coup et laisse choisir sa direction ;
+				# RELÂCHER le porte. Le clic n'est plus un déclencheur, c'est
+				# une gâchette qu'on tient (2026-07-28).
+				if button.pressed:
+					_begin_attack()
+				else:
+					_attack.release_input()
 			else:
-				_mining = button.pressed and _target_creature == null
+				_mining = button.pressed
 				if not button.pressed:
 					_progress = 0.0
-		elif button.button_index == MOUSE_BUTTON_RIGHT and button.pressed:
-			_try_place()
+		elif button.button_index == MOUSE_BUTTON_RIGHT:
+			# Une arme en main garde ; tout le reste pose des blocs. Sans cette
+			# règle, lever sa garde poserait un bloc en plein duel.
+			if _equipped_weapon().is_empty():
+				if button.pressed:
+					_try_place()
+			else:
+				_set_guard(button.pressed)
 		elif button.pressed and button.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_scroll_hotbar(-1, button.ctrl_pressed)
 		elif button.pressed and button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
@@ -419,6 +502,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_progress = 0.0
 		elif key.physical_keycode in MODULE_KEYS:
 			_try_cast_module(MODULE_KEYS.find(key.physical_keycode))
+		elif key.physical_keycode == KEY_E:
+			_try_talk()
 		elif key.physical_keycode == KEY_V:
 			_toggle_claim()
 		elif key.physical_keycode == KEY_B:
@@ -598,11 +683,19 @@ func _scroll_hotbar(delta: int, bank_modifier: bool) -> void:
 		selected_slot = wrapi(selected_slot + delta, 0, HOTBAR_SLOTS)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# Visée + fantôme + overlays : visuel uniquement, la récolte avance en ticks (E.1).
 	_update_target()
 	_update_ghost()
 	_update_mining_overlay()
+	# EXCEPTION ASSUMÉE À E.1 (2026-07-28) : le TIMING de la frappe et sa
+	# géométrie avancent à la frame — une fenêtre de parade de 150 ms n'existe
+	# pas à 10 Hz. _advance_attack ne modifie aucun état de jeu : il empile des
+	# coups que _on_tick applique. Voir l'en-tête de MeleeAttack.
+	if not input_locked:
+		_measure_velocity(delta)
+		_update_guard_direction(delta)
+		_advance_attack(delta)
 
 
 ## Progression de récolte normalisée (0..1) — pour la barre de l'UI.
@@ -644,49 +737,845 @@ func _equipped_weapon() -> Dictionary:
 	return {}
 
 
-func _try_melee_attack() -> void:
-	if _attack_cooldown_ticks > 0 or _target_creature == null or not is_instance_valid(_target_creature):
-		return
-	var weapon := _equipped_weapon()
-	var functionality: Dictionary
-	var base_hardness: float
-	var quality: float
-	if weapon.is_empty():
-		functionality = GameData.functionalities["mains_nues"]
-		base_hardness = 1.0
-		quality = 1.0
-	else:
-		functionality = GameData.functionalities[weapon["functionality"]]
-		base_hardness = weapon["base_hardness"]
-		quality = weapon["quality"]
-	var skill_id := String(functionality["combat_skill"])
-	# Vitesse d'attaque (A.4.1) : vitesse_base × (poids_référence/poids_réel)^0.75,
-	# bornée à [0.4, 1.8] × base — « la densité pilote la vitesse » (4.2) :
-	# une épée en granit noir frappe lentement, un manche en pin accélère.
-	# (Audit 2026-07-21 : la formule existait au GDD mais n'était pas branchée.)
-	var base_speed: float = functionality["vitesse_base"]
-	var speed := base_speed
-	if not weapon.is_empty():
-		var real_weight := maxf(float(weapon.get("weight", 1.0)), 0.1)
-		var ref_weight := maxf(float(functionality.get("poids_reference", real_weight)), 0.1)
-		speed = clampf(base_speed * pow(ref_weight / real_weight, 0.75),
-			0.4 * base_speed, 1.8 * base_speed)
-	_attack_cooldown_ticks = maxi(1, ceili(10.0 / speed))
+## Le clic gauche doit-il frapper plutôt que miner ? Une arme en main met le
+## joueur en posture de combat ; à mains nues il continue de miner, sauf si une
+## créature est effectivement devant lui — sinon on ne pourrait plus jamais
+## boxer, ce qui condamnerait tout le début de partie sans équipement.
+func _wants_combat() -> bool:
+	if not _equipped_weapon().is_empty():
+		return true
+	return _target_creature != null and is_instance_valid(_target_creature)
 
-	var result := CombatResolver.resolve_attack(
-		skills.level(skill_id), effective_stat("dexterite"), effective_stat("force"),
-		0, 0, String(functionality["degats_des"]), base_hardness, quality, false, "")
-	if result["hit"]:
-		_target_creature.health = maxf(0.0, _target_creature.health - result["damage"])
-		_target_creature.provoke()  # Une bête sauvage riposte dès le 1er coup (F.3).
-		skills.gain_xp(skill_id, result["damage"])
-		if _target_creature.is_dead():
-			_creature_defeated(_target_creature)
+
+## Fonctionnalité + stats dérivées de l'arme en main. Le cache est invalidé par
+## une CLÉ d'arme (instance + fonctionnalité) : dériver à chaque frappe serait
+## inutile, et à chaque frame franchement coûteux.
+func _current_weapon_stats() -> Dictionary:
+	var weapon := _equipped_weapon()
+	var functionality_id := "mains_nues"
+	if not weapon.is_empty():
+		functionality_id = String(weapon["functionality"])
+	var key := "%s:%d" % [functionality_id, int(weapon.get("uid", 0))]
+	if key != _weapon_stats_key:
+		_weapon_stats_key = key
+		_weapon_stats = WeaponStats.derive(GameData.functionalities[functionality_id], weapon)
+	return _weapon_stats
+
+
+func _begin_attack() -> void:
+	if _attack.is_busy() or _guard_active:
+		return
+	var weapon_stats := _current_weapon_stats()
+	# Sans endurance, on ne lance pas de coup : c'est le frein qui empêche le
+	# clic frénétique que tout ce système cherche à remplacer.
+	if stamina < float(weapon_stats["stamina_cost"]):
+		return
+	_mining = false
+	_progress = 0.0
+	# Stats FIGÉES pour toute la durée de la frappe. Sans ça, changer d'arme
+	# en plein swing rallongerait la portée du coup déjà parti (et truquerait
+	# sa dureté à la résolution) : le joueur pourrait lancer une dague et
+	# toucher à la portée d'une pique.
+	var weapon := _equipped_weapon()
+	_swing_basis = _camera.global_basis
+	_swing_stats = weapon_stats.duplicate()
+	_swing_hardness = float(weapon.get("base_hardness", 1.0)) if not weapon.is_empty() else 1.0
+	_swing_quality = float(weapon.get("quality", 1.0)) if not weapon.is_empty() else 1.0
+	_attack.begin(weapon_stats)
+
+
+## Direction de la garde (blocage DIRECTIONNEL, 2026-07-28). Choisie au geste
+## comme une attaque, et modifiable tant que la garde est tenue : le duel est un
+## échange de lectures, pas un bouton de défense.
+var _guard_direction: int = MeleeAttack.Direction.ESTOC
+var _guard_gesture := Vector2.ZERO
+## La direction de garde est-elle figée ? Elle l'est dès la fin de la fenêtre de
+## lecture, et le reste jusqu'à ce qu'on baisse la garde.
+##
+## SYMÉTRIE VOULUE AVEC L'ATTAQUE (2026-08-01, demande de l'auteur). La garde
+## suivait auparavant la souris en continu : elle se réorientait donc toute
+## seule dès qu'on tournait la tête pour suivre un adversaire, et il était
+## impossible de tenir une garde haute en regardant les pieds. Surtout, une
+## défense qui se replace en permanence n'est plus un pari — or c'est le pari
+## qui fait le duel. Pour changer de garde, on baisse et on relève : ça coûte
+## le temps de la lecture, et c'est exactement le risque qu'on doit prendre.
+var _guard_locked := false
+## Temps écoulé (ms) depuis la levée de garde, CUMULÉ DEPUIS LE DELTA et non lu
+## sur l'horloge murale.
+##
+## Distinct de `_guard_raised_msec`, qui sert à la fenêtre de PARADE parfaite :
+## les deux durées n'ont ni la même valeur ni le même rôle, et les confondre
+## ferait dépendre la qualité d'une parade de la lecture du geste.
+##
+## Pourquoi le delta plutôt que Time.get_ticks_msec() : tout le reste du combat
+## avance au delta (MeleeAttack en entier), et mélanger les deux sources rend le
+## système intestable — une sonde qui simule 300 ms en avançant le delta voyait
+## l'horloge murale n'avancer que d'une milliseconde, donc la fenêtre de lecture
+## ne se fermait jamais. Un système dont on ne peut pas simuler le temps ne peut
+## pas être vérifié.
+var _guard_read_ms := 0.0
+
+
+func _set_guard(active: bool) -> void:
+	if active and _attack.is_busy():
+		# FEINTE : lever sa garde ANNULE une attaque en préparation. C'est le
+		# geste central de Mount & Blade — armer un coup pour appâter une parade,
+		# l'annuler, puis frapper ailleurs. Une frappe déjà PARTIE, elle, ne
+		# s'annule pas : on assume son coup.
+		if _attack.state == MeleeAttack.State.RELEASE:
+			return
+		_attack.interrupt()
+		_swing_stats = {}
+	if active and not _guard_active:
+		_guard_raised_msec = Time.get_ticks_msec()
+		_guard_read_ms = 0.0
+		_guard_gesture = Vector2.ZERO
+		_guard_locked = false
+	if not active:
+		_guard_locked = false
+	_guard_active = active
+
+
+## Lit le geste de garde pendant la fenêtre d'ouverture, puis VERROUILLE la
+## direction. Même déroulé que l'attaque, mêmes constantes : le joueur n'a
+## qu'un seul geste à apprendre pour attaquer et pour parer.
+func _update_guard_direction(delta: float) -> void:
+	if not _guard_active or _guard_locked:
+		return
+	_guard_gesture = _guard_gesture.move_toward(Vector2.ZERO,
+		_guard_gesture.length() * minf(MeleeAttack.GESTURE_DECAY_PER_SEC * delta, 1.0))
+	_guard_read_ms += delta * 1000.0
+	if _guard_read_ms < MeleeAttack.GESTURE_MS:
+		return
+	# Fin de la lecture : on fige. Un geste trop faible laisse la garde au
+	# CENTRE (estoc), comme un clic sans geste donne un estoc — la posture la
+	# plus neutre est toujours celle qu'on obtient sans rien demander.
+	_guard_direction = MeleeAttack.Direction.ESTOC
+	if _guard_gesture.length() >= MeleeAttack.GESTURE_THRESHOLD:
+		_guard_direction = MeleeAttack._resolve_direction(_guard_gesture)
+	_guard_locked = true
+
+
+## État de combat pour l'AFFICHAGE (indicateur directionnel du HUD).
+##
+## Le combat était mécaniquement complet mais ILLISIBLE : le joueur ne voyait
+## ni la direction qu'il avait choisie, ni la phase où en était son coup, ni
+## sa garde (retour utilisateur du 2026-07-28). Un combat directionnel dont on
+## ne peut pas lire la direction n'est pas un combat directionnel.
+func combat_hud_state() -> Dictionary:
+	return {
+		"phase": _attack.state,
+		"attack_direction": _attack.direction,
+		"phase_ratio": _attack.phase_ratio,
+		"guarding": _guard_active,
+		"guard_direction": _guard_direction,
+		"guard_locked": _guard_locked,
+		"stamina": stamina / maxf(stamina_max, 0.001),
+	}
+
+
+## Position de main d'une GARDE TENUE, dans la direction choisie.
+##
+## POURQUOI LA GARDE A UNE POSE. Elle n'en avait aucune : le bras restait au
+## port d'arme, identique à l'inactivité. Le joueur ne voyait donc ni qu'il
+## gardait, ni de quel côté — et l'adversaire non plus, ce qui vidait le
+## blocage directionnel de son sens dans un duel joueur contre joueur.
+##
+## La main se place au DÉBUT de l'arc de la direction couverte, à mi-chemin du
+## port d'arme : c'est la même géométrie que l'attaque, donc une garde haute
+## ressemble à un coup haut armé — et c'est exactement ce qu'il faut, puisque
+## dans les deux cas l'arme protège ce côté-là.
+##
+## `guard_for` traduit la direction de garde vers l'attaque qu'elle couvre : les
+## tailles sont MIROIR (parer à gauche arrête un coup venu de la droite), l'estoc
+## et le coup haut se couvrent eux-mêmes.
+const GUARD_ARC_BLEND := 0.72
+
+
+func _guard_hand_target(grip: Vector3, camera_basis: Basis, hand_radius: float) -> Vector3:
+	var carry := grip + _carry_direction(camera_basis) * hand_radius
+	var covered := MeleeAttack.guard_for(_guard_direction)
+	var arc_start := MeleeAttack.tip_position(covered, 0.0, grip, camera_basis, hand_radius)
+	# Une garde en cours de LECTURE reste au port : tant que la direction n'est
+	# pas figée, montrer une posture serait annoncer un choix qui n'est pas fait.
+	if not _guard_locked:
+		return carry
+	return carry.lerp(arc_start, GUARD_ARC_BLEND)
+
+
+## Le bouclier ÉQUIPÉ (main gauche), ou {} si les mains sont libres.
+##
+## Le bouclier ne se tient pas dans la hotbar comme une arme : il est ÉQUIPÉ,
+## donc porté en permanence dès qu'il est mis. C'est ce qui permet de garder au
+## bouclier tout en tenant n'importe quelle arme à une main, sans manipulation.
+func equipped_shield() -> Dictionary:
+	var piece: Dictionary = equipment.equipped("arme_2")
+	if piece.is_empty():
+		return {}
+	var item: Dictionary = GameData.items.get(piece.get("item_id", ""), {})
+	if String(item.get("type", "")) != "bouclier":
+		return {}
+	return piece
+
+
+## Caractéristiques défensives du bouclier porté : couverture et absorption.
+## Retourne des valeurs NULLES sans bouclier, pour que l'appelant n'ait jamais à
+## tester la présence d'un bouclier avant de lire ses chiffres.
+func shield_profile() -> Dictionary:
+	var shield := equipped_shield()
+	# UNE ARME À DEUX MAINS INTERDIT LE BOUCLIER, et c'est le bouclier qui cède
+	# — pas l'arme. Autrement il suffirait d'équiper un pavois pour ajouter de
+	# la défense à un espadon sans rien sacrifier, ce qui supprimerait le choix
+	# même que le GDD veut poser (5.6 : deux mains OU bouclier OU deux armes).
+	# Le bouclier reste équipé, simplement inopérant : le retirer de force
+	# surprendrait le joueur au changement d'arme.
+	if int(_current_weapon_stats().get("hands", 1)) >= 2:
+		return {"present": false, "couverture": 0, "absorption": 0.0, "quality": 1.0,
+			"empeche_par_deux_mains": true}
+	if shield.is_empty():
+		return {"present": false, "couverture": 0, "absorption": 0.0, "quality": 1.0}
+	var functionality: Dictionary = GameData.functionalities.get(
+		shield.get("functionality", ""), {})
+	# La qualité de fabrication porte l'absorption : un pavois bâclé protège
+	# moins bien qu'un écu de maître, sinon seule la taille compterait et le
+	# craft n'aurait aucun effet sur la défense.
+	var quality := clampf(float(shield.get("quality", 1.0)), 0.2, 3.0)
+	return {
+		"present": true,
+		"couverture": int(functionality.get("couverture", 0)),
+		"absorption": clampf(float(functionality.get("absorption", 0.0))
+			* (0.7 + 0.3 * quality), 0.0, 0.9),
+		"quality": quality,
+	}
+
+
+## La garde couvre-t-elle une attaque venant de `attack_direction` ?
+## Un BOUCLIER élargit la couverture aux directions VOISINES : avec un écu,
+## garder en haut arrête aussi les tailles. C'est le sens même du bouclier —
+## il protège une zone, là où une arme ne pare qu'une ligne. En contrepartie
+## il occupe la main gauche, donc interdit les armes à deux mains.
+func guard_covers(attack_direction: int) -> bool:
+	if not _guard_active:
+		return false
+	var needed := MeleeAttack.guard_for(attack_direction)
+	if _guard_direction == needed:
+		return true
+	var profile := shield_profile()
+	if int(profile["couverture"]) <= 0:
+		return false
+	return needed in MeleeAttack.adjacent_guards(_guard_direction)
+
+
+## CHAMBERING : le joueur pare-t-il en ATTAQUANT dans la même direction que le
+## coup qui arrive ? Les deux armes s'entrechoquent, l'attaque adverse est
+## annulée et la sienne continue — c'est le geste le plus exigeant de Mount &
+## Blade, et le plus gratifiant.
+##
+## LA FENÊTRE EST LA PHASE DE WIND-UP, et c'est volontaire : elle n'est pas un
+## nombre arbitraire mais la durée d'armement de l'arme tenue. Une dague donne
+## donc une fenêtre serrée, un marteau une fenêtre large — le chambering hérite
+## automatiquement du poids, sans constante à régler. Trop tôt et l'arme est
+## déjà ARMÉE ; trop tard et elle n'est pas partie.
+func is_chambering(incoming_direction: int) -> bool:
+	return _attack.is_busy() \
+		and _attack.state == MeleeAttack.State.WINDUP \
+		and _attack.direction == incoming_direction
+
+
+## Le joueur pare-t-il ce coup, et l'a-t-il levé DANS la fenêtre de parade ?
+## Retourne { "guarding": bool, "parry": bool }. La parade « parfaite »
+## (garde levée juste avant l'impact) est ce qui distingue une réaction d'une
+## garde tenue passivement — c'est elle qui devra, plus tard, renvoyer le
+## stagger à l'attaquant.
+func guard_state() -> Dictionary:
+	if not _guard_active:
+		return {"guarding": false, "parry": false, "direction": _guard_direction}
+	var window: float = float(_current_weapon_stats().get("parry_window_ms", 200.0))
+	var held := float(Time.get_ticks_msec() - _guard_raised_msec)
+	return {"guarding": true, "parry": held <= window,
+		"direction": _guard_direction}
+
+
+# --- Balayage de lame (frame) ---
+
+## Hauteur de la PRISE de l'arme sous l'œil : la main n'est pas dans la tête,
+## elle tient l'arme à hauteur de poitrine.
+##
+## CE N'EST PAS COSMÉTIQUE — deux défauts réels trouvés par --probe-combat le
+## 2026-07-28, dans cet ordre :
+##
+## 1. Prise posée SUR la caméra : une frappe à l'horizontale contre un
+##    humanoïde de même taille touchait sa TÊTE. Le ×2.5 devenait l'ordinaire
+##    au lieu d'être la récompense d'une visée. D'où l'abaissement.
+##
+## 2. Prise décalée LATÉRALEMENT (vers la main droite) : l'estoc partait alors
+##    parallèlement à l'axe de visée mais à 25 cm sur le côté, et manquait la
+##    tête — dont la boîte ne fait que 24 cm de demi-largeur. Un joueur visant
+##    parfaitement ratait, ce qui rompt la seule promesse d'un combat
+##    directionnel : ce qu'on vise, on le touche.
+##
+## La pointe reste donc SUR L'AXE DE VISÉE, simplement abaissée. Le décalage
+## latéral de la main est une affaire d'affichage (position du bras), pas de
+## hitbox — il reviendra avec le corps visible, sur le rendu uniquement.
+## 0,70 et non 0,45 (corrigé le 2026-07-28 sur captures) : à 45 cm sous l'œil,
+## la prise plaçait bras et arme À 38 CM DE L'OBJECTIF. Ils remplissaient
+## l'écran de grandes surfaces plates dès qu'on baissait le regard — ce qui se
+## lisait comme un modèle cassé alors que la géométrie était juste. L'arme se
+## tient à hauteur de taille, comme une garde basse.
+## Vérifié après changement : une frappe à plat touche toujours le TORSE et il
+## faut viser haut pour la tête (--probe-combat).
+## 0,55 : compromis final apres captures. A 0,45 les bras bouchaient la vue ;
+## a 0,70 l'arme assemblee (desormais un vrai modele de 1,4 a 2,2 blocs)
+## sortait par le bas du cadre. VALEUR DE CADRAGE — a affiner a l'oeil,
+## aucune sonde ne juge cela.
+## 0,62 (2026-07-31) : le bras coupait encore le reticule en diagonale. Abaisser
+## la prise le fait passer SOUS la ligne de visee, la ou un jeu a la premiere
+## personne pose l'arme. Combine a HAND_ARC_RADIUS 0,72, le bras degage le
+## centre de l'ecran.
+const GRIP_DOWN := 0.62
+
+
+## Décalage vertical pris sur l'axe du MONDE, pas sur celui de la caméra : la
+## main est à hauteur de taille, et une taille ne monte pas quand on lève les
+## yeux. Avec l'axe caméra, baisser le regard faisait basculer la prise vers
+## l'avant en même temps que la tête (2026-07-28).
+## Decalage LATERAL de la prise (demande du 2026-07-28 : « l'arme plus centree,
+## visible a droite de l'ecran en etant debout »). Applique a la fois a la main
+## ET a l'origine de l'arc, donc au balayage qui touche : l'arme reste ou on la
+## voit. J'avais retire ce decalage plus tot parce qu'a 25 cm l'estoc manquait
+## la tete (24 cm de demi-largeur) ; 0,16 le rend visible sans casser la visee,
+## et --probe-combat le verifie (frappe a plat -> torse, visee haute -> tete).
+const GRIP_RIGHT := 0.16
+
+
+func _grip_position(camera_basis: Basis) -> Vector3:
+	var right := camera_basis.x
+	right.y = 0.0
+	if right.length_squared() > 0.000001:
+		right = right.normalized()
+	return _camera.global_position - Vector3.UP * GRIP_DOWN + right * GRIP_RIGHT
+
+
+## Direction de PORT de l'arme au repos : le lacet du regard, mais seulement
+## une fraction de son tangage.
+##
+## 1.0 = les bras suivent INTÉGRALEMENT la vue (demande explicite du
+## 2026-07-28). J'avais d'abord mis 0.35 pour dégager le champ quand on baisse
+## le regard ; l'arbitrage de l'auteur est que l'arme doit rester en face de
+## la visée en permanence, ce qui est aussi la convention des jeux à la
+## première personne. Le champ est dégagé autrement : seuls les jambes et les
+## bras réellement utilisés sont affichés (voir PlayerBody).
+const CARRY_PITCH_RATIO := 1.0
+
+
+func _carry_direction(camera_basis: Basis) -> Vector3:
+	var forward := -camera_basis.z
+	forward.y *= CARRY_PITCH_RATIO
+	if forward.length_squared() < 0.000001:
+		return -camera_basis.z
+	return forward.normalized()
+
+
+## Direction de l'ARME en espace monde : de la prise vers la cible de main.
+##
+## C'est LA MÊME géométrie que l'arc de frappe, donc l'arme pointe exactement
+## le long du chemin que la lame va parcourir. Au repos elle vise devant ; en
+## plein swing elle suit l'arc. Aucune chance qu'elle montre une direction et
+## frappe dans une autre.
+var _weapon_direction := Vector3.FORWARD
+
+
+func weapon_direction() -> Vector3:
+	return _weapon_direction
+
+
+## Cibles des MAINS pour l'IK des bras, en espace monde :
+##   { "droite": Vector3, "gauche": Vector3 (absent si arme à une main) }
+##
+## La main décrit LE MÊME ARC que la pointe de l'arme, simplement à un rayon
+## beaucoup plus court — c'est la même fonction `MeleeAttack.tip_position` qui
+## produit les deux. Conséquence voulue : le geste que le joueur VOIT et le
+## balayage qui TOUCHE sont la même courbe, par construction. Un visuel qui
+## mentirait sur la hitbox est la faute la plus grave d'un combat directionnel.
+# --- Inertie de l'arme (ressort amorti) ----------------------------------
+
+## DÉCALAGE lissé de la main PAR RAPPORT À LA CAMÉRA, et sa vitesse.
+##
+## RELATIF ET NON ABSOLU (corrigé le 2026-07-28 : « en marchant les bras
+## traînent beaucoup trop, on marche en avant les bras sont en arrière »).
+## Le ressort suivait une cible en espace MONDE : en translation, il accusait
+## donc un retard PERMANENT de `v × amortissement / raideur` — pour une épée,
+## 4,3 m/s × 10,7 / 75 ≈ 0,61 m. Le bras restait 60 cm derrière le corps tant
+## qu'on avançait, et partait à gauche quand on se déplaçait à droite.
+##
+## En lissant le DÉCALAGE à la caméra plutôt que la position absolue :
+##   - se DÉPLACER emporte la main avec le corps, sans aucun retard — un bras
+##     ne reste pas en arrière parce qu'on marche ;
+##   - TOURNER et FRAPPER produisent toujours le ballant voulu, puisque c'est
+##     le décalage lui-même qui change.
+## L'inertie mesure désormais le mouvement RELATIF du bras, qui est le seul
+## qui doit peser.
+var _hand_smoothed := Vector3.ZERO
+var _hand_velocity := Vector3.ZERO
+var _hand_initialised := false
+## Décalage de retard de la frame courante, réutilisé pour faire traîner la
+## POINTE davantage que la main : le bout d'une arme longue accuse plus le
+## retard que le poing, c'est ce qui donne le fouetté d'un coup lourd.
+var _lag_offset := Vector3.ZERO
+## Vitesse du joueur, mesuree a la frame : alimente le BONUS DE VITESSE.
+var _player_velocity := Vector3.ZERO
+var _last_camera_position := Vector3.ZERO
+var _velocity_initialised := false
+const TIP_LAG_FACTOR := 2.2
+## Borne du pas d'intégration : à 5 fps un ressort raide explose. On préfère un
+## lissage temporairement mou à un bras qui part à l'infini.
+const MAX_INERTIA_STEP := 1.0 / 30.0
+
+
+## Tire la main vers `target` par un ressort amorti et retourne la position
+## lissée. Intégration semi-implicite : stable et deux lignes.
+func _integrate_hand_inertia(target: Vector3, delta: float, stats: Dictionary) -> Vector3:
+	# Origine MOBILE : tout est exprimé relativement à la caméra, donc la
+	# translation du corps n'entre jamais dans le ressort.
+	var origin := _camera.global_position
+	var target_offset := target - origin
+	if not _hand_initialised:
+		_hand_initialised = true
+		_hand_smoothed = target_offset
+		_hand_velocity = Vector3.ZERO
+	var step := minf(delta, MAX_INERTIA_STEP)
+	var stiffness := float(stats.get("inertia_stiffness", 200.0))
+	var damping := float(stats.get("inertia_damping", 20.0))
+	var acceleration := (target_offset - _hand_smoothed) * stiffness - _hand_velocity * damping
+	_hand_velocity += acceleration * step
+	_hand_smoothed += _hand_velocity * step
+	_lag_offset = _hand_smoothed - target_offset
+	return origin + _hand_smoothed
+
+
+func hand_targets(hand_radius: float, offhand_offset: float, delta: float) -> Dictionary:
+	if _camera == null:
+		return {}
+	var camera_basis := _camera.global_basis
+	var grip := _grip_position(camera_basis)
+	var carry := grip + _carry_direction(camera_basis) * hand_radius
+	var target := carry
+
+	if _attack.is_busy() and not _swing_stats.is_empty():
+		var direction := _attack.direction
+		var arc_start := MeleeAttack.tip_position(direction, 0.0, grip, camera_basis, hand_radius)
+		var arc_end := MeleeAttack.tip_position(direction, 1.0, grip, camera_basis, hand_radius)
+		match _attack.state:
+			MeleeAttack.State.WINDUP:
+				# Armer : la main recule vers le DÉBUT de l'arc. C'est ce
+				# mouvement que l'adversaire doit pouvoir lire (télégraphie).
+				target = carry.lerp(arc_start, _attack.phase_ratio)
+			MeleeAttack.State.ARMEE:
+				# Garde ARMÉE tenue : la main reste au point d'armement aussi
+				# longtemps que le joueur maintient le bouton. La posture est
+				# la menace — c'est ce que l'adversaire lit.
+				target = arc_start
+			MeleeAttack.State.RELEASE:
+				target = MeleeAttack.tip_position(direction, _attack.phase_ratio, grip, camera_basis, hand_radius)
+			MeleeAttack.State.RECOVERY:
+				target = arc_end.lerp(carry, _attack.phase_ratio)
+			_:
+				target = carry
+	elif _guard_active:
+		target = _guard_hand_target(grip, camera_basis, hand_radius)
+
+	var stats_for_inertia: Dictionary = _current_weapon_stats()
+	if not _swing_stats.is_empty():
+		stats_for_inertia = _swing_stats
+	# INERTIE : la main est tiree vers sa cible, elle ne s'y colle pas.
+	target = _integrate_hand_inertia(target, delta, stats_for_inertia)
+	# L'arme pointe de la PRISE vers la main : le meme axe que l'arc.
+	var axis_to_hand := target - grip
+	if axis_to_hand.length_squared() > 0.000001:
+		_weapon_direction = axis_to_hand.normalized()
+	var targets := {"droite": target}
+	# Arme à DEUX MAINS : la gauche se pose plus loin sur le manche. C'est la
+	# « magie de la longueur du manche » du design — rien à animer, la position
+	# de la seconde main se déduit de l'arme tenue.
+	var stats: Dictionary = stats_for_inertia
+	# ECART REEL entre les mains, deduit du MANCHE (WeaponStats) : c'est ce qui
+	# donne des postures differentes selon l'arme sans rien animer. Une dague
+	# n'ecarte pas les mains (0), une pique projette la gauche a plus d'un
+	# metre devant le corps. `offhand_offset` ne sert plus que de repli pour
+	# une arme sans pieces declarees.
+	var separation := float(stats.get("hand_separation", 0.0))
+	if separation <= 0.0 and int(stats.get("hands", 1)) >= 2:
+		separation = offhand_offset
+	if separation > 0.0:
+		var axis := (target - grip)
+		if axis.length_squared() > 0.000001:
+			targets["gauche"] = grip + axis.normalized() * (hand_radius + separation)
+	elif bool(shield_profile()["present"]):
+		# BOUCLIER : la main gauche ne suit pas l'arme, elle porte la plaque
+		# devant le buste. Elle se LÈVE en garde, ce qui rend le blocage visible
+		# — sans quoi le joueur ne saurait pas si son bouclier est engagé, et
+		# c'est pourtant lui qui décide s'il encaisse ou non.
+		targets["gauche"] = _shield_hand_target(grip, camera_basis, hand_radius)
+	return targets
+
+
+## Décalage de la main au bouclier, en espace caméra : devant, à gauche, à
+## hauteur de poitrine. Levé plus haut et plus au centre quand la garde est
+## engagée.
+## VALEURS DE CADRAGE, réglées sur captures. À 0,46 m devant l'œil, une plaque
+## d'écu de 80 cm occupait la moitié de l'écran et masquait la cible : le
+## bouclier protégeait littéralement le joueur de son propre jeu. On l'éloigne
+## au bout du bras et on l'abaisse sous la ligne de visée, exactement comme la
+## prise de l'arme (GRIP_DOWN).
+const SHIELD_CARRY := Vector3(-0.40, -0.30, -0.80)
+## En garde il REMONTE et se recentre — c'est ce mouvement, et lui seul, qui
+## dit au joueur que son bouclier est engagé.
+const SHIELD_GUARD := Vector3(-0.26, -0.05, -0.90)
+
+
+func _shield_hand_target(grip: Vector3, camera_basis: Basis, hand_radius: float) -> Vector3:
+	var offset := SHIELD_GUARD if (_guard_active and _guard_locked) else SHIELD_CARRY
+	var forward := _carry_direction(camera_basis)
+	var right := camera_basis.x
+	right.y = 0.0
+	if right.length_squared() > 0.000001:
+		right = right.normalized()
+	# `hand_radius` sert d'échelle : le bouclier reste à la même distance
+	# relative que l'arme, sinon changer HAND_ARC_RADIUS décalerait l'un sans
+	# l'autre et les deux mains cesseraient d'être cohérentes.
+	var scaled := hand_radius / 0.72
+	return grip + right * (offset.x * scaled) + Vector3.UP * (offset.y * scaled) 		+ forward * (-offset.z * scaled)
+
+## Avance la frappe en cours et teste la géométrie. APPELÉ DEPUIS _process :
+## c'est l'exception au tick documentée en tête de MeleeAttack. Cette fonction
+## ne modifie AUCUN état de jeu — elle empile des coups constatés dans
+## _pending_hits, que le tick appliquera.
+## Vitesse du joueur, lissee. Brute elle serait bruitee par les micro-pas du
+## controleur ; le bonus de vitesse sauterait alors d'une frame a l'autre.
+func _measure_velocity(delta: float) -> void:
+	if _camera == null or delta <= 0.0001:
+		return
+	if not _velocity_initialised:
+		_velocity_initialised = true
+		_last_camera_position = _camera.global_position
+		return
+	var instant := (_camera.global_position - _last_camera_position) / delta
+	_last_camera_position = _camera.global_position
+	_player_velocity = _player_velocity.lerp(instant, minf(delta * 12.0, 1.0))
+
+
+func _advance_attack(delta: float) -> void:
+	if not _attack.is_busy() or _camera == null or _swing_stats.is_empty():
+		return
+	var weapon_stats := _swing_stats
+	var reach: float = float(weapon_stats["reach"])
+	var event := _attack.advance(delta)
+	# L'arc rattrape le regard a vitesse BORNEE (voir SWING_TURN_CAP).
+	var aim := _camera.global_basis.get_rotation_quaternion()
+	var current := _swing_basis.get_rotation_quaternion()
+	var gap := current.angle_to(aim)
+	if gap > 0.0001:
+		var allowed := SWING_TURN_CAP * delta
+		_swing_basis = Basis(current.slerp(aim, clampf(allowed / gap, 0.0, 1.0)))
+	var camera_basis := _swing_basis
+	var grip := _grip_position(camera_basis)
+
+	if event == "locked":
+		# Télégraphie (E.12) : la direction devient publique dès le
+		# verrouillage, AVANT la frappe — c'est tout l'intérêt, l'adversaire
+		# dispose du wind-up pour réagir. Émise UNE SEULE FOIS par attaque
+		# depuis que la direction est verrouillée : elle ne peut plus changer,
+		# donc l'annonce n'a plus à être corrigée.
+		EventBus.attack_telegraphed.emit(self, MeleeAttack.direction_name(_attack.direction))
+		return
+	if event == "release":
+		# Début de la phase dangereuse : origine du balayage, aucun test encore
+		# (il n'y a pas de segment tant qu'on n'a pas une seconde position).
+		_tip_previous = MeleeAttack.tip_position(_attack.direction, 0.0, grip, camera_basis, reach)
+		# Le coup est PARTI : son coût en endurance est dû, qu'il touche ou
+		# non. C'est la contrepartie qui rend le spacing intéressant — un coup
+		# dans le vide se paie. La dépense elle-même est appliquée par le tick
+		# (cette fonction ne modifie aucun état), d'où l'événement empilé.
+		_pending_hits.append({"kind": "swing", "stats": weapon_stats})
+		return
+	if _attack.state != MeleeAttack.State.RELEASE or not _attack.can_still_hit:
+		return
+
+	# INERTIE appliquée à la POINTE, amplifiée : le bout d'une arme accuse le
+	# retard plus que le poing, et c'est ce décalage qui fait « fouetter » un
+	# coup lourd. Le décalage vient du ressort de la main (`_lag_offset`), donc
+	# le VISUEL et la HITBOX traînent exactement pareil — l'invariant du système
+	# tient aussi pour l'inertie.
+	var tip := MeleeAttack.tip_position(_attack.direction, _attack.phase_ratio, grip, camera_basis, reach) \
+		+ _lag_offset * TIP_LAG_FACTOR
+	var segment_from := _tip_previous
+	_tip_previous = tip
+
+	var span := tip - segment_from
+	var span_length := span.length()
+	# Le décor arrête la lame. Sa distance est MESURÉE et comparée à celle de la
+	# créature plus bas : couper d'office annulait un coup dont le mur était en
+	# réalité DERRIÈRE la cible (corrigé le 2026-07-28).
+	var wall_distance := INF
+	if span_length > 0.0001:
+		var wall := _raycast_voxel(segment_from, span / span_length, span_length)
+		if wall.has("pos"):
+			wall_distance = segment_from.distance_to(wall.get("point", tip))
+
+	var best: Node = null
+	var best_hit: Dictionary = {}
+	for creature in CreatureManager.creatures:
+		if not is_instance_valid(creature) or creature.is_dead():
+			continue
+		if creature.dimension != WorldManager.active_dimension:
+			continue
+		# Rejet grossier avant le test exact : la distance au point de prise
+		# élimine presque tout le monde pour le prix d'une soustraction.
+		if creature.logical_position.distance_squared_to(grip) > (reach + 2.0) * (reach + 2.0):
+			continue
+		var hit: Dictionary = creature.sweep_segment(segment_from, tip)
+		if hit.is_empty():
+			continue
+		if best_hit.is_empty() or float(hit["t"]) < float(best_hit["t"]):
+			best_hit = hit
+			best = creature
+	if best == null:
+		# Rien touché, mais un mur a arrêté la lame : la frappe est consommée.
+		if wall_distance < INF:
+			_attack.can_still_hit = false
+		return
+	# Le mur est-il AVANT la cible ? Alors la lame s'y arrête et n'atteint
+	# personne. Sinon il est derrière, et n'a rien à dire.
+	var creature_distance := segment_from.distance_to(best_hit["point"])
+	if wall_distance < creature_distance:
+		_attack.can_still_hit = false
+		return
+
+	# SWEET SPOT : on ne blesse qu'avec la partie tranchante. Frapper au manche
+	# GLISSE et ne fait rien — c'est ce qui punit d'être trop près avec une arme
+	# longue, et ce qui donne aux armes courtes leur raison d'être.
+	var impact_distance: float = grip.distance_to(best_hit["point"])
+	var sweet := WeaponStats.sweet_spot_factor(impact_distance, reach)
+	if sweet <= 0.001:
+		# Coup GLISSANT : la frappe est consommée, aucun dégât. Il faut savoir
+		# qu'on s'est trompé de distance, pas croire qu'on a raté sa visée.
+		_attack.can_still_hit = false
+		_pending_hits.append({"kind": "glisse", "stats": weapon_stats})
+		return
+
+	# BONUS DE VITESSE : la vitesse RELATIVE de l'arme et de la cible décide.
+	# Avancer en frappant fait mal, frapper en reculant fait peu. C'est ce qui
+	# rend le jeu de jambes MÉCANIQUE et pas seulement positionnel.
+	var strike_direction := span.normalized() if span_length > 0.0001 else Vector3.ZERO
+	var nominal := span_length / maxf(delta, 0.0001)
+	# Seule la vitesse du JOUEUR est prise en compte : les creatures avancent
+	# par tick a 10 Hz, leur vitesse instantanee serait un escalier plutot
+	# qu'une mesure. A brancher quand elles bougeront a la frame.
+	var closing := _player_velocity.dot(strike_direction)
+	var speed := WeaponStats.speed_factor(nominal, closing)
+
+	# Un coup par frappe (les armes « transperçantes » lèveront cette règle).
+	_attack.can_still_hit = false
+	_pending_hits.append({
+		"kind": "hit",
+		"creature": best, "zone": best_hit["id"], "mult": float(best_hit["mult"]),
+		"point": best_hit["point"], "stats": weapon_stats,
+		"hardness": _swing_hardness, "quality": _swing_quality,
+		"sweet": sweet, "speed": speed,
+	})
+
+
+## Applique les coups constatés à la frame. APPELÉ DEPUIS LE TICK : c'est ici,
+## et seulement ici, que l'état du jeu change (dégâts, endurance, XP, mort).
+func _resolve_pending_hits() -> void:
+	if _pending_hits.is_empty():
+		return
+	for hit: Dictionary in _pending_hits:
+		var weapon_stats: Dictionary = hit["stats"]
+		# Un coup PARTI coûte son endurance, touché ou non — l'événement
+		# "swing" est émis au départ de la lame, indépendamment du résultat.
+		if String(hit["kind"]) == "swing":
+			_spend_stamina(float(weapon_stats["stamina_cost"]))
+			continue
+		if String(hit["kind"]) == "glisse":
+			# Coup GLISSANT (frappé au manche) : aucun dégât, mais l'information
+			# doit remonter — c'est une erreur de DISTANCE, pas de visée, et le
+			# joueur ne peut pas corriger ce qu'il ne perçoit pas.
+			EventBus.ui_notification.emit("ui.combat.coup_glissant")
+			EventBus.damage_dealt.emit(hit.get("point", Vector3.ZERO), 0, false, true)
+			continue
+		var creature: Node = hit["creature"]
+		if not is_instance_valid(creature) or creature.is_dead():
+			continue
+		# Le multiplicateur de ZONE est combiné au SWEET SPOT et au BONUS DE
+		# VITESSE : viser juste, à la bonne distance, en avançant. Les trois
+		# piliers offensifs de Mount & Blade se multiplient au même endroit.
+		var combined: float = float(hit["mult"]) \
+			* float(hit.get("sweet", 1.0)) * float(hit.get("speed", 1.0))
+		var result := CombatResolver.resolve_hit(
+			effective_stat("dexterite"), effective_stat("force"),
+			String(weapon_stats["dice"]),
+			float(hit["hardness"]), float(hit["quality"]), false, "",
+			combined, float(weapon_stats["penetration"]))
+		creature.health = maxf(0.0, creature.health - result["damage"])
+		# AU POINT D'IMPACT, pas au-dessus de la cible : c'est ce qui apprend
+		# le sweet spot et les zones — on voit OÙ on a touché.
+		EventBus.damage_dealt.emit(hit["point"], int(result["damage"]),
+			bool(result["critical"]), false)
+		creature.provoke()  # Une bête sauvage riposte dès le 1er coup (F.3).
+		note_offence_against(creature, RELATION_ON_HIT)
+		if String(creature.ai_profile) in ["civil", "garde"]:
+			_check_law("agression", creature)
+		_gain_combat_xp(weapon_stats, float(result["damage"]))
+		if creature.is_dead():
+			_creature_defeated(creature)
+	_pending_hits.clear()
+
+
+## Répartit l'XP d'un coup porté entre les compétences qu'il entraîne.
+##
+## Un coup n'entraîne pas UNE compétence mais trois axes qui progressent
+## ensemble, et c'est ce qui rend la spécialisation vivable :
+##
+##   1. L'ARME elle-même. Depuis le 2026-08-01, chaque type d'arme a la sienne
+##      (l'espadon ne fait plus monter « épée »). Sans les deux axes suivants,
+##      ce découpage punirait durement le simple fait de changer d'arme.
+##   2. Le TYPE DE DÉGÂTS. Tranchant, perçant, contondant progressent avec
+##      n'importe quelle arme qui les inflige : passer de la hache à l'espadon
+##      conserve donc l'acquis de tranchant. C'est le contrepoids exact du
+##      point 1.
+##   3. LE STYLE. Une arme à deux mains entraîne « Deux mains » (GDD 5.6).
+##      Dual Wielding et Bouclier attendent leurs systèmes respectifs.
+##
+## L'XP n'est pas divisée entre les trois : chacun reçoit une FRACTION des
+## dégâts. Diviser ferait qu'un joueur progresse plus lentement à mesure qu'on
+## ajoute des axes, ce qui punirait la profondeur du système.
+const XP_MASTERY_SHARE := 0.5
+const XP_STYLE_SHARE := 0.35
+
+
+func _gain_combat_xp(weapon_stats: Dictionary, damage: float) -> void:
+	if damage <= 0.0:
+		return
+	skills.gain_xp(String(weapon_stats.get("skill", "mains_nues")), damage)
+	var damage_type := String(weapon_stats.get("damage_type", ""))
+	if GameData.skills.has(damage_type):
+		skills.gain_xp(damage_type, damage * XP_MASTERY_SHARE)
+	if int(weapon_stats.get("hands", 1)) >= 2:
+		skills.gain_xp("deux_mains", damage * XP_STYLE_SHARE)
+
+
+## Offre un objet de l'inventaire à la collection. L'objet est DÉTRUIT : c'est
+## le prix de l'entrée, et toute la valeur du système (voir Collection).
+##
+## Retourne "" en cas de refus (objet introuvable, ou déjà représenté par un
+## exemplaire au moins aussi bon), sinon la clé enregistrée. L'appelant affiche
+## le retour : un don silencieusement refusé laisserait croire à une perte.
+func donate_to_collection(uid: int) -> String:
+	var instance := inventory.object_by_uid(uid)
+	if instance.is_empty():
+		return ""
+	var key := collection.donate(instance)
+	if key == "":
+		return ""
+	# LA DESTRUCTION SE FAIT ICI, et seulement après l'enregistrement réussi :
+	# dans l'autre ordre, un refus tardif aurait détruit l'objet pour rien.
+	inventory.remove_object_units(instance, 1)
+	# Une liaison de hotbar qui pointe vers un objet disparu doit partir avec
+	# lui, sinon l'emplacement affiche un fantôme jusqu'au prochain nettoyage.
+	for index: int in hotbar_bindings.keys():
+		var binding: Dictionary = hotbar_bindings[index]
+		if String(binding.get("kind", "")) == "object" and int(binding.get("uid", -1)) == uid:
+			hotbar_bindings.erase(index)
+	EventBus.ui_notification.emit("ui.toast.collection_don")
+	return key
+
+
+## Perte de relation quand le joueur FRAPPE un civil, et quand il le TUE.
+##
+## Frapper coûte peu, tuer coûte cher et durablement : c'est ce qui rend un
+## village hostile au bout de quelques meurtres (seuil −50, GDD 7.2) plutôt
+## qu'au premier geste maladroit. Les chiffres sont une interprétation — le GDD
+## nomme les facteurs (« méfaits ») sans les chiffrer.
+const RELATION_ON_HIT := -4.0
+const RELATION_ON_KILL := -35.0
+
+
+## Enregistre un méfait envers une créature. Sans effet sur une bête : agresser
+## un loup n'est pas un crime, et compter un sanglier comme une victime ferait
+## de la chasse un déshonneur.
+func note_offence_against(creature: Node, amount: float) -> void:
+	if creature == null or not is_instance_valid(creature):
+		return
+	if String(creature.ai_profile) not in ["civil", "garde"]:
+		return
+	reputation.record(String(creature.social_key), creature.village_cell,
+		String(creature.race_id), amount, String(creature.kingdom_id))
+
+
+## Confronte un acte aux LOIS du royaume où l'on se trouve (14.4/E.26).
+##
+## Trois conditions, dans cet ordre, et chacune peut tout arrêter :
+##   1. être SUR un territoire — hors royaume, aucune loi ;
+##   2. que ce royaume interdise cet acte — tous ne le font pas ;
+##   3. qu'un TÉMOIN l'ait vu — c'est le principe central d'E.26, on ne
+##      punit pas ce qui n'est pas vu.
+##
+## Un acte commis loin de tout regard ne laisse donc aucune trace, ce qui est
+## voulu : c'est ce qui rend la Discrétion utile ailleurs que dans le vol, et
+## ce qui permet de jouer un criminel plutôt que de subir un compteur de karma.
+func _check_law(behaviour: String, subject: Node) -> void:
+	if WorldManager.generator == null:
+		return
+	var kingdom: Dictionary = WorldManager.generator.kingdom_at_cell(current_cell())
+	if kingdom.is_empty():
+		return
+	var law := KingdomLaws.law_for(kingdom, behaviour)
+	if law.is_empty():
+		return
+	var place: Vector3 = subject.logical_position if subject != null 		else get_position_for_ai()
+	# La VICTIME ne témoigne pas de sa propre mort : elle est retirée de la
+	# liste. Sans ça, tout meurtre serait vu par le mort lui-même.
+	var others: Array = []
+	for creature: Variant in CreatureManager.creatures:
+		if creature != subject:
+			others.append(creature)
+	if not KingdomLaws.is_witnessed(self, place, others):
+		return
+	var message := KingdomLaws.apply(String(law["consequence"]), self, kingdom)
+	if message != "":
+		EventBus.ui_notification.emit(message)
+
+
+## Dépense d'endurance + blocage temporaire de la régénération.
+func _spend_stamina(amount: float) -> void:
+	stamina = maxf(0.0, stamina - amount)
+	_stamina_regen_block = STAMINA_REGEN_DELAY_TICKS
+
+
+## Régénération d'endurance, une passe par tick. Garde levée = régénération
+## suspendue : tenir sa garde indéfiniment ne doit pas être gratuit, c'est ce
+## qui force à choisir entre parer et reprendre son souffle.
+func _stamina_tick() -> void:
+	if _stamina_regen_block > 0:
+		_stamina_regen_block -= 1
+		return
+	if _guard_active:
+		return
+	stamina = minf(stamina_max, stamina + STAMINA_REGEN_PER_TICK)
 
 
 ## Notifie la mort d'une créature (E.12) — le HUD écoute ce signal pour le
 ## toast localisé ; le nettoyage effectif (despawn) est fait par CreatureManager.
 func _creature_defeated(creature: Node) -> void:
+	# Tuer un civil est un MEURTRE : la sanction tombe avant le butin, pour
+	# qu'elle s'applique même si la collecte échoue.
+	note_offence_against(creature, RELATION_ON_KILL)
+	_check_law("meurtre", creature)
+	# La mort est aussi inscrite au REGISTRE DU VILLAGE : c'est ce qui empêche
+	# l'habitant de réapparaître à la visite suivante. La réputation dit ce que
+	# les gens pensent de vous, le registre dit qui n'est plus là.
+	CreatureManager.call("_note_resident_death", creature)
 	_collect_loot(creature)
 	EventBus.creature_killed.emit(self, creature)
 
@@ -752,12 +1641,17 @@ func _on_tick(_tick_index: int) -> void:
 	hunger = maxf(0.0, hunger - HUNGER_DECAY_PER_TICK)
 	fatigue = maxf(0.0, fatigue - FATIGUE_DECAY_PER_TICK)
 	_hunger_tick_effects()
+	_stamina_tick()
+	# Application des coups constatés par la géométrie depuis le tick
+	# précédent. C'est la frontière frame → tick : le seul endroit où une
+	# frappe change réellement l'état du jeu.
+	_resolve_pending_hits()
 	if input_locked:
 		# Carte du monde ouverte (ou bench) : pas de minage/attaque en arrière-plan.
 		_mining = false
+		_attack.interrupt()
+		_guard_active = false
 		return
-	if _attack_cooldown_ticks > 0:
-		_attack_cooldown_ticks -= 1
 	if _module_cooldown_ticks > 0:
 		_module_cooldown_ticks -= 1
 	if not _mining or not _target_valid:
@@ -1291,8 +2185,57 @@ func armor_dice() -> String:
 
 
 ## Malus de défense dû au poids de l'équipement (A.4.2).
+##
+## ORPHELIN DEPUIS LE 2026-07-28 — À RÉAFFECTER, PAS À SUPPRIMER. Cette valeur
+## n'alimentait que la « défense » de la formule à 1d20, disparue avec le
+## passage au toucher géométrique. La pénalité de poids, elle, reste un besoin
+## de design entier (A.4.2 « charge maximale », et le jeu de jambes du combat
+## directionnel n'a de sens que si l'armure lourde le ralentit) : elle doit
+## être rebranchée sur la VITESSE DE DÉPLACEMENT et la régénération
+## d'endurance. Laissée en place volontairement pour que ce report soit
+## visible plutôt que perdu dans un diff.
 func armor_malus() -> int:
 	return equipment.defense_malus(carry_capacity())
+
+
+## Catégorie de matériau dominante de l'armure portée — décide de l'efficacité
+## de la protection face au type de dégât reçu (2026-07-28).
+func armor_category() -> String:
+	return equipment.dominant_armor_category()
+
+
+## Encaisse un coup en garde : l'endurance absorbe le drain de l'arme adverse.
+## Retourne true si la garde a TENU, false si elle a cédé (endurance
+## insuffisante → stagger, le coup passe en entier).
+## Une parade dans la fenêtre (garde levée juste à temps) divise le drain par
+## deux : c'est la récompense du timing, seule différence entre parer et
+## simplement tenir son bouclier levé.
+## Un BOUCLIER absorbe une fraction du drain avant l'endurance : c'est du bois
+## et du métal qui encaissent à la place des bras. C'est là tout son intérêt —
+## il ne rend pas invincible, il permet de TENIR plus longtemps, ce qui est la
+## vraie monnaie d'un duel.
+func absorb_on_guard(drain: float, parried: bool) -> bool:
+	var cost := drain * (0.5 if parried else 1.0)
+	var shield := shield_profile()
+	if bool(shield["present"]):
+		cost *= 1.0 - float(shield["absorption"])
+		# Le bouclier progresse par l'USAGE, comme tout le reste (A.1) : ce qui
+		# le fait monter, c'est d'encaisser, pas de le porter.
+		skills.gain_xp("bouclier", drain * SHIELD_XP_SHARE)
+	if stamina < cost:
+		_spend_stamina(stamina)
+		_guard_active = false   # Garde brisée : il faut la relever.
+		_guard_locked = false
+		_attack.interrupt()
+		return false
+	_spend_stamina(cost)
+	return true
+
+
+## Fraction du drain encaissé convertie en XP de bouclier. Assise sur le drain
+## BRUT et non sur le coût final : sinon un bon bouclier, qui absorbe beaucoup,
+## progresserait moins vite qu'un mauvais.
+const SHIELD_XP_SHARE := 0.6
 
 
 # --- Faim et nourriture (A.9 / A.9.1) ---
@@ -1591,6 +2534,30 @@ func _update_ghost() -> void:
 
 ## Informations de visée pour le HUD (clés tr() côté UI, 10.1).
 ## Créature visée (nom localisé + PV), pour le HUD — {} si aucune.
+## Ouvre le dialogue avec la créature visée, si elle a quelque chose à dire.
+##
+## On réutilise la CIBLE DE COMBAT, sans second système de visée : le joueur
+## désigne un PNJ exactement comme il désignerait une proie. Avoir deux
+## curseurs, l'un pour frapper l'autre pour parler, obligerait à deviner lequel
+## est actif.
+func _try_talk() -> void:
+	if _target_creature == null or not is_instance_valid(_target_creature):
+		return
+	var panel := get_node_or_null("/root/Main/DialoguePanel")
+	if panel == null:
+		return
+	panel.call("open_with", _target_creature)
+
+
+## La créature visée accepte-t-elle de parler ? Sert au HUD, qui doit annoncer
+## la touche AVANT qu'on l'essaie — une interaction qu'on découvre en tâtonnant
+## n'existe pas pour la plupart des joueurs.
+func can_talk_to_target() -> bool:
+	if _target_creature == null or not is_instance_valid(_target_creature):
+		return false
+	return String(_target_creature.ai_profile) in ["civil", "garde"]
+
+
 func creature_target_info() -> Dictionary:
 	if _target_creature == null or not is_instance_valid(_target_creature):
 		return {}

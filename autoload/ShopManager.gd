@@ -18,7 +18,9 @@ const SALE_INTERVAL_TICKS := 1000   # 1 heure in-game (24 000 ticks/jour ÷ 24, 
 const CLIENTS_PER_INTERVAL := 2     # Trafic ABSTRAIT — pas de vraie population de PNJ (E.8, hors scope).
 const MAX_SLOTS := 12               # F.6 : étal de vente, 12 slots.
 const PRICE_MARGIN := 1.5           # A.8 : marge d'artisanat.
-const REPUTATION_FACTOR := 1.0      # Pas de réputation locale (7.2 hors scope) — neutre.
+## La réputation N'EST PLUS neutre (2026-08-01). Elle module le prix selon le
+## palier du GDD 7.2 : +25 % pour un client méfiant ou haï, −10 % pour un client
+## acquis. La valeur est lue sur le joueur, pas figée ici.
 
 ## Vector3i (position du bloc étal) -> { "slots": Array[{material_id, price}], "gold": int }.
 var _stalls := {}
@@ -53,8 +55,19 @@ func is_stall(pos: Vector3i) -> bool:
 static func suggested_price(material_id: String) -> int:
 	var mat: Dictionary = GameData.stackable(material_id)
 	var valeur_base: float = float((mat.get("stats", {}) as Dictionary).get("valeur_base", 1.0))
-	var facteur_reputation := clampf(1.0 + (0.0 / 200.0), 0.5, 2.0) * REPUTATION_FACTOR
-	return maxi(1, int(round(valeur_base * PRICE_MARGIN * facteur_reputation)))
+	return maxi(1, int(round(valeur_base * PRICE_MARGIN * reputation_price_factor())))
+
+
+## Facteur de prix lié à la réputation du joueur. Sans joueur (sondes, menu de
+## démarrage), on retombe sur un marché neutre plutôt que d'échouer.
+static func reputation_price_factor(cell: Vector2i = Vector2i(1 << 30, 1 << 30)) -> float:
+	var player: Node = Engine.get_main_loop().root.get_node_or_null("Main/Player")
+	if player == null or player.reputation == null:
+		return 1.0
+	# Aucun interlocuteur nommé pour un étal : c'est la réputation COLLECTIVE
+	# qui fixe le prix — le village et le monde, pas une relation personnelle.
+	return Reputation.price_factor(
+		player.reputation.standing_with("", cell, ""))
 
 
 ## Dépose 1 unité de `material_id` (retirée de `inventory`) dans l'étal

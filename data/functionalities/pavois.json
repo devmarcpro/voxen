@@ -1,0 +1,14 @@
+{
+  "id": "pavois",
+  "name_key": "functionality.pavois.name",
+  "kind": "bouclier",
+  "hands": 1,
+  "combat_skill": "bouclier",
+  "couverture": 1,
+  "absorption": 0.75,
+  "poids_reference": 62,
+  "parts": {
+    "manche": "poignee",
+    "tete": "pavois"
+  }
+}

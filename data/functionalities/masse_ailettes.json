@@ -1,0 +1,18 @@
+{
+  "id": "masse_ailettes",
+  "name_key": "functionality.masse_ailettes.name",
+  "kind": "arme",
+  "hands": 1,
+  "combat_skill": "masse_ailettes",
+  "degats_des": "2d10",
+  "penetration": 0.45,
+  "windup_ratio": 0.5,
+  "vitesse_base": 1.4,
+  "portee": 1.5,
+  "type_degats": "contondant",
+  "poids_reference": 70,
+  "parts": {
+    "manche": "moyen",
+    "tete": "masse_ailettes"
+  }
+}

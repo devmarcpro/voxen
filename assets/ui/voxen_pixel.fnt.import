@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://dwlnnhhqni51x"
+path="res://.godot/imported/voxen_pixel.fnt-9ec43c10dd0f4025067f9d21b7a2cc6c.fontdata"
+
+[deps]
+
+source_file="res://assets/ui/voxen_pixel.fnt"
+dest_files=["res://.godot/imported/voxen_pixel.fnt-9ec43c10dd0f4025067f9d21b7a2cc6c.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=1

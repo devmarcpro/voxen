@@ -5,10 +5,25 @@ extends Probe
 
 
 ## Sonde de sauvegarde E.10, phase 2 (relecture dans un processus neuf).
+##
+## ⚠ SONDE APPARIÉE : elle relit la sauvegarde écrite par `--probe-save`, et n'a
+## aucun sens sans elle. Lancée seule, ou après qu'une autre sonde a retouché le
+## monde, elle rapportait un échec sur les six lignes à la fois — un tableau
+## alarmant qui ne signalait rien d'autre que « la phase 1 n'a pas eu lieu ».
+## D'où le garde-fou ci-dessous : le diagnostic doit désigner la cause, pas
+## afficher six symptômes.
+##
+##   godot --headless --path . -- --probe-save
+##   godot --headless --path . -- --probe-save-verify
 func run() -> void:
 	# L'état différé (SaveManager._apply_state) s'applique après _ready.
 	await main.get_tree().process_frame
 	await main.get_tree().process_frame
+	if not _phase_one_ran():
+		print("[SAVEVERIFY] la sauvegarde de la phase 1 est absente ou périmée.")
+		print("[SAVEVERIFY] lancer d'abord : godot --headless --path . -- --probe-save")
+		finish(false, "SAVEVERIFY")
+		return
 	var g := WorldManager.generator
 	var player := player
 	var h := g.height_at(10, 10)
@@ -36,3 +51,15 @@ func run() -> void:
 		and TickManager.tick_index >= 123
 	print("[SAVEVERIFY] RÉSULTAT : %s" % ("OK" if ok else "ÉCHEC"))
 	main.get_tree().quit(0 if ok else 1)
+
+
+## La phase 1 a-t-elle bien tourné ? On cherche son marqueur le plus net : le
+## bloc de granit qu'elle pose à main nue au-dessus du sol. Il ne peut pas
+## apparaître par génération — le granit ne se forme pas en l'air.
+func _phase_one_ran() -> bool:
+	var generator := WorldManager.generator
+	if generator == null:
+		return false
+	var height := generator.height_at(10, 10)
+	return WorldManager.block_at_world(Vector3i(10, height + 3, 10)) \
+		== int(GameData.material_runtime_ids.get("granit", -1))

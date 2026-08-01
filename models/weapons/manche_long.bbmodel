@@ -1,0 +1,112 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "manche_long",
+  "model_identifier": "manche_long",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "manche_long_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -2.0,
+        0,
+        -2.0
+      ],
+      "to": [
+        2.0,
+        34,
+        2.0
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "07ad488e-509b-59d3-805c-18623ba5f8f5"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "manche_long",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "054197ae-e335-5499-8ace-d8aa1be5d662",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "07ad488e-509b-59d3-805c-18623ba5f8f5"
+      ]
+    }
+  ],
+  "textures": []
+}

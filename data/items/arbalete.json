@@ -5,30 +5,33 @@
   "equip_slot": "arme",
   "hands": 2,
   "functionality": "arbalete",
+  "parts": {
+    "manche": "arbalete",
+    "tete": "arc_arbalete"
+  },
   "recipe": {
     "station": "etabli",
     "craft_skill": "forge",
     "inputs": [
       {
         "category": "bois",
-        "amount": 3
+        "amount": 1
       },
       {
         "category": "minerai",
-        "amount": 1
-      },
-      {
-        "category": "textile",
-        "amount": 1
+        "amount": 3
       }
     ]
   },
   "stat_weights": {
     "durete": {
-      "minerai": 0.6,
-      "bois": 0.3,
-      "textile": 0.1
+      "minerai": 0.9,
+      "bois": 0.1
     }
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
   },
   "effects": [],
   "tags": [
@@ -37,9 +40,5 @@
   "sprites": {
     "manche": "res://assets/weapons/arbalete_manche.png",
     "tete": "res://assets/weapons/arbalete_tete.png"
-  },
-  "sprite_tint": {
-    "manche": "bois",
-    "tete": "minerai"
   }
 }

@@ -18,7 +18,14 @@ func run() -> void:
 
 	# Colonnes autour du spawn, sur toute la plage verticale utile : on veut
 	# le mélange réel (air, surface, sous-sol plein) et pas un cas favorable.
-	var t0 := Time.get_ticks_usec()
+	# LE CHRONOMÈTRE NE COUVRE QUE LE MESHING. Il englobait aussi
+	# `_get_chunk_sync`, c'est-à-dire la GÉNÉRATION du chunk : la sonde
+	# annonçait 23 ms/chunk « de meshing » contre un budget de 4 ms alors que
+	# les phases mesurées n'en totalisaient que 6,8. Les deux tiers du temps
+	# accusé n'étaient pas du meshing du tout, et la somme des phases qui ne
+	# tombait pas juste était le seul indice que le compte était faux.
+	var total_us := 0
+	var gen_us := 0
 	var chunks := 0
 	var vides := 0
 	for cx in range(-4, 5):
@@ -27,14 +34,17 @@ func run() -> void:
 			var ctx: Dictionary = gen.prepare_context(col)
 			for cy in range(-2, 4):
 				var ck := Vector3i(cx, cy, cz)
+				var t_gen := Time.get_ticks_usec()
 				var data: ChunkData = WorldManager._get_chunk_sync(ck)
+				gen_us += Time.get_ticks_usec() - t_gen
 				if data == null:
 					continue
+				var t_mesh := Time.get_ticks_usec()
 				var arrays := ChunkMesher.mesh_chunk(ck, data, gen, ctx)
+				total_us += Time.get_ticks_usec() - t_mesh
 				chunks += 1
 				if arrays.is_empty():
 					vides += 1
-	var total_us := Time.get_ticks_usec() - t0
 	ChunkMesher.profiling = false
 
 	if chunks == 0:
@@ -45,6 +55,11 @@ func run() -> void:
 	var moyen_ms := float(total_us) / float(chunks) / 1000.0
 	print("[MESH] %d chunks maillés (%d vides) — moyenne %.2f ms/chunk (budget E.14 : %.1f ms)" % [
 			chunks, vides, moyen_ms, budget_ms])
+	# La génération est imprimée à part : elle est réelle et coûteuse, mais elle
+	# ne relève pas du budget de meshing et la mélanger rendait les deux
+	# chiffres inexploitables.
+	print("[MESH] génération des mêmes chunks : %.2f ms/chunk (hors budget meshing)" % [
+			float(gen_us) / float(chunks) / 1000.0])
 	var phases: Dictionary = ChunkMesher.phase_us
 	var somme := 0
 	for key: String in phases:

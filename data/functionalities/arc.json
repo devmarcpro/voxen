@@ -5,9 +5,14 @@
   "hands": 2,
   "combat_skill": "arc",
   "degats_des": "2d6",
-  "crit_range": 20,
+  "penetration": 0.2,
+  "windup_ratio": 0.6,
   "vitesse_base": 1.5,
-  "portee": 25,
+  "portee": 1.5,
   "type_degats": "percant",
-  "poids_reference": 30
+  "poids_reference": 30,
+  "parts": {
+    "manche": "arc",
+    "tete": "branches_arc"
+  }
 }

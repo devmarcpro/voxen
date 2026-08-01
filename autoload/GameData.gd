@@ -19,6 +19,9 @@ const PATH_FUNCTIONALITIES := "res://data/functionalities"
 const PATH_ITEMS := "res://data/items"
 const PATH_MODULES := "res://data/modules"
 const PATH_CREATURES := "res://data/creatures"
+const PATH_HITBOX_TEMPLATES := "res://data/hitbox_templates.json"
+const PATH_ARMOR_TYPE_MODIFIERS := "res://data/armor_type_modifiers.json"
+const PATH_WEAPON_PARTS := "res://data/weapon_parts.json"
 const PATH_TREES := "res://data/trees"
 const PATH_PLANTS := "res://data/plants"
 const PATH_DUNGEON_ROOMS := "res://data/dungeon_rooms"
@@ -124,11 +127,28 @@ var items: Dictionary = {}
 var modules: Dictionary = {}
 ## Créatures / PNJ (B.5).
 var creatures: Dictionary = {}
+## Zones de coup par gabarit de squelette (combat directionnel, 2026-07-28) —
+## data/hitbox_templates.json. Une fiche de créature peut surcharger la liste
+## via son propre champ `hitboxes` ; sinon elle hérite de son
+## `skeleton_template`. Voir Creature.hitboxes().
+var hitbox_templates: Dictionary = {}
+## Efficacité de l'armure par catégorie de matériau × type de dégât
+## (2026-07-28) — data/armor_type_modifiers.json. Multiplie la MITIGATION.
+## Voir WeaponStats.armor_type_modifier().
+var armor_type_modifiers: Dictionary = {}
+## Pieces d'arme (2026-07-28) — data/weapon_parts.json. Deux tables :
+## `manches` (modele, longueur, points de prise) et `tetes` (modele, portee
+## ajoutee). Une arme est un MANCHE + une TETE : son allonge et la position
+## de ses mains se DEDUISENT des pieces, elles ne sont plus ecrites a la main.
+var weapon_parts: Dictionary = {"manches": {}, "tetes": {}}
 ## Essences d'arbres (génération procédurale, TreeGenerator).
 var trees: Dictionary = {}
 ## Plantes non-arborescentes en sous-voxels (2026-07-20, PlantGenerator) —
 ## data/plants/*.json.
 var plants: Dictionary = {}
+## Gabarits de répliques d'ambiance (E.23), à plat : le tirage les parcourt tous
+## à chaque interaction, une liste est donc plus juste qu'un dictionnaire.
+var dialogue_lines: Array[Dictionary] = []
 ## Salles/connecteurs de donjon (E.29, DungeonGenerator) — data/dungeon_rooms
 ## et data/dungeon_connectors/*.json (B.10, géométrie simplifiée en boîtes —
 ## pas de vox_model réel pour l'instant, voir DungeonGenerator).
@@ -213,9 +233,13 @@ func load_all() -> bool:
 	_load_functionalities()
 	_load_items()
 	_load_modules()
+	_load_hitbox_templates()   # avant les créatures : elles valident leur gabarit.
+	_load_armor_type_modifiers()
+	_load_weapon_parts()   # avant les objets : ils referencent des pieces.
 	_load_creatures()
 	_load_trees()
 	_load_plants()
+	_load_dialogue()
 	_load_dungeon_rooms()
 	_load_dungeon_connectors()
 	_load_races()
@@ -754,6 +778,25 @@ func _load_trees() -> void:
 ## Plantes non-arborescentes en sous-voxels (2026-07-20, PlantGenerator) :
 ## data/plants/*.json — validation légère, la structure `morphology`/
 ## `materials` reste libre (interprétée par PlantGenerator, pas ici).
+## Répliques d'ambiance. Un gabarit mal formé est SIGNALÉ et ignoré, pas
+## bloquant : une réplique manquante appauvrit le dialogue, elle n'empêche pas
+## de jouer — contrairement à un matériau inconnu, qui casse la génération.
+func _load_dialogue() -> void:
+	dialogue_lines.clear()
+	for path in _list_json_recursive("res://data/dialogue"):
+		var raw: Variant = _load_json(path)
+		if not (raw is Dictionary):
+			continue
+		for entry: Variant in (raw as Dictionary).get("lignes", []):
+			if not (entry is Dictionary):
+				continue
+			var line: Dictionary = entry
+			if not line.has("id") or not line.has("text_key"):
+				push_warning("GameData : réplique sans id/text_key dans %s" % path)
+				continue
+			dialogue_lines.append(line)
+
+
 func _load_plants() -> void:
 	plants.clear()
 	for path in _list_json_recursive(PATH_PLANTS):
@@ -850,6 +893,96 @@ func _load_modules() -> void:
 
 ## Créatures / PNJ (B.5) : squelette modulaire (12), stats de base, IA,
 ## combat minimal (étape D.3.6 — arme + modules).
+## Gabarits de zones de coup (combat directionnel). Chaque zone est validée
+## ici, une fois au démarrage : le balayage de lame tourne à la frame et n'a
+## pas à se défendre contre des données malformées.
+func _load_hitbox_templates() -> void:
+	hitbox_templates.clear()
+	var raw: Variant = _load_json(PATH_HITBOX_TEMPLATES)
+	if not (raw is Dictionary):
+		_blocking_error("hitbox_templates.json illisible ou absent")
+		return
+	var templates: Variant = (raw as Dictionary).get("templates")
+	if not (templates is Dictionary):
+		_blocking_error("hitbox_templates.json : champ « templates » manquant")
+		return
+	for template_id: String in (templates as Dictionary):
+		var zones: Variant = (templates as Dictionary)[template_id]
+		if not (zones is Array) or (zones as Array).is_empty():
+			_blocking_error("gabarit de hitbox « %s » vide ou mal formé" % template_id)
+			continue
+		var parsed: Array = []
+		for zone: Variant in (zones as Array):
+			if not (zone is Dictionary):
+				_blocking_error("zone mal formée dans le gabarit « %s »" % template_id)
+				continue
+			var z: Dictionary = zone
+			var ok := true
+			for field in ["id", "min", "size", "mult"]:
+				if not z.has(field):
+					_blocking_error("zone du gabarit « %s » : champ « %s » manquant" % [template_id, field])
+					ok = false
+			if not ok:
+				continue
+			var mn: Array = z["min"]
+			var sz: Array = z["size"]
+			if mn.size() != 3 or sz.size() != 3:
+				_blocking_error("zone « %s » du gabarit « %s » : min/size doivent avoir 3 composantes" % [z["id"], template_id])
+				continue
+			if sz[0] <= 0.0 or sz[1] <= 0.0 or sz[2] <= 0.0:
+				_blocking_error("zone « %s » du gabarit « %s » : size doit être strictement positive" % [z["id"], template_id])
+				continue
+			# Pré-converti en Vector3 : le test d'intersection tourne par frame,
+			# il ne doit pas repasser par des Array JSON à chaque coup.
+			parsed.append({
+				"id": String(z["id"]),
+				"min": Vector3(mn[0], mn[1], mn[2]),
+				"max": Vector3(mn[0] + sz[0], mn[1] + sz[1], mn[2] + sz[2]),
+				"mult": float(z["mult"]),
+			})
+		if not parsed.is_empty():
+			hitbox_templates[template_id] = parsed
+
+
+## Efficacité de l'armure par type de dégât. La table DOIT contenir une ligne
+## « _defaut » : une catégorie de matériau non listée ne doit jamais faire
+## planter une résolution de coup, elle doit être neutre.
+func _load_armor_type_modifiers() -> void:
+	armor_type_modifiers.clear()
+	var raw: Variant = _load_json(PATH_ARMOR_TYPE_MODIFIERS)
+	if not (raw is Dictionary):
+		_blocking_error("armor_type_modifiers.json illisible ou absent")
+		return
+	var table: Variant = (raw as Dictionary).get("modifiers")
+	if not (table is Dictionary):
+		_blocking_error("armor_type_modifiers.json : champ « modifiers » manquant")
+		return
+	armor_type_modifiers = table
+	if not armor_type_modifiers.has("_defaut"):
+		_blocking_error("armor_type_modifiers.json : ligne « _defaut » obligatoire")
+
+
+## Pieces d'arme. Le modele de chaque piece est verifie ici, une fois : une
+## arme dont la piece manque doit se signaler au demarrage, pas au moment ou
+## un joueur la fabrique.
+func _load_weapon_parts() -> void:
+	var raw: Variant = _load_json(PATH_WEAPON_PARTS)
+	if not (raw is Dictionary):
+		_blocking_error("weapon_parts.json illisible ou absent")
+		return
+	for table_name in ["manches", "tetes"]:
+		var table: Variant = (raw as Dictionary).get(table_name)
+		if not (table is Dictionary):
+			_blocking_error("weapon_parts.json : table « %s » manquante" % table_name)
+			continue
+		for part_id: String in (table as Dictionary):
+			var part: Dictionary = (table as Dictionary)[part_id]
+			var model := String(part.get("model", ""))
+			if model == "" or not FileAccess.file_exists(model):
+				_blocking_error("piece d'arme « %s » : modele introuvable « %s »" % [part_id, model])
+			weapon_parts[table_name][part_id] = part
+
+
 func _load_creatures() -> void:
 	creatures.clear()
 	for path in _list_json_recursive(PATH_CREATURES):
@@ -864,6 +997,11 @@ func _load_creatures() -> void:
 				ok = false
 		if not ok:
 			continue
+		# Gabarit de zones de coup : sans lui, la créature serait intouchable en
+		# combat directionnel — c'est une erreur bloquante, pas un warning.
+		if not hitbox_templates.has(creature["skeleton_template"]):
+			_blocking_error("gabarit de hitbox inconnu « %s » pour la créature « %s »" % [
+					creature["skeleton_template"], creature["id"]])
 		var combat: Dictionary = creature.get("combat", {})
 		if combat.has("functionality") and not functionalities.has(combat["functionality"]):
 			_blocking_error("fonctionnalité de combat inconnue « %s » pour la créature « %s »" % [combat["functionality"], creature["id"]])

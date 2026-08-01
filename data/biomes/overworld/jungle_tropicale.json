@@ -18,7 +18,11 @@
   "priority": 4,
   "surface_material": "herbe",
   "subsurface_material": "terre",
-  "grass_tint": [0.85, 1.2, 0.75],
+  "grass_tint": [
+    0.85,
+    1.2,
+    0.75
+  ],
   "vegetation": [
     {
       "id": "ebene",
@@ -48,12 +52,13 @@
   "village_palette": {
     "mur": "teck",
     "toit": "chaume_tresse",
-    "sol": "terre"
+    "sol": "terre",
+    "poutre": "teck",
+    "pave": "pierre_taillee"
   },
   "poi_weights": {
     "village": 3,
-    "donjon": 8,
-    "camp": 8
+    "donjon": 8
   },
   "farming_yield": 1.3,
   "tags": [

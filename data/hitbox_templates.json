@@ -1,0 +1,30 @@
+{
+  "_comment": "Zones de coup par gabarit de squelette (skeleton_template des fiches de creature, B.5). Le combat directionnel decide GEOMETRIQUEMENT ou l'arme touche : ces boites sont la cible de ce test. Elles vivent en donnees, et non sur des os, pour deux raisons : aucun modele .glb n'existe encore (les creatures sont des capsules provisoires), et une boite en espace LOCAL survit telle quelle a l'arrivee des modeles riggees — il suffira alors d'ancrer chaque boite sur son os.",
+  "_convention": "min et size sont en espace LOCAL de l'entite, en blocs, y = 0 aux PIEDS du modele. L'ordre des zones compte : le balayage retient la PREMIERE boite touchee, donc les zones les plus specifiques (tete) passent avant les plus larges (torse). mult multiplie les degats finaux : c'est le seul levier qui recompense la visee.",
+  "templates": {
+    "humanoide": [
+      { "id": "tete", "min": [-0.24, 1.5, -0.24], "size": [0.48, 0.48, 0.48], "mult": 2.5 },
+      { "id": "bras_gauche", "min": [-0.42, 0.85, -0.11], "size": [0.16, 0.63, 0.22], "mult": 0.7 },
+      { "id": "bras_droit", "min": [0.26, 0.85, -0.11], "size": [0.16, 0.63, 0.22], "mult": 0.7 },
+      { "id": "torse", "min": [-0.26, 0.85, -0.14], "size": [0.52, 0.65, 0.28], "mult": 1.0 },
+      { "id": "jambes", "min": [-0.22, 0.0, -0.12], "size": [0.44, 0.85, 0.24], "mult": 0.8 }
+    ],
+    "quadrupede": [
+      { "id": "tete", "min": [-0.22, 0.5, -0.95], "size": [0.44, 0.44, 0.4], "mult": 2.0 },
+      { "id": "pattes", "min": [-0.3, 0.0, -0.55], "size": [0.6, 0.35, 1.1], "mult": 0.6 },
+      { "id": "torse", "min": [-0.28, 0.35, -0.55], "size": [0.56, 0.5, 1.1], "mult": 1.0 }
+    ],
+    "quadrupede_bas": [
+      { "id": "tete", "min": [-0.2, 0.0, -0.55], "size": [0.4, 0.3, 0.35], "mult": 2.0 },
+      { "id": "corps", "min": [-0.25, 0.0, -0.2], "size": [0.5, 0.28, 0.8], "mult": 1.0 }
+    ],
+    "volant": [
+      { "id": "tete", "min": [-0.18, 0.35, -0.5], "size": [0.36, 0.36, 0.35], "mult": 2.0 },
+      { "id": "ailes", "min": [-0.9, 0.3, -0.15], "size": [1.8, 0.2, 0.4], "mult": 0.5 },
+      { "id": "corps", "min": [-0.22, 0.15, -0.25], "size": [0.44, 0.4, 0.6], "mult": 1.0 }
+    ],
+    "amorphe": [
+      { "id": "masse", "min": [-0.5, 0.0, -0.5], "size": [1.0, 1.0, 1.0], "mult": 1.0 }
+    ]
+  }
+}

@@ -1,6 +1,7 @@
 {
   "id": "crocodile",
   "name_key": "creature.crocodile.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "quadrupede_bas",
   "parts_pool": {
     "tete": [

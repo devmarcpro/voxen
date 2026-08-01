@@ -1,0 +1,14 @@
+{
+  "id": "ecu",
+  "name_key": "functionality.ecu.name",
+  "kind": "bouclier",
+  "hands": 1,
+  "combat_skill": "bouclier",
+  "couverture": 1,
+  "absorption": 0.55,
+  "poids_reference": 34,
+  "parts": {
+    "manche": "poignee",
+    "tete": "ecu"
+  }
+}

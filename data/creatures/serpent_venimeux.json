@@ -1,6 +1,7 @@
 {
   "id": "serpent_venimeux",
   "name_key": "creature.serpent_venimeux.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "amorphe",
   "parts_pool": {
     "corps": [

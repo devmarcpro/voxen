@@ -1,6 +1,7 @@
 {
   "id": "vautour",
   "name_key": "creature.vautour.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "volant",
   "parts_pool": {
     "tete": [

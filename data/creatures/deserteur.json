@@ -1,6 +1,7 @@
 {
   "id": "deserteur",
   "name_key": "creature.deserteur.name",
+  "model": "res://models/creatures/humanoide.glb",
   "skeleton_template": "humanoide",
   "parts_pool": {
     "tete": [

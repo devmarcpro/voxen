@@ -1,0 +1,18 @@
+{
+  "id": "faux_de_guerre",
+  "name_key": "functionality.faux_de_guerre.name",
+  "kind": "arme",
+  "hands": 2,
+  "combat_skill": "faux_de_guerre",
+  "degats_des": "2d10",
+  "penetration": 0.2,
+  "windup_ratio": 0.5,
+  "vitesse_base": 1.3,
+  "portee": 1.5,
+  "type_degats": "tranchant",
+  "poids_reference": 70,
+  "parts": {
+    "manche": "tres_long",
+    "tete": "faux"
+  }
+}

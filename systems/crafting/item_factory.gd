@@ -47,6 +47,20 @@ static func next_uid() -> int:
 	return _next_uid
 
 
+## Déclare un uid VENU D'AILLEURS (chargement de sauvegarde, réseau) pour que le
+## compteur ne le redistribue jamais.
+##
+## SANS ÇA, LE BUG EST SILENCIEUX ET GRAVE : le compteur est statique et repart à
+## 1 à chaque lancement, alors que la sauvegarde ramène des objets portant déjà
+## les uids 2, 3, 4… Le premier objet crafté après un chargement reçoit donc un
+## uid DÉJÀ PRIS, et toute recherche par uid (liaison de hotbar, retrait
+## d'inventaire) tombe sur l'autre objet — on croit tenir son épée neuve et on
+## tient la pioche du kit de départ. Repéré par la sonde de captures, qui
+## photographiait un objet différent de celui qu'elle venait de forger.
+static func note_uid(uid: int) -> void:
+	_next_uid = maxi(_next_uid, uid)
+
+
 ## Instance d'une RESSOURCE de créature (viande, peau — 7.7). Même modèle que
 ## les objets craftés (une entrée dans `Inventory.objects`), pas une pile de
 ## matériau : ce n'est pas un bloc, ça ne se pose pas, et ça pourra porter des
@@ -104,7 +118,7 @@ static func craft(item_id: String, material_choices: Dictionary, quality: float)
 		if mat != null:
 			weight += float(mat["stats"]["densite"]) * int(input["amount"])
 
-	return {
+	var instance := {
 		"uid": next_uid(),
 		"item_id": item_id,
 		"name_key": item["name_key"],
@@ -117,3 +131,84 @@ static func craft(item_id: String, material_choices: Dictionary, quality: float)
 		"weight": weight,
 		"materials": material_choices.duplicate(),
 	}
+	_set_gem(instance, String(material_choices.get(GEM_CATEGORY, "")))
+	return instance
+
+
+# --- Gemme sertie (support d'enchantement) -----------------------------------
+#
+# La gemme n'est PAS une entrée de recette : elle est facultative, et une recette
+# ne sait pas exprimer « zéro ou un ». Elle voyage donc dans `material_choices`
+# sous la catégorie `cristal`, comme n'importe quel choix de craft, mais elle est
+# recopiée à plat sur l'instance sous `gem` : le reste du jeu (rendu, futur
+# enchantement, revente) n'a alors pas à savoir qu'une gemme est un « cristal »
+# ni à fouiller le dictionnaire de matériaux.
+#
+# Elle ne touche NI la dureté NI les dégâts. Sertir un rubis ne doit pas rendre
+# une épée meilleure à trancher — sinon la gemme devient un simple bonus de stat
+# et l'enchantement n'aura plus rien à apporter. Elle n'ajoute que son poids
+# (elle est bien là, physiquement) et sa conductivité de mana, qui est
+# exactement la grandeur dont l'enchantement se servira.
+
+## Catégorie de matériau acceptée dans le logement de gemme.
+const GEM_CATEGORY := "cristal"
+
+## Conductivité de mana d'une arme sans gemme. Zéro et non « un peu » : c'est ce
+## qui rendra le sertissage nécessaire plutôt que confortable.
+const NO_GEM_MANA := 0.0
+
+
+## Retourne les identifiants de matériaux sertissables, triés par conductivité
+## de mana décroissante — l'ordre dans lequel un joueur veut les comparer.
+static func gem_materials() -> Array[String]:
+	var out: Array[String] = []
+	for mat_id: String in GameData.materials:
+		if String((GameData.materials[mat_id] as Dictionary).get("category", "")) == GEM_CATEGORY:
+			out.append(mat_id)
+	out.sort_custom(func(a: String, b: String) -> bool:
+		return _gem_mana(a) > _gem_mana(b))
+	return out
+
+
+static func _gem_mana(mat_id: String) -> float:
+	var mat: Dictionary = GameData.materials.get(mat_id, {})
+	return float((mat.get("stats", {}) as Dictionary).get("conductivite_mana", 0.0))
+
+
+## Sertit (ou retire, si `gem_id` est vide) la gemme d'une instance déjà forgée.
+## Utilisable après coup : c'est ce qui permettra de dessertir pour changer
+## d'enchantement sans refondre l'arme.
+static func _set_gem(instance: Dictionary, gem_id: String) -> void:
+	var mat: Dictionary = GameData.materials.get(gem_id, {})
+	if gem_id == "" or mat.is_empty():
+		instance.erase("gem")
+		instance["mana_conductivity"] = NO_GEM_MANA
+		return
+	var stats: Dictionary = mat.get("stats", {})
+	instance["gem"] = gem_id
+	instance["gem_color"] = String(mat.get("color", "#FFFFFF"))
+	instance["mana_conductivity"] = float(stats.get("conductivite_mana", 0.0))
+	# Le poids de la pierre compte : une gemme dense alourdit l'arme, ce qui la
+	# ralentit via WeaponStats. C'est le seul effet mécanique du sertissage, et
+	# il est volontairement DÉFAVORABLE — la contrepartie viendra de l'enchantement.
+	instance["weight"] = float(instance.get("weight", 0.0)) + float(stats.get("densite", 0.0)) * GEM_WEIGHT_SHARE
+
+
+## Une gemme sertie est TAILLÉE : quelques grammes, pas un bloc entier. Sans ce
+## facteur, un diamant doublait le poids d'une dague.
+const GEM_WEIGHT_SHARE := 0.15
+
+
+## Sertit une gemme sur une instance existante (API publique).
+static func set_gem(instance: Dictionary, gem_id: String) -> void:
+	_set_gem(instance, gem_id)
+
+
+## Un objet accepte-t-il une gemme ? Critère : c'est une ARME ASSEMBLÉE, donc
+## dotée de `parts`. Ce n'est pas un caprice de rendu — le logement de la gemme
+## est un point de géométrie précis (la jonction manche/tête), et un objet sans
+## pièces n'a pas ce point. Ça exclut naturellement les armures et les outils à
+## sprite, qui n'ont nulle part où sertir.
+static func accepts_gem(item_id: String) -> bool:
+	var item: Dictionary = GameData.items.get(item_id, {})
+	return not (item.get("parts", {}) as Dictionary).is_empty()

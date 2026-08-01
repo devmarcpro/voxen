@@ -5,9 +5,14 @@
   "hands": 1,
   "combat_skill": "dague",
   "degats_des": "1d6",
-  "crit_range": 19,
+  "penetration": 0.25,
+  "windup_ratio": 0.35,
   "vitesse_base": 3.0,
-  "portee": 1,
+  "portee": 1.5,
   "type_degats": "percant",
-  "poids_reference": 20
+  "poids_reference": 20,
+  "parts": {
+    "manche": "court",
+    "tete": "lame_courte"
+  }
 }

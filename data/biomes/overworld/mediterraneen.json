@@ -35,12 +35,13 @@
   "village_palette": {
     "mur": "calcaire",
     "toit": "brique",
-    "sol": "calcaire"
+    "sol": "calcaire",
+    "poutre": "chene",
+    "pave": "pierre_taillee"
   },
   "poi_weights": {
     "village": 4,
-    "donjon": 5,
-    "camp": 5
+    "donjon": 5
   },
   "farming_yield": 0.9,
   "tags": [
