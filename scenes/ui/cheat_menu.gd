@@ -604,7 +604,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
 		return
-	if key.physical_keycode == KEY_F1:
+	if event.is_action_pressed("cheat_menu"):
 		if is_open:
 			_close()
 		else:

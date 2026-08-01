@@ -189,8 +189,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	# Hot-reload F5 (D.2) — debug uniquement.
 	if not OS.is_debug_build():
 		return
-	var key := event as InputEventKey
-	if key != null and key.pressed and not key.echo and key.physical_keycode == KEY_F5:
+	if event.is_action_pressed("reload_data"):
 		reload_data()
 
 

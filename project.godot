@@ -13,6 +13,8 @@ config/features=PackedStringArray("4.7")
 [autoload]
 
 EventBus="*res://autoload/EventBus.gd"
+SettingsManager="*res://autoload/SettingsManager.gd"
+InputManager="*res://autoload/InputManager.gd"
 GameData="*res://autoload/GameData.gd"
 TickManager="*res://autoload/TickManager.gd"
 SaveManager="*res://autoload/SaveManager.gd"

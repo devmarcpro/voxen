@@ -44,8 +44,6 @@ var _context_entry := {}
 ## Onglets à contenu simple (labels rafraîchis).
 var _perso_label: Label
 var _royaume_label: Label
-## Craft.
-var _craft_list: VBoxContainer
 ## Craft refondu (2026-07-26) : recettes GROUPÉES PAR TABLE (station) scrollables
 ## à gauche + panneau détail à droite.
 var _craft_sections: VBoxContainer
@@ -71,7 +69,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
 		return
-	if key.physical_keycode == KEY_TAB:
+	if event.is_action_pressed("inventory"):
 		_toggle()
 		get_viewport().set_input_as_handled()
 	elif key.physical_keycode == KEY_ESCAPE and is_open:

@@ -36,9 +36,11 @@ extras (boutique passive, menu de triche). ~15 000 lignes de GDScript.
 | Carte & exploration (3.1, E.30) | carte du monde, voyage rapide, claims + rôles, minimap, brouillard de guerre |
 | Donjons (3.5) | entrée/sortie par dimension, salles/couloirs creusés proc. |
 | Boutique (7.1, E.8) | étal de vente passif, clients abstraits |
-| Sauvegarde (E.10) | `SaveManager`, autosave **incrémentale**, écriture atomique ; **nombre de mondes illimité**, liste défilante complète, **suppression** avec confirmation et garde-fous (jamais hors du dossier de sauvegardes, jamais le monde en cours) — sonde `--probe-saves` |
-| Réseau (8, E.11) | squelette host/join + RPC d'édition de blocs |
-| Interface (E.13) | menu de démarrage, menu de jeu (perso/royaume/carte/monde/inventaire/craft), HUD, menu de triche |
+| Sauvegarde (E.10) | `SaveManager`, autosave **incrémentale**, écriture atomique ; **nombre de mondes illimité**, liste défilante complète, **suppression** avec confirmation et garde-fous (jamais hors du dossier de sauvegardes, jamais le monde en cours) — sonde `--probe-saves`. **Versionnement (2026-08-01)** : chaîne de migrations, copie de sûreté `world.v<N>.bak` avant migration, et **refus explicite motivé** au lieu de l'ancien « monde neuf » silencieux qui aurait effacé les parties au premier incrément du format ; chunks illisibles comptés et signalés au joueur |
+| Réseau (8, E.11) | squelette host/join + RPC d'édition de blocs. **Étiqueté expérimental dans le menu (2026-08-01)** : seuls les avatars et les blocs transitent — ni créatures, ni heure, ni inventaire, ni combat, et le host ne valide rien |
+| Commandes (2026-08-01) | `InputManager` : 29 actions déclarées en une table unique, **remappables** depuis les paramètres et persistées ; touches PHYSIQUES (ZQSD/WASD selon la disposition, sans réglage) ; l'aide du HUD est **générée** depuis les liaisons réelles au lieu d'être écrite en dur dans les fichiers de langue — sonde `--probe-touches` |
+| Réglages | `SettingsManager` : un seul `user://settings.cfg` pour langue, distance d'affichage et touches, hors de toute sauvegarde. La **langue est enfin persistée** (elle ne l'était pas — le choix était perdu à chaque lancement) |
+| Interface (E.13) | menu de démarrage, menu de jeu (perso/royaume/carte/monde/inventaire/craft), HUD, menu de triche, écran de remappe des touches |
 
 ---
 
@@ -168,15 +170,33 @@ voxel est en `u16` : **65 535 matériaux** possibles, sans réécriture.
 
 ### Points de fragilité connus, non corrigés
 
-- **Pas de migration de sauvegarde** : `SAVE_VERSION` vaut 1 et tout écart fait repartir sur un **monde neuf** (avec un simple avertissement). Tant que le format bouge, il faudra soit une conversion, soit assumer la casse — à trancher avant toute distribution.
+- **Migration de sauvegarde : le socle existe, aucune migration n'est écrite** — *corrigé partiellement le 2026-08-01*. `SAVE_VERSION` vaut toujours 1, mais l'écart de version ne fait plus repartir sur un monde neuf : la chaîne `MIGRATIONS` + `MIN_SUPPORTED_VERSION` est en place, une copie de sûreté est prise avant toute migration, et l'échec est un **refus motivé affiché au joueur**. Reste à écrire la première migration réelle au prochain incrément du format.
 - **`_edits` ne se nettoie jamais** : c'est voulu (il est la vérité des modifications, base du diff E.10), mais il croît avec tout ce que le joueur pose. Poser puis casser un bloc laisse une entrée. Un compactage (oublier les modifications redevenues identiques à la génération) sera nécessaire pour les très longues parties.
 - **Créatures non sauvegardées** : le spawn naturel les régénère, les boss de donjon renaissent tant que le donjon n'est pas nettoyé. Assumé et documenté, mais ça se verra dès que les PNJ auront une identité (12.3).
 
 ## Sondes de validation
 
+**Suite agrégée (2026-08-01)** — une seule commande répond à « est-ce que
+quelque chose est cassé ? » :
+
+```
+tools/run_probes.sh              # sondes assertives, headless, code de sortie 0/1
+tools/run_probes.sh --list       # ce qu'elle contient
+```
+
+Elle n'enchaîne que les sondes qui rendent un **verdict** (`finish(ok, tag)`).
+C'est une minorité : sur une quarantaine de sondes, la plupart impriment un
+rapport qu'un humain doit lire, et ne peuvent donc rien signaler à une CI.
+Convertir les autres en sondes assertives est le chantier d'hygiène le plus
+rentable du projet — le coût de leur absence s'est vu le 2026-08-01, où
+`--test-input` plantait depuis la refonte du craft (2026-07-26) sur un champ
+`_craft_list` supprimé, sans que rien ne le signale : la sonde n'a pas de code
+de sortie, donc son crash passait pour du bruit de journal.
+
 Chaque lot livré porte sa sonde headless, exécutable sans interface :
 
 ```
+godot --headless --path . -- --probe-touches      # commandes : aucune collision, remappe, persistance
 godot --headless --path . -- --probe-butin        # paramétriques, couleurs uniques, palette, dépeçage
 godot --headless --path . -- --probe-faune        # catalogue + cohérence des biomes + profils d'IA
 godot --headless --path . -- --probe-faim         # A.9/A.9.1 : manger, seuils, famine

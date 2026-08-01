@@ -42,11 +42,6 @@ ui.hud.outil,Outil : {outil}
 ui.outil.mains_nues,mains nues
 ui.hud.grille,Grille : {res} px
 ui.toast.budget_subdivision,Limite de détail atteinte dans cette zone
-ui.hud.controles1,ZQSD : marcher · Espace : sauter · F : vol/marche
-ui.hud.controles2,Clic gauche (maintenu) : récolter/sculpter/attaquer · Clic droit : poser
-ui.hud.controles3,1-9/molette : choisir · Ctrl+1-9/molette : banque · R : grille 32/16/8/4
-ui.hud.controles4,J/K/L : modules · V : revendiquer · B : rôle · M : carte · Tab : inventaire · F5 : recharger
-ui.hud.controles5,T : mettre en vente (étal visé) · G : récolter l'or (étal visé) · F1 : menu de triche
 ui.toast.niveau,{competence} passe au niveau {niveau} !
 ui.toast.etal_vendu,Vendu : {item} pour {prix} or
 ui.toast.etal_stock,Mis en vente : {item} à {prix} or
@@ -788,7 +783,7 @@ ui.hud.meshing_valeur,"{moyen} ms · {max} ms max"
 ui.hud.grille_valeur,"{res} px"
 ui.hud.module_valeur,"{nom} ({cout} mana)"
 ui.hud.cible_rebond_valeur,"{materiau} — l'outil rebondit !"
-ui.hud.aide_bascule,"F3 : masquer cette aide"
+ui.hud.aide_bascule,{touche} : masquer cette aide
 skill.baton_ferre.name,Bâton ferré
 skill.epee_courte.name,Épée courte
 skill.espadon.name,Espadon
@@ -829,6 +824,16 @@ item.pavois.name,"Pavois"
 functionality.pavois.name,"Pavois"
 ui.toast.collection_don,"Pièce ajoutée à la collection — l'objet est détruit."
 ui.menu.onglet.collection,"Collection"
+ui.menu.touches,Touches
+ui.menu.touches_aide,Cliquez sur une touche pour la réaffecter.
+ui.menu.touches_appuyez,Appuyez sur la nouvelle touche (Échap pour annuler).
+ui.menu.touches_attente,...
+ui.menu.touches_defaut,Rétablir les touches par défaut
+ui.menu.touches_cat_deplacement,Déplacement
+ui.menu.touches_cat_monde,Monde
+ui.menu.touches_cat_modules,Modules
+ui.menu.touches_cat_interface,Interface
+ui.menu.multi_experimental,"Expérimental : seuls les autres joueurs et les blocs sont partagés. Les créatures, l'heure, l'inventaire et le combat ne sont pas synchronisés."
 ui.collection.progression,"{offerts} / {total} pièces ({pct} %)"
 ui.collection.page,"Page {page} / {pages}"
 ui.collection.manquant,"manquant"
@@ -919,8 +924,43 @@ ui.loi.confiscation,"Objet confisqué : il est illégal ici."
 ui.loi.saisie,"Faute de pouvoir payer, un bien vous est saisi."
 ui.loi.gardes_hostiles,"Les gardes du royaume vous cherchent."
 ui.hud.cle.lois,"Lois"
+ui.hud.souris,Clic gauche (maintenu) : récolter/sculpter/attaquer · Clic droit : poser
+ui.hud.hotbar,1-9/molette : choisir · Ctrl+1-9/molette : banque
+ui.input.move_forward,marcher
+ui.input.jump,sauter
+ui.input.toggle_fly,vol/marche
+ui.input.sprint,sprint
+ui.input.sneak,marche lente
+ui.input.move_back,reculer
+ui.input.move_left,aller à gauche
+ui.input.move_right,aller à droite
+ui.input.descend,descendre
+ui.input.cycle_grid,grille 32/16/8/4
+ui.input.talk,parler
+ui.input.equip,équiper
+ui.input.eat,manger
+ui.input.pickup,ramasser
+ui.input.sleep,dormir
+ui.input.toggle_claim,revendiquer
+ui.input.cycle_claim_role,rôle de la cellule
+ui.input.stall_stock,mettre en vente (étal visé)
+ui.input.stall_collect,récolter l'or (étal visé)
+ui.input.module_1,modules
+ui.input.module_2,module 2
+ui.input.module_3,module 3
+ui.input.inventory,inventaire
+ui.input.world_map,carte
+ui.input.map_legend,couche de la carte
+ui.input.debug_hud,aide et diagnostic
+ui.input.cheat_menu,menu de triche
+ui.input.reload_data,recharger les données
+ui.input.save_game,sauvegarder
 ui.loi.aucune,"aucune (anarchie)"
 ui.loi.interdit,"{objet} interdit"
+ui.erreur.save_illisible,Sauvegarde illisible ou endommagée.
+ui.erreur.save_trop_recente,Sauvegarde créée par une version plus récente du jeu.
+ui.erreur.save_trop_ancienne,Sauvegarde trop ancienne : ce jeu ne sait plus la lire.
+ui.erreur.chunks_perdus,Certaines zones modifiées n'ont pas pu être relues.
 loi.meurtre,"meurtre puni"
 loi.vol,"vol puni"
 loi.agression,"agression punie"

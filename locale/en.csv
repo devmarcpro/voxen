@@ -42,11 +42,6 @@ ui.hud.outil,Tool: {outil}
 ui.outil.mains_nues,bare hands
 ui.hud.grille,Grid: {res} px
 ui.toast.budget_subdivision,Detail limit reached in this area
-ui.hud.controles1,WASD: walk · Space: jump · F: fly/walk
-ui.hud.controles2,Left click (hold): harvest/carve/attack · Right click: place
-ui.hud.controles3,1-9/wheel: select · Ctrl+1-9/wheel: bank · R: grid 32/16/8/4
-ui.hud.controles4,J/K/L: modules · V: claim · B: role · M: map · Tab: inventory · F5: reload
-ui.hud.controles5,T: list for sale (targeted stall) · G: collect gold (targeted stall) · F1: cheat menu
 ui.toast.niveau,{competence} reached level {niveau}!
 ui.toast.etal_vendu,Sold: {item} for {prix} gold
 ui.toast.etal_stock,Listed for sale: {item} at {prix} gold
@@ -788,7 +783,7 @@ ui.hud.meshing_valeur,"{moyen} ms · {max} ms max"
 ui.hud.grille_valeur,"{res} px"
 ui.hud.module_valeur,"{nom} ({cout} mana)"
 ui.hud.cible_rebond_valeur,"{materiau} — the tool bounces off!"
-ui.hud.aide_bascule,"F3: hide this help"
+ui.hud.aide_bascule,{touche}: hide this help
 skill.baton_ferre.name,Iron-shod staff
 skill.epee_courte.name,Short sword
 skill.espadon.name,Greatsword
@@ -829,6 +824,16 @@ item.pavois.name,"Tower shield"
 functionality.pavois.name,"Tower shield"
 ui.toast.collection_don,"Added to the collection — the item is destroyed."
 ui.menu.onglet.collection,"Collection"
+ui.menu.touches,Controls
+ui.menu.touches_aide,Click a key to reassign it.
+ui.menu.touches_appuyez,Press the new key (Esc to cancel).
+ui.menu.touches_attente,...
+ui.menu.touches_defaut,Restore default controls
+ui.menu.touches_cat_deplacement,Movement
+ui.menu.touches_cat_monde,World
+ui.menu.touches_cat_modules,Modules
+ui.menu.touches_cat_interface,Interface
+ui.menu.multi_experimental,"Experimental: only other players and blocks are shared. Creatures, time of day, inventory and combat are not synchronised."
 ui.collection.progression,"{offerts} / {total} pieces ({pct}%)"
 ui.collection.page,"Page {page} / {pages}"
 ui.collection.manquant,"missing"
@@ -919,8 +924,43 @@ ui.loi.confiscation,"Item confiscated: it is illegal here."
 ui.loi.saisie,"Unable to pay, one of your goods is seized."
 ui.loi.gardes_hostiles,"The kingdom's guards are after you."
 ui.hud.cle.lois,"Laws"
+ui.hud.souris,Left click (hold): harvest/carve/attack · Right click: place
+ui.hud.hotbar,1-9/wheel: select · Ctrl+1-9/wheel: bank
+ui.input.move_forward,walk
+ui.input.jump,jump
+ui.input.toggle_fly,fly/walk
+ui.input.sprint,sprint
+ui.input.sneak,sneak
+ui.input.move_back,walk back
+ui.input.move_left,strafe left
+ui.input.move_right,strafe right
+ui.input.descend,descend
+ui.input.cycle_grid,grid 32/16/8/4
+ui.input.talk,talk
+ui.input.equip,equip
+ui.input.eat,eat
+ui.input.pickup,pick up
+ui.input.sleep,sleep
+ui.input.toggle_claim,claim
+ui.input.cycle_claim_role,cell role
+ui.input.stall_stock,list for sale (targeted stall)
+ui.input.stall_collect,collect gold (targeted stall)
+ui.input.module_1,modules
+ui.input.module_2,module 2
+ui.input.module_3,module 3
+ui.input.inventory,inventory
+ui.input.world_map,map
+ui.input.map_legend,map layer
+ui.input.debug_hud,help and diagnostics
+ui.input.cheat_menu,cheat menu
+ui.input.reload_data,reload data
+ui.input.save_game,save
 ui.loi.aucune,"none (anarchy)"
 ui.loi.interdit,"{objet} banned"
+ui.erreur.save_illisible,Save file unreadable or damaged.
+ui.erreur.save_trop_recente,Save created by a newer version of the game.
+ui.erreur.save_trop_ancienne,Save too old: this version can no longer read it.
+ui.erreur.chunks_perdus,Some edited areas could not be read back.
 loi.meurtre,"murder punished"
 loi.vol,"theft punished"
 loi.agression,"assault punished"

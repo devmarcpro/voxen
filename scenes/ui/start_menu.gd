@@ -89,6 +89,7 @@ func _build() -> void:
 	_panels["character"] = _build_character()
 	_panels["multi"] = _build_multi()
 	_panels["settings"] = _build_settings()
+	_panels["keys"] = _build_keys()
 	for p: String in _panels:
 		_center.add_child(_panels[p])
 	_show_panel("main")
@@ -414,6 +415,18 @@ func _on_start_character() -> void:
 func _build_multi() -> VBoxContainer:
 	var box := _panel_box()
 	box.add_child(_title_label("ui.menu.multi"))
+	# AVERTISSEMENT ASSUMÉ (2026-08-01). Le réseau se limite à la pose des
+	# avatars et à l'édition de blocs (5 RPC). Ne sont PAS répliqués : les
+	# créatures — chaque client engendre les siennes —, l'heure, l'inventaire,
+	# l'équipement, le combat, la faim, et l'état initial du monde à la
+	# connexion. Le host applique en outre les requêtes sans validation
+	# (E.11 : anti-triche différé). Sans ce panneau, le bouton promettait un
+	# mode de jeu qui n'existe pas, et l'essayer se lisait comme un jeu cassé.
+	var warning := UITheme.dim(tr("ui.menu.multi_experimental"))
+	warning.add_theme_color_override("font_color", UITheme.TEXT_ACCENT)
+	warning.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	warning.custom_minimum_size.x = PANEL_MIN_WIDTH
+	box.add_child(warning)
 	box.add_child(_button("ui.menu.host", _on_host))
 	var ip_row := HBoxContainer.new()
 	ip_row.add_child(_row_label("ui.menu.ip"))
@@ -473,8 +486,103 @@ func _build_settings() -> VBoxContainer:
 	box.add_child(dist_row)
 
 	box.add_child(_spacer(8))
+	box.add_child(_button("ui.menu.touches", func() -> void: _show_panel("keys")))
 	box.add_child(_button("ui.menu.retour", func() -> void: _show_panel("main")))
 	return box
+
+
+# --- Remappe des touches ---
+
+## Action en attente d'une frappe, ou "" si l'écran est au repos.
+var _rebinding := ""
+var _key_buttons := {}
+var _key_status: Label
+
+
+func _build_keys() -> VBoxContainer:
+	var box := _panel_box()
+	box.add_child(_title_label("ui.menu.touches"))
+	_key_status = UITheme.dim(tr("ui.menu.touches_aide"))
+	_key_status.set_meta("key", "ui.menu.touches_aide")
+	box.add_child(_key_status)
+
+	# Défilement : la table dépasse la hauteur d'écran (une trentaine de
+	# commandes), et un panneau tronqué cacherait les dernières sans indice.
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size.y = 360
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	box.add_child(scroll)
+
+	for category: String in ["deplacement", "monde", "modules", "interface"]:
+		var heading := UITheme.dim(tr("ui.menu.touches_cat_" + category))
+		heading.set_meta("key", "ui.menu.touches_cat_" + category)
+		heading.add_theme_color_override("font_color", UITheme.TEXT_ACCENT)
+		list.add_child(heading)
+		for action: String in InputManager.actions_in(category):
+			var row := HBoxContainer.new()
+			var name_label := _row_label(InputManager.label_key(action))
+			name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(name_label)
+			var btn := Button.new()
+			btn.text = InputManager.key_label(action)
+			btn.custom_minimum_size.x = 120
+			btn.pressed.connect(_on_rebind_requested.bind(action))
+			row.add_child(btn)
+			_key_buttons[action] = btn
+			list.add_child(row)
+
+	box.add_child(_spacer(8))
+	box.add_child(_button("ui.menu.touches_defaut", func() -> void:
+		InputManager.reset_to_defaults()
+		_refresh_key_buttons()))
+	box.add_child(_button("ui.menu.retour", func() -> void:
+		_cancel_rebind()
+		_show_panel("settings")))
+	return box
+
+
+func _on_rebind_requested(action: String) -> void:
+	_cancel_rebind()
+	_rebinding = action
+	(_key_buttons[action] as Button).text = tr("ui.menu.touches_attente")
+	_key_status.text = tr("ui.menu.touches_appuyez")
+
+
+func _cancel_rebind() -> void:
+	if _rebinding != "":
+		_rebinding = ""
+		_refresh_key_buttons()
+	if _key_status != null:
+		_key_status.text = tr("ui.menu.touches_aide")
+
+
+## Capture la prochaine frappe pendant une remappe. En `_input` et non
+## `_unhandled_input` : il faut intercepter AVANT que l'action en cours de
+## réaffectation ne se déclenche elle-même (appuyer sur Tab pour remapper
+## l'inventaire ouvrirait sinon l'inventaire).
+func _input(event: InputEvent) -> void:
+	if _rebinding == "":
+		return
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return
+	get_viewport().set_input_as_handled()
+	var action := _rebinding
+	_rebinding = ""
+	# Échap annule au lieu de s'affecter : c'est la sortie universelle du jeu,
+	# la lui retirer laisserait le joueur sans moyen de fermer un écran.
+	if key.physical_keycode != KEY_ESCAPE:
+		InputManager.rebind(action, key.physical_keycode)
+	_refresh_key_buttons()
+	_key_status.text = tr("ui.menu.touches_aide")
+
+
+func _refresh_key_buttons() -> void:
+	for action: String in _key_buttons:
+		(_key_buttons[action] as Button).text = InputManager.key_label(action)
 
 
 # --- Actions ---
@@ -483,12 +591,21 @@ func _on_continue() -> void:
 	if SaveManager.continue_last():
 		_finish()
 	else:
-		_solo_status.text = tr("ui.menu.aucun_monde")
+		# Distinguer « aucun monde » d'un monde bien présent mais refusé :
+		# les deux affichaient le même message, ce qui laissait croire à une
+		# sauvegarde disparue alors qu'elle était seulement incompatible.
+		_solo_status.text = tr(SaveManager.last_load_error if SaveManager.last_load_error != ""
+				else "ui.menu.aucun_monde")
 
 
 func _on_load_world(dir: String) -> void:
 	if SaveManager.load_world_at(dir):
 		_finish()
+	else:
+		# Le clic ne restait plus sans effet ni explication : un monde
+		# illisible ou d'une version incompatible le DIT maintenant.
+		_solo_status.text = tr(SaveManager.last_load_error if SaveManager.last_load_error != ""
+				else "ui.erreur.save_illisible")
 
 
 ## « Créer et jouer » : prépare le monde PUIS passe à la création de
@@ -611,8 +728,10 @@ func _on_join() -> void:
 
 func _on_language_selected(index: int) -> void:
 	var locale := String((LOCALES[index] as Array)[0]) if index < LOCALES.size() else "en"
-	TranslationServer.set_locale(locale)
-	EventBus.locale_changed.emit(locale)
+	# Via SettingsManager : la langue est PERSISTÉE. Elle ne l'était pas — on
+	# appelait `set_locale` sans rien écrire, donc le joueur qui choisissait le
+	# japonais le rechoisissait à chaque lancement (2026-08-01).
+	SettingsManager.set_locale(locale)
 	# Les textes du menu sont posés à la construction : reconstruire.
 	_bg.queue_free()
 	_center.queue_free()

@@ -21,7 +21,26 @@ const STARTER_QUALITY := 0.7
 ## Module de démonstration (étape D.3.6) : 3 modules assemblés, touches J/K/L
 ## (les touches 1-9 pilotent déjà la hotbar). Coût en mana par A.6.
 const MODULE_LOADOUT := ["trait_de_mana", "soin_mineur", "frappe_lourde"]
-const MODULE_KEYS := [KEY_J, KEY_K, KEY_L]
+## Actions de module, dans l'ordre du loadout (touches par défaut J/K/L —
+## les touches 1-9 pilotent déjà la hotbar). Voir InputManager.DEFAULTS.
+const MODULE_ACTIONS := ["module_1", "module_2", "module_3"]
+
+## Commandes ponctuelles : action de l'InputMap -> méthode appelée.
+## L'ordre n'a pas d'importance (une action ne peut correspondre qu'à une
+## seule entrée), mais l'UNICITÉ des clés, si : c'est elle qui rend
+## impossible la collision « deux commandes sur la même touche ».
+const ACTION_HANDLERS := {
+	"cycle_grid": "_cycle_grid_resolution",
+	"talk": "_try_talk",
+	"equip": "_try_equip",
+	"eat": "_try_eat",
+	"pickup": "_try_pickup",
+	"sleep": "_try_sleep",
+	"toggle_claim": "_toggle_claim",
+	"cycle_claim_role": "_cycle_claim_role",
+	"stall_stock": "_try_stock_stall",
+	"stall_collect": "_try_collect_stall",
+}
 ## C.1 : 6 stats, base 5.
 var stats := {"force": 5, "dexterite": 5, "endurance": 5, "volonte": 5, "perception": 5, "charisme": 5}
 ## Potentiel PAR STAT (6.4) : 0-200, plancher au potentiel de base. Monté par
@@ -496,30 +515,19 @@ func _unhandled_input(event: InputEvent) -> void:
 				active_hotbar = mini(slot, hotbar_bank_count() - 1)
 			else:
 				selected_slot = slot
-		elif key.physical_keycode == KEY_R:
-			# Cycle de la résolution de grille (4.1) : 32 → 16 → 8 → 4.
-			active_res = RES_SEQUENCE[(RES_SEQUENCE.find(active_res) + 1) % RES_SEQUENCE.size()]
-			_progress = 0.0
-		elif key.physical_keycode in MODULE_KEYS:
-			_try_cast_module(MODULE_KEYS.find(key.physical_keycode))
-		elif key.physical_keycode == KEY_E:
-			_try_talk()
-		elif key.physical_keycode == KEY_V:
-			_toggle_claim()
-		elif key.physical_keycode == KEY_B:
-			_cycle_claim_role()
-		elif key.physical_keycode == KEY_T:
-			_try_stock_stall()
-		elif key.physical_keycode == KEY_G:
-			_try_collect_stall()
-		elif key.physical_keycode == KEY_F:
-			_try_eat()
-		elif key.physical_keycode == KEY_E:
-			_try_equip()
-		elif key.physical_keycode == KEY_C:
-			_try_pickup()
-		elif key.physical_keycode == KEY_N:
-			_try_sleep()
+			return
+		# Table action -> méthode : une chaîne de `elif` avait laissé passer
+		# KEY_E deux fois (« parler » puis « équiper », ce dernier jamais
+		# atteint). Un dictionnaire ne peut pas contenir deux fois la même
+		# clé — la collision devient une impossibilité d'écriture.
+		for action: String in ACTION_HANDLERS:
+			if event.is_action_pressed(action):
+				Callable(self, ACTION_HANDLERS[action]).call()
+				return
+		for index in MODULE_ACTIONS.size():
+			if event.is_action_pressed(MODULE_ACTIONS[index]):
+				_try_cast_module(index)
+				return
 
 
 ## Liaisons de hotbar sérialisées (les clés JSON sont des chaînes : on écrit
@@ -2534,6 +2542,14 @@ func _update_ghost() -> void:
 
 ## Informations de visée pour le HUD (clés tr() côté UI, 10.1).
 ## Créature visée (nom localisé + PV), pour le HUD — {} si aucune.
+## Cycle de la résolution de grille (4.1) : 32 -> 16 -> 8 -> 4. Le corps
+## vivait en ligne dans la chaîne de `elif` du gestionnaire d'entrées ; il en
+## est sorti pour que la table ACTION_HANDLERS soit uniforme.
+func _cycle_grid_resolution() -> void:
+	active_res = RES_SEQUENCE[(RES_SEQUENCE.find(active_res) + 1) % RES_SEQUENCE.size()]
+	_progress = 0.0
+
+
 ## Ouvre le dialogue avec la créature visée, si elle a quelque chose à dire.
 ##
 ## On réutilise la CIBLE DE COMBAT, sans second système de visée : le joueur

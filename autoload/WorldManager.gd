@@ -123,7 +123,9 @@ func _ready() -> void:
 	_rebuild_offsets()
 
 
-const DISPLAY_CFG := "user://display.cfg"
+## Le rayon de rendu vit désormais dans SettingsManager (user://settings.cfg),
+## avec la langue et les touches. L'ancien user://display.cfg est replié au
+## premier lancement — voir SettingsManager._migrate_legacy_display().
 
 
 func _load_display_setting() -> void:
@@ -141,11 +143,10 @@ func _load_display_setting() -> void:
 			_scale_budgets()
 			print("[BENCH] distance d'affichage forcée à %d (réglage joueur ignoré)." % render_radius)
 			return
-	var cfg := ConfigFile.new()
-	if cfg.load(DISPLAY_CFG) == OK:
-		render_radius = clampi(int(cfg.get_value("display", "render_distance", DEFAULT_CHUNK_RADIUS)), 4, 48)
-		_evict_radius = render_radius + 2
-		_scale_budgets()
+	render_radius = clampi(int(SettingsManager.get_value(
+			"display", "render_distance", DEFAULT_CHUNK_RADIUS)), 4, 48)
+	_evict_radius = render_radius + 2
+	_scale_budgets()
 
 
 ## Met à l'échelle le débit de streaming et le cache avec le rayon (le goulot
@@ -165,9 +166,7 @@ func set_render_distance(radius: int) -> void:
 	_evict_radius = render_radius + 2
 	_scale_budgets()
 	_rebuild_offsets()
-	var cfg := ConfigFile.new()
-	cfg.set_value("display", "render_distance", render_radius)
-	cfg.save(DISPLAY_CFG)
+	SettingsManager.set_value("display", "render_distance", render_radius)
 	if generator != null:
 		var c := _center
 		_center = Vector2i(1 << 30, 0)

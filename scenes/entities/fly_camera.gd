@@ -75,11 +75,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key != null and key.pressed and key.physical_keycode == KEY_ESCAPE:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	if key != null and key.pressed and not key.echo and key.physical_keycode == KEY_F:
+	if event.is_action_pressed("toggle_fly"):
 		flying = not flying
 		if flying:
 			_vertical_velocity = 0.0
-	if key != null and key.pressed and not key.echo and key.physical_keycode == KEY_SPACE and not flying:
+	if event.is_action_pressed("jump") and not flying:
 		_jump_requested = true  # Consommé au prochain _process si au sol.
 	var motion := event as InputEventMouseMotion
 	if motion != null and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -166,20 +166,20 @@ func _process(delta: float) -> void:
 
 func _process_flight(delta: float) -> void:
 	var direction := Vector3.ZERO
-	if Input.is_physical_key_pressed(KEY_W):
+	if Input.is_action_pressed("move_forward"):
 		direction -= Vector3(global_basis.z.x, 0, global_basis.z.z).normalized()
-	if Input.is_physical_key_pressed(KEY_S):
+	if Input.is_action_pressed("move_back"):
 		direction += Vector3(global_basis.z.x, 0, global_basis.z.z).normalized()
-	if Input.is_physical_key_pressed(KEY_A):
+	if Input.is_action_pressed("move_left"):
 		direction -= global_basis.x
-	if Input.is_physical_key_pressed(KEY_D):
+	if Input.is_action_pressed("move_right"):
 		direction += global_basis.x
-	if Input.is_physical_key_pressed(KEY_SPACE):
+	if Input.is_action_pressed("jump"):
 		direction += Vector3.UP
-	if Input.is_physical_key_pressed(KEY_C):
+	if Input.is_action_pressed("descend"):
 		direction += Vector3.DOWN
 	if direction != Vector3.ZERO:
-		var speed := BOOST_SPEED if Input.is_physical_key_pressed(KEY_SHIFT) else SPEED
+		var speed := BOOST_SPEED if Input.is_action_pressed("sneak") else SPEED
 		position += direction.normalized() * speed * delta
 
 
@@ -338,22 +338,22 @@ func _process_walk(delta: float) -> void:
 	var forward := Vector3(global_basis.z.x, 0, global_basis.z.z).normalized()
 	var right := Vector3(global_basis.x.x, 0, global_basis.x.z).normalized()
 	var direction := Vector3.ZERO
-	if Input.is_physical_key_pressed(KEY_W):
+	if Input.is_action_pressed("move_forward"):
 		direction -= forward
-	if Input.is_physical_key_pressed(KEY_S):
+	if Input.is_action_pressed("move_back"):
 		direction += forward
-	if Input.is_physical_key_pressed(KEY_A):
+	if Input.is_action_pressed("move_left"):
 		direction -= right
-	if Input.is_physical_key_pressed(KEY_D):
+	if Input.is_action_pressed("move_right"):
 		direction += right
 	# Vitesse façon Minecraft : Shift = sneak (lent + anti-chute au bord),
 	# Ctrl = sprint, sinon marche. (Shift n'est plus « courir » : MC réserve
 	# Shift au sneak — le sprint vit sur Ctrl comme dans MC.)
-	var sneaking := Input.is_physical_key_pressed(KEY_SHIFT)
+	var sneaking := Input.is_action_pressed("sneak")
 	var speed := WALK_SPEED
 	if sneaking:
 		speed = SNEAK_SPEED
-	elif Input.is_physical_key_pressed(KEY_CTRL):
+	elif Input.is_action_pressed("sprint"):
 		speed = SPRINT_SPEED
 	if direction != Vector3.ZERO and WorldManager.generator != null:
 		var move := direction.normalized() * speed * delta

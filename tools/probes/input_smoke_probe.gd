@@ -388,7 +388,13 @@ func run() -> void:
 	game_menu._select_tab("craft")
 	await main.get_tree().process_frame
 	await screenshot("game_menu_craft_screenshot.png")
-	print("[TEST] onglet craft : %d recette(s) affichée(s)" % game_menu._craft_list.get_child_count())
+	# `_craft_sections` et non `_craft_list` : la refonte du craft du 2026-07-26
+	# a remplacé la liste plate par des sections par table, mais la sonde a
+	# continué d'interroger l'ancien champ — resté DÉCLARÉ et jamais affecté,
+	# donc `Nil`. La sonde plantait donc ici depuis, et tout ce qui suit
+	# (fabrication d'une épée, qualité, menus restants) n'a plus jamais été
+	# exécuté. Personne ne l'a vu : --test-input n'a pas de code de sortie.
+	print("[TEST] onglet craft : %d section(s) de table affichée(s)" % game_menu._craft_sections.get_child_count())
 	var objects_pre_craft: int = player.inventory.objects.size()
 	game_menu._craft_choices["epee:bois"] = "chene" if player.inventory.material_stacks.has("chene") else game_menu._owned_of_category("bois")[0]
 	game_menu._craft_choices["epee:minerai"] = "fer" if player.inventory.material_stacks.has("fer") else game_menu._owned_of_category("minerai")[0]
