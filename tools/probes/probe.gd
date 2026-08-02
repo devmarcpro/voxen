@@ -79,12 +79,24 @@ func finish(ok: bool, tag: String) -> void:
 
 # --- Sélection d'objets/matériaux (partagée par plusieurs sondes) ---
 
+## Déplace la sélection hors de l'emplacement de COMBAT, qui n'accepte aucune
+## liaison : il montre l'arme ÉQUIPÉE. Une sonde qui veut tenir un outil ou un
+## bloc doit donc viser un autre emplacement.
+static func _leave_combat_slot(target: Node) -> void:
+	if int(target.selected_slot) == int(target.COMBAT_SLOT):
+		target.selected_slot = 1
+
+
 ## Met EN MAIN le matériau `mat_id` (sondes).
 func _select_material(target: Node, mat_id: String) -> bool:
 	for entry: Dictionary in target.all_entries():
 		if entry.get("kind", "") == "material" and String(entry.get("id", "")) == mat_id:
 			# La hotbar est ASSIGNABLE (2026-07-27) : on lie l'entrée à
 			# l'emplacement courant au lieu de calculer un index de fenêtre.
+			# L'emplacement 1 est RÉSERVÉ AU COMBAT depuis le 2026-08-02 : il
+			# suit l'arme équipée et refuse toute liaison. Une sonde qui y
+			# assignait se retrouvait les mains nues sans le savoir.
+			_leave_combat_slot(target)
 			target.bind_hotbar(target.active_hotbar * target.HOTBAR_SLOTS + target.selected_slot, entry)
 			return true
 	return false
@@ -96,6 +108,10 @@ func _select_object(target: Node, resource_id: String) -> bool:
 		if entry.get("kind", "") != "object":
 			continue
 		if String((entry["object"] as Dictionary).get("resource_id", "")) == resource_id:
+			# L'emplacement 1 est RÉSERVÉ AU COMBAT depuis le 2026-08-02 : il
+			# suit l'arme équipée et refuse toute liaison. Une sonde qui y
+			# assignait se retrouvait les mains nues sans le savoir.
+			_leave_combat_slot(target)
 			target.bind_hotbar(target.active_hotbar * target.HOTBAR_SLOTS + target.selected_slot, entry)
 			return true
 	return false

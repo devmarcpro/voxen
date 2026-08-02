@@ -18,6 +18,7 @@ const PROBES := {
 	"--probe-save-verify":    "res://tools/probes/save_verify_probe.gd",
 	"--probe-save-incr":      "res://tools/probes/incremental_save_probe.gd",
 	"--probe-dungeon":        "res://tools/probes/dungeon_probe.gd",
+	"--probe-interieur":      "res://tools/probes/dungeon_interior_probe.gd",
 	"--probe-params":         "res://tools/probes/params_probe.gd",
 	"--probe-city":           "res://tools/probes/city_probe.gd",
 	"--probe-ore":            "res://tools/probes/ore_probe.gd",
@@ -33,8 +34,11 @@ const PROBES := {
 	"--probe-pnj":            "res://tools/probes/npc_probe.gd",
 	"--probe-villages":       "res://tools/probes/village_census_probe.gd",
 	"--probe-collection":     "res://tools/probes/collection_probe.gd",
+	"--probe-potentiel":      "res://tools/probes/potential_probe.gd",
+	"--probe-modificateurs":  "res://tools/probes/modifiers_probe.gd",
 	"--probe-gemme":          "res://tools/probes/gem_probe.gd",
 	"--probe-corps":          "res://tools/probes/body_probe.gd",
+	"--probe-rigs-animaux":   "res://tools/probes/creature_rigs_probe.gd",
 	"--test-corps":           "res://tools/probes/body_shot_probe.gd",
 	"--test-triche":          "res://tools/probes/cheat_shot_probe.gd",
 	"--probe-butin":          "res://tools/probes/loot_probe.gd",
@@ -48,6 +52,7 @@ const PROBES := {
 	"--test-input":           "res://tools/probes/input_smoke_probe.gd",
 	"--probe-touches":        "res://tools/probes/input_bindings_probe.gd",
 	"--probe-police":         "res://tools/probes/font_coverage_probe.gd",
+	"--probe-noms":           "res://tools/probes/names_probe.gd",
 	"--bench-network-client": "res://tools/probes/network_bench_probe.gd",
 }
 

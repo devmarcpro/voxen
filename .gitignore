@@ -4,3 +4,7 @@
 
 # Dossier d'import de Godot
 .godot/
+
+# Caches Python des generateurs d assets (tools/*.py).
+__pycache__/
+*.pyc

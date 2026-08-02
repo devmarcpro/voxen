@@ -10,9 +10,13 @@
   "vitesse_base": 0.8,
   "portee": 1.5,
   "type_degats": "percant",
-  "poids_reference": 60,
+  "poids_reference": 54,
   "parts": {
     "manche": "arbalete",
     "tete": "arc_arbalete"
-  }
+  },
+  "vitesse_projectile": 62.0,
+  "portee_tir": 110.0,
+  "tension_ms": 1800.0,
+  "munition": "carreau"
 }

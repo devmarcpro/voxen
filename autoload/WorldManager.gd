@@ -248,6 +248,36 @@ func update_center(world_pos: Vector3) -> void:
 
 ## Id matériau au bloc monde. 0 = air. Priorité : diff d'édition → cache →
 ## générateur (pur). Utilisable à chaque frame (visée joueur).
+## Le décor coupe-t-il le segment [from, to] ? Test de LIGNE DE VUE partagé.
+##
+## POURQUOI ICI (2026-08-02). Le joueur avait le sien (`_raycast_voxel`, avec
+## raffinement de subdivision, taillé pour miner au demi-bloc) ; les créatures
+## n'en avaient AUCUN. Conséquence : la lame d'un bandit traversait les murs et
+## touchait à travers une porte fermée, là où celle du joueur s'arrêtait. Le
+## combat ne peut pas être juste si un seul camp respecte le décor.
+##
+## Échantillonnage au quart de bloc plutôt qu'un DDA exact : un segment de mêlée
+## fait 1 à 3 blocs, soit une douzaine de lectures de tableau. Un DDA serait
+## plus précis aux arêtes et coûterait plus cher à écrire comme à exécuter, pour
+## un gain qu'aucun joueur ne percevrait sur une distance pareille.
+const LINE_STEP := 0.25
+
+
+func line_blocked(from: Vector3, to: Vector3) -> bool:
+	var delta := to - from
+	var distance := delta.length()
+	if distance < 0.0001:
+		return false
+	var direction := delta / distance
+	var travelled := LINE_STEP
+	while travelled < distance:
+		var point := from + direction * travelled
+		if block_at_world(Vector3i(floori(point.x), floori(point.y), floori(point.z))) != 0:
+			return true
+		travelled += LINE_STEP
+	return false
+
+
 func block_at_world(pos: Vector3i) -> int:
 	if generator == null:
 		return 0  # Aucun monde actif (menu de démarrage).

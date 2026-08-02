@@ -95,5 +95,57 @@ func run() -> void:
 				String(cible.get("id", "?")), marquees])
 		ok = ok and marquees == 1
 
+	ok = await _check_weapon_icons() and ok
+
 	print("[INVUI] RÉSULTAT : %s" % ("OK" if ok else "ÉCHEC"))
 	main.get_tree().quit(0 if ok else 1)
+
+
+## L'ICÔNE D'UNE ARME EST SON MODÈLE (2026-08-02, demande de l'auteur). Elle
+## venait de PNG peints à la main : une épée en granit noir et une épée en
+## cuivre partageaient la même image, et une pièce re-coupée gardait l'ancienne
+## icône. Elle est désormais RENDUE depuis l'assemblage réellement porté.
+##
+## Ce qui se vérifie ici, et qu'aucun coup d'œil ne donne : le rendu aboutit
+## (une image opaque, pas une case vide), deux MATÉRIAUX différents donnent deux
+## icônes différentes — preuve que l'icône suit l'objet et non son type —, et
+## l'arme remplit sa vignette.
+func _check_weapon_icons() -> bool:
+	var item: Dictionary = GameData.items["epee"]
+	var iron: Dictionary = ItemFactory.craft("epee", {"bois": "chene", "minerai": "fer"}, 1.0)
+	var copper: Dictionary = ItemFactory.craft("epee", {"bois": "ebene", "minerai": "cuivre"}, 1.0)
+	# Premier appel : le rendu est ENFILÉ et l'on reçoit le repli. C'est le
+	# contrat — aucun écran ne doit attendre un readback GPU.
+	WeaponPreview.item_icon(item, iron["materials"], 48)
+	WeaponPreview.item_icon(item, copper["materials"], 48)
+	# Un rendu par frame : on laisse largement le temps aux deux.
+	for i in 40:
+		await main.get_tree().process_frame
+	var tex_iron: Texture2D = WeaponPreview.item_icon(item, iron["materials"], 48)
+	var tex_copper: Texture2D = WeaponPreview.item_icon(item, copper["materials"], 48)
+	var rendered: bool = tex_iron != null and tex_copper != null
+	print("[INVUI] icône rendue depuis le modèle : fer=%s cuivre=%s : %s" % [
+		tex_iron != null, tex_copper != null, "OK" if rendered else "ÉCHEC"])
+	if not rendered:
+		return false
+	# Deux matériaux, deux images. Comparer les PIXELS et non les références :
+	# un cache mal calé rendrait la même texture pour les deux sans qu'on le voie.
+	var a := tex_iron.get_image()
+	var b := tex_copper.get_image()
+	var differs: bool = a.get_size() == b.get_size() and a.get_data() != b.get_data()
+	print("[INVUI] deux matériaux donnent deux icônes : %s" % [
+		"OK" if differs else "ÉCHEC (image identique)"])
+	# Et l'arme doit OCCUPER sa case : une image quasi vide passerait le test
+	# d'opacité tout en étant illisible.
+	var filled := 0
+	var total := 0
+	for y in range(0, a.get_height(), 2):
+		for x in range(0, a.get_width(), 2):
+			total += 1
+			if a.get_pixel(x, y).a > 0.05:
+				filled += 1
+	var ratio := float(filled) / maxf(float(total), 1.0)
+	var framed: bool = ratio > 0.05
+	print("[INVUI] l'arme remplit sa vignette (%.0f %% de pixels) : %s" % [
+		ratio * 100.0, "OK" if framed else "ÉCHEC"])
+	return differs and framed

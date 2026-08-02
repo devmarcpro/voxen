@@ -650,6 +650,16 @@ creature.braconnier.name,偷猎者
 creature.pillard.name,劫掠者
 creature.deserteur.name,逃兵
 creature.ermite.name,隐士
+culture.latine.name,拉丁
+culture.nordique.name,北欧
+culture.sino.name,汉地
+culture.nipponne.name,和风
+culture.slave.name,斯拉夫
+culture.arabo.name,阿拉伯-柏柏尔
+culture.celte.name,凯尔特
+culture.sylvestre.name,林地
+culture.ignee.name,炎生
+culture.resonance.name,共鸣
 material.viande.name,肉
 material.peau.name,兽皮
 ui.toast.depecage,已剥取 {creature}：{portions} 份肉
@@ -813,6 +823,7 @@ ui.menu.touches_cat_deplacement,移动
 ui.menu.touches_cat_monde,世界
 ui.menu.touches_cat_modules,模块
 ui.menu.touches_cat_interface,界面
+ui.menu.multi_experimental,实验性功能：仅同步其他玩家与方块。生物、时间、物品栏与战斗均不同步。
 ui.collection.progression,{offerts} / {total} 件（{pct}%）
 ui.collection.page,第 {page} / {pages} 页
 ui.collection.manquant,缺失
@@ -886,6 +897,7 @@ job.couturier,裁缝
 job.herboriste,草药师
 job.transporteur,脚夫
 ui.toast.villageois_tue,一名村民死亡。
+ui.toast.coffre_boss,首领掉落了一个宝箱！
 gouvernance.monarchie_hereditaire,世袭君主制
 gouvernance.republique_elue,选举共和制
 gouvernance.theocratie,神权政治
@@ -903,6 +915,7 @@ ui.loi.confiscation,物品被没收：在此地属于违禁品。
 ui.loi.saisie,无力支付，你的一件财物被没收。
 ui.loi.gardes_hostiles,王国卫兵正在追捕你。
 ui.hud.cle.lois,法律
+ui.hud.cle.localite,聚落
 ui.hud.souris,左键（长按）：采集/挖掘/攻击 · 右键：放置
 ui.hud.hotbar,1-9/滚轮：选择 · Ctrl+1-9/滚轮：存入
 ui.input.move_forward,前进
@@ -936,6 +949,34 @@ ui.input.reload_data,重载数据
 ui.input.save_game,保存
 ui.loi.aucune,无（无政府）
 ui.loi.interdit,禁止 {objet}
+ui.erreur.save_illisible,存档无法读取或已损坏。
+ui.erreur.save_trop_recente,该存档由更新版本的游戏创建。
+ui.erreur.save_trop_ancienne,存档过旧：此版本已无法读取。
+ui.erreur.chunks_perdus,部分已改动的区域无法读回。
 loi.meurtre,谋杀受罚
 loi.vol,盗窃受罚
 loi.agression,袭击受罚
+ui.menu.onglet.combat,战斗
+ui.menu.combat_aide,将武器或盾牌拖到手上。架势由你的装备自动决定。
+ui.menu.posture_competence,锻炼技能：{competence}
+ui.posture.mains_nues,徒手
+ui.posture.une_main,单手武器
+ui.posture.deux_mains,双手武器
+ui.posture.arme_bouclier,武器与盾牌
+ui.posture.deux_armes,双持
+ui.combat.fiche,攻击距离 {allonge} 米 · {des} · 速度 {vitesse} · 招架 {parade} 毫秒 · 耐力 {endurance} · {mains} 手
+ui.combat.bouclier_ligne,盾牌：覆盖 {couverture} · 吸收 {absorption} %
+ui.toast.deux_mains_occupe,双手武器已占用双手。
+ui.combat.pare_par_adversaire,被格挡 — 它读出了你的方向。
+ui.combat.garde_ecrasee,招架被砸开 — 这一击穿透而过。
+ui.combat.bouclier_brise,你的盾牌碎裂了！
+ui.combat.bouclier_structure,盾牌：{reste} / {total}
+ui.combat.attaques,攻击：{directions}
+ui.direction.estoc,突刺
+ui.direction.taille_gauche,左横斩
+ui.direction.taille_droite,右横斩
+ui.direction.overhead,上劈
+ui.combat.feinte_adverse,佯攻 — 预告的那一击没有落下。
+munition.fleche.name,箭
+munition.carreau.name,弩矢
+ui.combat.carquois_vide,箭矢用尽。

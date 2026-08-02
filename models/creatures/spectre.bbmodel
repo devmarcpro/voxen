@@ -1,0 +1,1128 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "spectre",
+  "model_identifier": "spectre",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "mesh_cloche",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -4.5,
+        12,
+        -4.5
+      ],
+      "to": [
+        4.5,
+        23,
+        4.5
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        0.0,
+        12,
+        0.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "c35c3341-c2b1-5f7f-a27b-75b7ee88e3d8"
+    },
+    {
+      "name": "mesh_oeil",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -1.5,
+        15.85,
+        -5.7
+      ],
+      "to": [
+        1.5,
+        18.85,
+        -4.0
+      ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        0.0,
+        12,
+        0.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "23a208af-af19-5419-a687-c2b1bc21208e"
+    },
+    {
+      "name": "mesh_tentacule_1_1",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        1.6600000000000001,
+        8,
+        -1.4
+      ],
+      "to": [
+        4.46,
+        12,
+        1.4
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        3.06,
+        12,
+        0.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "085b92b6-96e4-5590-8d91-58dbe24edd5c"
+    },
+    {
+      "name": "mesh_tentacule_1_2",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        1.9400000000000002,
+        4,
+        -1.1199999999999999
+      ],
+      "to": [
+        4.18,
+        8,
+        1.1199999999999999
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        3.06,
+        8,
+        0.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "a5fa1e6c-dbfb-5925-9b61-efd2bf9432cb"
+    },
+    {
+      "name": "mesh_tentacule_1_3",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        2.2199999999999998,
+        0,
+        -0.8400000000000001
+      ],
+      "to": [
+        3.9000000000000004,
+        4,
+        0.8400000000000001
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        3.06,
+        4,
+        0.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "c0476598-d2c4-5675-8429-48f63a33fed0"
+    },
+    {
+      "name": "mesh_tentacule_2_1",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -2.9299999999999993,
+        8,
+        1.2500377355803827
+      ],
+      "to": [
+        -0.12999999999999945,
+        12,
+        4.050037735580382
+      ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        -1.5299999999999994,
+        12,
+        2.6500377355803826
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "a71ccf07-6bfb-58db-8fa9-ad2ad8514051"
+    },
+    {
+      "name": "mesh_tentacule_2_2",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -2.6499999999999995,
+        4,
+        1.5300377355803827
+      ],
+      "to": [
+        -0.4099999999999995,
+        8,
+        3.7700377355803827
+      ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        -1.5299999999999994,
+        8,
+        2.6500377355803826
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "8c94c150-0c85-526b-a63e-31abf46e46b9"
+    },
+    {
+      "name": "mesh_tentacule_2_3",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -2.369999999999999,
+        0,
+        1.8100377355803825
+      ],
+      "to": [
+        -0.6899999999999993,
+        4,
+        3.4900377355803824
+      ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        -1.5299999999999994,
+        4,
+        2.6500377355803826
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "497edbfb-25d8-5a7e-837b-77e29f4ead5a"
+    },
+    {
+      "name": "mesh_tentacule_3_1",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -2.9300000000000015,
+        8,
+        -4.050037735580382
+      ],
+      "to": [
+        -0.13000000000000145,
+        12,
+        -1.2500377355803818
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        -1.5300000000000014,
+        12,
+        -2.6500377355803817
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "23ed5f47-8385-5a8b-9db6-d86c148b6633"
+    },
+    {
+      "name": "mesh_tentacule_3_2",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -2.6500000000000012,
+        4,
+        -3.770037735580382
+      ],
+      "to": [
+        -0.4100000000000015,
+        8,
+        -1.5300377355803818
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        -1.5300000000000014,
+        8,
+        -2.6500377355803817
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "88e8698a-56f8-52eb-81b1-ab0c0e999484"
+    },
+    {
+      "name": "mesh_tentacule_3_3",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -2.3700000000000014,
+        0,
+        -3.4900377355803816
+      ],
+      "to": [
+        -0.6900000000000013,
+        4,
+        -1.8100377355803816
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        -1.5300000000000014,
+        4,
+        -2.6500377355803817
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "8ff4c522-9865-541c-8d75-d21c76ab1354"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "racine",
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "color": 0,
+      "uuid": "84252c40-5ef5-50ba-bc33-eecfdd7e478c",
+      "export": true,
+      "mirror_uv": false,
+      "isOpen": true,
+      "visibility": true,
+      "autouv": 0,
+      "children": [
+        {
+          "name": "corps",
+          "origin": [
+            0.0,
+            12,
+            0.0
+          ],
+          "color": 0,
+          "uuid": "ee4eb15b-bc97-51fb-9506-1cf2fdbd6505",
+          "export": true,
+          "mirror_uv": false,
+          "isOpen": true,
+          "visibility": true,
+          "autouv": 0,
+          "children": [
+            "c35c3341-c2b1-5f7f-a27b-75b7ee88e3d8",
+            "23a208af-af19-5419-a687-c2b1bc21208e",
+            {
+              "name": "attach_dos",
+              "origin": [
+                0.0,
+                23,
+                0.0
+              ],
+              "color": 0,
+              "uuid": "00d0e028-32c6-5098-835c-2fde8c92f32a",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "visibility": true,
+              "autouv": 0,
+              "children": []
+            },
+            {
+              "name": "attach_tete",
+              "origin": [
+                0.0,
+                18.6,
+                -3.6
+              ],
+              "color": 0,
+              "uuid": "d778f69f-10c3-5eca-ad43-25725ad7c18d",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "visibility": true,
+              "autouv": 0,
+              "children": []
+            },
+            {
+              "name": "tentacule_1_1",
+              "origin": [
+                3.06,
+                12,
+                0.0
+              ],
+              "color": 0,
+              "uuid": "eb73c2f6-ee02-5d47-b853-ae8d7eca10df",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "visibility": true,
+              "autouv": 0,
+              "children": [
+                "085b92b6-96e4-5590-8d91-58dbe24edd5c",
+                {
+                  "name": "tentacule_1_2",
+                  "origin": [
+                    3.06,
+                    8,
+                    0.0
+                  ],
+                  "color": 0,
+                  "uuid": "0632e320-2e9a-5c6c-8fc8-428339885cfc",
+                  "export": true,
+                  "mirror_uv": false,
+                  "isOpen": true,
+                  "visibility": true,
+                  "autouv": 0,
+                  "children": [
+                    "a5fa1e6c-dbfb-5925-9b61-efd2bf9432cb",
+                    {
+                      "name": "tentacule_1_3",
+                      "origin": [
+                        3.06,
+                        4,
+                        0.0
+                      ],
+                      "color": 0,
+                      "uuid": "fa679b03-da91-5b50-b961-14f7fb5563d7",
+                      "export": true,
+                      "mirror_uv": false,
+                      "isOpen": true,
+                      "visibility": true,
+                      "autouv": 0,
+                      "children": [
+                        "c0476598-d2c4-5675-8429-48f63a33fed0"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "tentacule_2_1",
+              "origin": [
+                -1.5299999999999994,
+                12,
+                2.6500377355803826
+              ],
+              "color": 0,
+              "uuid": "f2f19648-2d39-5794-a03b-c2e7c76803a4",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "visibility": true,
+              "autouv": 0,
+              "children": [
+                "a71ccf07-6bfb-58db-8fa9-ad2ad8514051",
+                {
+                  "name": "tentacule_2_2",
+                  "origin": [
+                    -1.5299999999999994,
+                    8,
+                    2.6500377355803826
+                  ],
+                  "color": 0,
+                  "uuid": "03095d73-859d-5a77-bb04-5bc0fddded4a",
+                  "export": true,
+                  "mirror_uv": false,
+                  "isOpen": true,
+                  "visibility": true,
+                  "autouv": 0,
+                  "children": [
+                    "8c94c150-0c85-526b-a63e-31abf46e46b9",
+                    {
+                      "name": "tentacule_2_3",
+                      "origin": [
+                        -1.5299999999999994,
+                        4,
+                        2.6500377355803826
+                      ],
+                      "color": 0,
+                      "uuid": "a2df25a6-c1ae-5bde-8fd6-d8dd8c83bda5",
+                      "export": true,
+                      "mirror_uv": false,
+                      "isOpen": true,
+                      "visibility": true,
+                      "autouv": 0,
+                      "children": [
+                        "497edbfb-25d8-5a7e-837b-77e29f4ead5a"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "tentacule_3_1",
+              "origin": [
+                -1.5300000000000014,
+                12,
+                -2.6500377355803817
+              ],
+              "color": 0,
+              "uuid": "f1eac47a-1403-5163-b70f-fd045c5299ab",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "visibility": true,
+              "autouv": 0,
+              "children": [
+                "23ed5f47-8385-5a8b-9db6-d86c148b6633",
+                {
+                  "name": "tentacule_3_2",
+                  "origin": [
+                    -1.5300000000000014,
+                    8,
+                    -2.6500377355803817
+                  ],
+                  "color": 0,
+                  "uuid": "010a4546-c880-5631-a512-f3ceaf0f6685",
+                  "export": true,
+                  "mirror_uv": false,
+                  "isOpen": true,
+                  "visibility": true,
+                  "autouv": 0,
+                  "children": [
+                    "88e8698a-56f8-52eb-81b1-ab0c0e999484",
+                    {
+                      "name": "tentacule_3_3",
+                      "origin": [
+                        -1.5300000000000014,
+                        4,
+                        -2.6500377355803817
+                      ],
+                      "color": 0,
+                      "uuid": "89400d5d-f9cc-524d-bbdd-2778196a7aca",
+                      "export": true,
+                      "mirror_uv": false,
+                      "isOpen": true,
+                      "visibility": true,
+                      "autouv": 0,
+                      "children": [
+                        "8ff4c522-9865-541c-8d75-d21c76ab1354"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "textures": []
+}

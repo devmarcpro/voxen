@@ -10,9 +10,13 @@
   "vitesse_base": 1.5,
   "portee": 1.5,
   "type_degats": "percant",
-  "poids_reference": 30,
+  "poids_reference": 18,
   "parts": {
     "manche": "arc",
     "tete": "branches_arc"
-  }
+  },
+  "vitesse_projectile": 46.0,
+  "portee_tir": 90.0,
+  "tension_ms": 900.0,
+  "munition": "fleche"
 }

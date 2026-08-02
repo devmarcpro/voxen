@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "tete_lame_dague",
+  "model_identifier": "tete_lame_dague",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "tete_lame_dague_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -1.5,
+        0,
+        -0.8
+      ],
+      "to": [
+        1.5,
+        8,
+        0.8
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "e838e38f-3ad5-5919-9f94-606ea1951cca"
+    },
+    {
+      "name": "tete_lame_dague_1",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -2.5,
+        0,
+        -1.2
+      ],
+      "to": [
+        2.5,
+        1.5,
+        1.2
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "af3f176e-8f48-571b-be2a-16b8970b7994"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "tete_lame_dague",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "b2c31fa8-d48b-593a-84a2-d194e4066154",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "e838e38f-3ad5-5919-9f94-606ea1951cca",
+        "af3f176e-8f48-571b-be2a-16b8970b7994"
+      ]
+    }
+  ],
+  "textures": []
+}

@@ -42,11 +42,15 @@
   "succession_rule": null,
   "rare_chance": 0.0,
   "combat": {
-    "functionality": "mains_nues",
+    "functionality": "dague",
     "modules": [
       "frappe_lourde"
     ],
-    "durete_naturelle": 8.0
+    "durete_naturelle": 8.0,
+    "arme_materiaux": {
+      "bois": "chene",
+      "minerai": "cuivre"
+    }
   },
   "niveau_combat": 9,
   "world_gen": {

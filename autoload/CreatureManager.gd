@@ -72,6 +72,10 @@ func _preload_creature_models() -> void:
 
 func _ready() -> void:
 	TickManager.tick_entities.connect(_on_tick)
+	# La télégraphie du joueur trouve enfin un auditeur : jusqu'ici l'événement
+	# était émis et personne ne l'écoutait, donc la lecture n'allait que dans un
+	# sens — on lisait les créatures, elles ne lisaient rien.
+	EventBus.attack_telegraphed.connect(_on_attack_telegraphed)
 	_preload_creature_models.call_deferred()
 	# Pool de spawn naturel (12/B.5), extensible sans code. Une créature n'y
 	# entre QUE si elle déclare des `world_gen.biome_tags` : les civils
@@ -153,7 +157,10 @@ func _on_tick(_tick_index: int) -> void:
 			continue
 		var event: Dictionary = creature.tick_step(player_pos, player)
 		if not event.is_empty():
-			_resolve_creature_attack(creature, player)
+			# Le coup est déjà CONSTATÉ par le balayage à la frame : le tick
+			# n'a plus qu'à l'appliquer. `hit` vide = la lame a fini sa course
+			# sans rien toucher.
+			_resolve_creature_attack(creature, player, event.get("hit", {}))
 
 	for creature in dead:
 		_note_resident_death(creature)
@@ -195,7 +202,53 @@ const GUARD_DAMAGE_FACTOR := 0.25
 ## geste demande une lecture de direction ET un timing.
 const CHAMBER_XP := 20.0
 
-func _resolve_creature_attack(creature: Node, player: Node) -> void:
+
+
+## Le joueur vient de verrouiller sa direction : les créatures ASSEZ PROCHES
+## pour être concernées tentent de lever la bonne garde.
+##
+## C'est le pendant exact de la télégraphie que le joueur reçoit d'elles. Le
+## signal existait déjà (`EventBus.attack_telegraphed`) mais personne ne
+## l'écoutait : la lecture n'allait que dans un sens.
+const TELEGRAPH_RANGE := 4.0
+
+
+func _on_attack_telegraphed(attacker: Object, direction_name: String) -> void:
+	# Une créature qui annonce SON coup ne doit pas déclencher la garde des
+	# autres : seul le joueur fait réagir la meute.
+	if attacker is Node and (attacker as Node).has_method("get_position_for_ai"):
+		on_player_telegraph(attacker as Node, direction_name)
+
+
+## Les PNJ tentent-ils de parer ? Vrai en jeu. Les sondes qui mesurent la
+## GÉOMÉTRIE d'un coup le coupent : leur objet est de savoir si la lame atteint
+## la bonne zone, pas de tirer au sort une garde adverse.
+var npc_guard_enabled := true
+
+
+func on_player_telegraph(attacker: Node, direction_name: String) -> void:
+	if not npc_guard_enabled:
+		return
+	if attacker == null or not attacker.has_method("get_position_for_ai"):
+		return
+	var origin: Vector3 = attacker.get_position_for_ai()
+	var direction := MeleeAttack.Direction.ESTOC
+	for candidate in [MeleeAttack.Direction.ESTOC, MeleeAttack.Direction.TAILLE_GAUCHE,
+			MeleeAttack.Direction.TAILLE_DROITE, MeleeAttack.Direction.OVERHEAD]:
+		if MeleeAttack.direction_name(candidate) == direction_name:
+			direction = candidate
+			break
+	for creature in creatures:
+		if not is_instance_valid(creature) or creature.is_dead():
+			continue
+		if creature.dimension != WorldManager.active_dimension:
+			continue
+		if creature.logical_position.distance_to(origin) > TELEGRAPH_RANGE:
+			continue
+		creature.react_to_telegraph(direction)
+
+
+func _resolve_creature_attack(creature: Node, player: Node, zone_hit: Dictionary) -> void:
 	var functionality: Dictionary = creature.combat_functionality()
 	# Dureté de l'arme naturelle : donnée B.5 (`combat.durete_naturelle`),
 	# 10 (étalon demi-fer, A.4.1) par défaut — plus de valeur en dur unique
@@ -227,9 +280,11 @@ func _resolve_creature_attack(creature: Node, player: Node) -> void:
 		if player_skills != null:
 			player_skills.gain_xp("esquive", CHAMBER_XP)
 		return
-	var reach := float(functionality.get("portee", 1.5))
-	var body: Vector3 = player.get_position_for_ai() + Vector3(0.0, -0.9, 0.0)
-	if creature.logical_position.distance_to(body) > reach + 0.5:
+	# LE COUP EST GÉOMÉTRIQUE, ET CONSTATÉ À LA FRAME (2026-08-02). C'était un
+	# test de rayon, puis un échantillonnage de l'arc au tick. C'est désormais
+	# la créature elle-même qui promène la tête de son arme image par image,
+	# comme le joueur promène la sienne — le tick ne fait plus qu'appliquer.
+	if zone_hit.is_empty():
 		if player_skills != null:
 			player_skills.gain_xp("esquive", DODGE_XP_PER_MISS)
 		return
@@ -239,14 +294,44 @@ func _resolve_creature_attack(creature: Node, player: Node) -> void:
 	# garde casse et le coup passe en entier (stagger).
 	var guard: Dictionary = player.call("guard_state")
 	var creature_stats := WeaponStats.derive(functionality, {})
-	var zone_mult := 1.0
+	# La zone atteinte porte son multiplicateur, exactement comme quand le
+	# joueur frappe : un coup à la tête fait mal des deux côtés du duel.
+	var zone_mult := float(zone_hit.get("mult", 1.0))
+	# SWEET SPOT DES DEUX CÔTÉS (2026-08-02). Le joueur glissait déjà en frappant
+	# du manche ; les créatures, elles, blessaient uniformément sur toute leur
+	# tête. Le talon d'un fer coupe mal — pour un bandit comme pour toi.
+	var sweet := WeaponStats.sweet_spot_factor(
+		float(zone_hit.get("grip_distance", 0.0)),
+		float(zone_hit.get("reach", 1.0)),
+		float(zone_hit.get("head_start", -1.0)))
+	if sweet <= 0.001:
+		# Coup GLISSANT : la créature a touché du talon, aucun dégât. Le joueur
+		# doit savoir qu'il vient d'échapper à quelque chose.
+		EventBus.damage_dealt.emit(zone_hit["point"], 0, false, true)
+		return
+	zone_mult *= sweet
+	# BONUS DE VITESSE, mesuré pendant le balayage : charger fait mal, reculer
+	# fait moins mal. Il n'existait que pour le joueur.
+	zone_mult *= float(zone_hit.get("speed", 1.0))
 	var penetration := float(creature_stats["penetration"])
 	var guarded := false
 	# BLOCAGE DIRECTIONNEL : la garde ne protege que si elle est orientee
 	# du bon cote. Une garde tenue dans la mauvaise direction ne sert a
 	# RIEN — c'est ce qui fait du duel un echange de lectures plutot qu'un
 	# bouton de defense maintenu.
-	var covered: bool = player.call("guard_covers", creature.attack_direction)
+	# CRUSHTHROUGH, dans l'autre sens : un PNJ au marteau traverse ta garde. La
+	# règle est lue au MÊME endroit que la tienne (`WeaponStats.crushes_through`)
+	# — une mécanique aussi punitive ne peut pas exister en deux versions.
+	var crushes := WeaponStats.crushes_through(creature_stats, creature.attack_direction)
+	var would_cover: bool = bool(player.call("guard_covers", creature.attack_direction))
+	var crushed_guard := crushes and would_cover
+	if crushed_guard:
+		EventBus.ui_notification.emit("ui.combat.garde_ecrasee")
+	var covered: bool = would_cover and not crushes
+	if crushed_guard:
+		# La garde a cédé mais elle a encaissé une part du choc : même réduction
+		# que dans l'autre sens, lue sur la même constante.
+		zone_mult *= WeaponStats.CRUSHTHROUGH_DAMAGE
 	if covered:
 		guarded = player.call("absorb_on_guard", float(creature_stats["stamina_drain"]),
 				bool(guard.get("parry", false)))

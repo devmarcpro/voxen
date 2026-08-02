@@ -6,7 +6,7 @@
   "combat_skill": "bouclier",
   "couverture": 1,
   "absorption": 0.55,
-  "poids_reference": 34,
+  "poids_reference": 42,
   "parts": {
     "manche": "poignee",
     "tete": "ecu"

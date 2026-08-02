@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "manche_poignee_longue",
+  "model_identifier": "manche_poignee_longue",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "manche_poignee_longue_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -1.5,
+        0,
+        -1.5
+      ],
+      "to": [
+        1.5,
+        13,
+        1.5
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "a05cd5a7-e101-5b82-b5a0-4d068461b218"
+    },
+    {
+      "name": "manche_poignee_longue_1",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -3.0,
+        0,
+        -3.0
+      ],
+      "to": [
+        3.0,
+        2,
+        3.0
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "368bb387-c6ce-5b8b-a673-50ae51282c49"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "manche_poignee_longue",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "f7e88317-a9cf-57fa-9b69-88401037738f",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "a05cd5a7-e101-5b82-b5a0-4d068461b218",
+        "368bb387-c6ce-5b8b-a673-50ae51282c49"
+      ]
+    }
+  ],
+  "textures": []
+}

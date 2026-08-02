@@ -1,0 +1,2621 @@
+{
+  "_comment": "Genere par tools/generate_creature_rigs.py — NE PAS EDITER A LA MAIN. Famille de rig, calques de couleur et zones de coup de chaque modele, lus par scenes/entities/creature_body.gd et creature.gd.",
+  "especes": {
+    "abeille": {
+      "famille": "insecte_volant",
+      "palette": {
+        "dos": [
+          0.9,
+          0.72,
+          0.16
+        ],
+        "ventre": [
+          0.3,
+          0.26,
+          0.18
+        ],
+        "pattes": [
+          0.24,
+          0.2,
+          0.14
+        ],
+        "detail": [
+          0.2,
+          0.18,
+          0.16
+        ]
+      },
+      "calques": {
+        "mesh_abdomen": "dos",
+        "mesh_thorax": "dos",
+        "mesh_tete": "ventre",
+        "mesh_museau": "detail",
+        "mesh_antenne_droite_1": "detail",
+        "mesh_antenne_droite_2": "detail",
+        "mesh_antenne_gauche_1": "detail",
+        "mesh_antenne_gauche_2": "detail",
+        "mesh_cuisse_1_droite": "pattes",
+        "mesh_mollet_1_droite": "pattes",
+        "mesh_pied_1_droite": "detail",
+        "mesh_cuisse_1_gauche": "pattes",
+        "mesh_mollet_1_gauche": "pattes",
+        "mesh_pied_1_gauche": "detail",
+        "mesh_cuisse_2_droite": "pattes",
+        "mesh_mollet_2_droite": "pattes",
+        "mesh_pied_2_droite": "detail",
+        "mesh_cuisse_2_gauche": "pattes",
+        "mesh_mollet_2_gauche": "pattes",
+        "mesh_pied_2_gauche": "detail",
+        "mesh_cuisse_3_droite": "pattes",
+        "mesh_mollet_3_droite": "pattes",
+        "mesh_pied_3_droite": "detail",
+        "mesh_cuisse_3_gauche": "pattes",
+        "mesh_mollet_3_gauche": "pattes",
+        "mesh_pied_3_gauche": "detail",
+        "mesh_aile_avant_droite": "ventre",
+        "mesh_plume_avant_droite": "ventre",
+        "mesh_aile_avant_gauche": "ventre",
+        "mesh_plume_avant_gauche": "ventre",
+        "mesh_aile_arriere_droite": "ventre",
+        "mesh_plume_arriere_droite": "ventre",
+        "mesh_aile_arriere_gauche": "ventre",
+        "mesh_plume_arriere_gauche": "ventre"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.062,
+            0.084,
+            -0.328
+          ],
+          "size": [
+            0.125,
+            0.125,
+            0.172
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.147,
+            0.0,
+            -0.16
+          ],
+          "size": [
+            0.295,
+            0.125,
+            0.157
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "ailes",
+          "min": [
+            -0.359,
+            0.206,
+            -0.103
+          ],
+          "size": [
+            0.719,
+            0.025,
+            0.184
+          ],
+          "mult": 0.5
+        },
+        {
+          "id": "antennes",
+          "min": [
+            -0.059,
+            0.169,
+            -0.481
+          ],
+          "size": [
+            0.119,
+            0.044,
+            0.2
+          ],
+          "mult": 0.3
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.078,
+            0.062,
+            -0.156
+          ],
+          "size": [
+            0.156,
+            0.156,
+            0.406
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "aigle": {
+      "famille": "volant",
+      "palette": {
+        "dos": [
+          0.35,
+          0.25,
+          0.17
+        ],
+        "ventre": [
+          0.8,
+          0.76,
+          0.7
+        ],
+        "pattes": [
+          0.85,
+          0.66,
+          0.2
+        ],
+        "detail": [
+          0.92,
+          0.78,
+          0.3
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_poitrail": "ventre",
+        "mesh_cou": "ventre",
+        "mesh_tete": "ventre",
+        "mesh_museau": "detail",
+        "mesh_queue": "dos",
+        "mesh_aile_droite": "dos",
+        "mesh_avantaile_droite": "dos",
+        "mesh_plume_droite": "detail",
+        "mesh_aile_gauche": "dos",
+        "mesh_avantaile_gauche": "dos",
+        "mesh_plume_gauche": "detail",
+        "mesh_cuisse_droite": "pattes",
+        "mesh_mollet_droite": "pattes",
+        "mesh_serre_droite": "detail",
+        "mesh_cuisse_gauche": "pattes",
+        "mesh_mollet_gauche": "pattes",
+        "mesh_serre_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.094,
+            0.484,
+            -0.672
+          ],
+          "size": [
+            0.188,
+            0.188,
+            0.297
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.122,
+            0.0,
+            -0.072
+          ],
+          "size": [
+            0.245,
+            0.281,
+            0.162
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "ailes",
+          "min": [
+            -1.156,
+            0.43,
+            -0.138
+          ],
+          "size": [
+            2.312,
+            0.062,
+            0.225
+          ],
+          "mult": 0.5
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.125,
+            0.25,
+            -0.375
+          ],
+          "size": [
+            0.25,
+            0.303,
+            0.938
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "araignee": {
+      "famille": "arthropode",
+      "palette": {
+        "dos": [
+          0.18,
+          0.16,
+          0.2
+        ],
+        "ventre": [
+          0.3,
+          0.26,
+          0.3
+        ],
+        "pattes": [
+          0.16,
+          0.14,
+          0.18
+        ],
+        "detail": [
+          0.72,
+          0.18,
+          0.2
+        ]
+      },
+      "calques": {
+        "mesh_abdomen": "dos",
+        "mesh_thorax": "dos",
+        "mesh_tete": "ventre",
+        "mesh_museau": "detail",
+        "mesh_cuisse_1_droite": "pattes",
+        "mesh_mollet_1_droite": "pattes",
+        "mesh_pied_1_droite": "detail",
+        "mesh_cuisse_1_gauche": "pattes",
+        "mesh_mollet_1_gauche": "pattes",
+        "mesh_pied_1_gauche": "detail",
+        "mesh_cuisse_2_droite": "pattes",
+        "mesh_mollet_2_droite": "pattes",
+        "mesh_pied_2_droite": "detail",
+        "mesh_cuisse_2_gauche": "pattes",
+        "mesh_mollet_2_gauche": "pattes",
+        "mesh_pied_2_gauche": "detail",
+        "mesh_cuisse_3_droite": "pattes",
+        "mesh_mollet_3_droite": "pattes",
+        "mesh_pied_3_droite": "detail",
+        "mesh_cuisse_3_gauche": "pattes",
+        "mesh_mollet_3_gauche": "pattes",
+        "mesh_pied_3_gauche": "detail",
+        "mesh_cuisse_4_droite": "pattes",
+        "mesh_mollet_4_droite": "pattes",
+        "mesh_pied_4_droite": "detail",
+        "mesh_cuisse_4_gauche": "pattes",
+        "mesh_mollet_4_gauche": "pattes",
+        "mesh_pied_4_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.062,
+            0.272,
+            -0.438
+          ],
+          "size": [
+            0.125,
+            0.125,
+            0.188
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.241,
+            0.0,
+            -0.269
+          ],
+          "size": [
+            0.481,
+            0.312,
+            0.275
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.141,
+            0.25,
+            -0.25
+          ],
+          "size": [
+            0.281,
+            0.25,
+            0.562
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "autruche": {
+      "famille": "bipede",
+      "palette": {
+        "dos": [
+          0.24,
+          0.22,
+          0.22
+        ],
+        "ventre": [
+          0.86,
+          0.84,
+          0.78
+        ],
+        "pattes": [
+          0.82,
+          0.64,
+          0.34
+        ],
+        "detail": [
+          0.9,
+          0.7,
+          0.3
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_poitrail": "ventre",
+        "mesh_cou_1": "ventre",
+        "mesh_cou_2": "ventre",
+        "mesh_cou_3": "ventre",
+        "mesh_tete": "ventre",
+        "mesh_museau": "detail",
+        "mesh_queue_1": "dos",
+        "mesh_cuisse_droite": "pattes",
+        "mesh_mollet_droite": "pattes",
+        "mesh_serre_droite": "detail",
+        "mesh_cuisse_gauche": "pattes",
+        "mesh_mollet_gauche": "pattes",
+        "mesh_serre_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.078,
+            1.145,
+            -1.0
+          ],
+          "size": [
+            0.156,
+            0.156,
+            0.25
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.135,
+            0.0,
+            -0.072
+          ],
+          "size": [
+            0.27,
+            0.656,
+            0.16
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.141,
+            0.578,
+            -0.75
+          ],
+          "size": [
+            0.281,
+            0.376,
+            1.188
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "cerf": {
+      "famille": "quadrupede",
+      "palette": {
+        "dos": [
+          0.58,
+          0.4,
+          0.24
+        ],
+        "ventre": [
+          0.82,
+          0.72,
+          0.58
+        ],
+        "pattes": [
+          0.44,
+          0.3,
+          0.18
+        ],
+        "detail": [
+          0.88,
+          0.82,
+          0.7
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_ventre": "ventre",
+        "mesh_poitrail": "dos",
+        "mesh_cou": "dos",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_oreille_droite": "detail",
+        "mesh_oreille_gauche": "detail",
+        "mesh_bois_droite": "detail",
+        "mesh_bois_gauche": "detail",
+        "mesh_queue_1": "dos",
+        "mesh_cuisse_avant_droite": "pattes",
+        "mesh_mollet_avant_droite": "pattes",
+        "mesh_pied_avant_droite": "detail",
+        "mesh_cuisse_avant_gauche": "pattes",
+        "mesh_mollet_avant_gauche": "pattes",
+        "mesh_pied_avant_gauche": "detail",
+        "mesh_cuisse_arriere_droite": "pattes",
+        "mesh_mollet_arriere_droite": "pattes",
+        "mesh_pied_arriere_droite": "detail",
+        "mesh_cuisse_arriere_gauche": "pattes",
+        "mesh_mollet_arriere_gauche": "pattes",
+        "mesh_pied_arriere_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.155,
+            0.927,
+            -1.062
+          ],
+          "size": [
+            0.31,
+            0.519,
+            0.45
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.148,
+            0.0,
+            -0.375
+          ],
+          "size": [
+            0.297,
+            0.625,
+            0.711
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.141,
+            0.547,
+            -0.688
+          ],
+          "size": [
+            0.281,
+            0.359,
+            1.25
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "chat": {
+      "famille": "quadrupede",
+      "palette": {
+        "dos": [
+          0.42,
+          0.36,
+          0.32
+        ],
+        "ventre": [
+          0.78,
+          0.74,
+          0.68
+        ],
+        "pattes": [
+          0.36,
+          0.31,
+          0.28
+        ],
+        "detail": [
+          0.9,
+          0.6,
+          0.62
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_ventre": "ventre",
+        "mesh_poitrail": "dos",
+        "mesh_cou": "dos",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_oreille_droite": "detail",
+        "mesh_oreille_gauche": "detail",
+        "mesh_queue_1": "dos",
+        "mesh_queue_2": "dos",
+        "mesh_queue_3": "dos",
+        "mesh_cuisse_avant_droite": "pattes",
+        "mesh_mollet_avant_droite": "pattes",
+        "mesh_pied_avant_droite": "detail",
+        "mesh_cuisse_avant_gauche": "pattes",
+        "mesh_mollet_avant_gauche": "pattes",
+        "mesh_pied_avant_gauche": "detail",
+        "mesh_cuisse_arriere_droite": "pattes",
+        "mesh_mollet_arriere_droite": "pattes",
+        "mesh_pied_arriere_droite": "detail",
+        "mesh_cuisse_arriere_gauche": "pattes",
+        "mesh_mollet_arriere_gauche": "pattes",
+        "mesh_pied_arriere_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.101,
+            0.369,
+            -0.578
+          ],
+          "size": [
+            0.201,
+            0.266,
+            0.25
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.099,
+            0.0,
+            -0.223
+          ],
+          "size": [
+            0.198,
+            0.312,
+            0.419
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.094,
+            0.234,
+            -0.328
+          ],
+          "size": [
+            0.188,
+            0.216,
+            0.859
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "chauve_souris": {
+      "famille": "volant",
+      "palette": {
+        "dos": [
+          0.26,
+          0.2,
+          0.2
+        ],
+        "ventre": [
+          0.42,
+          0.32,
+          0.3
+        ],
+        "pattes": [
+          0.3,
+          0.24,
+          0.24
+        ],
+        "detail": [
+          0.68,
+          0.4,
+          0.38
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_poitrail": "ventre",
+        "mesh_cou": "ventre",
+        "mesh_tete": "ventre",
+        "mesh_museau": "detail",
+        "mesh_oreille_droite": "detail",
+        "mesh_oreille_gauche": "detail",
+        "mesh_queue": "dos",
+        "mesh_aile_droite": "dos",
+        "mesh_avantaile_droite": "dos",
+        "mesh_plume_droite": "detail",
+        "mesh_aile_gauche": "dos",
+        "mesh_avantaile_gauche": "dos",
+        "mesh_plume_gauche": "detail",
+        "mesh_cuisse_droite": "pattes",
+        "mesh_mollet_droite": "pattes",
+        "mesh_serre_droite": "detail",
+        "mesh_cuisse_gauche": "pattes",
+        "mesh_mollet_gauche": "pattes",
+        "mesh_serre_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.109,
+            0.281,
+            -0.359
+          ],
+          "size": [
+            0.217,
+            0.219,
+            0.172
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.096,
+            0.0,
+            -0.088
+          ],
+          "size": [
+            0.193,
+            0.125,
+            0.162
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "ailes",
+          "min": [
+            -0.766,
+            0.216,
+            -0.077
+          ],
+          "size": [
+            1.531,
+            0.037,
+            0.127
+          ],
+          "mult": 0.5
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.078,
+            0.094,
+            -0.188
+          ],
+          "size": [
+            0.156,
+            0.228,
+            0.422
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "cheval": {
+      "famille": "quadrupede",
+      "palette": {
+        "dos": [
+          0.45,
+          0.29,
+          0.18
+        ],
+        "ventre": [
+          0.55,
+          0.38,
+          0.24
+        ],
+        "pattes": [
+          0.28,
+          0.19,
+          0.12
+        ],
+        "detail": [
+          0.16,
+          0.12,
+          0.1
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_ventre": "ventre",
+        "mesh_poitrail": "dos",
+        "mesh_cou": "dos",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_oreille_droite": "detail",
+        "mesh_oreille_gauche": "detail",
+        "mesh_queue_1": "dos",
+        "mesh_queue_2": "dos",
+        "mesh_queue_3": "dos",
+        "mesh_cuisse_avant_droite": "pattes",
+        "mesh_mollet_avant_droite": "pattes",
+        "mesh_pied_avant_droite": "detail",
+        "mesh_cuisse_avant_gauche": "pattes",
+        "mesh_mollet_avant_gauche": "pattes",
+        "mesh_pied_avant_gauche": "detail",
+        "mesh_cuisse_arriere_droite": "pattes",
+        "mesh_mollet_arriere_droite": "pattes",
+        "mesh_pied_arriere_droite": "detail",
+        "mesh_cuisse_arriere_gauche": "pattes",
+        "mesh_mollet_arriere_gauche": "pattes",
+        "mesh_pied_arriere_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.143,
+            1.084,
+            -1.281
+          ],
+          "size": [
+            0.286,
+            0.391,
+            0.469
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.181,
+            0.0,
+            -0.456
+          ],
+          "size": [
+            0.363,
+            0.719,
+            0.865
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.172,
+            0.641,
+            -0.812
+          ],
+          "size": [
+            0.344,
+            0.423,
+            1.781
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "crabe": {
+      "famille": "arthropode",
+      "palette": {
+        "dos": [
+          0.66,
+          0.26,
+          0.2
+        ],
+        "ventre": [
+          0.86,
+          0.72,
+          0.58
+        ],
+        "pattes": [
+          0.58,
+          0.22,
+          0.17
+        ],
+        "detail": [
+          0.92,
+          0.84,
+          0.7
+        ]
+      },
+      "calques": {
+        "mesh_abdomen": "dos",
+        "mesh_thorax": "dos",
+        "mesh_tete": "ventre",
+        "mesh_museau": "detail",
+        "mesh_pince_droite": "detail",
+        "mesh_pince_gauche": "detail",
+        "mesh_cuisse_1_droite": "pattes",
+        "mesh_mollet_1_droite": "pattes",
+        "mesh_pied_1_droite": "detail",
+        "mesh_cuisse_1_gauche": "pattes",
+        "mesh_mollet_1_gauche": "pattes",
+        "mesh_pied_1_gauche": "detail",
+        "mesh_cuisse_2_droite": "pattes",
+        "mesh_mollet_2_droite": "pattes",
+        "mesh_pied_2_droite": "detail",
+        "mesh_cuisse_2_gauche": "pattes",
+        "mesh_mollet_2_gauche": "pattes",
+        "mesh_pied_2_gauche": "detail",
+        "mesh_cuisse_3_droite": "pattes",
+        "mesh_mollet_3_droite": "pattes",
+        "mesh_pied_3_droite": "detail",
+        "mesh_cuisse_3_gauche": "pattes",
+        "mesh_mollet_3_gauche": "pattes",
+        "mesh_pied_3_gauche": "detail",
+        "mesh_cuisse_4_droite": "pattes",
+        "mesh_mollet_4_droite": "pattes",
+        "mesh_pied_4_droite": "detail",
+        "mesh_cuisse_4_gauche": "pattes",
+        "mesh_mollet_4_gauche": "pattes",
+        "mesh_pied_4_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.047,
+            0.192,
+            -0.406
+          ],
+          "size": [
+            0.094,
+            0.094,
+            0.125
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.343,
+            0.0,
+            -0.286
+          ],
+          "size": [
+            0.685,
+            0.219,
+            0.281
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "pinces",
+          "min": [
+            -0.3,
+            0.147,
+            -0.469
+          ],
+          "size": [
+            0.6,
+            0.113,
+            0.188
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.188,
+            0.156,
+            -0.281
+          ],
+          "size": [
+            0.375,
+            0.156,
+            0.375
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "crocodile": {
+      "famille": "quadrupede",
+      "palette": {
+        "dos": [
+          0.3,
+          0.38,
+          0.26
+        ],
+        "ventre": [
+          0.68,
+          0.68,
+          0.48
+        ],
+        "pattes": [
+          0.26,
+          0.33,
+          0.23
+        ],
+        "detail": [
+          0.85,
+          0.8,
+          0.3
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_ventre": "ventre",
+        "mesh_poitrail": "dos",
+        "mesh_cou": "dos",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_queue_1": "dos",
+        "mesh_queue_2": "dos",
+        "mesh_queue_3": "dos",
+        "mesh_queue_4": "dos",
+        "mesh_cuisse_avant_droite": "pattes",
+        "mesh_mollet_avant_droite": "pattes",
+        "mesh_pied_avant_droite": "detail",
+        "mesh_cuisse_avant_gauche": "pattes",
+        "mesh_mollet_avant_gauche": "pattes",
+        "mesh_pied_avant_gauche": "detail",
+        "mesh_cuisse_arriere_droite": "pattes",
+        "mesh_mollet_arriere_droite": "pattes",
+        "mesh_pied_arriere_droite": "detail",
+        "mesh_cuisse_arriere_gauche": "pattes",
+        "mesh_mollet_arriere_gauche": "pattes",
+        "mesh_pied_arriere_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.141,
+            0.186,
+            -1.219
+          ],
+          "size": [
+            0.281,
+            0.281,
+            0.625
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.323,
+            0.0,
+            -0.466
+          ],
+          "size": [
+            0.646,
+            0.219,
+            0.88
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.188,
+            0.141,
+            -0.594
+          ],
+          "size": [
+            0.375,
+            0.325,
+            1.938
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "dragon": {
+      "famille": "draconique",
+      "palette": {
+        "dos": [
+          0.34,
+          0.2,
+          0.26
+        ],
+        "ventre": [
+          0.72,
+          0.58,
+          0.34
+        ],
+        "pattes": [
+          0.28,
+          0.16,
+          0.21
+        ],
+        "detail": [
+          0.9,
+          0.7,
+          0.22
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_ventre": "ventre",
+        "mesh_poitrail": "dos",
+        "mesh_cou_1": "dos",
+        "mesh_cou_2": "dos",
+        "mesh_cou_3": "dos",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_corne_droite": "detail",
+        "mesh_corne_gauche": "detail",
+        "mesh_queue_1": "dos",
+        "mesh_queue_2": "dos",
+        "mesh_queue_3": "dos",
+        "mesh_queue_4": "dos",
+        "mesh_queue_5": "dos",
+        "mesh_aile_droite": "dos",
+        "mesh_avantaile_droite": "dos",
+        "mesh_plume_droite": "ventre",
+        "mesh_aile_gauche": "dos",
+        "mesh_avantaile_gauche": "dos",
+        "mesh_plume_gauche": "ventre",
+        "mesh_cuisse_avant_droite": "pattes",
+        "mesh_mollet_avant_droite": "pattes",
+        "mesh_pied_avant_droite": "detail",
+        "mesh_cuisse_avant_gauche": "pattes",
+        "mesh_mollet_avant_gauche": "pattes",
+        "mesh_pied_avant_gauche": "detail",
+        "mesh_cuisse_arriere_droite": "pattes",
+        "mesh_mollet_arriere_droite": "pattes",
+        "mesh_pied_arriere_droite": "detail",
+        "mesh_cuisse_arriere_gauche": "pattes",
+        "mesh_mollet_arriere_gauche": "pattes",
+        "mesh_pied_arriere_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.156,
+            0.991,
+            -1.625
+          ],
+          "size": [
+            0.312,
+            0.469,
+            0.531
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.214,
+            0.0,
+            -0.435
+          ],
+          "size": [
+            0.427,
+            0.531,
+            0.817
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "ailes",
+          "min": [
+            -1.391,
+            0.831,
+            -0.319
+          ],
+          "size": [
+            2.781,
+            0.062,
+            0.584
+          ],
+          "mult": 0.5
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.203,
+            0.453,
+            -1.094
+          ],
+          "size": [
+            0.406,
+            0.469,
+            2.688
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "lezard": {
+      "famille": "quadrupede",
+      "palette": {
+        "dos": [
+          0.36,
+          0.52,
+          0.28
+        ],
+        "ventre": [
+          0.74,
+          0.76,
+          0.5
+        ],
+        "pattes": [
+          0.32,
+          0.46,
+          0.26
+        ],
+        "detail": [
+          0.88,
+          0.7,
+          0.2
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_ventre": "ventre",
+        "mesh_poitrail": "dos",
+        "mesh_cou": "dos",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_queue_1": "dos",
+        "mesh_queue_2": "dos",
+        "mesh_queue_3": "dos",
+        "mesh_queue_4": "dos",
+        "mesh_cuisse_avant_droite": "pattes",
+        "mesh_mollet_avant_droite": "pattes",
+        "mesh_pied_avant_droite": "detail",
+        "mesh_cuisse_avant_gauche": "pattes",
+        "mesh_mollet_avant_gauche": "pattes",
+        "mesh_pied_avant_gauche": "detail",
+        "mesh_cuisse_arriere_droite": "pattes",
+        "mesh_mollet_arriere_droite": "pattes",
+        "mesh_pied_arriere_droite": "detail",
+        "mesh_cuisse_arriere_gauche": "pattes",
+        "mesh_mollet_arriere_gauche": "pattes",
+        "mesh_pied_arriere_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.078,
+            0.141,
+            -0.562
+          ],
+          "size": [
+            0.156,
+            0.156,
+            0.25
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.177,
+            0.0,
+            -0.223
+          ],
+          "size": [
+            0.354,
+            0.156,
+            0.419
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.094,
+            0.078,
+            -0.312
+          ],
+          "size": [
+            0.188,
+            0.191,
+            1.062
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "loup": {
+      "famille": "quadrupede",
+      "palette": {
+        "dos": [
+          0.4,
+          0.4,
+          0.42
+        ],
+        "ventre": [
+          0.72,
+          0.7,
+          0.66
+        ],
+        "pattes": [
+          0.33,
+          0.33,
+          0.35
+        ],
+        "detail": [
+          0.2,
+          0.18,
+          0.18
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_ventre": "ventre",
+        "mesh_poitrail": "dos",
+        "mesh_cou": "dos",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_oreille_droite": "detail",
+        "mesh_oreille_gauche": "detail",
+        "mesh_queue_1": "dos",
+        "mesh_queue_2": "dos",
+        "mesh_queue_3": "dos",
+        "mesh_cuisse_avant_droite": "pattes",
+        "mesh_mollet_avant_droite": "pattes",
+        "mesh_pied_avant_droite": "detail",
+        "mesh_cuisse_avant_gauche": "pattes",
+        "mesh_mollet_avant_gauche": "pattes",
+        "mesh_pied_avant_gauche": "detail",
+        "mesh_cuisse_arriere_droite": "pattes",
+        "mesh_mollet_arriere_droite": "pattes",
+        "mesh_pied_arriere_droite": "detail",
+        "mesh_cuisse_arriere_gauche": "pattes",
+        "mesh_mollet_arriere_gauche": "pattes",
+        "mesh_pied_arriere_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.143,
+            0.647,
+            -0.984
+          ],
+          "size": [
+            0.286,
+            0.391,
+            0.438
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.165,
+            0.0,
+            -0.364
+          ],
+          "size": [
+            0.33,
+            0.5,
+            0.685
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.156,
+            0.422,
+            -0.547
+          ],
+          "size": [
+            0.312,
+            0.384,
+            1.297
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "meduse": {
+      "famille": "flottant",
+      "palette": {
+        "dos": [
+          0.62,
+          0.58,
+          0.82
+        ],
+        "ventre": [
+          0.8,
+          0.78,
+          0.92
+        ],
+        "pattes": [
+          0.62,
+          0.58,
+          0.82
+        ],
+        "detail": [
+          0.9,
+          0.7,
+          0.88
+        ]
+      },
+      "calques": {
+        "mesh_cloche": "dos",
+        "mesh_dome": "ventre",
+        "mesh_tentacule_1_1": "dos",
+        "mesh_tentacule_1_2": "dos",
+        "mesh_tentacule_1_3": "dos",
+        "mesh_tentacule_1_4": "dos",
+        "mesh_tentacule_1_5": "dos",
+        "mesh_tentacule_2_1": "ventre",
+        "mesh_tentacule_2_2": "ventre",
+        "mesh_tentacule_2_3": "ventre",
+        "mesh_tentacule_2_4": "ventre",
+        "mesh_tentacule_2_5": "ventre",
+        "mesh_tentacule_3_1": "dos",
+        "mesh_tentacule_3_2": "dos",
+        "mesh_tentacule_3_3": "dos",
+        "mesh_tentacule_3_4": "dos",
+        "mesh_tentacule_3_5": "dos",
+        "mesh_tentacule_4_1": "ventre",
+        "mesh_tentacule_4_2": "ventre",
+        "mesh_tentacule_4_3": "ventre",
+        "mesh_tentacule_4_4": "ventre",
+        "mesh_tentacule_4_5": "ventre",
+        "mesh_tentacule_5_1": "dos",
+        "mesh_tentacule_5_2": "dos",
+        "mesh_tentacule_5_3": "dos",
+        "mesh_tentacule_5_4": "dos",
+        "mesh_tentacule_5_5": "dos",
+        "mesh_tentacule_6_1": "ventre",
+        "mesh_tentacule_6_2": "ventre",
+        "mesh_tentacule_6_3": "ventre",
+        "mesh_tentacule_6_4": "ventre",
+        "mesh_tentacule_6_5": "ventre"
+      },
+      "hitboxes": [
+        {
+          "id": "tentacules",
+          "min": [
+            -0.138,
+            0.0,
+            -0.123
+          ],
+          "size": [
+            0.275,
+            0.781,
+            0.247
+          ],
+          "mult": 0.5
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.156,
+            0.781,
+            -0.156
+          ],
+          "size": [
+            0.312,
+            0.281,
+            0.312
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "mille_pattes": {
+      "famille": "segmente",
+      "palette": {
+        "dos": [
+          0.42,
+          0.22,
+          0.16
+        ],
+        "ventre": [
+          0.58,
+          0.34,
+          0.22
+        ],
+        "pattes": [
+          0.36,
+          0.18,
+          0.13
+        ],
+        "detail": [
+          0.88,
+          0.74,
+          0.2
+        ]
+      },
+      "calques": {
+        "mesh_corps_1": "dos",
+        "mesh_cuisse_1_droite": "pattes",
+        "mesh_mollet_1_droite": "pattes",
+        "mesh_pied_1_droite": "detail",
+        "mesh_cuisse_1_gauche": "pattes",
+        "mesh_mollet_1_gauche": "pattes",
+        "mesh_pied_1_gauche": "detail",
+        "mesh_corps_2": "ventre",
+        "mesh_cuisse_2_droite": "pattes",
+        "mesh_mollet_2_droite": "pattes",
+        "mesh_pied_2_droite": "detail",
+        "mesh_cuisse_2_gauche": "pattes",
+        "mesh_mollet_2_gauche": "pattes",
+        "mesh_pied_2_gauche": "detail",
+        "mesh_corps_3": "dos",
+        "mesh_cuisse_3_droite": "pattes",
+        "mesh_mollet_3_droite": "pattes",
+        "mesh_pied_3_droite": "detail",
+        "mesh_cuisse_3_gauche": "pattes",
+        "mesh_mollet_3_gauche": "pattes",
+        "mesh_pied_3_gauche": "detail",
+        "mesh_corps_4": "ventre",
+        "mesh_cuisse_4_droite": "pattes",
+        "mesh_mollet_4_droite": "pattes",
+        "mesh_pied_4_droite": "detail",
+        "mesh_cuisse_4_gauche": "pattes",
+        "mesh_mollet_4_gauche": "pattes",
+        "mesh_pied_4_gauche": "detail",
+        "mesh_corps_5": "dos",
+        "mesh_cuisse_5_droite": "pattes",
+        "mesh_mollet_5_droite": "pattes",
+        "mesh_pied_5_droite": "detail",
+        "mesh_cuisse_5_gauche": "pattes",
+        "mesh_mollet_5_gauche": "pattes",
+        "mesh_pied_5_gauche": "detail",
+        "mesh_corps_6": "ventre",
+        "mesh_cuisse_6_droite": "pattes",
+        "mesh_mollet_6_droite": "pattes",
+        "mesh_pied_6_droite": "detail",
+        "mesh_cuisse_6_gauche": "pattes",
+        "mesh_mollet_6_gauche": "pattes",
+        "mesh_pied_6_gauche": "detail",
+        "mesh_corps_7": "dos",
+        "mesh_cuisse_7_droite": "pattes",
+        "mesh_mollet_7_droite": "pattes",
+        "mesh_pied_7_droite": "detail",
+        "mesh_cuisse_7_gauche": "pattes",
+        "mesh_mollet_7_gauche": "pattes",
+        "mesh_pied_7_gauche": "detail",
+        "mesh_corps_8": "ventre",
+        "mesh_cuisse_8_droite": "pattes",
+        "mesh_mollet_8_droite": "pattes",
+        "mesh_pied_8_droite": "detail",
+        "mesh_cuisse_8_gauche": "pattes",
+        "mesh_mollet_8_gauche": "pattes",
+        "mesh_pied_8_gauche": "detail",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_antenne_droite_1": "detail",
+        "mesh_antenne_droite_2": "detail",
+        "mesh_antenne_gauche_1": "detail",
+        "mesh_antenne_gauche_2": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.062,
+            0.119,
+            -0.794
+          ],
+          "size": [
+            0.125,
+            0.125,
+            0.169
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.135,
+            0.0,
+            -0.589
+          ],
+          "size": [
+            0.27,
+            0.125,
+            1.143
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "antennes",
+          "min": [
+            -0.053,
+            0.197,
+            -0.925
+          ],
+          "size": [
+            0.106,
+            0.031,
+            0.175
+          ],
+          "mult": 0.3
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.081,
+            0.094,
+            -0.625
+          ],
+          "size": [
+            0.163,
+            0.162,
+            1.238
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "ours": {
+      "famille": "quadrupede",
+      "palette": {
+        "dos": [
+          0.33,
+          0.22,
+          0.14
+        ],
+        "ventre": [
+          0.44,
+          0.31,
+          0.2
+        ],
+        "pattes": [
+          0.24,
+          0.16,
+          0.1
+        ],
+        "detail": [
+          0.15,
+          0.11,
+          0.08
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_ventre": "ventre",
+        "mesh_poitrail": "dos",
+        "mesh_cou": "dos",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_oreille_droite": "detail",
+        "mesh_oreille_gauche": "detail",
+        "mesh_queue_1": "dos",
+        "mesh_cuisse_avant_droite": "pattes",
+        "mesh_mollet_avant_droite": "pattes",
+        "mesh_pied_avant_droite": "detail",
+        "mesh_cuisse_avant_gauche": "pattes",
+        "mesh_mollet_avant_gauche": "pattes",
+        "mesh_pied_avant_gauche": "detail",
+        "mesh_cuisse_arriere_droite": "pattes",
+        "mesh_mollet_arriere_droite": "pattes",
+        "mesh_pied_arriere_droite": "detail",
+        "mesh_cuisse_arriere_gauche": "pattes",
+        "mesh_mollet_arriere_gauche": "pattes",
+        "mesh_pied_arriere_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.203,
+            0.684,
+            -1.312
+          ],
+          "size": [
+            0.406,
+            0.531,
+            0.562
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.264,
+            0.0,
+            -0.546
+          ],
+          "size": [
+            0.528,
+            0.562,
+            1.022
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.25,
+            0.484,
+            -0.75
+          ],
+          "size": [
+            0.5,
+            0.564,
+            1.469
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "pieuvre": {
+      "famille": "tentaculaire",
+      "palette": {
+        "dos": [
+          0.62,
+          0.28,
+          0.34
+        ],
+        "ventre": [
+          0.82,
+          0.6,
+          0.58
+        ],
+        "pattes": [
+          0.62,
+          0.28,
+          0.34
+        ],
+        "detail": [
+          0.9,
+          0.84,
+          0.78
+        ]
+      },
+      "calques": {
+        "mesh_cloche": "dos",
+        "mesh_dome": "ventre",
+        "mesh_oeil": "detail",
+        "mesh_tentacule_1_1": "dos",
+        "mesh_tentacule_1_2": "dos",
+        "mesh_tentacule_1_3": "dos",
+        "mesh_tentacule_1_4": "dos",
+        "mesh_tentacule_2_1": "ventre",
+        "mesh_tentacule_2_2": "ventre",
+        "mesh_tentacule_2_3": "ventre",
+        "mesh_tentacule_2_4": "ventre",
+        "mesh_tentacule_3_1": "dos",
+        "mesh_tentacule_3_2": "dos",
+        "mesh_tentacule_3_3": "dos",
+        "mesh_tentacule_3_4": "dos",
+        "mesh_tentacule_4_1": "ventre",
+        "mesh_tentacule_4_2": "ventre",
+        "mesh_tentacule_4_3": "ventre",
+        "mesh_tentacule_4_4": "ventre",
+        "mesh_tentacule_5_1": "dos",
+        "mesh_tentacule_5_2": "dos",
+        "mesh_tentacule_5_3": "dos",
+        "mesh_tentacule_5_4": "dos",
+        "mesh_tentacule_6_1": "ventre",
+        "mesh_tentacule_6_2": "ventre",
+        "mesh_tentacule_6_3": "ventre",
+        "mesh_tentacule_6_4": "ventre",
+        "mesh_tentacule_7_1": "dos",
+        "mesh_tentacule_7_2": "dos",
+        "mesh_tentacule_7_3": "dos",
+        "mesh_tentacule_7_4": "dos",
+        "mesh_tentacule_8_1": "ventre",
+        "mesh_tentacule_8_2": "ventre",
+        "mesh_tentacule_8_3": "ventre",
+        "mesh_tentacule_8_4": "ventre"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.031,
+            0.598,
+            -0.212
+          ],
+          "size": [
+            0.062,
+            0.062,
+            0.041
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "tentacules",
+          "min": [
+            -0.177,
+            0.0,
+            -0.177
+          ],
+          "size": [
+            0.355,
+            0.5,
+            0.355
+          ],
+          "mult": 0.5
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.188,
+            0.5,
+            -0.188
+          ],
+          "size": [
+            0.375,
+            0.375,
+            0.375
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "poisson": {
+      "famille": "nageur",
+      "palette": {
+        "dos": [
+          0.22,
+          0.4,
+          0.55
+        ],
+        "ventre": [
+          0.82,
+          0.84,
+          0.8
+        ],
+        "pattes": [
+          0.3,
+          0.52,
+          0.62
+        ],
+        "detail": [
+          0.9,
+          0.62,
+          0.25
+        ]
+      },
+      "calques": {
+        "mesh_corps_1": "dos",
+        "mesh_corps_2": "dos",
+        "mesh_corps_3": "dos",
+        "mesh_corps_4": "dos",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_nageoire_caudale": "detail",
+        "mesh_nageoire_dorsale": "dos",
+        "mesh_nageoire_pectorale_droite": "ventre",
+        "mesh_nageoire_pectorale_gauche": "ventre"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.094,
+            0.041,
+            -0.628
+          ],
+          "size": [
+            0.188,
+            0.188,
+            0.253
+          ],
+          "mult": 2.5
+        },
+        {
+          "id": "nageoires",
+          "min": [
+            -0.188,
+            0.0,
+            -0.225
+          ],
+          "size": [
+            0.375,
+            0.344,
+            0.787
+          ],
+          "mult": 0.4
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.062,
+            0.031,
+            -0.375
+          ],
+          "size": [
+            0.125,
+            0.188,
+            0.75
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "raie": {
+      "famille": "nageur",
+      "palette": {
+        "dos": [
+          0.36,
+          0.34,
+          0.3
+        ],
+        "ventre": [
+          0.84,
+          0.82,
+          0.76
+        ],
+        "pattes": [
+          0.36,
+          0.34,
+          0.3
+        ],
+        "detail": [
+          0.2,
+          0.18,
+          0.16
+        ]
+      },
+      "calques": {
+        "mesh_corps_1": "dos",
+        "mesh_corps_2": "dos",
+        "mesh_corps_3": "dos",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_nageoire_caudale": "detail",
+        "mesh_nageoire_pectorale_droite_1": "ventre",
+        "mesh_nageoire_pectorale_droite_2": "ventre",
+        "mesh_nageoire_pectorale_droite_3": "ventre",
+        "mesh_nageoire_pectorale_gauche_1": "ventre",
+        "mesh_nageoire_pectorale_gauche_2": "ventre",
+        "mesh_nageoire_pectorale_gauche_3": "ventre"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.062,
+            0.022,
+            -0.497
+          ],
+          "size": [
+            0.125,
+            0.125,
+            0.169
+          ],
+          "mult": 2.5
+        },
+        {
+          "id": "nageoires",
+          "min": [
+            -0.594,
+            0.022,
+            -0.328
+          ],
+          "size": [
+            1.188,
+            0.087,
+            0.719
+          ],
+          "mult": 0.4
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.156,
+            0.0,
+            -0.328
+          ],
+          "size": [
+            0.312,
+            0.156,
+            0.656
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "raptor": {
+      "famille": "bipede",
+      "palette": {
+        "dos": [
+          0.48,
+          0.38,
+          0.22
+        ],
+        "ventre": [
+          0.72,
+          0.64,
+          0.44
+        ],
+        "pattes": [
+          0.4,
+          0.32,
+          0.18
+        ],
+        "detail": [
+          0.8,
+          0.24,
+          0.18
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_poitrail": "ventre",
+        "mesh_cou_1": "ventre",
+        "mesh_cou_2": "ventre",
+        "mesh_tete": "ventre",
+        "mesh_museau": "detail",
+        "mesh_queue_1": "dos",
+        "mesh_queue_2": "dos",
+        "mesh_queue_3": "dos",
+        "mesh_queue_4": "dos",
+        "mesh_cuisse_droite": "pattes",
+        "mesh_mollet_droite": "pattes",
+        "mesh_serre_droite": "detail",
+        "mesh_cuisse_gauche": "pattes",
+        "mesh_mollet_gauche": "pattes",
+        "mesh_serre_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.109,
+            0.658,
+            -0.844
+          ],
+          "size": [
+            0.219,
+            0.219,
+            0.344
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.105,
+            0.0,
+            -0.038
+          ],
+          "size": [
+            0.21,
+            0.438,
+            0.125
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.109,
+            0.359,
+            -0.5
+          ],
+          "size": [
+            0.219,
+            0.281,
+            1.438
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "rat": {
+      "famille": "quadrupede",
+      "palette": {
+        "dos": [
+          0.44,
+          0.4,
+          0.38
+        ],
+        "ventre": [
+          0.7,
+          0.64,
+          0.6
+        ],
+        "pattes": [
+          0.38,
+          0.34,
+          0.32
+        ],
+        "detail": [
+          0.86,
+          0.6,
+          0.58
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_ventre": "ventre",
+        "mesh_poitrail": "dos",
+        "mesh_cou": "dos",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_oreille_droite": "detail",
+        "mesh_oreille_gauche": "detail",
+        "mesh_queue_1": "dos",
+        "mesh_queue_2": "dos",
+        "mesh_queue_3": "dos",
+        "mesh_cuisse_avant_droite": "pattes",
+        "mesh_mollet_avant_droite": "pattes",
+        "mesh_pied_avant_droite": "detail",
+        "mesh_cuisse_avant_gauche": "pattes",
+        "mesh_mollet_avant_gauche": "pattes",
+        "mesh_pied_avant_gauche": "detail",
+        "mesh_cuisse_arriere_droite": "pattes",
+        "mesh_mollet_arriere_droite": "pattes",
+        "mesh_pied_arriere_droite": "detail",
+        "mesh_cuisse_arriere_gauche": "pattes",
+        "mesh_mollet_arriere_gauche": "pattes",
+        "mesh_pied_arriere_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.093,
+            0.147,
+            -0.406
+          ],
+          "size": [
+            0.186,
+            0.203,
+            0.203
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.066,
+            0.0,
+            -0.142
+          ],
+          "size": [
+            0.132,
+            0.156,
+            0.266
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.062,
+            0.078,
+            -0.203
+          ],
+          "size": [
+            0.125,
+            0.147,
+            0.672
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "requin": {
+      "famille": "nageur",
+      "palette": {
+        "dos": [
+          0.34,
+          0.38,
+          0.42
+        ],
+        "ventre": [
+          0.86,
+          0.86,
+          0.84
+        ],
+        "pattes": [
+          0.3,
+          0.34,
+          0.38
+        ],
+        "detail": [
+          0.14,
+          0.14,
+          0.16
+        ]
+      },
+      "calques": {
+        "mesh_corps_1": "dos",
+        "mesh_corps_2": "dos",
+        "mesh_corps_3": "dos",
+        "mesh_corps_4": "dos",
+        "mesh_corps_5": "dos",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_nageoire_caudale": "detail",
+        "mesh_nageoire_dorsale": "dos",
+        "mesh_nageoire_pectorale_droite": "ventre",
+        "mesh_nageoire_pectorale_gauche": "ventre"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.172,
+            0.064,
+            -1.323
+          ],
+          "size": [
+            0.344,
+            0.344,
+            0.464
+          ],
+          "mult": 2.5
+        },
+        {
+          "id": "nageoires",
+          "min": [
+            -0.406,
+            0.0,
+            -0.584
+          ],
+          "size": [
+            0.812,
+            0.672,
+            1.756
+          ],
+          "mult": 0.4
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.125,
+            0.047,
+            -0.859
+          ],
+          "size": [
+            0.25,
+            0.344,
+            1.719
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "sanglier": {
+      "famille": "quadrupede",
+      "palette": {
+        "dos": [
+          0.3,
+          0.26,
+          0.24
+        ],
+        "ventre": [
+          0.42,
+          0.36,
+          0.32
+        ],
+        "pattes": [
+          0.22,
+          0.19,
+          0.18
+        ],
+        "detail": [
+          0.9,
+          0.88,
+          0.82
+        ]
+      },
+      "calques": {
+        "mesh_croupe": "dos",
+        "mesh_torse": "dos",
+        "mesh_ventre": "ventre",
+        "mesh_poitrail": "dos",
+        "mesh_cou": "dos",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail",
+        "mesh_oreille_droite": "detail",
+        "mesh_oreille_gauche": "detail",
+        "mesh_defense_droite": "detail",
+        "mesh_defense_gauche": "detail",
+        "mesh_queue_1": "dos",
+        "mesh_cuisse_avant_droite": "pattes",
+        "mesh_mollet_avant_droite": "pattes",
+        "mesh_pied_avant_droite": "detail",
+        "mesh_cuisse_avant_gauche": "pattes",
+        "mesh_mollet_avant_gauche": "pattes",
+        "mesh_pied_avant_gauche": "detail",
+        "mesh_cuisse_arriere_droite": "pattes",
+        "mesh_mollet_arriere_droite": "pattes",
+        "mesh_pied_arriere_droite": "detail",
+        "mesh_cuisse_arriere_gauche": "pattes",
+        "mesh_mollet_arriere_gauche": "pattes",
+        "mesh_pied_arriere_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.156,
+            0.359,
+            -0.969
+          ],
+          "size": [
+            0.312,
+            0.406,
+            0.5
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.181,
+            0.0,
+            -0.374
+          ],
+          "size": [
+            0.363,
+            0.344,
+            0.7
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.172,
+            0.266,
+            -0.469
+          ],
+          "size": [
+            0.344,
+            0.4,
+            1.0
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "scarabee": {
+      "famille": "arthropode",
+      "palette": {
+        "dos": [
+          0.2,
+          0.26,
+          0.18
+        ],
+        "ventre": [
+          0.3,
+          0.36,
+          0.24
+        ],
+        "pattes": [
+          0.16,
+          0.2,
+          0.14
+        ],
+        "detail": [
+          0.55,
+          0.7,
+          0.25
+        ]
+      },
+      "calques": {
+        "mesh_abdomen": "dos",
+        "mesh_thorax": "dos",
+        "mesh_tete": "ventre",
+        "mesh_museau": "detail",
+        "mesh_antenne_droite_1": "detail",
+        "mesh_antenne_droite_2": "detail",
+        "mesh_antenne_gauche_1": "detail",
+        "mesh_antenne_gauche_2": "detail",
+        "mesh_cuisse_1_droite": "pattes",
+        "mesh_mollet_1_droite": "pattes",
+        "mesh_pied_1_droite": "detail",
+        "mesh_cuisse_1_gauche": "pattes",
+        "mesh_mollet_1_gauche": "pattes",
+        "mesh_pied_1_gauche": "detail",
+        "mesh_cuisse_2_droite": "pattes",
+        "mesh_mollet_2_droite": "pattes",
+        "mesh_pied_2_droite": "detail",
+        "mesh_cuisse_2_gauche": "pattes",
+        "mesh_mollet_2_gauche": "pattes",
+        "mesh_pied_2_gauche": "detail",
+        "mesh_cuisse_3_droite": "pattes",
+        "mesh_mollet_3_droite": "pattes",
+        "mesh_pied_3_droite": "detail",
+        "mesh_cuisse_3_gauche": "pattes",
+        "mesh_mollet_3_gauche": "pattes",
+        "mesh_pied_3_gauche": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.055,
+            0.138,
+            -0.359
+          ],
+          "size": [
+            0.109,
+            0.109,
+            0.172
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "pattes",
+          "min": [
+            -0.186,
+            0.0,
+            -0.196
+          ],
+          "size": [
+            0.372,
+            0.188,
+            0.195
+          ],
+          "mult": 0.6
+        },
+        {
+          "id": "antennes",
+          "min": [
+            -0.055,
+            0.209,
+            -0.472
+          ],
+          "size": [
+            0.109,
+            0.044,
+            0.175
+          ],
+          "mult": 0.3
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.125,
+            0.125,
+            -0.188
+          ],
+          "size": [
+            0.25,
+            0.188,
+            0.469
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "serpent": {
+      "famille": "serpentin",
+      "palette": {
+        "dos": [
+          0.28,
+          0.42,
+          0.24
+        ],
+        "ventre": [
+          0.78,
+          0.75,
+          0.48
+        ],
+        "pattes": [
+          0.28,
+          0.42,
+          0.24
+        ],
+        "detail": [
+          0.7,
+          0.18,
+          0.16
+        ]
+      },
+      "calques": {
+        "mesh_corps_1": "dos",
+        "mesh_corps_2": "ventre",
+        "mesh_corps_3": "dos",
+        "mesh_corps_4": "ventre",
+        "mesh_corps_5": "dos",
+        "mesh_corps_6": "ventre",
+        "mesh_corps_7": "dos",
+        "mesh_corps_8": "ventre",
+        "mesh_corps_9": "dos",
+        "mesh_corps_10": "ventre",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.078,
+            0.03,
+            -1.156
+          ],
+          "size": [
+            0.156,
+            0.156,
+            0.219
+          ],
+          "mult": 2.5
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.1,
+            0.0,
+            -0.938
+          ],
+          "size": [
+            0.2,
+            0.2,
+            1.875
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "spectre": {
+      "famille": "flottant",
+      "palette": {
+        "dos": [
+          0.52,
+          0.62,
+          0.7
+        ],
+        "ventre": [
+          0.72,
+          0.82,
+          0.88
+        ],
+        "pattes": [
+          0.52,
+          0.62,
+          0.7
+        ],
+        "detail": [
+          0.86,
+          0.94,
+          0.98
+        ]
+      },
+      "calques": {
+        "mesh_cloche": "dos",
+        "mesh_oeil": "detail",
+        "mesh_tentacule_1_1": "dos",
+        "mesh_tentacule_1_2": "dos",
+        "mesh_tentacule_1_3": "dos",
+        "mesh_tentacule_2_1": "ventre",
+        "mesh_tentacule_2_2": "ventre",
+        "mesh_tentacule_2_3": "ventre",
+        "mesh_tentacule_3_1": "dos",
+        "mesh_tentacule_3_2": "dos",
+        "mesh_tentacule_3_3": "dos"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.047,
+            0.495,
+            -0.178
+          ],
+          "size": [
+            0.094,
+            0.094,
+            0.053
+          ],
+          "mult": 2.0
+        },
+        {
+          "id": "tentacules",
+          "min": [
+            -0.092,
+            0.0,
+            -0.127
+          ],
+          "size": [
+            0.231,
+            0.375,
+            0.253
+          ],
+          "mult": 0.5
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.141,
+            0.375,
+            -0.141
+          ],
+          "size": [
+            0.281,
+            0.344,
+            0.281
+          ],
+          "mult": 1.0
+        }
+      ]
+    },
+    "ver": {
+      "famille": "serpentin",
+      "palette": {
+        "dos": [
+          0.72,
+          0.54,
+          0.48
+        ],
+        "ventre": [
+          0.84,
+          0.68,
+          0.62
+        ],
+        "pattes": [
+          0.72,
+          0.54,
+          0.48
+        ],
+        "detail": [
+          0.5,
+          0.32,
+          0.3
+        ]
+      },
+      "calques": {
+        "mesh_corps_1": "dos",
+        "mesh_corps_2": "ventre",
+        "mesh_corps_3": "dos",
+        "mesh_corps_4": "ventre",
+        "mesh_corps_5": "dos",
+        "mesh_corps_6": "ventre",
+        "mesh_tete": "dos",
+        "mesh_museau": "detail"
+      },
+      "hitboxes": [
+        {
+          "id": "tete",
+          "min": [
+            -0.062,
+            0.056,
+            -0.644
+          ],
+          "size": [
+            0.125,
+            0.125,
+            0.175
+          ],
+          "mult": 2.5
+        },
+        {
+          "id": "corps",
+          "min": [
+            -0.113,
+            0.0,
+            -0.469
+          ],
+          "size": [
+            0.225,
+            0.225,
+            0.938
+          ],
+          "mult": 1.0
+        }
+      ]
+    }
+  }
+}

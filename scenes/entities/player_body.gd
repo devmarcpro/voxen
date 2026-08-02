@@ -280,6 +280,24 @@ func set_combat_pose(direction: int, ratio: float, phase: String) -> void:
 			target = carry.lerp(
 				MeleeAttack.tip_position(direction, 0.0, grip, facing, HAND_ARC_RADIUS),
 				clampf(ratio, 0.0, 1.0))
+		"garde":
+			# GARDE VISIBLE : même posture que celle du joueur — la main du côté
+			# couvert, la lame EN TRAVERS de la ligne parée. C'est ce qui permet
+			# de voir qu'un PNJ s'est protégé du mauvais côté, donc de le punir.
+			var offset := MeleeAttack.guard_hand_offset(direction)
+			var right := facing.x
+			right.y = 0.0
+			if right.length_squared() > 0.000001:
+				right = right.normalized()
+			target = grip + right * (offset.x * HAND_ARC_RADIUS) 				+ Vector3.UP * (offset.y * HAND_ARC_RADIUS) 				+ (-facing.z) * (offset.z * HAND_ARC_RADIUS)
+			solve_arm("droite", target)
+			point_weapon(MeleeAttack.guard_blade_axis(direction, facing), _weapon_scale)
+			return
+		"armee":
+			# MENACE TENUE : le bras reste au point d'armement, exactement comme
+			# la garde armée du joueur. Sans ce cas, la pose retombait au port
+			# et le PNJ semblait renoncer juste avant de frapper.
+			target = MeleeAttack.tip_position(direction, 0.0, grip, facing, HAND_ARC_RADIUS)
 		"strike":
 			target = MeleeAttack.tip_position(direction, clampf(ratio, 0.0, 1.0),
 				grip, facing, HAND_ARC_RADIUS)
@@ -287,6 +305,34 @@ func set_combat_pose(direction: int, ratio: float, phase: String) -> void:
 			target = MeleeAttack.tip_position(direction, 1.0, grip, facing, HAND_ARC_RADIUS) \
 				.lerp(carry, clampf(ratio, 0.0, 1.0))
 	solve_arm("droite", target)
+	# L'ARME SUIT L'ARC, comme celle du joueur (2026-08-02). Sans ça un PNJ
+	# armait son bras dans le vide : l'arme, simple enfant de l'os, héritait de
+	# la rotation de la main et pointait n'importe où. Or dans Mount & Blade on
+	# juge la distance et le danger SUR L'ARME de l'adversaire — c'est le
+	# premier élément à lire, avant même la direction du coup.
+	var axis := target - grip
+	if axis.length_squared() > 0.000001:
+		point_weapon(axis.normalized(), _weapon_scale)
+
+
+## Échelle d'affichage de l'arme portée, posée à l'accrochage.
+var _weapon_scale := 1.0
+
+
+## Accroche un MODÈLE D'ARME dans la main droite (créatures, 2026-08-02). Le
+## joueur y reparente son `HeldItem` — même os, même orientation — mais le sien
+## suit la hotbar, alors que celui d'un PNJ est figé par sa fiche.
+func attach_weapon_model(model: Node3D, scale_factor: float) -> bool:
+	if _hand_attachment == null or model == null:
+		return false
+	model.name = "HeldItem"
+	# `point_weapon` ne redresse que les ARMES À PIÈCES : sans ce marqueur elle
+	# laisserait le modèle hériter de la rotation de l'avant-bras.
+	model.set_meta("part_weapon", true)
+	model.scale = Vector3.ONE * scale_factor
+	_weapon_scale = scale_factor
+	_hand_attachment.add_child(model)
+	return true
 
 
 ## Oriente l'arme tenue vers `forward` (espace MONDE), sans toucher à sa
@@ -308,8 +354,12 @@ func point_weapon(forward: Vector3, scale_factor: float) -> void:
 	var held := _hand_attachment.get_node_or_null("HeldItem") as Node3D
 	if held == null or forward.length_squared() < 0.000001:
 		return
-	if not bool(held.get("is_part_weapon")):
-		return   # outil à sprite : construit sur un autre axe, on n'y touche pas
+	# Outil à SPRITE : bâti sur un autre axe, on n'y touche pas. Le joueur
+	# porte un `HeldItem` qui l'annonce par une propriété, une créature un
+	# assemblage nu qui l'annonce par un marqueur — les deux disent la même
+	# chose, et `point_weapon` doit servir les deux.
+	if not (held.get("is_part_weapon") == true or held.has_meta("part_weapon")):
+		return
 	# Le modèle d'arme est construit vers +Y (LISEZMOI des pièces) : on bâtit
 	# donc une base dont l'axe Y EST la direction voulue.
 	var y := forward.normalized()
@@ -344,6 +394,28 @@ func point_shield(forward: Vector3, scale_factor: float) -> void:
 	var x := reference.cross(z).normalized()
 	var y := z.cross(x).normalized()
 	shield.global_transform = Transform3D(
+		Basis(x * scale_factor, y * scale_factor, z * scale_factor),
+		_offhand_attachment.global_position)
+
+
+## Oriente l'ARME de main gauche (dual wielding, 2026-08-02). Même géométrie
+## que `point_weapon` — une pièce d'arme est bâtie vers +Y — mais sur l'autre
+## main. Sans elle, la seconde arme héritait de la rotation de l'avant-bras
+## gauche et pointait en travers, exactement le défaut corrigé sur la main forte
+## le 2026-07-28.
+func point_offhand_weapon(forward: Vector3, scale_factor: float) -> void:
+	if _offhand_attachment == null:
+		return
+	var held := _offhand_attachment.get_node_or_null("ShieldItem") as Node3D
+	if held == null or not held.visible or forward.length_squared() < 0.000001:
+		return
+	if not bool(held.get("is_part_weapon")):
+		return
+	var y := forward.normalized()
+	var reference := Vector3.UP if absf(y.dot(Vector3.UP)) < 0.95 else Vector3.FORWARD
+	var x := reference.cross(y).normalized()
+	var z := x.cross(y).normalized()
+	held.global_transform = Transform3D(
 		Basis(x * scale_factor, y * scale_factor, z * scale_factor),
 		_offhand_attachment.global_position)
 

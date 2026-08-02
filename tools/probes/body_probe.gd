@@ -572,17 +572,31 @@ func _check_weapon_in_hand(body: Node3D) -> bool:
 	print("[%s] épée assemblée depuis ses pièces : %s, %d maillage(s) (manche + tête) : %s" % [
 		TAG, assembled, parts_built, "OK" if weapon_ok else "ÉCHEC"])
 
-	# La TÊTE doit être posée au sommet du manche, pas à l'origine : c'est ce
+	# La TÊTE doit être posée au SOMMET du manche, pas à l'origine : c'est ce
 	# décalage qui fait une arme et non deux morceaux superposés.
+	#
+	# On compare à la LONGUEUR DÉCLARÉE du manche, et non à un seuil absolu
+	# (2026-08-02). Le seuil de 0,20 m avait été calé sur un « manche » d'épée de
+	# 69 cm ; le catalogue distingue désormais poignées et fûts, et une poignée
+	# d'épée fait 19 cm — le test échouait sur une géométrie devenue JUSTE. Cette
+	# version-ci vérifie l'invariant lui-même et survivra au prochain remaniement
+	# des pièces.
+	var handle_id := String((GameData.items["epee"]["parts"] as Dictionary).get("manche", ""))
+	var handle_length := float((GameData.weapon_parts["manches"][handle_id] as Dictionary).get("longueur", 0.0))
+	# Mesuré en espace LOCAL du porte-objet : ce nœud porte une échelle
+	# d'affichage (0,6 hors main, 1,15 en main), et comparer une hauteur mise à
+	# l'échelle à une longueur de pièce ferait échouer le test pour une raison
+	# qui n'a rien à voir avec l'assemblage.
+	var to_local := bench.global_transform.affine_inverse()
 	var heights: Array[float] = []
 	for node in _all_meshes(bench):
 		if node.mesh != null:
-			heights.append(node.global_position.y - bench.global_position.y)
+			heights.append((to_local * node.global_position).y)
 	heights.sort()
-	var stacked: bool = heights.size() >= 2 and (heights[-1] - heights[0]) > 0.2
-	print("[%s] tête greffée au sommet du manche (écart %.2f > 0.20) : %s" % [
-		TAG, (heights[-1] - heights[0]) if heights.size() >= 2 else 0.0,
-		"OK" if stacked else "ÉCHEC"])
+	var span: float = (heights[-1] - heights[0]) if heights.size() >= 2 else 0.0
+	var stacked: bool = heights.size() >= 2 and absf(span - handle_length) < 0.02
+	print("[%s] tête greffée au sommet du manche « %s » (écart %.3f, longueur %.3f) : %s" % [
+		TAG, handle_id, span, handle_length, "OK" if stacked else "ÉCHEC"])
 	bench.queue_free()
 	weapon_ok = weapon_ok and stacked
 	return ok and not_on_camera and weapon_ok

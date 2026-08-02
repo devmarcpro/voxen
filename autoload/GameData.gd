@@ -31,6 +31,7 @@ const PATH_RACES := "res://data/races"
 const PATH_CLASSES := "res://data/classes"
 const PATH_TRANSFORMATIONS := "res://data/transformations"
 const PATH_PLATS := "res://data/plats"
+const PATH_MUNITIONS := "res://data/munitions"
 
 ## Les 6 stats de personnage (C.1) — pour la validation des bonus race/classe.
 const CHARACTER_STATS: Array[String] = [
@@ -170,6 +171,11 @@ var transformations: Dictionary = {}
 ## blocs. `nutrition.cuit = true` → nutrition PLEINE (A.9.1) et bonus de
 ## potentiel crédités à la consommation (6.4).
 var plats: Dictionary = {}
+## Munitions (flèches, carreaux). Ce sont des RESSOURCES comme les plats — non
+## posables, instanciées en inventaire, empilées — et elles vivent donc dans le
+## même registre. Les distinguer par une classe à part aurait dupliqué le
+## stockage, la consommation et l'affichage pour un seul champ de différence.
+var munitions: Dictionary = {}
 ## RESSOURCES : objets empilables d'inventaire qui ne sont PAS des blocs
 ## (viandes, peaux — 7.7). Registre distinct de `materials` À DESSEIN : elles
 ## n'ont pas d'id runtime, pas d'entrée de palette, et ne peuvent donc pas
@@ -252,6 +258,7 @@ func load_all() -> bool:
 	_load_classes()
 	_load_transformations()
 	_load_plats()
+	_load_munitions()
 	_generate_parametric_resources()
 	_finalize_material_index()
 	_validate_translation_keys()
@@ -380,6 +387,41 @@ func palette_size() -> int:
 
 ## Plats cuisinés (7.7) — recettes à station Cuisine. Ils rejoignent
 ## `resources` : même modèle d'instance, même consommation.
+## Charge les munitions. Même forme que les plats — un identifiant, une recette,
+## une densité — moins la nutrition : on ne mange pas une flèche.
+func _load_munitions() -> void:
+	munitions.clear()
+	for path in _list_json_recursive(PATH_MUNITIONS):
+		var raw: Variant = _load_json(path)
+		if not (raw is Dictionary):
+			continue
+		var ammo: Dictionary = raw
+		var ok := true
+		for field in ["id", "name_key", "recipe", "par_fabrication"]:
+			if not ammo.has(field):
+				_blocking_error("champ « %s » manquant dans %s" % [field, path])
+				ok = false
+		if not ok:
+			continue
+		var recipe: Dictionary = ammo["recipe"]
+		if not skills.has(String(recipe.get("skill", ""))):
+			_blocking_error("compétence inconnue « %s » (munition « %s »)" % [
+					recipe.get("skill", "?"), ammo["id"]])
+		munitions[ammo["id"]] = ammo
+		resources[ammo["id"]] = {
+			"id": ammo["id"],
+			"name_key": ammo["name_key"],
+			"category": "ressource",
+			"item_kind": "munition",
+			"color": String(ammo.get("color", "#8A6A3C")),
+			"stats": {"densite": float(ammo.get("densite", 1)),
+				"valeur_base": float(ammo.get("valeur_base", 2))},
+			"nutrition": {},
+			"potentiel": {},
+			"tags": ["munition"],
+		}
+
+
 func _load_plats() -> void:
 	plats.clear()
 	for path in _list_json_recursive(PATH_PLATS):

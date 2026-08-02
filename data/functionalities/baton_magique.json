@@ -10,9 +10,15 @@
   "vitesse_base": 1.8,
   "portee": 1.5,
   "type_degats": "contondant",
-  "poids_reference": 25,
+  "poids_reference": 54,
   "parts": {
     "manche": "baton",
     "tete": "cristal"
-  }
+  },
+  "attaques": [
+    "estoc",
+    "taille_gauche",
+    "taille_droite",
+    "overhead"
+  ]
 }

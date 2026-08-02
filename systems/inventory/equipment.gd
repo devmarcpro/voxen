@@ -7,12 +7,17 @@ extends RefCounted
 ##
 ## Ce que cette classe fait : les emplacements, la mitigation d'armure (A.4.2)
 ## et le poids porté. Ce qu'elle ne fait PAS encore :
-## - les compétences liées aux emplacements d'armes (Dual Wielding / Bouclier /
-##   Deux Mains, 6.2) : elles n'existent pas en données (data/skills/) ;
-## - les effets passifs d'équipement (A.4.4) et les pools de loot (F.7) ;
+## - les effets passifs d'équipement (A.4.4) et les pools de loot (F.7) — ils
+##   attendent le résolveur de modificateurs d'E.4, qui n'existe pas encore ;
 ## - les morphologies non-humanoïdes (`equip_slots` de B.5, 6.2) — la liste
 ##   ci-dessous est celle de l'humanoïde, les gabarits quadrupède/volant/
 ##   amorphe restent à câbler quand les créatures porteront de l'équipement.
+##
+## (Cet en-tête affirmait jusqu'au 2026-08-02 que Dual Wielding / Bouclier /
+## Deux Mains « n'existent pas en données » — c'était faux depuis le
+## 2026-08-01. Ce projet documente sa dette en prose plutôt qu'en TODO, ce qui
+## est un bon choix, mais la prose périme en silence : à relire quand on
+## touche au fichier.)
 
 ## Les 13 emplacements humanoïdes (6.2), dans l'ordre du GDD.
 const SLOTS: Array[String] = [

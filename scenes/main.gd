@@ -101,7 +101,7 @@ func _ready() -> void:
 			shield_item.name = "ShieldItem"
 			offhand.add_child(shield_item)
 			shield_item.set("in_hand", true)
-			shield_item.set("source", "bouclier")
+			shield_item.set("source", "main_gauche")
 	else:
 		player_body.queue_free()
 		player_body = null
@@ -340,7 +340,15 @@ func _process(delta: float) -> void:
 		# elle pointait là où pointait l'avant-bras, donc en travers.
 		var part_scale: float = preload("res://scenes/entities/held_item.gd").PART_SCALE
 		player_body.point_weapon($Player.weapon_direction(), part_scale)
-		player_body.point_shield(-camera.global_basis.z, part_scale)
+		# La main gauche tient soit une PLAQUE, qui doit faire face à la menace,
+		# soit une ARME, qui doit pointer le long de son propre arc. Les deux
+		# géométries n'ont rien à voir : un bouclier orienté comme une lame
+		# présenterait sa tranche, une lame orientée comme une plaque frapperait
+		# de plat.
+		if $Player.offhand_weapon().is_empty():
+			player_body.point_shield(-camera.global_basis.z, part_scale)
+		else:
+			player_body.point_offhand_weapon($Player.offhand_direction(), part_scale)
 
 	# Instrumentation de mesure uniquement — aucune logique de gameplay ici (E.1).
 	if not bench or _bench_done:

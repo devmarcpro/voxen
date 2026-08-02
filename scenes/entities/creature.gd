@@ -36,6 +36,87 @@ var _attack_cooldown_ticks := 0
 ## Ticks restants avant que l'attaque DÉCLARÉE ne parte réellement (wind-up).
 ## 0 = aucune attaque en préparation.
 var _windup_ticks := 0
+## Ticks de MENACE TENUE restants après le wind-up, -1 tant qu'ils ne sont pas
+## tirés. C'est la pause pendant laquelle l'arme reste armée, visible et
+## lisible — l'équivalent de la garde armée du joueur.
+var _hold_ticks := -1
+## GARDE DU PNJ (2026-08-02). Direction tenue et ticks restants. Une créature
+## qui ne pare jamais fait de la lecture un exercice à sens unique : on apprend
+## à lire ses coups, elle n'oppose rien aux nôtres. C'est la moitié manquante du
+## duel de Mount & Blade.
+## BALAYAGE À LA FRAME (2026-08-02). La géométrie du coup était échantillonnée
+## AU TICK, à l'instant de la déclaration : on approchait l'arc entier d'un
+## coup, avant même qu'il ne soit joué. Le joueur, lui, balaie sa lame image par
+## image. Conséquence, on pouvait traverser l'arc d'un PNJ entre deux ticks sans
+## être touché — le dernier endroit où les deux camps n'étaient pas jugés
+## pareil.
+##
+## Désormais : la géométrie avance à la FRAME comme celle du joueur (même
+## exception documentée dans MeleeAttack), et le TICK reste la seule autorité
+## qui applique les dégâts. Le coup constaté attend ici entre les deux.
+var _pending_strike: Dictionary = {}
+## Position des points de la tête d'arme à la frame précédente.
+var _strike_previous := PackedVector3Array()
+## Le coup courant a-t-il fini sa course sans rien toucher ? Le tick le lit pour
+## créditer l'esquive du joueur.
+var _strike_finished := false
+## Vitesse VISUELLE, mesurée à la frame : elle alimente le bonus de vitesse,
+## que les créatures n'avaient pas faute de bouger autrement qu'au tick.
+var _velocity := Vector3.ZERO
+var _last_visual_position := Vector3.INF
+## Lacet réellement appliqué au corps affiché. Le balayage de l'arme s'en sert :
+## ce qu'on voit doit être ce qui frappe, jusqu'à l'orientation.
+var _visual_facing := 0.0
+
+# --- JEU DE JAMBES (2026-08-02, demande de l'auteur) ---------------------
+#
+# Un ennemi marchait DROIT sur le joueur jusqu'au contact, puis restait collé.
+# Deux conséquences : aucune tension — il n'y avait pas d'instant où il hésite,
+# donc rien à lire dans son déplacement — et à plusieurs ils s'empilaient dans
+# le même mètre carré, se recouvrant l'un l'autre.
+#
+# Le modèle est celui de Mount & Blade : on se FACE, on tient une distance
+# d'engagement, et on la fait varier. S'approcher, tenir, reculer, contourner.
+# C'est ce va-et-vient qui crée les ouvertures, et c'est lui qu'on apprend à
+# lire — pas seulement le geste d'arme.
+enum Footwork { APPROCHE, TIENT, RECULE, CONTOURNE }
+
+## Distance d'engagement visée, en fraction de l'allonge RÉELLE de la créature.
+## Juste EN DEÇÀ : à 1,15 elle tenait une distance d'où sa lame ne portait pas,
+## et tous ses coups partaient dans le vide. À 0,85 elle est à portée dès
+## qu'elle décide de frapper, et il lui reste de la marge pour reculer.
+const ENGAGE_RATIO := 0.85
+## Tolérance autour de cette distance : sans elle la créature oscillerait en
+## permanence autour d'un point exact, ce qui se lit comme un tremblement.
+const ENGAGE_SLACK := 0.35
+## Durée d'une intention de pied, en ticks (0,8 à 2,2 s). Assez longue pour être
+## lisible, assez courte pour ne pas devenir prévisible.
+const FOOTWORK_MIN_TICKS := 8
+const FOOTWORK_MAX_TICKS := 22
+## Vitesse de déplacement latéral et arrière, en fraction de la vitesse de
+## marche. On recule et on contourne moins vite qu'on avance — c'est vrai, et
+## ça empêche de fuir indéfiniment une attaque engagée.
+const STRAFE_FACTOR := 0.75
+const BACKPEDAL_FACTOR := 0.6
+
+## RAYON PERSONNEL. Deux créatures qui se recouvrent sont illisibles : on ne
+## sait plus laquelle arme son coup. Chacune s'écarte des autres, ce qui produit
+## naturellement une répartition en arc autour du joueur — sans avoir à
+## attribuer des places, ce qui demanderait un chef d'orchestre.
+const PERSONAL_SPACE := 1.15
+const SEPARATION_WEIGHT := 1.6
+
+var _footwork: int = Footwork.APPROCHE
+var _footwork_ticks := 0
+## Sens du contournement, tiré avec l'intention : +1 horaire, -1 antihoraire.
+var _orbit_sign := 1.0
+
+var guard_direction: int = 0
+var _guard_ticks := 0
+var _guard_cooldown_ticks := 0
+## Au plus 0,4 s de menace tenue : au-delà, l'adversaire cesse de lire une
+## intention et croit à un bug.
+const MAX_HOLD_TICKS := 4
 ## Direction de l'attaque en cours (MeleeAttack.Direction). Tiree a la
 ## DECLARATION et publiee par la telegraphie : le joueur doit pouvoir la
 ## lire pendant le wind-up pour orienter sa parade.
@@ -136,19 +217,76 @@ var _body: Node3D
 func _build_visual(data: Dictionary) -> void:
 	var model_path := String(data.get("model", ""))
 	if model_path != "" and ResourceLoader.exists(model_path):
-		var body: Node3D = preload("res://scenes/entities/player_body.gd").new()
-		add_child(body)
-		# `false` : ce n'est pas le joueur local — corps ENTIER, tête comprise.
-		if body.setup(false, PlayerBody.palette_for_species(
-				String(data.get("race", creature_id)))):
+		var body := _build_body(model_path, data)
+		if body != null:
 			_body = body
 			_build_health_bar()
 			return
-		body.queue_free()
 	_build_placeholder_visual(data)
 
 
+## Le corps dépend de la MORPHOLOGIE, pas de l'espèce : un humanoïde prend le
+## corps du joueur (même peau, même IK, même marche), un animal prend
+## `CreatureBody` (mêmes principes, mais quatre pattes, une ondulation ou des
+## ailes). Les deux exposent `update_as_entity` et `set_combat_pose` — le reste
+## du fichier n'a pas à savoir lequel il tient.
+##
+## Retourne null si le modèle n'a pas pu être monté ; l'appelant retombe alors
+## sur la capsule provisoire plutôt que de laisser une créature invisible.
+func _build_body(model_path: String, data: Dictionary) -> Node3D:
+	if model_path.ends_with("humanoide.glb"):
+		var human: Node3D = preload("res://scenes/entities/player_body.gd").new()
+		add_child(human)
+		# `false` : ce n'est pas le joueur local — corps ENTIER, tête comprise.
+		if human.setup(false, PlayerBody.palette_for_species(
+				String(data.get("race", creature_id)))):
+			_attach_weapon(human, data)
+			return human
+		human.queue_free()
+		return null
+	var animal := CreatureBody.new()
+	add_child(animal)
+	# La teinte vient du manifeste du modèle (models/creatures/rigs.json), pas
+	# d'une couleur dérivée de la race : un loup doit être gris, pas d'une
+	# couleur tirée d'un hachage.
+	if animal.setup(model_path):
+		return animal
+	animal.queue_free()
+	return null
+
+
 ## Visuel PROVISOIRE : capsule teintée par race, en attendant les modèles.
+## Met l'ARME DE LA FICHE dans la main du PNJ (2026-08-02, lisibilité du combat).
+##
+## POURQUOI ÇA COMPTE PLUS QUE TOUT LE RESTE. Un PNJ armait son bras dans le
+## vide : rien ne disait au joueur s'il avait affaire à une dague ou à une
+## hallebarde, donc rien ne lui permettait de juger la distance — la lecture la
+## plus fondamentale de Mount & Blade, avant même la direction du coup.
+##
+## L'identifiant de fonctionnalité EST celui de l'objet pour toutes les armes :
+## une seule valeur de fiche décide donc des CHIFFRES et du MODÈLE, et les deux
+## ne peuvent pas diverger. Une créature à `mains_nues` n'a pas d'objet
+## correspondant et se bat donc à mains nues, sans qu'il y ait rien à déclarer.
+func _attach_weapon(body: Node3D, data: Dictionary) -> void:
+	var functionality := String((data.get("combat", {}) as Dictionary).get("functionality", ""))
+	var item: Dictionary = GameData.items.get(functionality, {})
+	if item.is_empty() or not item.has("parts"):
+		return
+	var materials: Dictionary = (data.get("combat", {}) as Dictionary).get("arme_materiaux", {})
+	var model := WeaponPreview.assemble(item, materials)
+	if model == null:
+		return
+	# Les pièces sont modélisées vers +Y et les os pointent vers -Y : le demi-tour
+	# est le même que pour l'arme du joueur (voir HeldItem.PART_ROTATION).
+	model.rotation_degrees = Vector3(180.0, 0.0, 0.0)
+	body.attach_weapon_model(model, WEAPON_SCALE)
+
+
+## Même échelle que l'arme du joueur : ce qu'on voit dans la main d'un PNJ doit
+## être l'arme qu'on ramassera sur son corps.
+const WEAPON_SCALE: float = preload("res://scenes/entities/held_item.gd").PART_SCALE
+
+
 func _build_placeholder_visual(data: Dictionary) -> void:
 	_mesh = MeshInstance3D.new()
 	var capsule := CapsuleMesh.new()
@@ -204,6 +342,23 @@ func is_skittish() -> bool:
 	return ai_profile == "fuit"
 
 
+## Encaisse `amount` points de dégâts. UN SEUL POINT D'ENTRÉE, pour que le
+## stagger ne puisse pas être oublié par un appelant.
+##
+## STAGGER (2026-08-02) : un coup reçu INTERROMPT l'attaque en préparation,
+## exactement comme chez le joueur. Sans lui, frapper une créature en plein
+## wind-up ne l'empêchait pas de porter son coup : la récompense du timing —
+## toucher le premier — n'existait pas, et parer devenait facultatif.
+func take_damage(amount: float) -> void:
+	health = maxf(0.0, health - amount)
+	if amount <= 0.0:
+		return
+	_windup_ticks = 0
+	_hold_ticks = -1
+	if _pose_phase == "windup" or _pose_phase == "armee":
+		_start_pose("recover", 0.2)
+
+
 ## Une bête sauvage devient hostile DÉFINITIVEMENT dès le premier coup reçu
 ## (F.3 : « acculée », « hostile si dérangé ») — appelé par qui inflige les
 ## dégâts, la créature ne surveille pas sa propre santé.
@@ -235,39 +390,31 @@ func _resolve_hitboxes(data: Dictionary) -> void:
 	# (Vector3 plutôt qu'Array JSON) — sinon deux formats cohabiteraient et le
 	# test d'intersection devrait gérer les deux.
 	if data.has("hitboxes"):
-		for zone: Variant in data["hitboxes"]:
-			var z: Dictionary = zone
-			var mn: Array = z["min"]
-			var sz: Array = z["size"]
-			_hitboxes.append({
-				"id": String(z["id"]),
-				"min": Vector3(mn[0], mn[1], mn[2]),
-				"max": Vector3(mn[0] + sz[0], mn[1] + sz[1], mn[2] + sz[2]),
-				"mult": float(z["mult"]),
-			})
+		_hitboxes = MeleeAttack.parse_zones(data["hitboxes"])
 		return
 	# LES ZONES DOIVENT CORRESPONDRE AU MODÈLE RÉELLEMENT AFFICHÉ, pas au
-	# gabarit théorique de la fiche. Toutes les créatures portent aujourd'hui
-	# le gabarit HUMANOÏDE (placeholder assumé) : un loup déclaré `quadrupede`
-	# aurait ses zones au ras du sol alors qu'il se dresse comme un humain, et
-	# la lame lui passerait AU TRAVERS sans le toucher.
-	# `hitbox_template` permet de le dire explicitement ; il disparaîtra quand
-	# chaque espèce aura son vrai modèle et que `skeleton_template` redeviendra
-	# la source de vérité.
+	# gabarit théorique de la fiche : un loup déclaré `quadrupede` mais rendu
+	# avec le gabarit humanoïde aurait ses zones au ras du sol alors qu'il se
+	# dresse comme un homme, et la lame lui passerait AU TRAVERS.
+	#
+	# Les modèles animaux embarquent donc leurs zones, CALCULÉES sur leur propre
+	# géométrie par le générateur (`models/creatures/rigs.json`). C'est la seule
+	# façon qu'elles restent vraies : une boîte saisie à la main cesserait de
+	# l'être à la première retouche de proportion, et il y a vingt-sept modèles.
+	var model_path := String(data.get("model", ""))
+	if model_path != "":
+		var zones: Array = CreatureBody.hitboxes_for(model_path)
+		if not zones.is_empty():
+			_hitboxes = MeleeAttack.parse_zones(zones)
+			return
+	# `hitbox_template` permet de forcer un gabarit ; sinon c'est celui du
+	# squelette déclaré (cas de l'humanoïde et des espèces sans modèle dédié).
 	var template := String(data.get("hitbox_template", ""))
 	if template == "":
-		template = _template_for_model(
-			String(data.get("model", "")), String(data["skeleton_template"]))
+		template = String(data["skeleton_template"])
 	_hitboxes = GameData.hitbox_templates.get(template, [])
 
 
-## Gabarit de zones déduit du MODÈLE porté. Tant qu'un seul modèle existe la
-## règle est simple, et elle se supprimera d'elle-même : dès qu'une espèce
-## reçoit un `.glb` dédié, elle retombe sur son `skeleton_template`.
-func _template_for_model(model_path: String, fallback: String) -> String:
-	if model_path.ends_with("humanoide.glb"):
-		return "humanoide"
-	return fallback
 
 
 ## Le segment monde [a, b] (le balayage de la pointe d'arme entre deux frames)
@@ -299,7 +446,7 @@ func sweep_segment(a: Vector3, b: Vector3) -> Dictionary:
 	var best := {}
 	var best_t := 2.0
 	for zone: Dictionary in _hitboxes:
-		var hit := _segment_aabb(local_a, direction, zone["min"], zone["max"])
+		var hit := MeleeAttack.segment_aabb(local_a, direction, zone["min"], zone["max"])
 		if hit >= 0.0 and hit < best_t:
 			best_t = hit
 			best = {
@@ -309,34 +456,6 @@ func sweep_segment(a: Vector3, b: Vector3) -> Dictionary:
 	return best
 
 
-## Slab test segment↔AABB. Retourne le paramètre t ∈ [0, 1] de la première
-## intersection, ou -1.0 si le segment manque la boîte. `direction` n'est PAS
-## normalisée : t est donc directement la fraction du segment parcourue.
-static func _segment_aabb(from: Vector3, direction: Vector3, box_min: Vector3, box_max: Vector3) -> float:
-	var t_near := 0.0
-	var t_far := 1.0
-	for axis in 3:
-		var d: float = direction[axis]
-		var origin: float = from[axis]
-		var lo: float = box_min[axis]
-		var hi: float = box_max[axis]
-		if absf(d) < 0.000001:
-			# Segment parallèle à cette paire de plans : il ne peut toucher que
-			# s'il est DÉJÀ entre les deux.
-			if origin < lo or origin > hi:
-				return -1.0
-			continue
-		var t1 := (lo - origin) / d
-		var t2 := (hi - origin) / d
-		if t1 > t2:
-			var swap := t1
-			t1 = t2
-			t2 = swap
-		t_near = maxf(t_near, t1)
-		t_far = minf(t_far, t2)
-		if t_near > t_far:
-			return -1.0
-	return t_near
 
 
 # --- Barre de vie (2026-07-28) -------------------------------------------
@@ -422,10 +541,37 @@ func _process(delta: float) -> void:
 		# placeholder ; il est ici remplacé par un calcul d'angle, parce que le
 		# corps ne doit prendre que le lacet (un `look_at` en terrain pentu
 		# ferait basculer la créature en avant).
-		facing = atan2(to_target.x, to_target.z)
+		facing = _yaw_towards(to_target)
+	# ON SE TOURNE POUR FRAPPER (2026-08-02). Le lacet venait UNIQUEMENT de la
+	# direction de marche : une créature immobile au contact du joueur gardait
+	# son orientation précédente et l'attaquait en regardant ailleurs. C'était
+	# visible à l'œil, et depuis que le balayage suit l'orientation affichée,
+	# c'était aussi sa lame qui partait de travers.
+	# LOCK-IN (2026-08-02, demande de l'auteur : « un mob ennemi devrait se lock
+	# in au joueur de face »). Un adversaire engagé reste FACE à sa cible, qu'il
+	# avance, recule ou contourne — sinon son jeu de jambes se lit comme une
+	# errance, et surtout son arme part de travers. Ce n'est plus réservé au
+	# moment de l'attaque : c'est l'état d'un ennemi qui vous a vu.
+	if _pose_phase != "" or _engaged:
+		var to_victim := CreatureManager.last_player_position - position
+		to_victim.y = 0.0
+		if to_victim.length_squared() > 0.0004:
+			facing = _yaw_towards(to_victim)
 	if _mesh != null:
 		rotation.y = facing
+	# ORIENTATION RÉELLEMENT AFFICHÉE (2026-08-02). `rotation.y` n'est posée que
+	# sur la capsule provisoire : une créature MODÉLISÉE reçoit son lacet par
+	# `update_as_entity`, et le nœud reste donc à zéro. Le balayage de son arme
+	# lisait `rotation.y` et frappait vers le −Z du MONDE, quelle que soit la
+	# direction où elle regardait. On mémorise ici le lacet réellement utilisé
+	# pour dessiner le corps : la lame suit exactement ce qu'on voit.
+	_visual_facing = facing
 	_advance_pose(delta)
+	_measure_velocity(delta)
+	# GÉOMÉTRIE À LA FRAME, comme celle du joueur. Elle ne modifie aucun état de
+	# jeu : elle CONSTATE, et le tick appliquera (voir `_pending_strike`).
+	if _pose_phase == "strike":
+		_sweep_strike(delta)
 	if _body != null:
 		var viewer := CreatureManager.last_player_position
 		# Le corps est piloté en MONDE (pose + marche + IK), pas en local :
@@ -439,21 +585,186 @@ func _process(delta: float) -> void:
 		_update_health_bar(viewer)
 
 
+## La créature tient-elle une garde, et couvre-t-elle `attack_direction` ?
+##
+## MÊME RÈGLE QUE POUR LE JOUEUR : les tailles sont MIROIR, l'estoc et le coup
+## haut se couvrent eux-mêmes. Une garde tenue du mauvais côté ne sert à rien —
+## sans quoi parer serait un bouton et non un pari.
+func guard_covers(incoming: int) -> bool:
+	return _guard_ticks > 0 and guard_direction == MeleeAttack.guard_for(incoming)
+
+
+func is_guarding() -> bool:
+	return _guard_ticks > 0
+
+
+## Le joueur vient d'annoncer un coup : la créature tente de lever la bonne
+## garde. Sa réussite dépend de son NIVEAU DE COMBAT — un villageois se trompe
+## souvent, un chef de bande rarement. C'est ce qui donne au niveau un effet
+## qu'on ressent en jouant, et non un simple chiffre de dégâts.
+##
+## Elle ne pare que si elle n'est pas déjà engagée dans son propre coup :
+## attaquer et parer en même temps est précisément ce que le système interdit.
+const GUARD_TICKS := 6
+## Repos entre deux gardes. SANS LUI, une créature parait CHAQUE coup : le
+## joueur n'avait plus aucune ouverture et le combat devenait un mur. Ce délai
+## est ce qui crée la fenêtre — enchaîner paie, parce que la seconde attaque
+## arrive pendant que la garde se rebaisse.
+const GUARD_COOLDOWN_TICKS := 14
+## Repos après une feinte : annuler son coup n'est pas gratuit non plus, sinon
+## une créature feinterait en boucle et ne frapperait jamais.
+const FEINT_RECOVERY_TICKS := 6
+## Part des menaces tenues qui finissent en feinte, par tick de maintien. Bornée
+## bas : une créature qui feinte une fois sur deux devient illisible, et le
+## joueur cesse d'accorder du crédit à ce qu'il voit — ce qui détruit la
+## télégraphie au lieu de l'enrichir.
+const FEINT_BASE := 0.04
+const FEINT_PER_LEVEL := 0.006
+const FEINT_MAX := 0.30
+## Chambrer se mérite : rien avant le niveau 10, et jamais plus d'une fois sur
+## trois. Un adversaire qui chambre systématiquement rendrait toute attaque
+## suicidaire.
+const CHAMBER_MIN_LEVEL := 10.0
+const CHAMBER_PER_LEVEL := 0.02
+const CHAMBER_MAX := 0.33
+## Diviseur de niveau. Volontairement HAUT : un bandit de niveau 10 lit une
+## attaque sur quatre, un souverain de niveau 25 une sur deux. Parer devait
+## rester un événement remarquable, pas la réponse par défaut — un adversaire
+## qui bloque plus d'une fois sur deux ne se lit plus, il use.
+const GUARD_SKILL_DIVISOR := 60.0
+
+
+## Chance de feinter, et de chambrer : toutes deux montent avec le niveau de
+## combat. C'est ce qui fait qu'un villageois se lit comme un livre ouvert et
+## qu'un chef de bande ment.
+func _feint_chance() -> float:
+	var level := float(GameData.creatures[creature_id].get("niveau_combat", 5))
+	return clampf(FEINT_BASE + level * FEINT_PER_LEVEL, 0.0, FEINT_MAX)
+
+
+## La créature attaque-t-elle DANS le coup qui arrive ? C'est le pendant exact
+## de `Player.is_chambering` : même condition, même fenêtre. Le geste le plus
+## exigeant du jeu ne pouvait pas rester réservé au joueur.
+## Cette créature dévie-t-elle les projectiles ? Il lui faut une GARDE LEVÉE et
+## une plaque : on ne pare pas une flèche à l'épée. Les créatures n'ont pas
+## encore de bouclier en données — la règle est en place, elle s'appliquera dès
+## qu'une en portera un, et elle vaut déjà pour le joueur.
+func blocks_projectiles() -> bool:
+	return _guard_ticks > 0 and bool(combat.get("bouclier", false))
+
+
+## Un projectile dévié entame la plaque, comme un coup encaissé.
+func wear_from_projectile() -> void:
+	pass
+
+
+func is_chambering(incoming: int) -> bool:
+	return _windup_ticks > 0 and attack_direction == incoming
+
+
+func react_to_telegraph(incoming: int) -> void:
+	if _windup_ticks > 0 or _pose_phase == "strike" or combat.is_empty():
+		return
+	if _guard_cooldown_ticks > 0 or _guard_ticks > 0:
+		return
+	var level := float(GameData.creatures[creature_id].get("niveau_combat", 5))
+	# CHAMBRER PLUTÔT QUE PARER (2026-08-02). Un adversaire aguerri ne se
+	# contente pas de bloquer : il part dans la MÊME direction pour entrechoquer
+	# les lames. Réservé aux hauts niveaux — c'est le geste qui doit se mériter,
+	# et croiser un adversaire qui chambre doit se remarquer.
+	if _attack_cooldown_ticks <= 0 and randf() < clampf(
+			(level - CHAMBER_MIN_LEVEL) * CHAMBER_PER_LEVEL, 0.0, CHAMBER_MAX):
+		var chambered := WeaponStats.derive(combat_functionality(), {})
+		attack_direction = MeleeAttack.nearest_allowed(
+			incoming, chambered.get("directions", []))
+		# Wind-up ÉCOURTÉ : chambrer, c'est partir en même temps que l'autre.
+		_windup_ticks = 1
+		_hold_ticks = 0
+		_attack_cooldown_ticks = maxi(1, ceili(
+			10.0 / float(combat_functionality().get("vitesse_base", 1.0))))
+		_start_pose("windup", TickManager.TICK_DT)
+		EventBus.attack_telegraphed.emit(self,
+			MeleeAttack.direction_name(attack_direction))
+		return
+	var reads_it := randf() < clampf(0.10 + level / GUARD_SKILL_DIVISOR, 0.0, 0.6)
+	# Se tromper de garde est un VRAI choix, pas une absence de garde : la bête
+	# se protège du mauvais côté, et le joueur voit qu'elle s'est trompée.
+	guard_direction = MeleeAttack.guard_for(incoming) if reads_it else randi() % 4
+	_guard_ticks = GUARD_TICKS
+	_guard_cooldown_ticks = GUARD_COOLDOWN_TICKS
+	_start_pose("garde", float(GUARD_TICKS) * TickManager.TICK_DT)
+
+
 ## Une passe de tick (E.1) : IA + mouvement + cooldown d'attaque. Retourne
 ## un événement d'attaque à résoudre par CreatureManager, ou {} sinon.
 func tick_step(player_position: Vector3, player_ref: Node) -> Dictionary:
 	if _attack_cooldown_ticks > 0:
 		_attack_cooldown_ticks -= 1
+	if _guard_cooldown_ticks > 0:
+		_guard_cooldown_ticks -= 1
+	if _guard_ticks > 0:
+		_guard_ticks -= 1
+		if _guard_ticks == 0 and _pose_phase == "garde":
+			_pose_phase = ""
 	# Wind-up déclaré au tick précédent : le coup part MAINTENANT. La portée
 	# sera revérifiée à la résolution (CreatureManager) — si le joueur a
 	# reculé entre-temps, le coup fend l'air et crédite son Esquive.
 	if _windup_ticks > 0:
 		_windup_ticks -= 1
 		if _windup_ticks == 0:
+			# MENACE TENUE (2026-08-02). Le joueur peut garder son coup armé
+			# aussi longtemps qu'il veut ; un PNJ enchaînait wind-up et frappe
+			# sans respirer. Or c'est cette pause qui rend la posture LISIBLE :
+			# elle laisse le temps de reconnaître la direction, et elle rend la
+			# feinte possible — attendre est une menace, pas un temps mort.
+			# Elle est tirée au sort pour qu'on ne puisse pas la compter.
+			if _hold_ticks < 0:
+				_hold_ticks = randi_range(0, MAX_HOLD_TICKS)
+				if _hold_ticks > 0:
+					_start_pose("armee", float(_hold_ticks) * TickManager.TICK_DT)
+					_windup_ticks = 1   # on repasse ici au tick suivant
+					return {}
+			if _hold_ticks > 0:
+				_hold_ticks -= 1
+				# FEINTE (2026-08-02). Un PNJ tenait sa menace mais ne l'annulait
+				# JAMAIS : attendre derrière sa garde ne coûtait donc rien, il
+				# suffisait de patienter jusqu'au coup annoncé. La feinte est ce
+				# qui rend l'attente dangereuse — c'est le geste central de
+				# Mount & Blade, et il n'existait que dans un sens.
+				#
+				# Le coup annoncé n'arrive pas : la créature se replace, et
+				# repart d'une autre direction. La télégraphie devient une
+				# promesse qu'on peut trahir, donc une information qu'il faut
+				# peser au lieu de la croire.
+				if _hold_ticks > 0 and randf() < _feint_chance():
+					_windup_ticks = 0
+					_hold_ticks = -1
+					_attack_cooldown_ticks = FEINT_RECOVERY_TICKS
+					_start_pose("recover", 0.2)
+					return {}
+				_windup_ticks = 1
+				return {}
+			_hold_ticks = -1
 			var derived := WeaponStats.derive(combat_functionality(), {})
+			# La lame PART : c'est le balayage à la frame qui dira ce qu'elle
+			# touche. Le tick ne résout plus à l'aveugle au moment où le coup
+			# s'élance.
+			_pending_strike = {}
+			_strike_previous = PackedVector3Array()
+			_strike_finished = false
 			_start_pose("strike", float(derived["release_ms"]) / 1000.0)
-			return {"attacker": self, "target": player_ref}
+			return {}
 		return {}
+	# COUP CONSTATÉ par la géométrie : le tick l'applique maintenant. C'est le
+	# même contrat que pour le joueur — la frame observe, le tick décide.
+	if not _pending_strike.is_empty():
+		var hit := _pending_strike
+		_pending_strike = {}
+		_strike_finished = false
+		return {"attacker": self, "target": player_ref, "hit": hit}
+	if _strike_finished:
+		_strike_finished = false
+		return {"attacker": self, "target": player_ref, "hit": {}}
 
 	# Vise le CORPS du joueur (torse ≈ œil − 0.9), jamais l'œil de la caméra :
 	# avec la convention feet_y/EYE_HEIGHT 1.9, l'œil est à ~2.4 au-dessus du
@@ -472,16 +783,32 @@ func tick_step(player_position: Vector3, player_ref: Node) -> Dictionary:
 	var aggro_range := AGGRO_RANGE
 	if DayNightManager.is_night():
 		aggro_range *= AGGRO_NIGHT_FACTOR
-	if is_hostile() and dist3d <= aggro_range:
+	_engaged = is_hostile() and dist3d <= aggro_range
+	if _engaged:
 		var functionality := combat_functionality()
-		var reach: float = functionality.get("portee", 1.5)
+		# ALLONGE RÉELLE, celle de la lame (2026-08-02). Le code lisait le champ
+		# `portee` de la fiche — resté à 1,5 pour TOUTES les armes depuis que
+		# l'allonge se déduit des pièces. Une créature tenait donc sa distance,
+		# et déclarait ses coups, à un mètre cinquante alors que son fer
+		# n'atteint que 1,25 m : elle frappait systématiquement dans le vide et
+		# aucun de ses coups ne pouvait aboutir. Le défaut est resté caché tant
+		# que la résolution était un test de rayon sur ce même champ — les deux
+		# erreurs se compensaient.
+		var reach := _strike_reach(functionality)
 		if dist3d <= reach + 0.5:
 			# À portée : DÉCLARER l'attaque, puis la porter après le wind-up
 			# (2026-07-28). Frapper dans le même tick que la décision rendait
 			# toute esquive impossible — le joueur n'avait littéralement pas
 			# d'instant où reculer. La déclaration est publique (télégraphie
 			# E.12) : c'est ce qui rend le combat lisible.
-			if _attack_cooldown_ticks <= 0 and not combat.is_empty():
+			# PAS DE NOUVELLE ATTAQUE TANT QUE LA LAME EST EN L'AIR (2026-08-02).
+			# Une créature pouvait redéclarer pendant sa propre frappe : la
+			# nouvelle pose écrasait la précédente, le balayage n'atteignait
+			# jamais sa fin, et le coup en cours était PERDU sans jamais être
+			# résolu. Constaté en instrumentant la sonde ; en jeu, le cas se
+			# produit dès qu'une arme lente sort une frappe plus longue que le
+			# temps de recharge de la créature.
+			if _attack_cooldown_ticks <= 0 and not combat.is_empty() 					and _pose_phase != "strike":
 				var stats_derived := WeaponStats.derive(functionality, {})
 				_windup_ticks = maxi(1, ceili(float(stats_derived["windup_ms"]) / 100.0))
 				var speed: float = functionality.get("vitesse_base", 1.0)
@@ -489,18 +816,21 @@ func tick_step(player_position: Vector3, player_ref: Node) -> Dictionary:
 				# DIRECTION REELLE, tiree a la declaration : sans elle le blocage
 				# directionnel du joueur n'aurait rien a parer. Elle est PUBLIEE
 				# par la telegraphie, donc lisible et anticipable.
-				attack_direction = randi() % 4
+				# Tirée DANS le répertoire de son arme : un garde à la lance ne
+				# peut pas fauter latéralement, et le joueur peut donc apprendre
+				# à lire ce qu'une arme donnée sait faire.
+				var repertoire: Array = stats_derived.get("directions", [])
+				attack_direction = MeleeAttack.nearest_allowed(randi() % 4, repertoire)
 				# Le geste DOIT etre visible : sans lui la telegraphie est un
 				# signal que le joueur ne peut pas percevoir.
 				_start_pose("windup", float(_windup_ticks) * TickManager.TICK_DT)
 				EventBus.attack_telegraphed.emit(self,
 					MeleeAttack.direction_name(attack_direction))
-		elif dist_flat > 0.01:
-			# Poursuite HORIZONTALE (mouvement par tick, jamais en _process — E.1) ;
-			# une créature terrestre ne peut pas voler vers une cible en hauteur.
-			var step := to_player_flat.normalized() * (float(stats.get("vitesse", 5)) * 0.02)
-			logical_position += step
-			logical_position.y = _ground_height()
+		if dist_flat > 0.01:
+			# JEU DE JAMBES plutôt que marche droit devant. Le mouvement reste
+			# au TICK (E.1) ; une créature terrestre ne vole pas vers une cible
+			# en hauteur, d'où un déplacement à plat.
+			_step_footwork(to_player_flat, dist_flat, reach)
 	elif is_skittish() and dist3d <= FLEE_RANGE:
 		# Fuite : s'écarter du joueur, à plat (même contrainte que la
 		# poursuite — une bête terrestre ne s'envole pas pour fuir).
@@ -575,15 +905,224 @@ func _advance_pose(delta: float) -> void:
 	if _pose_time < _pose_duration:
 		return
 	match _pose_phase:
+		"garde":
+			# La garde se TIENT : c'est le tick qui la baisse, pas l'horloge de
+			# la pose. Une garde qui retombe seule ne se lirait pas.
+			_pose_time = _pose_duration
+		"armee":
+			# Menace TENUE : la pose reste à son point d'armement. Elle ne
+			# retombe pas d'elle-même — c'est le tick qui décide de frapper.
+			_pose_time = _pose_duration
 		"windup":
 			# Le tick n'a pas encore libéré le coup : on TIENT la position
 			# armée plutôt que d'enchaîner, sinon le geste partirait avant le
 			# coup et mentirait sur le moment de l'impact.
 			_pose_time = _pose_duration
 		"strike":
+			# La lame a fini sa course. Si elle n'a rien constaté, le tick
+			# créditera l'esquive du joueur — il a bougé au bon moment.
+			if _pending_strike.is_empty():
+				_strike_finished = true
 			_start_pose("recover", 0.25)
 		_:
 			_pose_phase = ""
+
+
+## Vitesse VISUELLE lissée. Brute, elle serait un escalier : la position logique
+## n'avance qu'au tick et `position` la rattrape par interpolation.
+func _measure_velocity(delta: float) -> void:
+	if delta <= 0.0001:
+		return
+	if _last_visual_position == Vector3.INF:
+		_last_visual_position = position
+		return
+	var instant := (position - _last_visual_position) / delta
+	_last_visual_position = position
+	_velocity = _velocity.lerp(instant, minf(delta * 12.0, 1.0))
+
+
+## Combien de points suivre le long de la tête d'arme, et la finesse. Mêmes
+## valeurs que côté joueur : un fer est un segment, pas un point.
+const STRIKE_HEAD_SAMPLES := 3
+
+
+## Promène la TÊTE de l'arme entre la frame précédente et celle-ci, et retient
+## le premier contact. Ne touche à AUCUN état de jeu — elle remplit
+## `_pending_strike`, que le tick videra.
+func _sweep_strike(delta: float) -> void:
+	if not _pending_strike.is_empty():
+		return   # un coup ne touche qu'une fois
+	var player := get_node_or_null("/root/Main/Player")
+	if player == null or not player.has_method("sweep_segment"):
+		return
+	var functionality := combat_functionality()
+	if functionality.is_empty():
+		return
+	var stats := WeaponStats.derive(functionality, {})
+	var arm: float = PlayerBody.HAND_ARC_RADIUS
+	var draw: float = preload("res://scenes/entities/held_item.gd").PART_SCALE
+	# MÊME portée vulnérante que le joueur, lue au même endroit.
+	var span := WeaponStats.head_span(stats, arm, draw)
+	var grip := position + Vector3.UP * PlayerBody.COMBAT_GRIP_HEIGHT
+	# REPÈRE PRIS SUR LE LACET RÉELLEMENT AFFICHÉ. Depuis que la convention est
+	# corrigée (`_yaw_towards`), le corps regarde bien sa cible : la lame peut
+	# donc suivre le corps, ce qui est l'invariant qu'on veut — ce qu'on voit
+	# EST ce qui frappe, orientation comprise.
+	var facing := Basis.from_euler(Vector3(0.0, _visual_facing, 0.0))
+	var ratio := clampf(_pose_time / maxf(_pose_duration, 0.001), 0.0, 1.0)
+	var pull := (1.0 - MeleeAttack.THRUST_START) * arm
+
+	var current := PackedVector3Array()
+	for i in STRIKE_HEAD_SAMPLES:
+		var distance: float = lerpf(span.x, span.y, float(i) / float(STRIKE_HEAD_SAMPLES - 1))
+		current.append(MeleeAttack.point_along(
+			attack_direction, ratio, grip, facing, distance, pull))
+	if _strike_previous.size() == current.size():
+		for i in current.size():
+			var hit: Dictionary = player.sweep_segment(_strike_previous[i], current[i])
+			if hit.is_empty():
+				continue
+			# LE DÉCOR ARRÊTE LA LAME, ici aussi.
+			if WorldManager.line_blocked(grip, hit["point"]):
+				continue
+			hit["grip_distance"] = grip.distance_to(hit["point"])
+			hit["head_start"] = span.x
+			hit["reach"] = span.y
+			# BONUS DE VITESSE (2026-08-02) : la vitesse RELATIVE de l'arme et de
+			# la cible décide, exactement comme pour le joueur. Une créature qui
+			# CHARGE frappe plus fort, une créature qu'on fuit frappe moins.
+			# C'était la mécanique signature de Mount & Blade qui ne marchait que
+			# dans un sens, faute d'une vitesse mesurable côté créature.
+			var travel: Vector3 = current[i] - _strike_previous[i]
+			var nominal := travel.length() / maxf(delta, 0.0001)
+			var closing := 0.0
+			if travel.length_squared() > 0.000001:
+				closing = _velocity.dot(travel.normalized())
+			hit["speed"] = WeaponStats.speed_factor(nominal, closing)
+			_pending_strike = hit
+			break
+	_strike_previous = current
+
+
+## Distance à laquelle la POINTE de son arme arrive, mesurée depuis son corps.
+## C'est la même géométrie que celle du balayage (`WeaponStats.head_span`), donc
+## la distance à laquelle elle décide d'attaquer est exactement celle à laquelle
+## elle touche.
+func _strike_reach(functionality: Dictionary) -> float:
+	if functionality.is_empty():
+		return 1.5
+	var stats := WeaponStats.derive(functionality, {})
+	return WeaponStats.head_span(stats, PlayerBody.HAND_ARC_RADIUS,
+		preload("res://scenes/entities/held_item.gd").PART_SCALE).y
+
+
+## Avance d'un tick le jeu de jambes, et déplace la créature.
+##
+## Le pas est la somme de trois intentions, et aucune ne suffit seule :
+##   RADIALE      — tenir la distance d'engagement (s'approcher ou reculer) ;
+##   TANGENTIELLE — contourner, ce qui oblige le joueur à se réorienter ;
+##   SÉPARATION   — s'écarter des autres, pour que chacun garde son espace.
+func _step_footwork(to_player_flat: Vector3, dist_flat: float, reach: float) -> void:
+	_footwork_ticks -= 1
+	if _footwork_ticks <= 0:
+		_choose_footwork(dist_flat, reach)
+	var forward := to_player_flat / maxf(dist_flat, 0.0001)
+	var side := Vector3(-forward.z, 0.0, forward.x)
+	var target := reach * ENGAGE_RATIO
+	var intent := Vector3.ZERO
+	match _footwork:
+		Footwork.APPROCHE:
+			intent = forward
+		Footwork.RECULE:
+			intent = -forward * BACKPEDAL_FACTOR
+		Footwork.CONTOURNE:
+			intent = side * (_orbit_sign * STRAFE_FACTOR)
+		Footwork.TIENT:
+			# TENIR n'est pas rester immobile : c'est corriger la distance. Une
+			# créature parfaitement figée se lit comme un décor, et surtout elle
+			# cesse d'être une menace qu'on doit surveiller.
+			intent = forward * clampf((dist_flat - target) / maxf(ENGAGE_SLACK, 0.01), -1.0, 1.0)
+	# La distance d'engagement PRIME sur l'intention : trop loin on se rapproche
+	# quoi qu'on ait décidé, trop près on se dégage. Sans cette correction, une
+	# créature qui a tiré « recule » reculerait jusqu'à sortir du combat.
+	if dist_flat > target + ENGAGE_SLACK:
+		intent += forward
+	elif dist_flat < target - ENGAGE_SLACK:
+		intent -= forward
+	intent += _separation() * SEPARATION_WEIGHT
+	if intent.length_squared() < 0.000001:
+		return
+	var speed := float(stats.get("vitesse", 5)) * 0.02
+	logical_position += intent.normalized() * speed
+	logical_position.y = _ground_height()
+
+
+## Tire une nouvelle intention, biaisée par la distance courante. On ne recule
+## pas quand on est déjà loin, on ne s'approche pas quand on est déjà collé :
+## le hasard porte sur le STYLE, jamais sur la cohérence.
+func _choose_footwork(dist_flat: float, reach: float) -> void:
+	_footwork_ticks = randi_range(FOOTWORK_MIN_TICKS, FOOTWORK_MAX_TICKS)
+	_orbit_sign = 1.0 if randf() < 0.5 else -1.0
+	var target := reach * ENGAGE_RATIO
+	if dist_flat > target + ENGAGE_SLACK:
+		_footwork = Footwork.APPROCHE
+		return
+	if dist_flat < target - ENGAGE_SLACK:
+		_footwork = Footwork.RECULE
+		return
+	# À bonne distance : c'est là que le choix est intéressant. Contourner
+	# domine — c'est ce qui donne au combat son mouvement de rotation
+	# caractéristique et force le joueur à se replacer en permanence.
+	var roll := randf()
+	if roll < 0.45:
+		_footwork = Footwork.CONTOURNE
+	elif roll < 0.70:
+		_footwork = Footwork.TIENT
+	elif roll < 0.88:
+		_footwork = Footwork.APPROCHE
+	else:
+		_footwork = Footwork.RECULE
+
+
+## Vecteur d'écartement des autres créatures proches. Purement local : chacune
+## regarde ses voisines, personne n'orchestre. C'est ce qui fait que la
+## formation se défait et se refait toute seule quand le joueur se déplace.
+func _separation() -> Vector3:
+	var push := Vector3.ZERO
+	# Ne parcourt QUE les créatures de la dimension active : les autres sont
+	# gelées et n'occupent aucun espace ici.
+	for other in CreatureManager.creatures:
+		if other == self or not is_instance_valid(other) or other.is_dead():
+			continue
+		if other.dimension != dimension:
+			continue
+		var away: Vector3 = logical_position - other.logical_position
+		away.y = 0.0
+		var gap := away.length()
+		if gap > PERSONAL_SPACE or gap < 0.0001:
+			continue
+		# Plus on est proche, plus on pousse fort : deux créatures qui se
+		# touchent se repoussent franchement, deux qui se frôlent s'ignorent.
+		push += (away / gap) * (1.0 - gap / PERSONAL_SPACE)
+	return push
+
+
+## Lacet pour REGARDER dans la direction `d`.
+##
+## LA CONVENTION ÉTAIT INVERSÉE (corrigé le 2026-08-02). Le code posait
+## `atan2(d.x, d.z)` — or une rotation de lacet θ envoie le −Z du corps sur
+## `(−sin θ, 0, −cos θ)`, et l'avant du projet EST le −Z (voir le LISEZMOI des
+## rigs). Avec l'ancienne formule, une créature se déplaçait donc DOS À SA
+## DIRECTION DE MARCHE, et attaquait en tournant le dos à sa victime. Le défaut
+## est resté invisible tant qu'aucune arme n'était portée : un corps symétrique
+## marchant à reculons ne saute pas aux yeux, une lame qui part à l'opposé si.
+func _yaw_towards(d: Vector3) -> float:
+	return atan2(-d.x, -d.z)
+
+
+## Cette créature est-elle ENGAGÉE contre le joueur ? Posé au tick par l'IA :
+## `_process` tourne à la frame et n'a pas à refaire le test d'agression.
+var _engaged := false
 
 
 ## Hauteur de sol RÉELLE sous la créature : premier bloc solide (eau exclue)

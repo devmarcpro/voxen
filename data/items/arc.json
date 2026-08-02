@@ -15,23 +15,19 @@
     "inputs": [
       {
         "category": "bois",
-        "amount": 1
-      },
-      {
-        "category": "minerai",
-        "amount": 1
+        "amount": 3
       }
     ]
   },
   "stat_weights": {
     "durete": {
-      "minerai": 0.9,
-      "bois": 0.1
+      "bois": 0.9,
+      "minerai": 0.1
     }
   },
   "sprite_tint": {
     "manche": "bois",
-    "tete": "minerai"
+    "tete": "bois"
   },
   "effects": [],
   "tags": [

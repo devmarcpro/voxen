@@ -103,9 +103,16 @@ func _process(_delta: float) -> void:
 ## Entrée à afficher selon la source. Une main gauche sans bouclier reçoit une
 ## entrée VIDE, que `_rebuild` traduit déjà en « rien à montrer ».
 func _source_entry() -> Dictionary:
-	if source == "bouclier":
+	if source == "main_gauche":
+		# La main gauche porte un BOUCLIER ou une SECONDE ARME (dual wielding,
+		# 2026-08-02) — jamais les deux, l'emplacement est le même. Elle suit
+		# l'ÉQUIPEMENT et non la hotbar : c'est ce qui permet de garder au
+		# bouclier tout en changeant d'outil en main forte.
 		var shield: Dictionary = _player.equipped_shield()
-		return {} if shield.is_empty() else {"kind": "object", "object": shield}
+		if not shield.is_empty():
+			return {"kind": "object", "object": shield}
+		var offhand: Dictionary = _player.offhand_weapon()
+		return {} if offhand.is_empty() else {"kind": "object", "object": offhand}
 	return _player.held_entry()
 
 
@@ -182,22 +189,21 @@ func _build_part_weapon(item: Dictionary, material_choices: Dictionary,
 	for child in get_children():
 		child.queue_free()
 
-	var tint: Dictionary = item.get("sprite_tint", {})
-	var handle_color := _material_color(material_choices, String(tint.get("manche", "bois")))
-	var head_color := _material_color(material_choices, String(tint.get("tete", "minerai")))
 	var length := float(handle.get("longueur", 0.0))
-	# L'arme est tenue par son POINT DE PRISE, pas par le bout du manche : on
-	# descend tout l'assemblage de cette hauteur pour que la main tombe au bon
+	# L'arme est tenue par son POINT DE PRISE, pas par le bout du manche :
+	# l'assemblage est descendu de cette hauteur pour que la main tombe au bon
 	# endroit. Sur une pique (prise à 12 % de la base) le manche dépasse donc
 	# largement derrière la main — ce qui est exactement le geste réel.
 	var grip_offset := float(handle.get("grip_main", 0.3)) * length
-	var built := false
-	if not handle.is_empty():
-		built = _add_part(String(handle["model"]), Vector3(0.0, -grip_offset, 0.0), handle_color) or built
-	if not head.is_empty():
-		# La tête est modélisée à partir de y = 0 : c'est ici qu'elle monte au
-		# sommet du manche (convention de generate_weapon_parts.py).
-		built = _add_part(String(head["model"]), Vector3(0.0, length - grip_offset, 0.0), head_color) or built
+	# ASSEMBLAGE PARTAGÉ avec l'icône d'inventaire (2026-08-02). L'arme qu'on
+	# VOIT dans sa case et celle qu'on TIENT sortent de la même fonction : c'est
+	# la seule façon que l'icône ne puisse pas mentir sur ce qu'on porte.
+	var assembly := WeaponPreview.assemble(item, material_choices)
+	var built := assembly != null
+	if built:
+		add_child(assembly)
+		for node in _mesh_children(assembly):
+			node.cast_shadow = cast_shadow
 	# GEMME SERTIE : à la jonction manche/tête, là où une vraie arme place son
 	# pommeau ou sa garde ornée. C'est aussi le seul point commun à toutes les
 	# armes, quelle que soit la pièce montée — pas besoin d'un point d'ancrage
@@ -253,19 +259,6 @@ static func _gem_material(color: Color) -> StandardMaterial3D:
 	return mat
 
 
-func _add_part(model_path: String, offset: Vector3, color: Color) -> bool:
-	if model_path == "" or not ResourceLoader.exists(model_path):
-		return false
-	var scene: PackedScene = load(model_path)
-	if scene == null:
-		return false
-	var instance := scene.instantiate()
-	add_child(instance)
-	instance.position = offset
-	for node in _mesh_children(instance):
-		node.material_override = PlayerBody.tinted_material(color)
-		node.cast_shadow = cast_shadow
-	return true
 
 
 func _mesh_children(node: Node) -> Array[MeshInstance3D]:

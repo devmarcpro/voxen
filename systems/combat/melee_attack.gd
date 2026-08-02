@@ -77,6 +77,18 @@ var phase_ratio := 0.0
 ## touche qu'une fois, même si la lame reste dans la cible plusieurs frames.
 var can_still_hit := false
 
+## ENCHAÎNEMENT À DEUX ARMES (2026-08-02, demande de l'auteur). Un clic ne
+## produit plus forcément UNE frappe : en dual wielding il en produit DEUX, la
+## main forte puis la main gauche. C'est ce qui donne à la seconde arme une
+## existence offensive — sans cela elle ne servait qu'à parer, et deux armes
+## différentes se valaient.
+##
+## `strike` vaut 0 pour le coup de main forte, 1 pour le retour de main gauche.
+## `strikes` est figé au déclenchement : changer d'équipement en plein
+## enchaînement ne doit pas ajouter ni retirer un coup déjà engagé.
+var strike := 0
+var strikes := 1
+
 var _elapsed_ms := 0.0
 var _gesture := Vector2.ZERO
 ## Le bouton d'attaque est-il encore enfoncé ? Tant qu'il l'est, l'arme reste
@@ -97,9 +109,16 @@ func is_busy() -> bool:
 
 ## Le joueur vient de cliquer : on entre en lecture de geste. `stats` est le
 ## dictionnaire produit par WeaponStats.derive().
-func begin(stats: Dictionary) -> void:
+## Répertoire de l'arme en cours, figé au déclenchement comme les durées.
+var _allowed: Array = []
+
+
+func begin(stats: Dictionary, strike_count: int = 1) -> void:
 	if is_busy():
 		return
+	_allowed = stats.get("directions", [])
+	strike = 0
+	strikes = maxi(1, strike_count)
 	state = State.LECTURE
 	_elapsed_ms = 0.0
 	_gesture = Vector2.ZERO
@@ -139,7 +158,8 @@ func advance(delta: float) -> String:
 	match state:
 		State.LECTURE:
 			if _elapsed_ms >= GESTURE_MS:
-				direction = _resolve_direction(_gesture)
+				# Le geste est lu, PUIS reporté sur ce que l'arme sait faire.
+				direction = nearest_allowed(_resolve_direction(_gesture), _allowed)
 				state = State.WINDUP
 				_elapsed_ms = 0.0
 				phase_ratio = 0.0
@@ -169,6 +189,16 @@ func advance(delta: float) -> String:
 		State.RELEASE:
 			phase_ratio = clampf(_elapsed_ms / maxf(_release_ms, 1.0), 0.0, 1.0)
 			if _elapsed_ms >= _release_ms:
+				if strike + 1 < strikes:
+					# RETOUR DE MAIN GAUCHE : la seconde arme enchaîne sans
+					# repasser par le wind-up — c'est un enchaînement, pas une
+					# seconde attaque, et le joueur ne peut pas l'interrompre.
+					# Il paie donc l'engagement des deux coups d'un seul clic.
+					strike += 1
+					_elapsed_ms = 0.0
+					phase_ratio = 0.0
+					can_still_hit = true
+					return "release"
 				state = State.RECOVERY
 				_elapsed_ms = 0.0
 				phase_ratio = 0.0
@@ -187,7 +217,33 @@ func interrupt() -> void:
 	state = State.IDLE
 	phase_ratio = 0.0
 	can_still_hit = false
+	strike = 0
+	strikes = 1
 	_elapsed_ms = 0.0
+
+
+## Direction du coup COURANT. Le retour de main gauche part en MIROIR : une
+## taille droite revient par une taille gauche, ce qu'on fait naturellement en
+## croisant deux lames. Conséquence de jeu, et elle est voulue : une garde
+## d'arme ne couvre qu'UNE ligne, elle ne peut donc pas arrêter les deux coups —
+## il faut un bouclier, qui couvre les directions voisines. Le dual wielding bat
+## la défense à l'arme seule, le bouclier bat le dual wielding, la boucle du GDD
+## (deux mains / bouclier / deux armes) se referme.
+##
+## L'estoc et le coup haut sont dans l'AXE : ils n'ont pas de miroir, le second
+## coup repart donc du même côté.
+func strike_direction() -> int:
+	if strike == 0:
+		return direction
+	match direction:
+		Direction.TAILLE_DROITE: return Direction.TAILLE_GAUCHE
+		Direction.TAILLE_GAUCHE: return Direction.TAILLE_DROITE
+	return direction
+
+
+## Le coup courant part-il de la main GAUCHE ?
+func is_offhand_strike() -> bool:
+	return strike > 0
 
 
 ## Geste cumulé → direction. Le geste dominant l'emporte ; un geste trop faible
@@ -216,23 +272,91 @@ static func _resolve_direction(gesture: Vector2) -> int:
 ## une pointe dont on connaît la position à chaque frame. Le segment entre deux
 ## frames consécutives est ce qu'on teste contre les zones de coup.
 static func tip_position(direction_id: int, u: float, origin: Vector3, basis: Basis, reach: float) -> Vector3:
+	return point_along(direction_id, u, origin, basis, reach, (1.0 - THRUST_START) * reach)
+
+
+## Retrait de l'estoc au début du geste : la pointe part à 35 % du rayon et file
+## jusqu'à 100 %. C'est le BRAS qui se déplie, donc toute l'arme avance de la
+## même quantité — d'où une translation, et d'où le fait que le retrait soit un
+## paramètre plutôt qu'une fraction du rayon de chaque point. Sans ça, un point
+## proche de la main reculerait moins que la pointe et l'arme s'allongerait.
+const THRUST_START := 0.35
+
+
+## Position d'un point situé à `distance` de l'ORIGINE DE L'ARC (la prise), pour
+## la progression `u` de la phase de frappe. `thrust_pull` est le recul de
+## l'estoc au début du geste, en mètres.
+##
+## POURQUOI CETTE FONCTION EXISTE (2026-08-02). `tip_position` ne donnait que la
+## POINTE, et c'est le seul point qui était testé contre les cibles : une
+## hallebarde dont le fer traversait un torse ne touchait pas, parce que sa
+## pointe, elle, passait au-dessus, et une épée ne coupait qu'avec son dernier
+## centimètre. Une arme n'est pas un point — sa tête est un SEGMENT, et c'est ce
+## segment qu'il faut promener. `tip_position` en devient un cas particulier,
+## donc l'arc du geste et le placement des mains restent inchangés.
+static func point_along(direction_id: int, u: float, origin: Vector3, basis: Basis,
+		distance: float, thrust_pull: float = 0.0) -> Vector3:
 	var forward := -basis.z
 	var right := basis.x
 	var up := basis.y
 	match direction_id:
 		Direction.ESTOC:
-			# Poussée droite : la pointe part de la garde et file vers l'avant.
-			return origin + forward * lerpf(reach * 0.35, reach, u)
+			return origin + forward * (distance - thrust_pull * (1.0 - u))
 		Direction.TAILLE_DROITE:
 			var angle := lerpf(deg_to_rad(55.0), deg_to_rad(-55.0), u)
-			return origin + (forward * cos(angle) + right * sin(angle)) * reach
+			return origin + (forward * cos(angle) + right * sin(angle)) * distance
 		Direction.TAILLE_GAUCHE:
 			var angle_l := lerpf(deg_to_rad(-55.0), deg_to_rad(55.0), u)
-			return origin + (forward * cos(angle_l) + right * sin(angle_l)) * reach
+			return origin + (forward * cos(angle_l) + right * sin(angle_l)) * distance
 		Direction.OVERHEAD:
 			var angle_v := lerpf(deg_to_rad(60.0), deg_to_rad(-35.0), u)
-			return origin + (forward * cos(angle_v) + up * sin(angle_v)) * reach
-	return origin + forward * reach
+			return origin + (forward * cos(angle_v) + up * sin(angle_v)) * distance
+	return origin + forward * distance
+
+
+## Repli quand une direction n'est pas au répertoire de l'arme : le premier
+## choix possible, dans l'ordre. Ce n'est PAS arbitraire — une masse à qui l'on
+## demande un estoc doit abattre (le geste le plus proche du poussé, avec le
+## poids devant), une rapière à qui l'on demande un coup haut doit piquer.
+const DIRECTION_FALLBACK := {
+	Direction.ESTOC: [Direction.ESTOC, Direction.OVERHEAD, Direction.TAILLE_DROITE, Direction.TAILLE_GAUCHE],
+	Direction.OVERHEAD: [Direction.OVERHEAD, Direction.ESTOC, Direction.TAILLE_DROITE, Direction.TAILLE_GAUCHE],
+	Direction.TAILLE_DROITE: [Direction.TAILLE_DROITE, Direction.TAILLE_GAUCHE, Direction.OVERHEAD, Direction.ESTOC],
+	Direction.TAILLE_GAUCHE: [Direction.TAILLE_GAUCHE, Direction.TAILLE_DROITE, Direction.OVERHEAD, Direction.ESTOC],
+}
+
+
+## Direction RÉELLEMENT jouable la plus proche de `wanted`, selon le répertoire
+## de l'arme. Une liste vide veut dire « tout est permis ».
+##
+## POURQUOI LES ARMES ONT UN RÉPERTOIRE (2026-08-02). Toutes faisaient les quatre
+## directions : une pique taillait latéralement comme une dague, une masse
+## piquait de la pointe. C'est ce qui rendait le choix d'une arme purement
+## chiffré — allonge, dés, vitesse — alors que dans Mount & Blade on choisit une
+## arme pour son JEU. Une lance qui ne fait qu'estoquer devient une arme de
+## contrôle de distance ; une hache qui ne pique pas doit se rapprocher.
+##
+## Le geste du joueur n'est jamais REFUSÉ, il est REPORTÉ sur le coup le plus
+## proche : un clic doit toujours produire une attaque, sinon l'arme paraît
+## cassée. C'est la même règle pour l'IA, qui tire sa direction dans le même
+## répertoire.
+static func nearest_allowed(wanted: int, allowed: Array) -> int:
+	if allowed.is_empty() or wanted in allowed:
+		return wanted
+	for candidate: int in DIRECTION_FALLBACK.get(wanted, []):
+		if candidate in allowed:
+			return candidate
+	return allowed[0]
+
+
+## Nom d'une direction vers sa valeur d'énumération (lecture des données).
+static func direction_from_name(name: String) -> int:
+	match name:
+		"estoc": return Direction.ESTOC
+		"taille_gauche": return Direction.TAILLE_GAUCHE
+		"taille_droite": return Direction.TAILLE_DROITE
+		"overhead": return Direction.OVERHEAD
+	return Direction.ESTOC
 
 
 ## Direction de GARDE qui pare une attaque venant de `attack_direction`.
@@ -258,6 +382,62 @@ static func adjacent_guards(guard_direction: int) -> Array[int]:
 	return []
 
 
+## Axe de la LAME en garde : de la main vers la pointe, en espace monde.
+##
+## POURQUOI CE N'EST PAS L'ARC D'ATTAQUE (2026-08-02). L'arme était orientée par
+## la direction main → cible, la même que pendant un coup : en garde haute elle
+## pointait donc VERS LE HAUT, dans l'axe du coup qu'elle prétendait arrêter.
+## Une lame parallèle à l'attaque ne l'intercepte pas — visuellement, le coup
+## adverse passait à côté de l'arme et le joueur ne comprenait pas ce qu'il
+## bloquait.
+##
+## On PARE EN TRAVERS. Une garde haute tient la lame à plat au-dessus de la
+## tête, une garde latérale la dresse verticalement du côté couvert, et l'estoc
+## se dévie en barrant la ligne médiane. Chaque axe est donc À PEU PRÈS
+## PERPENDICULAIRE à la trajectoire qu'il coupe — c'est ce qui rend la parade
+## lisible, chez soi comme chez l'adversaire.
+##
+## `guard_direction` est la garde CHOISIE (pas l'attaque couverte) : elle est
+## déjà exprimée du point de vue du défenseur.
+static func guard_blade_axis(guard_direction: int, basis: Basis) -> Vector3:
+	var forward := -basis.z
+	var right := basis.x
+	var up := basis.y
+	var axis := up
+	match guard_direction:
+		Direction.OVERHEAD:
+			# Lame À PLAT au-dessus de la tête, pointe vers la gauche et
+			# légèrement relevée : le toit qui arrête un coup descendant.
+			axis = -right * 0.92 + up * 0.30 + forward * 0.20
+		Direction.ESTOC:
+			# Barre la ligne médiane en diagonale : c'est ainsi qu'on écarte une
+			# pointe, en la faisant glisser sur le côté plutôt qu'en l'arrêtant.
+			axis = up * 0.62 - right * 0.70 + forward * 0.32
+		Direction.TAILLE_GAUCHE:
+			# Lame DRESSÉE du côté couvert, pointe en l'air.
+			axis = up * 0.90 - right * 0.38 + forward * 0.20
+		Direction.TAILLE_DROITE:
+			axis = up * 0.90 + right * 0.38 + forward * 0.20
+	return axis.normalized() if axis.length_squared() > 0.000001 else up
+
+
+## Décalage de la MAIN en garde, en repère caméra (droite, haut, avant), en
+## fraction du rayon de bras. La main se place du côté qu'elle protège et à la
+## hauteur de la ligne parée — sans quoi la lame serait bien orientée mais au
+## mauvais endroit, ce qui se lit tout aussi mal.
+static func guard_hand_offset(guard_direction: int) -> Vector3:
+	match guard_direction:
+		Direction.OVERHEAD:
+			return Vector3(0.34, 0.62, 0.42)    # haute et à droite : on tient le toit
+		Direction.ESTOC:
+			return Vector3(0.18, 0.10, 0.72)    # au centre, à hauteur de poitrine
+		Direction.TAILLE_GAUCHE:
+			return Vector3(-0.34, 0.24, 0.62)
+		Direction.TAILLE_DROITE:
+			return Vector3(0.42, 0.24, 0.62)
+	return Vector3(0.2, 0.0, 0.7)
+
+
 static func guard_for(attack_direction: int) -> int:
 	match attack_direction:
 		Direction.TAILLE_DROITE: return Direction.TAILLE_GAUCHE
@@ -273,3 +453,55 @@ static func direction_name(direction_id: int) -> String:
 		Direction.TAILLE_DROITE: return "taille_droite"
 		Direction.OVERHEAD: return "overhead"
 	return "inconnu"
+
+## Slab test segment↔AABB. PARTAGÉ PAR LES DEUX CAMPS (2026-08-02) : il vivait
+## sur la créature, mais le joueur a désormais ses propres zones de coup et doit
+## être touché par exactement la même règle. Deux implémentations auraient fini
+## par juger différemment le même coup selon qui le donne.
+## Retourne le paramètre t ∈ [0, 1] de la première
+## intersection, ou -1.0 si le segment manque la boîte. `direction` n'est PAS
+## normalisée : t est donc directement la fraction du segment parcourue.
+static func segment_aabb(from: Vector3, direction: Vector3, box_min: Vector3, box_max: Vector3) -> float:
+	var t_near := 0.0
+	var t_far := 1.0
+	for axis in 3:
+		var d: float = direction[axis]
+		var origin: float = from[axis]
+		var lo: float = box_min[axis]
+		var hi: float = box_max[axis]
+		if absf(d) < 0.000001:
+			# Segment parallèle à cette paire de plans : il ne peut toucher que
+			# s'il est DÉJÀ entre les deux.
+			if origin < lo or origin > hi:
+				return -1.0
+			continue
+		var t1 := (lo - origin) / d
+		var t2 := (hi - origin) / d
+		if t1 > t2:
+			var swap := t1
+			t1 = t2
+			t2 = swap
+		t_near = maxf(t_near, t1)
+		t_far = minf(t_far, t2)
+		if t_near > t_far:
+			return -1.0
+	return t_near
+
+
+## Pré-parse des zones de coup JSON en `min`/`max` Vector3. PARTAGÉ PAR LES DEUX
+## CAMPS (2026-08-02) : les créatures lisent leur gabarit, le joueur lit le sien,
+## et tous deux doivent produire exactement la même structure — sinon le test
+## d'intersection gérerait deux formats et finirait par en juger un de travers.
+static func parse_zones(source: Array) -> Array:
+	var out: Array = []
+	for zone: Variant in source:
+		var z: Dictionary = zone
+		var mn: Array = z["min"]
+		var sz: Array = z["size"]
+		out.append({
+			"id": String(z["id"]),
+			"min": Vector3(mn[0], mn[1], mn[2]),
+			"max": Vector3(mn[0] + sz[0], mn[1] + sz[1], mn[2] + sz[2]),
+			"mult": float(z["mult"]),
+		})
+	return out

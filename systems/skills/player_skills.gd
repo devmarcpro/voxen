@@ -9,8 +9,8 @@ extends RefCounted
 ## S'appliquera tel quel aux PNJ/compagnons (même système, section 12).
 
 const BASE_XP := 100.0
-## Potentiel de base par défaut (A.1.1 : défaut 80 ; les valeurs par
-## race/classe C.2/C.3 arriveront avec la création de personnage, 6.3).
+## Potentiel de base par défaut (A.1.1) quand ni la race ni la classe ne
+## spécifient de plancher pour cette compétence.
 const DEFAULT_BASE_POTENTIAL := 80.0
 const POTENTIAL_CAP := 200.0
 
@@ -20,13 +20,48 @@ var owner_entity: Object = null
 ## Échomorphe -10 %). 1.0 par défaut.
 var xp_modifier := 1.0
 
-## id compétence -> { "level": int, "xp": float, "potential": float }
+## id compétence -> { "level": int, "xp": float, "potential": float,
+##                    "base_potential": float }
+##
+## `base_potential` est le PLANCHER PERMANENT de 6.4, posé par la race et la
+## classe (C.2/C.3) — corrigé le 2026-08-02. Il était auparavant absent : le
+## level up ramenait tout le monde à la constante 80, si bien que le potentiel
+## de Forge 120 d'un nain n'était qu'une avance de départ qui s'évaporait aux
+## premiers niveaux. 6.4 est explicite sur le contraire — « le potentiel ne
+## descend jamais sous ce plancher [...] un nain garde toujours un bon
+## potentiel de Forge, même sans l'entretenir » : c'est ce plancher, et lui
+## seul, qui donne son identité mécanique DURABLE à une combinaison
+## race/classe. Sans lui, race et classe n'étaient qu'un kit de départ.
 var skills := {}
 
 
 func _init() -> void:
 	for id in GameData.skills:
-		skills[id] = {"level": 0, "xp": 0.0, "potential": DEFAULT_BASE_POTENTIAL}
+		skills[id] = {"level": 0, "xp": 0.0,
+			"potential": DEFAULT_BASE_POTENTIAL,
+			"base_potential": DEFAULT_BASE_POTENTIAL}
+
+
+## Pose le plancher permanent d'une compétence (6.4) et y aligne le potentiel
+## courant. Appelé à la création de personnage pour la race PUIS la classe —
+## la classe l'emporte donc sur la race en cas de recouvrement, comme les
+## bonus de stats.
+func set_base_potential(skill_id: String, value: float) -> void:
+	var s: Variant = skills.get(skill_id)
+	if s == null:
+		push_warning("PlayerSkills : plancher de potentiel pour une compétence inconnue « %s »." % skill_id)
+		return
+	var floor_value := clampf(value, 0.0, POTENTIAL_CAP)
+	s["base_potential"] = floor_value
+	# Le potentiel courant ne descend jamais sous son plancher : un personnage
+	# fraîchement créé démarre AU plancher, jamais en dessous.
+	s["potential"] = maxf(float(s["potential"]), floor_value)
+
+
+## Plancher permanent d'une compétence (défaut si jamais posé).
+func base_potential(skill_id: String) -> float:
+	var s: Variant = skills.get(skill_id)
+	return float(s["base_potential"]) if s != null else DEFAULT_BASE_POTENTIAL
 
 
 func level(skill_id: String) -> int:
@@ -58,10 +93,16 @@ func restore_state(data: Dictionary) -> void:
 		if not skills.has(id) or not (data[id] is Dictionary):
 			continue
 		var s: Dictionary = data[id]
+		# `base_potential` absent = sauvegarde antérieure au 2026-08-02 : on
+		# retombe sur la constante, ce qui reproduit exactement l'ancien
+		# comportement. Le plancher de race sera reposé au prochain
+		# apply_character ; une partie en cours ne le récupère pas, mais elle
+		# ne perd rien non plus.
 		skills[id] = {
 			"level": int(s.get("level", 0)),
 			"xp": float(s.get("xp", 0.0)),
 			"potential": float(s.get("potential", DEFAULT_BASE_POTENTIAL)),
+			"base_potential": float(s.get("base_potential", DEFAULT_BASE_POTENTIAL)),
 		}
 
 
@@ -86,6 +127,8 @@ func gain_xp(skill_id: String, xp: float) -> void:
 	while float(s["xp"]) >= xp_next(int(s["level"])):
 		s["xp"] = float(s["xp"]) - xp_next(int(s["level"]))
 		s["level"] = int(s["level"]) + 1
-		s["potential"] = maxf(DEFAULT_BASE_POTENTIAL,
+		# Le plancher est celui de la RACE/CLASSE (6.4), pas la constante par
+		# défaut — voir le commentaire de `skills`.
+		s["potential"] = maxf(float(s.get("base_potential", DEFAULT_BASE_POTENTIAL)),
 			float(s["potential"]) - (10.0 + int(s["level"]) / 10.0))
 		EventBus.skill_level_up.emit(skill_id, int(s["level"]), owner_entity)

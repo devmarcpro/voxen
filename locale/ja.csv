@@ -650,6 +650,16 @@ creature.braconnier.name,密猟者
 creature.pillard.name,略奪者
 creature.deserteur.name,脱走兵
 creature.ermite.name,隠者
+culture.latine.name,ラテン
+culture.nordique.name,北欧
+culture.sino.name,漢
+culture.nipponne.name,和
+culture.slave.name,スラヴ
+culture.arabo.name,アラブ・ベルベル
+culture.celte.name,ケルト
+culture.sylvestre.name,森人
+culture.ignee.name,焔
+culture.resonance.name,響き
 material.viande.name,肉
 material.peau.name,皮
 ui.toast.depecage,{creature} を解体：肉 {portions} 個
@@ -813,6 +823,7 @@ ui.menu.touches_cat_deplacement,移動
 ui.menu.touches_cat_monde,世界
 ui.menu.touches_cat_modules,モジュール
 ui.menu.touches_cat_interface,インターフェース
+ui.menu.multi_experimental,試験的：共有されるのは他プレイヤーと地形ブロックのみです。生き物・時刻・所持品・戦闘は同期されません。
 ui.collection.progression,{offerts} / {total} 点（{pct}%）
 ui.collection.page,ページ {page} / {pages}
 ui.collection.manquant,未収集
@@ -886,6 +897,7 @@ job.couturier,仕立屋
 job.herboriste,薬草師
 job.transporteur,運び屋
 ui.toast.villageois_tue,村人が一人亡くなった。
+ui.toast.coffre_boss,ボスが宝箱を落とした！
 gouvernance.monarchie_hereditaire,世襲君主制
 gouvernance.republique_elue,選挙共和制
 gouvernance.theocratie,神権政治
@@ -903,6 +915,7 @@ ui.loi.confiscation,アイテムを没収された：ここでは違法だ。
 ui.loi.saisie,支払えないため、所持品を差し押さえられた。
 ui.loi.gardes_hostiles,王国の衛兵があなたを追っている。
 ui.hud.cle.lois,法
+ui.hud.cle.localite,集落
 ui.hud.souris,左クリック（長押し）：採取/掘削/攻撃 · 右クリック：設置
 ui.hud.hotbar,1-9/ホイール：選択 · Ctrl+1-9/ホイール：預ける
 ui.input.move_forward,前進
@@ -936,6 +949,34 @@ ui.input.reload_data,データ再読込
 ui.input.save_game,保存
 ui.loi.aucune,なし（無政府）
 ui.loi.interdit,{objet} 禁制
+ui.erreur.save_illisible,セーブデータを読み込めません（破損しています）。
+ui.erreur.save_trop_recente,より新しいバージョンで作成されたセーブデータです。
+ui.erreur.save_trop_ancienne,セーブデータが古すぎます：このバージョンでは読み込めません。
+ui.erreur.chunks_perdus,一部の改変された区域を読み戻せませんでした。
 loi.meurtre,殺人は罰せられる
 loi.vol,窃盗は罰せられる
 loi.agression,暴行は罰せられる
+ui.menu.onglet.combat,戦闘
+ui.menu.combat_aide,武器か盾を手にドラッグしてください。構えは装備から自動的に決まります。
+ui.menu.posture_competence,鍛えられる技能：{competence}
+ui.posture.mains_nues,素手
+ui.posture.une_main,片手武器
+ui.posture.deux_mains,両手武器
+ui.posture.arme_bouclier,武器と盾
+ui.posture.deux_armes,二刀流
+ui.combat.fiche,間合い {allonge} m · {des} · 速度 {vitesse} · 受け {parade} ms · スタミナ {endurance} · {mains} 手
+ui.combat.bouclier_ligne,盾：範囲 {couverture} · 吸収 {absorption} %
+ui.toast.deux_mains_occupe,両手武器が既に両手を塞いでいます。
+ui.combat.pare_par_adversaire,受けられた — 方向を読まれています。
+ui.combat.garde_ecrasee,受けを打ち砕かれた — 一撃が突き抜ける。
+ui.combat.bouclier_brise,盾が砕けた！
+ui.combat.bouclier_structure,盾：{reste} / {total}
+ui.combat.attaques,攻撃：{directions}
+ui.direction.estoc,刺突
+ui.direction.taille_gauche,左薙ぎ
+ui.direction.taille_droite,右薙ぎ
+ui.direction.overhead,振り下ろし
+ui.combat.feinte_adverse,フェイント — 予告された一撃は来なかった。
+munition.fleche.name,矢
+munition.carreau.name,ボルト
+ui.combat.carquois_vide,矢が尽きた。

@@ -275,8 +275,17 @@ Le choix du matériau dans un craft est donc un **arbitrage multidimensionnel**,
 
 ### 5.1 Combat
 
-- **Type de combat :** temps réel par défaut, avec bascule en mode tactique (voir 5.0) pour jouer façon roguelike au tour par tour.
-- **Résolution à jets de dés** (façon roguelike ToME/Elona, détail complet en E.3) : jets de toucher (1d20 + bonus vs défense), dés de dégâts par type d'arme (dague 1d6, masse 3d8...), mitigation d'armure à jet, critiques (20 naturel) et échecs critiques (1 naturel), degrés de réussite. En mode tactique, l'UI affiche chance de toucher et fourchette de dégâts au survol de la cible. Un **jet de compétence universel** (1d20 + compétence/2 + stat/4 vs difficulté) unifie toutes les actions risquées hors combat : lecture, dressage, capture, négociation, discrétion.
+> ⚠️ **AMENDÉ LE 2026-08-02 — le combat est DIRECTIONNEL, plus à jet de toucher.**
+> Le paragraphe « Résolution à jets de dés » ci-dessous décrivait le système
+> d'origine (E.3). Il a été **abandonné en implémentation le 2026-07-28** au
+> profit d'un combat directionnel façon Mount & Blade. La spécification qui
+> fait désormais autorité est **E.3.1** ; E.3 est conservée comme référence
+> historique et reste valable pour tout ce qui n'est pas le toucher (dégâts,
+> mitigation, jet de compétence universel).
+
+- **Type de combat :** temps réel **directionnel** (E.3.1) — la direction du coup est lue au mouvement de souris qui suit le clic, l'arme balaie réellement l'espace, et ce qui touche géométriquement touche. La bascule en mode tactique (5.0) reste au design, mais **elle n'a pas encore de forme retenue** : une attaque visée à la souris ne se découpe pas naturellement en tours, et c'est une question ouverte que l'amendement de ce jour crée. Voir la note « Question ouverte » en fin de E.3.1.
+- **Résolution :** la **géométrie** décide *si* et *où* le coup porte ; les **dés** décident *combien*. Dés de dégâts par type d'arme (dague 1d6, masse 3d8…), mitigation d'armure à jet, et **critique par zone touchée** (la tête vaut ×2.5) au lieu du 20 naturel — un critique est une intention de visée, pas une loterie. Détail complet en E.3.1.
+- Reste **inchangé et pleinement en vigueur** : le **jet de compétence universel** (1d20 + compétence/2 + stat/4 vs difficulté), qui unifie toutes les actions risquées hors combat — lecture, dressage, capture, négociation, discrétion. C'est la grammaire de tout le reste du jeu ; seul le combat au corps-à-corps y échappe.
 - **Structure des compétences (façon Noita + Elin) :**
   - Chaque **type d'arme** possède un nombre de **slots de compétences**.
   - Chaque **compétence** possède un nombre de **slots de modules**.
@@ -914,6 +923,11 @@ Les tables de sculpture ne s'achètent pas et ne se craftent pas librement : ell
 ## 16. État du document
 
 **Toutes les questions de design et d'implémentation sont tranchées** : chaque section porte ses Décisions, les formules vivent en Annexe A, les schémas de données en B, le contenu de lancement en C et F, l'architecture Godot en D, les intégrations système en E, la stratégie de performance en G. Une IA ou un développeur peut suivre ce document et l'ordre de construction D.3 (avec les critères de validation G.8) sans avoir à inventer de règle manquante — les valeurs chiffrées restent des défauts à équilibrer en playtest, jamais des trous.
+
+**Amendements postérieurs à la rédaction** (le document n'est plus figé — chaque écart entre le design et le code doit atterrir ici, sinon le GDD cesse de faire autorité sans que personne ne le sache) :
+- **2026-08-02 — résolveur de modificateurs (E.4)** : implémenté, avec deux écarts assumés documentés sous E.4 (instance portée par l'entité plutôt que singleton ; bonus de race fondus dans la base). Sans impact de design.
+- **2026-08-02 — plancher de potentiel (6.4)** : le plancher de race/classe était appliqué à la création mais pas respecté au level up, ce qui rendait l'identité de race temporaire au lieu de permanente. Corrigé, sonde `--probe-potentiel`. Le texte de 6.4 était juste ; c'est le code qui ne le suivait pas.
+- **2026-07-28 / écrit le 2026-08-02 — combat directionnel (E.3.1)** : le jet de toucher d'E.3 est abandonné, la géométrie décide du toucher. §5.1 et E.3 portent l'avertissement, E.3.1 fait autorité. **Ceci a rouvert une question d'architecture** : le mode tactique (5.0) n'a plus de forme évidente — trois pistes en fin d'E.3.1, aucune tranchée. C'est le premier trou de design réel du document depuis sa rédaction.
 
 **Seuls restent ouverts, par nature (choix créatifs personnels, sans impact d'architecture) :**
 - Le **nom du projet**.
@@ -1920,7 +1934,13 @@ joueur (dégâts, explosion au contact d'une flamme) restent À IMPLÉMENTER
 leurs interactions gameplay).
 ```
 
-### E.3 Pipeline de résolution du combat (système à jets de dés)
+### E.3 Pipeline de résolution du combat (système à jets de dés) — *superseded par E.3.1 sur le toucher*
+
+> ⚠️ **L'étape 2 (JET DE TOUCHER) de ce pipeline n'est plus en vigueur** depuis
+> le 2026-07-28 : voir **E.3.1**. Les étapes 1, 3, 4, 5 et 6 restent exactes,
+> ainsi que le **jet de compétence universel** en fin de section, qui n'a jamais
+> été remis en cause. Section conservée entière : elle documente l'intention
+> d'origine, et les formules de dégâts y sont toujours la référence.
 
 Combat et actions risquées reposent sur des **jets de dés explicites**, façon roguelike (ToME/Elona) — lisibles en mode tactique, générateurs de variance et de récit. Notation XdY dans les données.
 
@@ -1966,6 +1986,43 @@ S'applique à : lecture (A.7 révisé), dressage/capture, négociation,
 vol/discrétion, désamorçage, etc. UNE grammaire pour tout le jeu.
 ```
 
+### E.3.1 Combat directionnel (amendement du 2026-07-28, spec écrite le 2026-08-02)
+
+*Cette section **remplace l'étape 2 d'E.3** et fait autorité sur le toucher. Elle a été écrite après coup, à partir du code déjà en place ([combat_resolver.gd](systems/combat/combat_resolver.gd), [melee_attack.gd](systems/combat/melee_attack.gd), [player.gd](scenes/entities/player.gd)) et de la discussion de faisabilité archivée dans `combat.md` — lequel est un **transcript de conversation, pas une spécification** : ne pas l'utiliser comme référence.*
+
+**Pourquoi le changement.** E.3 faisait décider le toucher par un 1d20. Combiné à une arme qui balaie réellement l'espace, cela met **deux systèmes en concurrence sur la même question** — le dé pouvait annuler un coup que le joueur avait visé, placé et distancé correctement. C'est la faute cardinale d'un combat de type Mount & Blade, dont la seule promesse au joueur est : *ce que vous voyez toucher, touche*.
+
+**Le partage retenu :**
+
+```
+LA GÉOMÉTRIE décide SI et OÙ ça touche :
+  - la direction du coup est lue au mouvement de souris qui suit le clic
+    (haut / bas / gauche / droite / estoc) ;
+  - l'arme balaie l'espace pendant l'animation ; le balayage est testé
+    contre les ZONES DE COUP de la cible (Creature.sweep_segment,
+    gabarits de hitbox en données, B.5) ;
+  - aucun 1d20 de toucher, aucun verrouillage de cible.
+
+LES DONNÉES décident COMBIEN — pipeline A.4.1/A.4.2 conservé INTACT :
+  bruts     = jet(dés_fonctionnalité) * (durete_BASE/20) * qualité
+              + For/4 (mêlée) ou Dex/4 (distance)
+              + effets des modules
+  bruts    *= zone_mult          <-- remplace le critique au nat 20
+  mitigation = jet(dés_protection_totale) * (1 - pénétration)
+  finaux    = max(0, bruts - mitigation)
+```
+
+**Le critique change de nature.** Ce n'est plus un 20 naturel, c'est le `zone_mult` du gabarit atteint (tête 2.5, torse 1.0, bras 0.7). Un critique cesse d'être une loterie pour devenir une **intention de visée**. Le seuil d'affichage « CRITIQUE » (retour visuel, sonore, XP) est `zone_mult >= 2.0` : les points faibles seuls, jamais un torse.
+
+**Défense.** Elle passe par la **garde directionnelle**, plus par un jet d'esquive : une garde couvre sa direction, un bouclier couvre en plus les directions **voisines** (jamais toutes — deux tailles ne se jouxtent pas, sans quoi un bouclier couvrirait l'intégralité de la rose), et absorbe de l'endurance. La boucle du GDD se referme comme prévu en 6.2 : *deux mains bat l'arme seule, le bouclier bat le dual wielding*.
+
+**Conséquences à traiter (dette ouverte par cet amendement) :**
+- **Esquive et Encaissement** (E.3 étape 6 : XP au défenseur) n'ont plus de jet auquel s'accrocher et ne gagnent aujourd'hui **aucune XP**. À raccrocher : Esquive sur un coup évité de justesse (le balayage passe à moins de X du gabarit), Encaissement sur un coup absorbé par l'armure.
+- **Le réseau y gagne** (E.11) : le toucher est reproductible à partir de la géométrie, donc validable côté host sans rejouer un RNG. Seuls les dés de dégâts restent à l'autorité du host.
+- **Le terrain voxel impose l'auto-step** : sans franchissement automatique des blocs de hauteur 1, le jeu de jambes — la moitié de ce combat — est mort dès que le sol n'est pas plat. C'est une **dépendance dure** du contrôleur de personnage, pas une finition.
+
+**Question ouverte créée par cet amendement — le mode tactique (5.0).** Le tour par tour reposait implicitement sur le jet de toucher : une attaque se résolvait en un jet, donc en un tour. Une attaque *visée à la souris* ne se découpe pas ainsi. Trois pistes, aucune tranchée : (a) le mode tactique ne s'applique **qu'à distance et à la magie**, le corps-à-corps restant temps réel ; (b) en tactique, le corps-à-corps retombe sur E.3 d'origine (un jet), en assumant que ce sont deux jeux différents ; (c) le tour fixe la **direction et la garde**, la résolution restant géométrique mais figée. À trancher avant d'écrire la moindre UI d'action time.
+
 ### E.4 Modificateurs : résolution unifiée
 
 Toute valeur de jeu interrogeable passe par un résolveur unique :
@@ -1973,6 +2030,25 @@ Toute valeur de jeu interrogeable passe par un résolveur unique :
 modificateurs sont : équipement (A.4.4), statuts actifs, bonus de race,
 auras/buffs de modules, humeur (PNJ). Chaque source est enregistrée/retirée
 dynamiquement — aucun système ne modifie jamais une valeur en dur.
+
+> **Implémenté le 2026-08-02** — `systems/progression/stat_modifiers.gd`, sonde
+> `--probe-modificateurs`. Deux écarts assumés avec le texte ci-dessus, tous
+> deux dans le sens de l'architecture existante :
+> - **Ce n'est pas un singleton `Stats.get(entity, …)`** mais une instance
+>   portée par l'entité, comme `skills`, `inventory` et `equipment` — le projet
+>   n'a pas de registre global d'entités, et en créer un pour ce seul usage
+>   coûterait plus qu'il ne rapporte. La lecture publique reste
+>   `entity.effective_stat(id)` : point d'entrée unique, conforme à l'esprit
+>   d'E.4 (« aucun système ne modifie jamais une valeur en dur »).
+> - **Les bonus de race** restent fondus dans la stat de base à la création
+>   plutôt que posés comme source : ils ne changent jamais de la partie, et en
+>   faire une source coûterait une itération à chaque lecture, dans un chemin
+>   chaud, pour une valeur constante.
+>
+> Sources effectivement branchées à ce jour : **faim (A.9) et fatigue (E.21)**.
+> Équipement (A.4.4), statuts (F.4), auras de modules (5.1) et humeur des PNJ
+> restent à ajouter — le résolveur existe pour qu'elles n'aient plus qu'à
+> s'enregistrer, ce qui fait d'elles un travail d'ajout et non de conception.
 
 ### E.5 Détection de pièces (habitat, 7.5)
 

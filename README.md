@@ -1,22 +1,24 @@
 # Voxen
 
 Jeu de construction voxel / roguelite de vie simulée (Godot 4, GDScript, `gl_compatibility`).
-Le design de référence fait autorité : voir [GDD.md](GDD.md).
+Le design de référence fait autorité : voir [GDD.md](GDD.md) — **sauf sur le combat**,
+où le code a délibérément quitté E.3 (voir §5.1 et l'annexe E.3.1 du GDD, amendées
+le 2026-08-02 : la géométrie décide du toucher, plus aucun jet de 1d20).
 
 ---
 
-## État actuel (au 2026-07-26)
+## État actuel (au 2026-08-02)
 
 Le projet a exécuté l'ordre de construction **D.3 étapes 1 à 8** ainsi que quelques
-extras (boutique passive, menu de triche). ~15 000 lignes de GDScript.
+extras (boutique passive, menu de triche). **30 000 lignes de GDScript** sur 78 fichiers.
 
 **Socle en place :**
 
 | Domaine | État |
 |---|---|
-| Data-driven (`GameData`) | 242 matériaux (blocs) + 68 **ressources** paramétriques (viandes/peaux, hors palette), 24 biomes, 20 compétences, 15 fonctionnalités, 18 objets (dont 5 armures), 41 transformations, 38 arbres, 6 plantes, 6 races, 6 classes, 4 modules, 18 créatures (humaines seulement depuis le 2026-08-02) |
+| Data-driven (`GameData`) | 249 matériaux (blocs) + ressources paramétriques (viandes/peaux, hors palette), 24 biomes, **53 compétences**, 31 fonctionnalités, 34 objets, 43 transformations, 38 arbres, 6 plantes, 6 races, 6 classes, 10 cultures de nommage, 7 salles / 3 connecteurs de donjon, 4 plats, **4 modules sur les 48 de F.2**, 18 créatures (humaines seulement depuis le 2026-08-02). *Comptes vérifiés le 2026-08-02 ; `GameData.load_all()` les imprime au boot — c'est lui qui fait foi, pas cette ligne.* |
 | Noms culturels (12.5, E.31, B.11, C.9) | **Fait le 2026-08-02** — le GDD le listait comme « à écrire » (§16). 10 cultures de nommage en données (`data/name_cultures/`), chacune avec ses pools préfixe/suffixe pour prénoms, noms de famille et villes, plus ses titres pour les 6 gouvernances. `NameGenerator` : tirage déterministe, héritage du nom de famille, `name_order` par culture (le sino nomme famille avant prénom), titres genrés. **Culture ≠ race** : un royaume humain peut sonner latin, sino, slave ou nordique ; les trois races originales ont chacune une culture exclusive. Les royaumes reçoivent une culture, leurs villages et habitants en héritent — sonde `--probe-noms` |
-| Localisation (10.1) | `fr` / `en` complets et validés clé par clé ; `ja` / `zh_Hans` en cours, repli automatique sur l'anglais + rapport de couverture au boot. **Police CJK (2026-08-01)** : aucun caractère chinois ou japonais ne s'affichait — le repli de police pointait sur la police intégrée de Godot, latine elle aussi. Les 1327 idéogrammes des traductions sont désormais rastérisés en cellules 12×12 depuis Noto Sans SC (SIL OFL) par `tools/generate_pixel_font.py`, sans embarquer de `.ttf` (+45 Ko). Jeu de glyphes figé sur les traductions du jour, gardé par `--probe-police` |
+| Localisation (10.1) | **Les quatre locales portent les 981 clés** (mesuré le 2026-08-02) : `fr` / `en` font référence et sont validées clé par clé ; `ja` et `zh_Hans` sont à **978 / 981**, le boot les rapporte à 100 % arrondi. Elles restent déclarées dans `PARTIAL_LOCALES` — le repli sur l'anglais reste donc actif, à retirer une fois les dernières clés traduites. **Police CJK (2026-08-01)** : aucun caractère chinois ou japonais ne s'affichait — le repli de police pointait sur la police intégrée de Godot, latine elle aussi. Les 1327 idéogrammes des traductions sont désormais rastérisés en cellules 12×12 depuis Noto Sans SC (SIL OFL) par `tools/generate_pixel_font.py`, sans embarquer de `.ttf` (+45 Ko). Jeu de glyphes figé sur les traductions du jour, gardé par `--probe-police` |
 | Génération du monde (E.2) | continents/océans, rivières & littoraux, strates, filons, grottes, biomes, arbres, plantes, POI, villes (coques de bâtiments), noms de monde |
 | Voxel (4, G.2) | chunks multithreadés, meshing greedy, subdivision 32→16→8→4, LOD, ombrage voxel maison, édition instantanée |
 | Joueur | déplacement, raycast bloc + sous-bloc, casser/poser/sculpter, récolte + XP, inventaire volumétrique, hotbar multi-banques, PV, mana |
@@ -30,10 +32,10 @@ extras (boutique passive, menu de triche). ~15 000 lignes de GDScript.
 | Mort et pénalité (A.10) | **la famine peut tuer** (A.9 amendé sur décision auteur — plus de plancher à 1 PV) ; respawn au dernier lit ou claim, -10 % d'or, 10 % de perte par objet, équipement conservé, aucune perte d'XP ; caches au sol récupérables 1 jour in-game (`DropManager`) — sonde `--probe-mort` |
 | Faim (A.9, A.9.1) | jauge + décroissance, **manger** (touche F, matériaux à bloc `nutrition`, cru = 50 %), seuils de régén, malus de stats < 25, famine à 0 — sonde `--probe-faim` |
 | Artisanat (4.2) | recettes, transformations, stations, qualité |
-| Combat (5, E.3) | pipeline de jets complet, pool de mana (A.5), créature générique data-driven, 4 modules |
+| Combat (5, E.3.1) | **Directionnel façon Mount & Blade**, pas le E.3 d'origine : la géométrie décide du toucher (balayage de lame contre les zones de coup), les données décident des dégâts (A.4.1/A.4.2 intacts), le critique est la **zone visée** (`zone_mult` 2.5 à la tête) et non un nat 20. Gardes, boucliers, endurance. Pool de mana (A.5), créature générique data-driven. Le raisonnement complet est en tête de [combat_resolver.gd](systems/combat/combat_resolver.gd) et résumé en E.3.1 du GDD |
 | Butin (7.7, A.9.1) | viande et peau **paramétriques** par espèce (B.1), en **instances d'objet** comme les armes (icône colorée, jamais un bloc) : registre `GameData.resources` séparé, sans id runtime ni entrée de palette. Unités identiques regroupées sur une instance. Bonus de potentiel dérivés de la source, dépeçage, consommation — sonde `--probe-butin` |
 | Inventaire & hotbar | hotbar **assignable** (liaisons slot → objet par `uid`, stables au tri et à la sauvegarde), bande intégrée à l'inventaire avec **glisser-déposer**, menu d'actions au clic (infos, équiper, assigner banque/emplacement, déposer au sol) |
-| Faune (F.3) | **18 fiches, toutes humaines** — spawn filtré par biome, meutes, profils d'IA (hostile / bête sauvage qui riposte / civil). **Périmètre réduit aux humains le 2026-08-02** (décision auteur, *pour l'instant*) : les 19 espèces animales ont été supprimées le temps que les modèles existent, le gabarit `humanoide.glb` étant le seul rig disponible. Spawn hostile = **bandit seul** (il a hérité des biomes des trois autres hostiles) ; spawn neutre = humains errants (villageois, chasseur, nomade, marchand ambulant, braconnier, ermite). Les métiers sédentaires restent réservés aux villages. Les fiches supprimées sont récupérables en `git show 8788dbd:data/creatures/<id>.json` — sonde `--probe-faune` |
+| Faune (F.3) | **18 fiches, toutes humaines** — spawn filtré par biome, meutes, profils d'IA (hostile / bête sauvage qui riposte / civil). **Périmètre réduit aux humains le 2026-08-02** (décision auteur, *pour l'instant*) : les 19 espèces animales ont été supprimées le temps que les modèles existent, le gabarit `humanoide.glb` étant le seul rig disponible. ⚠️ **La condition posée est désormais remplie** : `models/creatures/` contient 28 `.glb` (loup, ours, sanglier, cerf, crocodile, requin, araignée, chauve-souris, serpent, rat, aigle… plus dragon, spectre et raptor, qui ne correspondent à aucune fiche F.3). Restaurer les 19 fiches est redevenu un travail de données — à faire une fois le lot d'armement des créatures en cours terminé, pour que les animaux naissent directement au nouveau format `combat.arme_materiaux`. Spawn hostile = **bandit seul** (il a hérité des biomes des trois autres hostiles) ; spawn neutre = humains errants (villageois, chasseur, nomade, marchand ambulant, braconnier, ermite). Les métiers sédentaires restent réservés aux villages. Les fiches supprimées sont récupérables en `git show 8788dbd:data/creatures/<id>.json` — sonde `--probe-faune` |
 | Carte & exploration (3.1, E.30) | carte du monde, voyage rapide, claims + rôles, minimap, brouillard de guerre |
 | Donjons (3.5, E.29) | entrée/sortie par dimension, 2/4/6 étages selon le danger. **Intérieur refait le 2026-08-02** : salles **organiques** (empreinte elliptique déformée au bruit, sol en relief, voûte qui se resserre en hauteur, colonnes naturelles — `DungeonCavern`) au lieu de boîtes ; **8 à 18 salles** par étage selon la profondeur, sur 7 gabarits et 3 connecteurs ; **vrais escaliers** en gradins à rampes **lumineuses** (scorie ardente, 6/15) remplaçant les anciens disques plats ; **butin au sol** dispersé dans les salles et **coffre lâché par le boss** du dernier étage — sonde `--probe-interieur` |
 | Boutique (7.1, E.8) | étal de vente passif, clients abstraits |
@@ -50,18 +52,35 @@ extras (boutique passive, menu de triche). ~15 000 lignes de GDScript.
 Liste des éléments du GDD non développés, partiellement implémentés, ou non
 fonctionnels dans le code actuel. Références de section entre parenthèses.
 
+> **Règle de tenue de ce fichier** (posée le 2026-08-02, après un audit qui a
+> trouvé **six contradictions** entre le tableau « Socle en place » et cette
+> liste : noms culturels, lits/meubles, cuisine, royaumes PNJ, locales CJK,
+> nombre de lignes). Le tableau et cette liste étaient mis à jour
+> indépendamment, et personne ne relisait les deux. **Livrer une brique, c'est
+> toucher les deux endroits dans le même geste** : ajouter la ligne au tableau
+> *et* rayer ou amender le bullet correspondant ici. Un item barré qui explique
+> où est passé le travail vaut mieux qu'un item supprimé.
+
 ### Priorité 1 — Trous dans la tranche verticale du MVP
 
 Ces points sont dans le périmètre MVP (section 15) mais absents ou à l'état de stub.
 
-- **Créatures : les modèles (12.1)** — les 18 fiches humaines de F.3 existent (stats, IA, biomes, recrutement), mais le rendu reste des **capsules colorées** — c'est précisément la raison du repli sur les humains le 2026-08-02 : le gabarit `humanoide.glb` existe et est validé, donc les 18 fiches restantes sont toutes modélisables dès maintenant. Pipeline figé le 2026-07-26 : **Blockbench → glTF/`.glb`** (voir [models/creatures/](models/creatures/)) ; `creature.gd` charge déjà le champ `model` s'il est renseigné, il ne manque que les modèles.
+- ~~**Créatures : les modèles (12.1)**~~ — **résolu** : les 18 fiches humaines pointent toutes sur `humanoide.glb`, et 28 modèles au total sont présents dans [models/creatures/](models/creatures/). Plus de capsules colorées. Pipeline figé le 2026-07-26 : **Blockbench → glTF/`.glb`**. Il reste que **ces modèles ne sont pas versionnés** (tous en `??` dans git) : un `git clean` les perd.
 - **PNJ dans la boucle** — *fait le 2026-08-01* : les villages se peuplent d'habitants dérivés de (cellule, graine), chacun rattaché à un bâtiment, avec un métier parmi les 11 de 8.4 et une routine jour/nuit. Ce sont des `Creature` ordinaires — aucune classe PNJ, conformément à 12.1. Restent le dialogue, la relation qui évolue, le commerce et la persistance des morts (décimation).
-- **Modules de compétences (F.2, B.4)** — 4 modules sur **48**. Pas de système d'assemblage de compétences (5.1), pas de coût en mana assemblé (A.6).
+- **Compétences assemblées (5.1, F.2, B.4) — LE trou du MVP, et il est plus grand que cette liste ne le laissait croire.** Le GDD décrit un système Noita/Elin à trois étages : arme → slots de compétences (`2 + N_arme/20`, max 6) → slots de modules (`2 + N_arme/25`, max 5), modules communs à toutes les armes, montant de niveau à l'usage, acquis **uniquement** en lisant des livres. Rien de tout cela n'existe. Ce qui existe : un **loadout de 3 modules codé en dur** dans [player.gd](scenes/entities/player.gd#L26) (`MODULE_ACTIONS`, touches J/K/L), et un `_try_cast_module()` qui force `module_level = 0` faute de livres. Donc : aucune entité « compétence assemblée » (les 53 `data/skills/` sont les compétences d'usage d'A.1, pas celles de 5.1), aucun slot, aucun coût de mana composé (A.6), 4 modules sur 48, aucun livre, aucun `data/reading_failures.json`, et `book_read` **émis nulle part**. Le pilier « combat et magie » du MVP (§15) repose entièrement là-dessus.
+- **Résolveur de modificateurs (E.4)** — *socle posé le 2026-08-02*. [`StatModifiers`](systems/progression/stat_modifiers.gd) applique `(base + Σ add) × Π mult` avec des sources nommées, posables et **retirables** — c'est le retrait qu'aucun code en dur ne savait faire, et la raison d'être d'E.4. Le joueur y fait passer ses malus de faim (A.9) et de fatigue (E.21), qui étaient testés en dur dans `effective_stat` ; la sonde `--probe-modificateurs` vérifie l'algèbre, le retrait, l'idempotence, l'absence de fuite, et surtout la **non-régression** sur les quatre combinaisons faim/fatigue. Restent à brancher, et c'est désormais un travail d'ajout et non de conception : **équipement (A.4.4)**, **statuts (F.4)**, **auras de modules (5.1)**, **humeur des PNJ**. Le résolveur n'est **pas sérialisé**, volontairement : tout ce qu'il porte dérive d'un état qui l'est déjà (voir l'en-tête du fichier).
+- **Statuts (F.4)** — `data/status_effects/` n'existe pas et le mot n'apparaît nulle part dans le code. Les 14 statuts prévus manquent : pas de brûlure/gel/poison appliqués par tags de modules (E.3), et **pas de risque d'infection du cru** (F.5), que A.9.1 suppose pourtant.
 - **Emplacements d'équipement (6.2)** — *partiel* : les 13 emplacements, l'armure et la mitigation A.4.2 fonctionnent. Les **boucliers** (3 modèles, blocage élargi, absorption d'endurance) et les **53 compétences** (une par arme, maîtrises de type de dégâts, Dual Wielding / Bouclier / Deux Mains) existent depuis le 2026-08-01 ; Deux Mains et Bouclier progressent, Dual Wielding attend son système. Restent les **morphologies non-humanoïdes** (`equip_slots` de B.5) et l'usage des slots `arme_1`/`arme_2` par le combat, qui lit encore l'objet en main.
 - **Effets d'équipement passifs (A.4.4)**, **pools de loot (F.7)** et **stats étendues des matériaux (A.4.5)** — non appliqués : anneaux, amulettes, accessoires et dos s'équipent mais ne font encore rien. Le butin de créature se limite à viande + peau ; pas d'objets, d'or, ni la **statue 1:1** de F.3.
 - **Contenu des POI** — camps, sanctuaires et filons majeurs ont été **RETIRÉS** le 2026-08-01 (décision de l'auteur) : ils n'avaient aucun contenu et leurs pastilles menaient à du vide. Il ne reste que **village** et **donjon**. Pour les réintroduire, voir le commentaire de `POIGenerator.POI_TYPES` — l'ordre de la liste est signifiant. Les **villages**, eux, ont été refaits le 2026-08-01 : six archétypes de bâtiment, toitures en pente, fenêtres, planchers, place pavée, champs, et des habitants. Restent l'**intérieur** (aucun mobilier) et la fonction des bâtiments (voir « Différé »).
 - **Donjons (E.29)** — *largement traité le 2026-08-02* : 7 gabarits de salle / 3 connecteurs, 8 à 18 salles par étage, plusieurs étages, boss de fin (chef de bande) qui lâche un coffre, butin au sol. Restent les **salles à thème** (aucune n'a de rôle déclaré : ni salle de garde, ni réserve, ni piège), le **peuplement en créatures** hors boss, et la **réapparition** de nouveaux donjons ailleurs après nettoyage.
-- **Progression par le potentiel (6.4)** — *à moitié* : les plats cuisinés créditent maintenant le potentiel **de stat**, mais **rien ne le consomme** — 6.4 prévoit que les stats gagnent de l'XP multipliée par leur potentiel, or les stats sont figées à la création. La progression de stats est la moitié manquante, et le GDD ne chiffre aucune source d'XP de stat : c'est une décision de design à prendre. Le potentiel de **compétence**, lui, est bien consommé aux montées de niveau.
+- **Progression par le potentiel (6.4)** — *à moitié*, et la boucle est coupée en **trois** points, pas un :
+  1. Les plats cuisinés créditent bien le potentiel **de stat** ([`_credit_potential()`](scenes/entities/player.gd#L2617)), mais **rien ne le consomme** : les 6 stats de C.1 sont figées à la création. Le GDD ne chiffre aucune source d'XP de stat — c'est une décision de design à prendre, pas un bug.
+  2. ~~Le **plancher de potentiel par race/classe** n'est pas appliqué.~~ **Corrigé le 2026-08-02.** Les données étaient bonnes (4 races et 5 classes sur 6 portent leurs `base_potentials` ; Humain, Échomorphe et Vagabond sont vides *par design* — leur identité passe par le `xp_modifier` ou les points de création) et [player.gd](scenes/entities/player.gd#L324) les appliquait bien à la création. Le défaut était **un cran plus loin** : `PlayerSkills` ne stockait aucun plancher par compétence, et le level up ramenait tout le monde à la constante 80. Le potentiel de Forge 120 d'un nain n'était donc qu'une avance de départ qui s'évaporait aux premiers niveaux, alors que 6.4 le veut permanent (*« un nain garde toujours un bon potentiel de Forge, même sans l'entretenir »*). Chaque compétence porte maintenant son `base_potential`, posé par race puis classe, respecté au level up et persisté.
+     *Reste ouvert :* C.3 prévoit aussi des planchers **bas** (« Mage : armes lourdes 60 ») pour marquer les faiblesses. Aucune donnée n'en porte — toutes les valeurs sont ≥ 110. C'est un choix d'équilibrage à faire, pas un bug.
+  3. Les **entraîneurs PNJ** (20 or × niveau → +10 de potentiel), troisième source prévue par A.1 et puits d'or de 7.6, n'existent pas.
+
+  Le potentiel de **compétence**, lui, est bien consommé aux montées de niveau.
 
 ### Différé volontairement (décision de l'auteur, 2026-08-01)
 
@@ -84,12 +103,12 @@ Ces points sont dans le périmètre MVP (section 15) mais absents ou à l'état 
 - **Quêtes et guildes (7.3, B.7)** — aucun `data/quest_templates/`, aucune des 12 guildes.
 - **Agriculture et élevage (7.4)** — absents (les 6 plantes ne sont que récoltables).
 - **Habitat / détection de pièces (7.5, E.5)** — absents.
-- **Meubles (F.6, 16)** — aucun : d'où l'absence de **lits**, que A.10 désigne pourtant comme point de résurrection principal (seul le claim sert de point de retour), et de coffres, garde-manger, bibliothèques, etc.
-- **Cuisine, alchimie et nourriture (7.7)** — les **viandes paramétriques** existent et portent leurs bonus de potentiel, mais rien ne les consomme encore : il manque la **station Cuisine et les recettes de plats** (tout se mange cru à 50 %, et les bonus de potentiel A.9.1 ne sont donc **jamais crédités** — c'est l'étape qui débloque la boucle 6.4), les **parties d'alchimie** (yeux, griffes, os) et l'**alambic**. Aucune donnée pour les **18 consommables (F.5)**, **12 potions (F.9)**, **16 meubles (F.6)**, **14 statuts (F.4)** — d'où l'absence du risque d'infection du cru.
+- **Meubles (F.6, 16)** — **1 sur 16** : le **lit** est craftable et sert de point de résurrection (A.10) et de sommeil (E.21). Manquent les 15 autres : coffres, garde-manger, bibliothèques, etc.
+- **Cuisine, alchimie et nourriture (7.7)** — la **cuisine est faite** : fourneau, compétence Cuisine, 4 plats (`data/plats/`), et un plat cuisiné rend la nutrition pleine **et crédite le potentiel de stat** (A.9.1) — le cru reste à 50 % sans bonus. Manquent les **parties d'alchimie** (yeux, griffes, os) et l'**alambic**, et il n'y a de données ni pour les **18 consommables (F.5)**, ni pour les **12 potions (F.9)**, ni pour les **15 meubles restants (F.6)**, ni pour les **14 statuts (F.4)**.
 - **Économie et flux d'or (7.6, A.8.1)** — pas de portefeuilles PNJ, ni taxes, ni entretien.
 - **Villages : conquête et succession (3.4, 12.3)** — la **population** et la **décimation** existent depuis le 2026-08-01 : les morts sont persistés (on n'enregistre que les absences, un village intact ne coûte rien), un village entièrement vidé devient un POI abandonné, et le repeuplement hebdomadaire d'E.25 tourne. Restent la **conquête** (halle comme point de revendication, jet de Leadership) et la **succession**. La **capacité** est dérivée du nombre de bâtiments, pas encore de la détection de pièces d'E.5.
 - **Âge des PNJ (12.2)**, **familles/statuts (12.3)**, **monstres rares (12.4)** — absents.
-- **Génération de noms culturels (12.5, E.31, B.11)** — `world_namer.gd` nomme le monde uniquement ; aucun `data/name_cultures/` (les 10 cultures de C.9 restent à écrire).
+- ~~**Génération de noms culturels (12.5, E.31, B.11)**~~ — **fait le 2026-08-02**, voir la ligne « Noms culturels » du tableau ci-dessus : 10 cultures en données, `NameGenerator`, sonde `--probe-noms`.
 - **Compagnons (E.17)** et recrutement — le signal `creature_recruited` n'est émis nulle part.
 - **Raids et menaces (E.7)** — le signal `raid_resolved` n'est émis nulle part.
 - **IA de créature (E.16)** — les 4 profils de base marchent (errance, poursuite, fuite, riposte) ; restent les **besoins**, les **routines quotidiennes**, le **pathfinding** (les créatures vont en ligne droite) et les caravanes inter-villages.
@@ -105,20 +124,19 @@ Ces points sont dans le périmètre MVP (section 15) mais absents ou à l'état 
 - **Dérive de la corruption (3.1, E.20)** — absente.
 - **Explosions (A.11)** — absentes.
 - **Dimension magique / démons** — prévue, non commencée.
-- **Fertilité des sols** — prévue, non commencée.
+- **Fertilité des sols** — *partielle* : le champ de fertilité existe et **module déjà la densité de végétation dans un biome** ([noise_generator.gd](systems/worldgen/noise_generator.gd#L928), 2026-07-26). Ce qui manque, c'est son **usage agricole** (7.4) : rendement des cultures, épuisement, fumure.
 
 ### Priorité 4 — Royaume du joueur (section 14, endgame)
 
 - Expansion territoriale au-delà du claim simple (14.1) : les claims existent (`ClaimManager`, 4 rôles) mais ne produisent ni n'exploitent rien.
 - Population et exploitation (14.2), halls de guilde (14.3).
-- Statut de royaume, gouvernance, **lois et infractions (14.4, E.26, B.9)**, diplomatie — aucun `data/kingdoms/`.
 - Défense (14.5), entretien et taxes (14.6).
-- **Génération des royaumes PNJ (E.27)** — absente.
+- **Royaumes PNJ (E.27) et lois (E.26) : faits le 2026-08-01** — voir le bloc « Différé » ci-dessus, qui fait foi. Ce qui reste vraiment ouvert ici, c'est le **royaume du joueur** : statut, gouvernance choisie, diplomatie (14.4), douanes, succession (12.3). Il n'y a pas de `data/kingdoms/` parce que les royaumes PNJ sont **générés** par secteur, pas écrits en données — B.9 décrit le schéma d'une entrée créée à la volée.
 
 ### Priorité 5 — Outils, contenu et finition
 
 - **Tables de sculpture / éditeur (13, E.9)** — la sculpture libre en sous-blocs fonctionne, mais l'éditeur d'objets custom n'existe pas.
-- **Mode tactique (5.0)** — `TickManager.tactical_mode` existe mais **n'est déclenché par rien** ; pas d'UI d'action time.
+- **Mode tactique (5.0)** — `TickManager.tactical_mode` est correctement implémenté (les ticks cessent de suivre l'horloge, `push_ticks()` les avance à la demande) mais n'est basculé que par le **menu de triche** ([cheat_menu.gd](scenes/ui/cheat_menu.gd#L153)). Un pilier du GDD — *« jouer façon roguelike au tour par tour »* — réduit à un outil de debug : pas de déclencheur de jeu, pas d'UI d'action time, pas d'affichage de fourchette de dégâts au survol (E.3). À noter que le combat directionnel (E.3.1) rend ce mode **plus difficile à concevoir** qu'à l'époque du jet de toucher : une attaque visée à la souris ne se découpe pas naturellement en tours. À retrancher.
 - **Grimoires et manuels (C.6, A.7)** — les 8 domaines et 4 manuels ne sont pas écrits ; `book_read` n'est émis nulle part.
 - **Tooltips contextuels d'onboarding (E.19)** — absents.
 - **Véhicules (E.24)** — absents (extension future assumée).
@@ -131,6 +149,19 @@ Ces points sont dans le périmètre MVP (section 15) mais absents ou à l'état 
 
 - **Mesures de perf : distance d'affichage** — les benchs forcent désormais le rayon par défaut (8) et ignorent `display.cfg`. Un réglage joueur à 14 triplait le nombre de chunks et faisait lire *245 → 66 fps* comme une régression, alors qu'aucun code de rendu n'avait changé.
 - **Équilibrage de l'armure** : un jeu complet de fer qualité 1.2 donne 5d4 de réduction (moyenne 12,5) contre ~8 de dégâts bruts pour une arme de départ — mesuré par la sonde, les dégâts encaissés chutent de 2594 à 192 sur 400 coups. Les formules A.4.1/A.4.2 sont appliquées à la lettre : c'est le **chiffrage par défaut du GDD qui est à équilibrer en playtest**, pas l'implémentation.
+- **[player.gd](scenes/entities/player.gd) est un god object** (relevé le 2026-08-02) : **3 284 lignes, 133 fonctions**. Il porte le déplacement, le raycast bloc *et* sous-bloc, la pose et la sculpture, la physique de balayage d'arme, les gardes et boucliers, l'inertie des mains, la hotbar et ses liaisons, l'équipement, la faim, la fatigue, le sommeil, la mort, le respawn, les claims, le voyage rapide, les lois, le dialogue et le loot. Trois découpages se lisent tout seuls dans la liste des fonctions, aucun ne demande de changement de comportement : `PlayerCombat` (~800 l. — gardes, balayage, hitboxes, cibles), `PlayerHotbar` (~250 l. — liaisons, banques, résolution d'entrée), `PlayerSurvival` (faim, fatigue, sommeil, mort, respawn).
+- **Signaux EventBus morts** : `creature_recruited`, `book_read` et `raid_resolved` sont déclarés dans [EventBus.gd](autoload/EventBus.gd) et **émis nulle part** — ce sont les trois systèmes absents (compagnons E.17, livres 5.1, raids E.7) qui se signalent d'eux-mêmes. Les garder déclarés est utile ; savoir qu'ils sont muets l'est aussi.
+- **Compétences défensives jamais entraînées** : `esquive` et `encaissement` existent en données, et E.3 étape 6 prévoit que le défenseur y gagne de l'XP à chaque coup reçu. Comme le jet de défense a disparu avec E.3.1, **aucun `gain_xp` ne les cible** : deux compétences mortes. À raccrocher au combat directionnel (esquive sur un coup évité de justesse, encaissement sur un coup absorbé par l'armure).
+- **⚠️ LE RUNNER N'EST PAS DÉTERMINISTE — au moins trois sondes échouent par intermittence** (mesuré le 2026-08-02 sur quatre exécutions complètes). Chaque exécution rend un ensemble d'échecs *différent* : une fois `--probe-corps`, une fois `--probe-combat`, une fois `--probe-dungeon` — et toutes les trois **passent lancées isolément**. C'est le défaut le plus grave de l'outillage, plus grave que n'importe quelle sonde manquante : un runner qui ment une fois sur trois n'est plus un filet, et on prend l'habitude de relancer jusqu'au vert, ce qui revient à ne plus tester du tout. À traiter **avant** de convertir la moindre sonde supplémentaire en assertive. Deux causes identifiées, une non élucidée :
+  - **`--probe-corps` — assertion de perf sensible à la charge.** Le coût d'un spawn (médiane sur 12, seuil 12 ms) rend **8,6-8,7 ms lancée seule** mais **17,9 ms en fin de `run_probes.sh`**. Ce n'est pas une régression, c'est la charge accumulée par les sondes précédentes. À trancher : sortir l'assertion de perf du runner en gardant la sonde fonctionnelle dedans, ou lui donner une marge de charge explicite.
+  - **`--probe-combat` — sonde non idempotente.** Elle échoue environ **une fois sur trois**, toujours sur la même assertion (« sortie d'allonge pendant le wind-up »), avec un résultat différent à chaque fois (60→51, 60→56, 60→60). La cause se lit dans son propre journal : le joueur **dérive d'un run à l'autre** (caméra en 156, puis 163, puis 169) parce que la sonde réutilise le monde persisté au lieu de repartir d'un état fixe. C'est exactement le défaut déjà corrigé pour les sondes de sauvegarde — même remède : un point de départ imposé, indépendant de l'état laissé par le run précédent. Une assertion de portée géométrique ne peut pas être fiable si la position de départ change.
+  - **`--probe-dungeon` — cause non élucidée.** Observée en échec une fois en suite, verte deux fois de suite lancée seule. À instrumenter avant de conclure ; ne pas la « corriger » au jugé.
+
+  Piste transversale pour les trois : les sondes **partagent le monde persisté par défaut** et se le passent dans l'état où la précédente l'a laissé. Le remède générique est celui déjà appliqué aux sondes de sauvegarde — un monde de sonde dédié, remis à zéro — plutôt que trois correctifs séparés.
+- **⚠️ `--probe-police` ÉCHOUE actuellement** (suite lancée le 2026-08-02 : **16/17**). Les traductions `ja` et `zh_Hans` ont reçu de nouvelles clés sans que la police pixel soit régénérée : **21 caractères japonais et 38 chinois n'ont aucun glyphe** et s'afficheront en tofu. C'est exactement le mode de panne que la sonde a été écrite pour attraper, et il fonctionne. Correctif : relancer `tools/generate_pixel_font.py`, puis réimporter. *Non fait ici : les CSV concernés appartiennent à un lot encore en cours dans l'arbre de travail, et régénérer la police maintenant figerait un état partiel.*
+- **Traductions compilées périmées** : les `.csv` sont plus récents que les `.translation` (mesuré le 2026-08-02, 17:15 contre 16:52). Godot lit les `.translation` — sans réimport, les clés récentes s'affichent en brut. Voir la note en bas de ce fichier.
+- **Commentaires d'en-tête périmés** : [equipment.gd](systems/inventory/equipment.gd#L10) affirme encore que Dual Wielding / Bouclier / Deux Mains *« n'existent pas en données (data/skills/) »* — les trois fichiers sont là depuis le 2026-08-01. Ce projet documente sa dette en prose plutôt qu'en `TODO` (il n'y en a **aucun** dans les 30 000 lignes, et c'est un bon choix) — mais la prose périme en silence, sans que rien ne la signale.
+
 ### Corrigé — dégradations qui ne se voyaient qu'à la longue
 
 Quatre problèmes sans symptôme immédiat, qui empiraient avec le temps de jeu.
@@ -186,8 +217,17 @@ tools/run_probes.sh --list       # ce qu'elle contient
 ```
 
 Elle n'enchaîne que les sondes qui rendent un **verdict** (`finish(ok, tag)`).
-C'est une minorité : sur une quarantaine de sondes, la plupart impriment un
-rapport qu'un humain doit lire, et ne peuvent donc rien signaler à une CI.
+Compté le 2026-08-02 : **46 drapeaux au registre, 21 sondes assertives**, et le
+runner en contient **18**. Les seules assertives qui restent dehors sont les
+quatre sondes de **capture** (`--test-ui`, `--test-corps`, `--test-triche`,
+`--test-carte`), exclues volontairement : en headless leurs captures sont
+sautées, donc leur verdict ne vaudrait plus grand-chose.
+
+Autrement dit **la couverture du runner est complète** — il n'y a pas de
+sonde assertive oubliée à y rajouter. Le chantier restant est ailleurs et il
+est plus lourd : **~25 sondes n'impriment qu'un rapport** qu'un humain doit
+lire et ne peuvent rien signaler à une CI. Les convertir en verdicts reste
+l'hygiène la plus rentable du projet.
 Convertir les autres en sondes assertives est le chantier d'hygiène le plus
 rentable du projet — le coût de leur absence s'est vu le 2026-08-01, où
 `--test-input` plantait depuis la refonte du craft (2026-07-26) sur un champ
@@ -197,6 +237,8 @@ de sortie, donc son crash passait pour du bruit de journal.
 Chaque lot livré porte sa sonde headless, exécutable sans interface :
 
 ```
+godot --headless --path . -- --probe-potentiel    # 6.4 : le plancher de race/classe tient au level up
+godot --headless --path . -- --probe-modificateurs # E.4 : algèbre, retrait, non-régression faim/fatigue
 godot --headless --path . -- --probe-touches      # commandes : aucune collision, remappe, persistance
 godot --headless --path . -- --probe-police       # tout caractère traduit a bien un glyphe
 godot --headless --path . -- --probe-interieur     # donjon : salles organiques, escaliers, butin, cloisonnement des dimensions

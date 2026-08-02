@@ -6,8 +6,8 @@
   "hands": 1,
   "functionality": "epee_courte",
   "parts": {
-    "manche": "court",
-    "tete": "lame_moyenne"
+    "manche": "poignee_epee",
+    "tete": "lame_courte"
   },
   "recipe": {
     "station": "etabli",
@@ -19,7 +19,7 @@
       },
       {
         "category": "minerai",
-        "amount": 2
+        "amount": 1
       }
     ]
   },

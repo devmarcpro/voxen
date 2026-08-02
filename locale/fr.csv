@@ -34,8 +34,8 @@ ui.hud.chunks,Chunks : {meshes} affichés · {cache} en cache · {file} en file
 ui.hud.meshing,Meshing : {moyen} ms en moyenne · {max} ms max
 ui.hud.pos,"Position : {x}, {y}, {z}"
 ui.hud.biome,Biome : {biome}
-ui.hud.fertilite,"Fertilité : {pct}%"
-ui.hud.temperature,"Température : {deg}°C"
+ui.hud.fertilite,Fertilité : {pct}%
+ui.hud.temperature,Température : {deg}°C
 ui.hud.cible,Cible : {materiau} — {progres} %
 ui.hud.cible_rebond,Cible : {materiau} — l'outil rebondit !
 ui.hud.outil,Outil : {outil}
@@ -325,7 +325,7 @@ biome.marais_froid.name,Marais froid
 biome.foret_de_mana.name,Forêt de mana
 biome.montagne_cristalline.name,Montagne cristalline
 material.herbe.name,Herbe
-ui.map.zoom_info,"Grille : {grille} cellules (128 blocs) — Affichage : {calque}"
+ui.map.zoom_info,Grille : {grille} cellules (128 blocs) — Affichage : {calque}
 ui.map.layer.biome,Biome/relief
 ui.map.layer.danger,Danger
 ui.map.layer.revendications,Revendications
@@ -387,7 +387,7 @@ ui.menu.biome_aucun,— tous les biomes —
 ui.menu.creer,Créer et jouer
 ui.menu.apercu,Aperçu du monde
 ui.menu.spawn_hint,Clic sur la carte = choisir le point de départ
-ui.menu.regions,"Continents : {continents} · Océans : {oceans}"
+ui.menu.regions,Continents : {continents} · Océans : {oceans}
 ui.menu.host,Héberger (monde par défaut)
 ui.menu.rejoindre,Rejoindre
 ui.menu.ip,Adresse IP
@@ -520,11 +520,11 @@ biome.foret_pluviale_temperee.name,Forêt pluviale tempérée
 biome.lande.name,Lande
 material.etabli.name,Établi
 material.four.name,Four
-ui.menu.craft_station,"Station : {station} ({etat})"
+ui.menu.craft_station,Station : {station} ({etat})
 ui.menu.station_dispo,disponible
 ui.menu.station_absente,absente de cette cellule
-ui.menu.craft_competence,"Compétence : {competence} (niv {niveau})"
-ui.menu.craft_resultat,"Résultat : {nom} — qualité ~{palier}"
+ui.menu.craft_competence,Compétence : {competence} (niv {niveau})
+ui.menu.craft_resultat,Résultat : {nom} — qualité ~{palier}
 transformation.fab_etabli.name,Fabriquer un établi
 transformation.fab_four.name,Fabriquer un four
 ui.menu.stats_composant,Composant
@@ -559,7 +559,7 @@ transformation.fab_tailleur.name,Fabriquer un tailleur de pierre
 transformation.fab_metier_tisser.name,Fabriquer un métier à tisser
 transformation.fab_alambic.name,Fabriquer un alambic
 transformation.fab_enclume.name,Fabriquer une enclume
-transformation.alliage_acier.name,"Forger de l'acier"
+transformation.alliage_acier.name,Forger de l'acier
 transformation.alliage_bronze.name,Forger du bronze
 transformation.alliage_laiton.name,Forger du laiton
 transformation.charbon_de_bois.name,Charbon de bois
@@ -574,7 +574,7 @@ transformation.taille_brique_pierre.name,Tailler des briques de pierre
 transformation.filage.name,Filer
 transformation.tissage_tissu.name,Tisser du tissu
 transformation.tressage_corde.name,Tresser une corde
-transformation.extraction_huile.name,"Extraire de l'huile"
+transformation.extraction_huile.name,Extraire de l'huile
 transformation.fab_torche.name,Fabriquer des torches
 item.dague.name,Dague
 functionality.dague.name,Dague
@@ -582,8 +582,8 @@ item.masse.name,Masse
 functionality.masse.name,Masse
 item.lance.name,Lance
 functionality.lance.name,Lance
-item.hache_arme.name,"Hache d'armes"
-functionality.hache_arme.name,"Hache d'armes"
+item.hache_arme.name,Hache d'armes
+functionality.hache_arme.name,Hache d'armes
 item.arc.name,Arc
 functionality.arc.name,Arc
 item.arbalete.name,Arbalète
@@ -595,7 +595,7 @@ item.seau.name,Seau
 skill.dague.name,Dague
 skill.masse.name,Masse
 skill.lance.name,Lance
-skill.hache_arme.name,"Hache d'armes"
+skill.hache_arme.name,Hache d'armes
 skill.arc.name,Arc
 skill.arbalete.name,Arbalète
 skill.baton_magique.name,Bâton magique
@@ -695,7 +695,6 @@ skill.cuisine.name,Cuisine
 material.fourneau.name,Fourneau
 transformation.fab_fourneau.name,Fabriquer un fourneau
 ui.toast.potentiel,Potentiel amélioré : {details}
-
 ui.carte.heure,{heure} — {phase}
 ui.phase.aube,Aube
 ui.phase.jour,Jour
@@ -738,42 +737,42 @@ functionality.pioche_combat.name,Pioche de combat
 item.baton_ferre.name,Bâton ferré
 functionality.baton_ferre.name,Bâton ferré
 ui.combat.coup_glissant,"Coup glissant — trop près, frappé au manche"
-ui.combat.chambering,"Parade parfaite — les armes s'entrechoquent"
-ui.menu.craft_gemme,"Gemme (sertissage)"
-ui.menu.gemme_aucune,"aucune"
-ui.menu.gemme_sans,"Sans gemme : l'arme ne pourra pas être enchantée."
-ui.menu.gemme_effet,"Sertie : conductivité de mana {mana} · +{poids} kg. Aucun effet sur les dégâts."
-ui.menu.section_etat,"État"
-ui.menu.section_attributs,"Attributs"
-ui.gauge.vie,"Vie"
-ui.gauge.mana,"Mana"
-ui.gauge.faim,"Faim"
-ui.gauge.fatigue,"Fatigue"
-ui.gauge.endurance,"Endurance"
-ui.hud.bloc_systeme,"Système"
-ui.hud.bloc_lieu,"Lieu"
-ui.hud.bloc_cible,"Cible"
-ui.hud.bloc_modules,"Modules"
-ui.hud.cle.fps,"FPS"
-ui.hud.cle.chunks,"Chunks"
-ui.hud.cle.meshing,"Meshing"
-ui.hud.cle.position,"Position"
-ui.hud.cle.biome,"Biome"
-ui.hud.cle.temperature,"Température"
-ui.hud.cle.fertilite,"Fertilité"
-ui.hud.cle.cellule,"Cellule"
-ui.hud.cle.grille,"Grille"
-ui.hud.cle.materiau,"Bloc"
-ui.hud.cle.outil,"Outil"
-ui.hud.cle.creature,"Créature"
-ui.hud.cle.module_j,"Touche J"
-ui.hud.cle.module_k,"Touche K"
-ui.hud.cle.module_l,"Touche L"
-ui.hud.chunks_valeur,"{meshes} · {cache} en cache · {file} en file"
-ui.hud.meshing_valeur,"{moyen} ms · {max} ms max"
-ui.hud.grille_valeur,"{res} px"
-ui.hud.module_valeur,"{nom} ({cout} mana)"
-ui.hud.cible_rebond_valeur,"{materiau} — l'outil rebondit !"
+ui.combat.chambering,Parade parfaite — les armes s'entrechoquent
+ui.menu.craft_gemme,Gemme (sertissage)
+ui.menu.gemme_aucune,aucune
+ui.menu.gemme_sans,Sans gemme : l'arme ne pourra pas être enchantée.
+ui.menu.gemme_effet,Sertie : conductivité de mana {mana} · +{poids} kg. Aucun effet sur les dégâts.
+ui.menu.section_etat,État
+ui.menu.section_attributs,Attributs
+ui.gauge.vie,Vie
+ui.gauge.mana,Mana
+ui.gauge.faim,Faim
+ui.gauge.fatigue,Fatigue
+ui.gauge.endurance,Endurance
+ui.hud.bloc_systeme,Système
+ui.hud.bloc_lieu,Lieu
+ui.hud.bloc_cible,Cible
+ui.hud.bloc_modules,Modules
+ui.hud.cle.fps,FPS
+ui.hud.cle.chunks,Chunks
+ui.hud.cle.meshing,Meshing
+ui.hud.cle.position,Position
+ui.hud.cle.biome,Biome
+ui.hud.cle.temperature,Température
+ui.hud.cle.fertilite,Fertilité
+ui.hud.cle.cellule,Cellule
+ui.hud.cle.grille,Grille
+ui.hud.cle.materiau,Bloc
+ui.hud.cle.outil,Outil
+ui.hud.cle.creature,Créature
+ui.hud.cle.module_j,Touche J
+ui.hud.cle.module_k,Touche K
+ui.hud.cle.module_l,Touche L
+ui.hud.chunks_valeur,{meshes} · {cache} en cache · {file} en file
+ui.hud.meshing_valeur,{moyen} ms · {max} ms max
+ui.hud.grille_valeur,{res} px
+ui.hud.module_valeur,{nom} ({cout} mana)
+ui.hud.cible_rebond_valeur,{materiau} — l'outil rebondit !
 ui.hud.aide_bascule,{touche} : masquer cette aide
 skill.baton_ferre.name,Bâton ferré
 skill.epee_courte.name,Épée courte
@@ -807,14 +806,14 @@ skill.elevage.name,Élevage
 skill.navigation.name,Navigation
 skill.alchimie.name,Alchimie
 skill.couture.name,Couture
-item.rondache.name,"Rondache"
-functionality.rondache.name,"Rondache"
-item.ecu.name,"Écu"
-functionality.ecu.name,"Écu"
-item.pavois.name,"Pavois"
-functionality.pavois.name,"Pavois"
-ui.toast.collection_don,"Pièce ajoutée à la collection — l'objet est détruit."
-ui.menu.onglet.collection,"Collection"
+item.rondache.name,Rondache
+functionality.rondache.name,Rondache
+item.ecu.name,Écu
+functionality.ecu.name,Écu
+item.pavois.name,Pavois
+functionality.pavois.name,Pavois
+ui.toast.collection_don,Pièce ajoutée à la collection — l'objet est détruit.
+ui.menu.onglet.collection,Collection
 ui.menu.touches,Touches
 ui.menu.touches_aide,Cliquez sur une touche pour la réaffecter.
 ui.menu.touches_appuyez,Appuyez sur la nouvelle touche (Échap pour annuler).
@@ -825,97 +824,97 @@ ui.menu.touches_cat_monde,Monde
 ui.menu.touches_cat_modules,Modules
 ui.menu.touches_cat_interface,Interface
 ui.menu.multi_experimental,"Expérimental : seuls les autres joueurs et les blocs sont partagés. Les créatures, l'heure, l'inventaire et le combat ne sont pas synchronisés."
-ui.collection.progression,"{offerts} / {total} pièces ({pct} %)"
-ui.collection.page,"Page {page} / {pages}"
-ui.collection.manquant,"manquant"
-ui.collection.offrir,"Offrir (détruit l'objet)"
+ui.collection.progression,{offerts} / {total} pièces ({pct} %)
+ui.collection.page,Page {page} / {pages}
+ui.collection.manquant,manquant
+ui.collection.offrir,Offrir (détruit l'objet)
 ui.collection.deja_mieux,"Déjà en collection, en meilleure qualité"
-ui.collection.rien_a_offrir,"Aucun exemplaire en inventaire"
-ui.collection.tri,"Trier par :"
-ui.collection.tri_nom,"Nom"
-ui.collection.tri_type,"Type"
-ui.collection.tri_etat,"Manquants d'abord"
-ui.collection.tri_qualite,"Qualité"
-ui.collection.qualite,"qualité {palier}"
+ui.collection.rien_a_offrir,Aucun exemplaire en inventaire
+ui.collection.tri,Trier par :
+ui.collection.tri_nom,Nom
+ui.collection.tri_type,Type
+ui.collection.tri_etat,Manquants d'abord
+ui.collection.tri_qualite,Qualité
+ui.collection.qualite,qualité {palier}
 dialogue.salut_neutre,"Bonjour, voyageur."
 dialogue.meteo,"Le temps sera clément, je crois."
-dialogue.occupe,"Je n'ai guère le temps de bavarder."
+dialogue.occupe,Je n'ai guère le temps de bavarder.
 dialogue.matin,"Debout de bonne heure, à ce que je vois."
-dialogue.soir,"La nuit tombe. Rentrez donc."
-dialogue.nuit,"Que faites-vous dehors à cette heure ?"
-dialogue.hostile_1,"Vous ! Éloignez-vous de moi."
-dialogue.hostile_2,"On sait ce que vous avez fait."
-dialogue.mefiant_1,"Je vous ai à l'œil."
-dialogue.mefiant_2,"Passez votre chemin."
-dialogue.amical_1,"Content de vous revoir !"
-dialogue.amical_2,"Vous êtes toujours le bienvenu ici."
+dialogue.soir,La nuit tombe. Rentrez donc.
+dialogue.nuit,Que faites-vous dehors à cette heure ?
+dialogue.hostile_1,Vous ! Éloignez-vous de moi.
+dialogue.hostile_2,On sait ce que vous avez fait.
+dialogue.mefiant_1,Je vous ai à l'œil.
+dialogue.mefiant_2,Passez votre chemin.
+dialogue.amical_1,Content de vous revoir !
+dialogue.amical_2,Vous êtes toujours le bienvenu ici.
 dialogue.devoue_1,"Si vous avez besoin de quoi que ce soit, demandez."
 dialogue.devoue_2,"On parle de vous en bien, par ici."
-dialogue.forgeron_1,"La forge ne s'éteint jamais complètement."
+dialogue.forgeron_1,La forge ne s'éteint jamais complètement.
 dialogue.forgeron_2,"Apportez-moi du bon minerai, on verra."
-dialogue.garde_1,"Rien à signaler. Tant mieux."
-dialogue.garde_2,"Gardez vos armes rangées en ville."
-dialogue.fermier_1,"La terre donne ce qu'on lui donne."
-dialogue.fermier_2,"Encore une saison comme celle-ci et je souffle."
-dialogue.vendeur_1,"Jetez donc un œil à ma marchandise."
-dialogue.vendeur_2,"Tout se négocie. Presque tout."
-dialogue.cuisinier_1,"Ça mijote. Repassez plus tard."
-dialogue.mineur_1,"La roche est dure par ici."
+dialogue.garde_1,Rien à signaler. Tant mieux.
+dialogue.garde_2,Gardez vos armes rangées en ville.
+dialogue.fermier_1,La terre donne ce qu'on lui donne.
+dialogue.fermier_2,Encore une saison comme celle-ci et je souffle.
+dialogue.vendeur_1,Jetez donc un œil à ma marchandise.
+dialogue.vendeur_2,Tout se négocie. Presque tout.
+dialogue.cuisinier_1,Ça mijote. Repassez plus tard.
+dialogue.mineur_1,La roche est dure par ici.
 dialogue.bucheron_1,"Le bois vert ne vaut rien, souvenez-vous-en."
-dialogue.eleveur_1,"Les bêtes se portent bien."
-dialogue.herboriste_1,"Chaque plante a son usage. Et son heure."
-dialogue.couturier_1,"Une bonne étoffe vaut une bonne armure."
-dialogue.transporteur_1,"Les routes ne sont plus si sûres."
-ui.dialogue.parler,"Parler"
-ui.dialogue.offrir,"Offrir un cadeau"
-ui.dialogue.commercer,"Commercer"
-ui.dialogue.quetes,"Quêtes"
-ui.dialogue.recruter,"Recruter"
-ui.dialogue.fermer,"Prendre congé"
-ui.dialogue.metier,"{metier}"
-ui.dialogue.relation,"Relation : {palier}"
-ui.dialogue.deja_parle,"Vous avez déjà parlé aujourd'hui"
-ui.dialogue.rien_a_offrir,"Rien à offrir"
-ui.dialogue.pas_marchand,"Ce n'est pas un marchand"
-ui.dialogue.pas_de_quetes,"N'a rien à proposer"
-ui.dialogue.pas_recrutable,"Ne vous suivra pas"
-ui.dialogue.cadeau_accepte,"{nom} accepte votre présent."
-ui.dialogue.interagir,"E : parler"
-relation.hostile,"hostile"
-relation.mefiant,"méfiant"
-relation.neutre,"neutre"
-relation.amical,"amical"
-relation.devoue,"dévoué"
-job.garde,"Garde"
-job.fermier,"Fermier"
-job.forgeron,"Forgeron"
-job.vendeur,"Marchand"
-job.cuisinier,"Cuisinier"
-job.mineur,"Mineur"
-job.bucheron,"Bûcheron"
-job.eleveur,"Éleveur"
-job.couturier,"Couturier"
-job.herboriste,"Herboriste"
-job.transporteur,"Transporteur"
-ui.toast.villageois_tue,"Un habitant du village est mort."
+dialogue.eleveur_1,Les bêtes se portent bien.
+dialogue.herboriste_1,Chaque plante a son usage. Et son heure.
+dialogue.couturier_1,Une bonne étoffe vaut une bonne armure.
+dialogue.transporteur_1,Les routes ne sont plus si sûres.
+ui.dialogue.parler,Parler
+ui.dialogue.offrir,Offrir un cadeau
+ui.dialogue.commercer,Commercer
+ui.dialogue.quetes,Quêtes
+ui.dialogue.recruter,Recruter
+ui.dialogue.fermer,Prendre congé
+ui.dialogue.metier,{metier}
+ui.dialogue.relation,Relation : {palier}
+ui.dialogue.deja_parle,Vous avez déjà parlé aujourd'hui
+ui.dialogue.rien_a_offrir,Rien à offrir
+ui.dialogue.pas_marchand,Ce n'est pas un marchand
+ui.dialogue.pas_de_quetes,N'a rien à proposer
+ui.dialogue.pas_recrutable,Ne vous suivra pas
+ui.dialogue.cadeau_accepte,{nom} accepte votre présent.
+ui.dialogue.interagir,E : parler
+relation.hostile,hostile
+relation.mefiant,méfiant
+relation.neutre,neutre
+relation.amical,amical
+relation.devoue,dévoué
+job.garde,Garde
+job.fermier,Fermier
+job.forgeron,Forgeron
+job.vendeur,Marchand
+job.cuisinier,Cuisinier
+job.mineur,Mineur
+job.bucheron,Bûcheron
+job.eleveur,Éleveur
+job.couturier,Couturier
+job.herboriste,Herboriste
+job.transporteur,Transporteur
+ui.toast.villageois_tue,Un habitant du village est mort.
 ui.toast.coffre_boss,Le boss lâche un coffre !
-gouvernance.monarchie_hereditaire,"monarchie héréditaire"
-gouvernance.republique_elue,"république élue"
-gouvernance.theocratie,"théocratie"
-gouvernance.ploutocratie,"ploutocratie"
-gouvernance.dictature_militaire,"dictature militaire"
-gouvernance.anarchie,"anarchie"
-taille_royaume.hameau_etat,"hameau-État"
-taille_royaume.cite_etat,"cité-État"
-taille_royaume.petit_royaume,"petit royaume"
-taille_royaume.grand_royaume,"grand royaume"
-ui.hud.cle.royaume,"Royaume"
-ui.hud.terres_sauvages,"terres sauvages (sans loi)"
-ui.loi.amende,"Amende prélevée : la loi locale l'interdit."
-ui.loi.confiscation,"Objet confisqué : il est illégal ici."
+gouvernance.monarchie_hereditaire,monarchie héréditaire
+gouvernance.republique_elue,république élue
+gouvernance.theocratie,théocratie
+gouvernance.ploutocratie,ploutocratie
+gouvernance.dictature_militaire,dictature militaire
+gouvernance.anarchie,anarchie
+taille_royaume.hameau_etat,hameau-État
+taille_royaume.cite_etat,cité-État
+taille_royaume.petit_royaume,petit royaume
+taille_royaume.grand_royaume,grand royaume
+ui.hud.cle.royaume,Royaume
+ui.hud.terres_sauvages,terres sauvages (sans loi)
+ui.loi.amende,Amende prélevée : la loi locale l'interdit.
+ui.loi.confiscation,Objet confisqué : il est illégal ici.
 ui.loi.saisie,"Faute de pouvoir payer, un bien vous est saisi."
-ui.loi.gardes_hostiles,"Les gardes du royaume vous cherchent."
-ui.hud.cle.lois,"Lois"
+ui.loi.gardes_hostiles,Les gardes du royaume vous cherchent.
+ui.hud.cle.lois,Lois
 ui.hud.cle.localite,Localité
 ui.hud.souris,Clic gauche (maintenu) : récolter/sculpter/attaquer · Clic droit : poser
 ui.hud.hotbar,1-9/molette : choisir · Ctrl+1-9/molette : banque
@@ -948,12 +947,36 @@ ui.input.debug_hud,aide et diagnostic
 ui.input.cheat_menu,menu de triche
 ui.input.reload_data,recharger les données
 ui.input.save_game,sauvegarder
-ui.loi.aucune,"aucune (anarchie)"
-ui.loi.interdit,"{objet} interdit"
+ui.loi.aucune,aucune (anarchie)
+ui.loi.interdit,{objet} interdit
 ui.erreur.save_illisible,Sauvegarde illisible ou endommagée.
 ui.erreur.save_trop_recente,Sauvegarde créée par une version plus récente du jeu.
 ui.erreur.save_trop_ancienne,Sauvegarde trop ancienne : ce jeu ne sait plus la lire.
 ui.erreur.chunks_perdus,Certaines zones modifiées n'ont pas pu être relues.
-loi.meurtre,"meurtre puni"
-loi.vol,"vol puni"
-loi.agression,"agression punie"
+loi.meurtre,meurtre puni
+loi.vol,vol puni
+loi.agression,agression punie
+ui.menu.onglet.combat,Combat
+ui.menu.combat_aide,Glissez une arme ou un bouclier sur une main. La posture se déduit de ce que vous portez.
+ui.menu.posture_competence,Entraîne : {competence}
+ui.posture.mains_nues,Mains nues
+ui.posture.une_main,Arme à une main
+ui.posture.deux_mains,Arme à deux mains
+ui.posture.arme_bouclier,Arme et bouclier
+ui.posture.deux_armes,Deux armes
+ui.combat.fiche,Allonge {allonge} m · {des} · vitesse {vitesse} · parade {parade} ms · endurance {endurance} · {mains} main(s)
+ui.combat.bouclier_ligne,Bouclier : couverture {couverture} · absorption {absorption} %
+ui.toast.deux_mains_occupe,Une arme à deux mains occupe déjà les deux mains.
+ui.combat.pare_par_adversaire,Coup paré — il a lu votre direction.
+ui.combat.garde_ecrasee,Garde écrasée — le coup passe au travers.
+ui.combat.bouclier_brise,Votre bouclier se brise !
+ui.combat.bouclier_structure,Bouclier : {reste} / {total}
+ui.combat.attaques,Attaques : {directions}
+ui.direction.estoc,estoc
+ui.direction.taille_gauche,taille gauche
+ui.direction.taille_droite,taille droite
+ui.direction.overhead,coup haut
+ui.combat.feinte_adverse,Feinte — le coup annoncé n'est pas venu.
+munition.fleche.name,Flèche
+munition.carreau.name,Carreau
+ui.combat.carquois_vide,Carquois vide.

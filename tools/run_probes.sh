@@ -38,12 +38,18 @@ SETUP="--probe-save"
 
 PROBES="--probe-touches
 --probe-police
+--probe-noms
 --probe-heure
 --probe-tour
 --probe-etages
+--probe-dungeon
+--probe-interieur
 --probe-gemme
 --probe-collection
+--probe-potentiel
+--probe-modificateurs
 --probe-corps
+--probe-rigs-animaux
 --probe-save-verify
 --probe-villages
 --probe-pnj

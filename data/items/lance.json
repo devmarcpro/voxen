@@ -6,7 +6,7 @@
   "hands": 2,
   "functionality": "lance",
   "parts": {
-    "manche": "tres_long",
+    "manche": "hampe_longue",
     "tete": "pointe"
   },
   "recipe": {
@@ -15,11 +15,11 @@
     "inputs": [
       {
         "category": "bois",
-        "amount": 1
+        "amount": 7
       },
       {
         "category": "minerai",
-        "amount": 2
+        "amount": 1
       }
     ]
   },

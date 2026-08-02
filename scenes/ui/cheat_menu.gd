@@ -820,7 +820,7 @@ func _build_creative_rows() -> void:
 				_give_item(item_id)
 				_set_status("+ %s" % tr(item["name_key"])))
 		# Apparence d'OUTIL (sprite teinté) plutôt qu'un cube couleur.
-		var tool_tex: Texture2D = ToolSprite.item_icon(item,
+		var tool_tex: Texture2D = WeaponPreview.item_icon(item,
 			{"bois": "chene", "minerai": "fer"}, CREATIVE_CELL - 6)
 		if tool_tex != null:
 			cell.icon = tool_tex

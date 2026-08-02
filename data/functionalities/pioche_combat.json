@@ -10,9 +10,14 @@
   "vitesse_base": 1.3,
   "portee": 1.5,
   "type_degats": "percant",
-  "poids_reference": 65,
+  "poids_reference": 30,
   "parts": {
     "manche": "moyen",
     "tete": "bec"
-  }
+  },
+  "attaques": [
+    "taille_gauche",
+    "taille_droite",
+    "overhead"
+  ]
 }
