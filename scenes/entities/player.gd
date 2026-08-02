@@ -763,6 +763,15 @@ func _process(delta: float) -> void:
 		_update_guard_direction(delta)
 		_advance_attack(delta)
 		_ranged.advance(delta)
+	# POSTURE DE COMBAT poussée vers la caméra (2026-08-02) : elle y pondère le
+	# jeu de jambes (recul et pas de côté ralentis, brève inertie). La caméra ne
+	# doit connaître ni arme, ni endurance, ni garde — juste « ce corps est
+	# engagé ou non », d'où un simple booléen plutôt qu'une référence au joueur.
+	#
+	# Bander un arc en fait partie : viser immobilise autant que tenir une garde,
+	# et un archer qui recule à pleine vitesse en tirant serait intenable.
+	if _camera != null:
+		_camera.combat_stance = _guard_active or _attack.is_busy() or _ranged.is_busy()
 
 
 ## Progression de récolte normalisée (0..1) — pour la barre de l'UI.
@@ -1761,6 +1770,22 @@ func _active_swing_stats() -> Dictionary:
 func _advance_attack(delta: float) -> void:
 	if not _attack.is_busy() or _camera == null or _swing_stats.is_empty():
 		return
+	# HIT-STOP (2026-08-02) : au contact, le geste se FIGE quelques dizaines de
+	# millisecondes. C'est ce qui donne à la lame l'impression de mordre au lieu
+	# de traverser, et c'est le plus gros contributeur au poids ressenti d'un
+	# coup. On gèle ici, et ici seulement : la caméra, le déplacement et le tick
+	# continuent — figer le joueur entier lui arracherait le contrôle en
+	# récompense d'avoir touché, ce qui est exactement l'inverse du but.
+	#
+	# Conséquence recherchée : la fenêtre de récupération se décale d'autant.
+	# Toucher coûte donc un peu de tempo, ce qui rend le coup dans le vide moins
+	# ruineux par comparaison et resserre les échanges.
+	#
+	# Le figement est PRÉLEVÉ SUR CE DELTA, pas lu sur une horloge à part : le
+	# geste reste seul maître de son propre temps (voir consume_freeze).
+	delta = ImpactFeedback.consume_freeze(delta)
+	if delta <= 0.0:
+		return
 	var weapon_stats := _active_swing_stats()
 	var reach: float = float(weapon_stats["reach"])
 	var event := _attack.advance(delta)
@@ -1871,6 +1896,8 @@ func _advance_attack(delta: float) -> void:
 		_swing_stats = {}
 		EventBus.ui_notification.emit("ui.combat.chambering")
 		EventBus.damage_dealt.emit(best_hit["point"], 0, false, true)
+		EventBus.combat_impact.emit(
+			ImpactFeedback.IMPACT_CHAMBRE, best_hit["point"], 1.0)
 		return
 
 	# CRUSHTHROUGH : un marteau abattu de haut traverse la garde. C'est le seul
@@ -1883,6 +1910,8 @@ func _advance_attack(delta: float) -> void:
 		_attack.can_still_hit = false
 		EventBus.ui_notification.emit("ui.combat.pare_par_adversaire")
 		EventBus.damage_dealt.emit(best_hit["point"], 0, false, true)
+		EventBus.combat_impact.emit(
+			ImpactFeedback.IMPACT_PARE, best_hit["point"], 1.0)
 		return
 
 	# SWEET SPOT : on ne blesse qu'avec la partie tranchante. Frapper au manche
@@ -1904,6 +1933,8 @@ func _advance_attack(delta: float) -> void:
 		# qu'on s'est trompé de distance, pas croire qu'on a raté sa visée.
 		_attack.can_still_hit = false
 		_pending_hits.append({"kind": "glisse", "stats": weapon_stats})
+		EventBus.combat_impact.emit(
+			ImpactFeedback.IMPACT_GLISSANT, best_hit["point"], 1.0)
 		return
 
 	# BONUS DE VITESSE : la vitesse RELATIVE de l'arme et de la cible décide.
@@ -1916,6 +1947,24 @@ func _advance_attack(delta: float) -> void:
 	# qu'une mesure. A brancher quand elles bougeront a la frame.
 	var closing := _player_velocity.dot(strike_direction)
 	var speed := WeaponStats.speed_factor(nominal, closing)
+
+	# RETOUR D'IMPACT, À LA FRAME (2026-08-02). Volontairement émis ICI et pas
+	# dans `_resolve_pending_hits` : celui-ci tourne au tick, donc jusqu'à 100 ms
+	# après le contact. Un hit-stop qui arrive un dixième de seconde après que la
+	# lame est ressortie de la cible ne se lit plus comme un impact, mais comme
+	# une saccade — c'est exactement le défaut qu'il vient corriger.
+	#
+	# C'est cohérent avec le partage déjà en place : la frame constate la
+	# GÉOMÉTRIE (et ce retour n'est qu'une conséquence perceptive de la
+	# géométrie), le tick applique l'ÉTAT. Aucun état de jeu n'est touché ici.
+	#
+	# La force est le même produit que celui envoyé au calcul des dégâts, moins
+	# le jet de dés : le joueur sent donc la qualité de son placement — zone
+	# visée, sweet spot, vitesse de rapprochement — et pas le hasard.
+	var impact_force := float(best_hit["mult"]) * sweet * speed
+	EventBus.combat_impact.emit(
+		ImpactFeedback.IMPACT_ECRASE if (target_guards and crushes) else ImpactFeedback.IMPACT_CHAIR,
+		best_hit["point"], impact_force)
 
 	# Un coup par frappe (les armes « transperçantes » lèveront cette règle).
 	_attack.can_still_hit = false

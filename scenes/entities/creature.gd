@@ -33,13 +33,9 @@ var weapon_level := 0       # Niveau de compétence de l'arme naturelle (0 = dé
 var logical_position: Vector3
 var _home: Vector3
 var _attack_cooldown_ticks := 0
-## Ticks restants avant que l'attaque DÉCLARÉE ne parte réellement (wind-up).
-## 0 = aucune attaque en préparation.
-var _windup_ticks := 0
-## Ticks de MENACE TENUE restants après le wind-up, -1 tant qu'ils ne sont pas
-## tirés. C'est la pause pendant laquelle l'arme reste armée, visible et
-## lisible — l'équivalent de la garde armée du joueur.
-var _hold_ticks := -1
+## L'armement et la menace tenue vivent désormais dans `_attack_declared`,
+## `_windup_left_ms` et `_hold_left_ms` — voir leur déclaration plus bas et
+## l'explication du passage à la frame qui l'accompagne.
 ## GARDE DU PNJ (2026-08-02). Direction tenue et ticks restants. Une créature
 ## qui ne pare jamais fait de la lecture un exercice à sens unique : on apprend
 ## à lire ses coups, elle n'oppose rien aux nôtres. C'est la moitié manquante du
@@ -116,7 +112,40 @@ var _guard_ticks := 0
 var _guard_cooldown_ticks := 0
 ## Au plus 0,4 s de menace tenue : au-delà, l'adversaire cesse de lire une
 ## intention et croit à un bug.
-const MAX_HOLD_TICKS := 4
+const MAX_HOLD_MS := 400.0
+
+# --- LE GESTE DE L'IA COURT À LA FRAME (2026-08-02) --------------------------
+#
+# CE QUI N'ALLAIT PAS. L'attaque d'une créature était minutée EN TICKS :
+#   _windup_ticks = maxi(1, ceili(windup_ms / 100.0))
+# Trois conséquences, toutes perceptibles :
+#
+#   1. LES DURÉES ÉTAIENT FAUSSES. Un wind-up de dague (150 ms) durait 200 ms,
+#      celui d'une épée (450) 500. Les armes lentes et rapides se ressemblaient,
+#      et le calibrage patiemment posé dans les données ne survivait pas à
+#      l'arrondi.
+#   2. LA FRAPPE TOMBAIT SUR UNE GRILLE DE 100 ms. Impossible de lire finement
+#      l'instant de l'impact : il était toujours sur un multiple de 100 ms, et
+#      le joueur, lui, joue à la frame. Le duel opposait deux horloges
+#      différentes — la sienne continue, celle d'en face crantée.
+#   3. LA FEINTE ÉTAIT TIRÉE AU TICK, donc annulable seulement à 10 Hz.
+#
+# CE QUI CHANGE, ET CE QUI NE CHANGE PAS. Le partage reste celui de
+# MeleeAttack, à la lettre : la FRAME ne calcule que du temps et de la
+# géométrie, le TICK garde toute autorité sur l'état du jeu. Concrètement,
+# le tick DÉCIDE encore (attaquer ou non, se déplacer, parer, se remettre) et
+# applique tous les dégâts ; seule la MINUTERIE du geste déjà décidé passe à la
+# frame. Une créature ne peut donc pas plus qu'avant faire diverger l'état du
+# jeu : elle ne fait que porter son geste au bon moment.
+#
+# C'est la même exception, cadrée de la même façon, que celle qui a sorti
+# l'attaque du joueur du tick — et pour exactement la même raison.
+
+## Attaque DÉCLARÉE et pas encore partie. Couvre l'armement puis la menace
+## tenue ; les deux durées courent à la frame, en millisecondes réelles.
+var _attack_declared := false
+var _windup_left_ms := 0.0
+var _hold_left_ms := 0.0
 ## Direction de l'attaque en cours (MeleeAttack.Direction). Tiree a la
 ## DECLARATION et publiee par la telegraphie : le joueur doit pouvoir la
 ## lire pendant le wind-up pour orienter sa parade.
@@ -221,6 +250,7 @@ func _build_visual(data: Dictionary) -> void:
 		if body != null:
 			_body = body
 			_build_health_bar()
+			_build_threat_indicator()
 			return
 	_build_placeholder_visual(data)
 
@@ -353,8 +383,9 @@ func take_damage(amount: float) -> void:
 	health = maxf(0.0, health - amount)
 	if amount <= 0.0:
 		return
-	_windup_ticks = 0
-	_hold_ticks = -1
+	_attack_declared = false
+	_windup_left_ms = 0.0
+	_hold_left_ms = 0.0
 	if _pose_phase == "windup" or _pose_phase == "armee":
 		_start_pose("recover", 0.2)
 
@@ -509,6 +540,112 @@ func _health_quad(size: Vector2, color: Color, depth: float) -> MeshInstance3D:
 	return node
 
 
+# --- Télégraphie visible de l'attaque (2026-08-02) --------------------------
+#
+# POURQUOI CE N'EST PAS DANS LE HUD. Le combat directionnel était illisible du
+# côté ADVERSE : le HUD affiche fidèlement ta propre attaque et ta propre garde,
+# mais la menace, elle, n'avait qu'un seul canal — la pose 3D du corps. Dans
+# Mount & Blade cette pose suffit, parce que les animations sont amples, tenues
+# et jouées sur un squelette humain qu'on lit d'instinct. Ici, les poses sont
+# procédurales sur des corps voxel : le bras part dans la bonne direction, mais
+# de quelques degrés, et à trois mètres on ne voit rien.
+#
+# Le repère est donc posé DANS LE MONDE, au-dessus de la créature, et non au
+# centre de l'écran. Ce choix est le cœur de l'affaire : un indicateur central
+# apprendrait à regarder son réticule, alors que tout l'intérêt du système est
+# d'apprendre à regarder SON ADVERSAIRE. Ancré sur elle, il désigne aussi
+# laquelle menace quand il y en a trois — ce qu'un HUD central ne peut pas
+# faire sans devenir un tableau de bord.
+#
+# La position du témoin encode la direction, comme les chevrons du HUD : en
+# haut pour un coup qui descend, à gauche/droite pour une taille, en bas pour un
+# estoc. Aucun glyphe, donc aucun risque de caractère manquant dans la police —
+# le projet a déjà payé ce prix avec le chinois et le japonais.
+const THREAT_HEIGHT := 2.75
+const THREAT_SPREAD := 0.34
+const THREAT_SIZE := 0.17
+const THREAT_MAX_DISTANCE := 24.0
+## Décalage de chaque direction autour du centre, dans l'ordre de
+## MeleeAttack.Direction (ESTOC, TAILLE_GAUCHE, TAILLE_DROITE, OVERHEAD).
+## L'estoc est EN BAS et le coup haut EN HAUT : même convention que le HUD du
+## joueur, sans quoi on lirait sa propre attaque et celle d'en face à l'envers
+## l'une de l'autre.
+const THREAT_OFFSETS := [
+	Vector2(0.0, -1.0), Vector2(-1.0, 0.0), Vector2(1.0, 0.0), Vector2(0.0, 1.0),
+]
+## Couleurs des deux temps. L'armement est ORANGE (il reste du temps pour
+## répondre), la frappe est BLANC VIF (il est trop tard, mais on apprend le
+## rythme en la voyant partir).
+const THREAT_WINDUP := Color(1.0, 0.5, 0.12, 0.95)
+const THREAT_STRIKE := Color(1.0, 1.0, 1.0, 1.0)
+
+var _threat_root: Node3D
+var _threat_mark: MeshInstance3D
+
+
+## UN SEUL repère, qu'on DÉPLACE, et non quatre qu'on allume tour à tour.
+##
+## La première version en construisait quatre par créature — quatre maillages et
+## quatre matériaux, payés au spawn. Or le spawn d'une créature est déjà le poste
+## le plus lourd du jeu (la sonde `--probe-corps` le mesure et le trouve déjà
+## au-dessus de son budget), et il n'y a jamais qu'UNE direction menaçante à la
+## fois : les trois autres n'existaient que pour rester invisibles.
+func _build_threat_indicator() -> void:
+	_threat_root = Node3D.new()
+	_threat_root.position.y = THREAT_HEIGHT
+	add_child(_threat_root)
+	_threat_mark = _health_quad(Vector2(THREAT_SIZE, THREAT_SIZE), THREAT_WINDUP, 0.0)
+	_threat_root.add_child(_threat_mark)
+	_threat_root.visible = false
+
+
+## Montre la direction du coup EN COURS D'ARMEMENT, et son avancement.
+##
+## C'est la direction D'ARRIVÉE de la lame qui est montrée (`guard_for`), pas
+## celle du geste de l'attaquant : une taille partie de SA droite arrive sur
+## TA gauche. Montrer le geste obligerait le joueur à faire le miroir dans sa
+## tête à chaque coup, ce qui n'est pas la difficulté qu'on cherche à créer —
+## la difficulté, c'est de voir et de réagir à temps.
+func _update_threat_indicator(viewer_position: Vector3) -> void:
+	if _threat_root == null:
+		return
+	var arming := _pose_phase == "windup" or _pose_phase == "armee"
+	var striking := _pose_phase == "strike"
+	var show := (arming or striking) \
+		and position.distance_to(viewer_position) <= THREAT_MAX_DISTANCE
+	_threat_root.visible = show
+	if not show:
+		return
+	# LE REPÈRE EST TOURNÉ VERS CELUI QUI LE LIT. Les quatre témoins sont placés
+	# à des décalages en X/Y ; sans cette rotation ils resteraient dans l'espace
+	# local de la CRÉATURE, et « à gauche » désignerait sa gauche à elle. Vue de
+	# dos, l'indication serait donc inversée — pire que pas d'indication du tout,
+	# puisqu'on parerait du mauvais côté en croyant bien lire.
+	#
+	# Le matériau met déjà les quads en panneau publicitaire, mais un panneau
+	# publicitaire n'oriente que la FACE : il ne déplace pas les nœuds. C'est donc
+	# ici, sur leur parent, que la question se règle.
+	#
+	# On oriente +Z vers le spectateur, ce qui aligne +X sur SA droite.
+	var to_viewer := viewer_position - position
+	to_viewer.y = 0.0
+	if to_viewer.length_squared() > 0.0001:
+		_threat_root.global_rotation.y = atan2(to_viewer.x, to_viewer.z)
+	var offset: Vector2 = THREAT_OFFSETS[MeleeAttack.guard_for(attack_direction)]
+	_threat_mark.position = Vector3(
+		offset.x * THREAT_SPREAD, offset.y * THREAT_SPREAD, 0.0)
+	var mat := _threat_mark.material_override as StandardMaterial3D
+	if striking:
+		mat.albedo_color = THREAT_STRIKE
+		_threat_mark.scale = Vector3.ONE * 1.5
+		return
+	# Le témoin GROSSIT à mesure que le coup s'arme : l'imminence se lit à la
+	# taille, en vision périphérique, sans avoir à fixer la créature.
+	var ratio := clampf(_pose_time / maxf(_pose_duration, 0.001), 0.0, 1.0)
+	mat.albedo_color = THREAT_WINDUP
+	_threat_mark.scale = Vector3.ONE * lerpf(0.55, 1.25, ratio)
+
+
 func _update_health_bar(viewer_position: Vector3) -> void:
 	if _health_bar == null:
 		return
@@ -566,6 +703,9 @@ func _process(delta: float) -> void:
 	# direction où elle regardait. On mémorise ici le lacet réellement utilisé
 	# pour dessiner le corps : la lame suit exactement ce qu'on voit.
 	_visual_facing = facing
+	# AVANT la pose : c'est lui qui décide des changements de phase, la pose ne
+	# fait qu'avancer dans celle qui est en cours.
+	_advance_declared_attack(delta)
 	_advance_pose(delta)
 	_measure_velocity(delta)
 	# GÉOMÉTRIE À LA FRAME, comme celle du joueur. Elle ne modifie aucun état de
@@ -583,6 +723,7 @@ func _process(delta: float) -> void:
 			var ratio := _pose_time / maxf(_pose_duration, 0.001)
 			_body.set_combat_pose(attack_direction, ratio, _pose_phase)
 		_update_health_bar(viewer)
+		_update_threat_indicator(viewer)
 
 
 ## La créature tient-elle une garde, et couvre-t-elle `attack_direction` ?
@@ -659,11 +800,17 @@ func wear_from_projectile() -> void:
 
 
 func is_chambering(incoming: int) -> bool:
-	return _windup_ticks > 0 and attack_direction == incoming
+	return _attack_declared and attack_direction == incoming
+
+
+## Wind-up d'un chambering, en ms. Volontairement bref et FIXE : c'est un
+## départ simultané, pas une attaque ordinaire. Valait un tick (100 ms) quand
+## tout était cranté ; on garde cette valeur, désormais exacte.
+const CHAMBER_WINDUP_MS := 100.0
 
 
 func react_to_telegraph(incoming: int) -> void:
-	if _windup_ticks > 0 or _pose_phase == "strike" or combat.is_empty():
+	if _attack_declared or _pose_phase == "strike" or combat.is_empty():
 		return
 	if _guard_cooldown_ticks > 0 or _guard_ticks > 0:
 		return
@@ -678,11 +825,13 @@ func react_to_telegraph(incoming: int) -> void:
 		attack_direction = MeleeAttack.nearest_allowed(
 			incoming, chambered.get("directions", []))
 		# Wind-up ÉCOURTÉ : chambrer, c'est partir en même temps que l'autre.
-		_windup_ticks = 1
-		_hold_ticks = 0
+		# Aucune menace tenue — un chambering qui attendrait ne chambrerait plus.
+		_attack_declared = true
+		_windup_left_ms = CHAMBER_WINDUP_MS
+		_hold_left_ms = 0.0
 		_attack_cooldown_ticks = maxi(1, ceili(
 			10.0 / float(combat_functionality().get("vitesse_base", 1.0))))
-		_start_pose("windup", TickManager.TICK_DT)
+		_start_pose("windup", CHAMBER_WINDUP_MS / 1000.0)
 		EventBus.attack_telegraphed.emit(self,
 			MeleeAttack.direction_name(attack_direction))
 		return
@@ -706,54 +855,12 @@ func tick_step(player_position: Vector3, player_ref: Node) -> Dictionary:
 		_guard_ticks -= 1
 		if _guard_ticks == 0 and _pose_phase == "garde":
 			_pose_phase = ""
-	# Wind-up déclaré au tick précédent : le coup part MAINTENANT. La portée
-	# sera revérifiée à la résolution (CreatureManager) — si le joueur a
-	# reculé entre-temps, le coup fend l'air et crédite son Esquive.
-	if _windup_ticks > 0:
-		_windup_ticks -= 1
-		if _windup_ticks == 0:
-			# MENACE TENUE (2026-08-02). Le joueur peut garder son coup armé
-			# aussi longtemps qu'il veut ; un PNJ enchaînait wind-up et frappe
-			# sans respirer. Or c'est cette pause qui rend la posture LISIBLE :
-			# elle laisse le temps de reconnaître la direction, et elle rend la
-			# feinte possible — attendre est une menace, pas un temps mort.
-			# Elle est tirée au sort pour qu'on ne puisse pas la compter.
-			if _hold_ticks < 0:
-				_hold_ticks = randi_range(0, MAX_HOLD_TICKS)
-				if _hold_ticks > 0:
-					_start_pose("armee", float(_hold_ticks) * TickManager.TICK_DT)
-					_windup_ticks = 1   # on repasse ici au tick suivant
-					return {}
-			if _hold_ticks > 0:
-				_hold_ticks -= 1
-				# FEINTE (2026-08-02). Un PNJ tenait sa menace mais ne l'annulait
-				# JAMAIS : attendre derrière sa garde ne coûtait donc rien, il
-				# suffisait de patienter jusqu'au coup annoncé. La feinte est ce
-				# qui rend l'attente dangereuse — c'est le geste central de
-				# Mount & Blade, et il n'existait que dans un sens.
-				#
-				# Le coup annoncé n'arrive pas : la créature se replace, et
-				# repart d'une autre direction. La télégraphie devient une
-				# promesse qu'on peut trahir, donc une information qu'il faut
-				# peser au lieu de la croire.
-				if _hold_ticks > 0 and randf() < _feint_chance():
-					_windup_ticks = 0
-					_hold_ticks = -1
-					_attack_cooldown_ticks = FEINT_RECOVERY_TICKS
-					_start_pose("recover", 0.2)
-					return {}
-				_windup_ticks = 1
-				return {}
-			_hold_ticks = -1
-			var derived := WeaponStats.derive(combat_functionality(), {})
-			# La lame PART : c'est le balayage à la frame qui dira ce qu'elle
-			# touche. Le tick ne résout plus à l'aveugle au moment où le coup
-			# s'élance.
-			_pending_strike = {}
-			_strike_previous = PackedVector3Array()
-			_strike_finished = false
-			_start_pose("strike", float(derived["release_ms"]) / 1000.0)
-			return {}
+	# LE GESTE DÉCLARÉ COURT À LA FRAME (2026-08-02) : son armement, sa menace
+	# tenue, sa feinte et son départ sont minutés par `_advance_declared_attack`.
+	# Le tick n'a plus qu'à s'effacer tant qu'il dure — il ne redécide rien et ne
+	# déplace pas la créature, exactement comme avant : on ne se repositionne pas
+	# une arme à moitié armée.
+	if _attack_declared:
 		return {}
 	# COUP CONSTATÉ par la géométrie : le tick l'applique maintenant. C'est le
 	# même contrat que pour le joueur — la frame observe, le tick décide.
@@ -810,7 +917,14 @@ func tick_step(player_position: Vector3, player_ref: Node) -> Dictionary:
 			# temps de recharge de la créature.
 			if _attack_cooldown_ticks <= 0 and not combat.is_empty() 					and _pose_phase != "strike":
 				var stats_derived := WeaponStats.derive(functionality, {})
-				_windup_ticks = maxi(1, ceili(float(stats_derived["windup_ms"]) / 100.0))
+				# DURÉE RÉELLE de l'arme, à la milliseconde, et non plus arrondie
+				# au tick supérieur : une dague à 150 ms est enfin deux fois plus
+				# vive qu'une masse à 300, ce que l'arrondi à 200/300 effaçait.
+				_attack_declared = true
+				_windup_left_ms = float(stats_derived["windup_ms"])
+				# MENACE TENUE, tirée en continu et non plus par pas de 100 ms :
+				# on ne peut littéralement plus compter les temps de l'adversaire.
+				_hold_left_ms = randf_range(0.0, MAX_HOLD_MS)
 				var speed: float = functionality.get("vitesse_base", 1.0)
 				_attack_cooldown_ticks = maxi(1, ceili(10.0 / speed))
 				# DIRECTION REELLE, tiree a la declaration : sans elle le blocage
@@ -823,7 +937,7 @@ func tick_step(player_position: Vector3, player_ref: Node) -> Dictionary:
 				attack_direction = MeleeAttack.nearest_allowed(randi() % 4, repertoire)
 				# Le geste DOIT etre visible : sans lui la telegraphie est un
 				# signal que le joueur ne peut pas percevoir.
-				_start_pose("windup", float(_windup_ticks) * TickManager.TICK_DT)
+				_start_pose("windup", _windup_left_ms / 1000.0)
 				EventBus.attack_telegraphed.emit(self,
 					MeleeAttack.direction_name(attack_direction))
 		if dist_flat > 0.01:
@@ -898,6 +1012,62 @@ func _start_pose(phase: String, duration: float) -> void:
 ## Fait avancer le geste et enchaîne les phases. La récupération existe pour
 ## que le bras REVIENNE au port : sans elle il resterait figé en fin d'arc, et
 ## le joueur ne saurait pas que la menace est passée.
+## Fait courir le temps de l'attaque DÉCLARÉE : armement, puis menace tenue,
+## puis frappe. Appelé à la FRAME. Ne touche à aucun état de jeu — il ne fait
+## que décider QUAND la lame part, exactement comme la machine à états du joueur.
+func _advance_declared_attack(delta: float) -> void:
+	if not _attack_declared:
+		return
+	var remaining_ms := delta * 1000.0
+	if _windup_left_ms > 0.0:
+		_windup_left_ms -= remaining_ms
+		if _windup_left_ms > 0.0:
+			return
+		# Le RELIQUAT alimente la phase suivante : sans lui, chaque transition
+		# perdrait une fraction de frame et le geste dériverait d'autant à
+		# chaque coup — le défaut d'arrondi qu'on vient précisément de retirer.
+		remaining_ms = -_windup_left_ms
+		_windup_left_ms = 0.0
+		if _hold_left_ms > 0.0:
+			_start_pose("armee", _hold_left_ms / 1000.0)
+	if _hold_left_ms > 0.0:
+		# FEINTE, tirée à la FRAME. `_feint_chance()` était calibrée pour un
+		# tirage par TICK : on la convertit en taux par seconde (×10) puis on
+		# l'applique au delta. La probabilité de feinter sur une menace d'une
+		# durée donnée reste donc celle d'avant — c'est la GRANULARITÉ qui
+		# change, pas la fréquence. Une feinte peut désormais tomber à
+		# n'importe quel instant, et non plus tous les dixièmes de seconde.
+		if randf() < _feint_chance() * TickManager.TICKS_PER_SECOND * delta:
+			_cancel_declared_attack()
+			return
+		_hold_left_ms -= remaining_ms
+		if _hold_left_ms > 0.0:
+			return
+		_hold_left_ms = 0.0
+	_release_declared_attack()
+
+
+## La menace est trahie : le coup annoncé n'arrive pas. Le temps de remise est
+## payé en TICKS — c'est un rythme de décision, pas une durée perçue.
+func _cancel_declared_attack() -> void:
+	_attack_declared = false
+	_windup_left_ms = 0.0
+	_hold_left_ms = 0.0
+	_attack_cooldown_ticks = FEINT_RECOVERY_TICKS
+	_start_pose("recover", 0.2)
+
+
+## La lame PART : c'est le balayage à la frame qui dira ce qu'elle touche, et le
+## tick qui appliquera. Aucun dégât n'est décidé ici.
+func _release_declared_attack() -> void:
+	_attack_declared = false
+	_pending_strike = {}
+	_strike_previous = PackedVector3Array()
+	_strike_finished = false
+	var derived := WeaponStats.derive(combat_functionality(), {})
+	_start_pose("strike", float(derived["release_ms"]) / 1000.0)
+
+
 func _advance_pose(delta: float) -> void:
 	if _pose_phase == "":
 		return
@@ -944,6 +1114,13 @@ func _measure_velocity(delta: float) -> void:
 ## Combien de points suivre le long de la tête d'arme, et la finesse. Mêmes
 ## valeurs que côté joueur : un fer est un segment, pas un point.
 const STRIKE_HEAD_SAMPLES := 3
+## Distance maximale qu'un point du fer peut franchir en UNE frame sans que ce
+## soit une téléportation, en mètres. Généreuse à dessein : une frappe rapide
+## sur une frame longue (30 im/s, soit 33 ms) déplace déjà la pointe d'un bon
+## demi-mètre, et une créature qui charge y ajoute sa propre vitesse. Il ne
+## s'agit pas de brider le geste, seulement d'écarter l'invraisemblable — un
+## saut de plusieurs mètres, qui ne peut venir que d'un repositionnement.
+const MAX_STRIKE_TRAVEL_PER_FRAME := 2.5
 
 
 ## Promène la TÊTE de l'arme entre la frame précédente et celle-ci, et retient
@@ -977,7 +1154,29 @@ func _sweep_strike(delta: float) -> void:
 		var distance: float = lerpf(span.x, span.y, float(i) / float(STRIKE_HEAD_SAMPLES - 1))
 		current.append(MeleeAttack.point_along(
 			attack_direction, ratio, grip, facing, distance, pull))
-	if _strike_previous.size() == current.size():
+	# LE FER NE SE TÉLÉPORTE PAS (2026-08-02). Le balayage relie la position du
+	# fer à la frame précédente à celle de cette frame et traite le segment comme
+	# une trajectoire. C'est juste tant que la créature se DÉPLACE ; ça devient
+	# faux dès qu'elle est REPOSITIONNÉE en plein coup — changement de dimension,
+	# voyage rapide, réapparition, ou simplement une IA qu'on replace. Le segment
+	# fait alors plusieurs mètres et transperce tout ce qui se trouve sur le
+	# trajet, y compris un joueur qui n'a jamais été à portée.
+	#
+	# Trouvé en instrumentant la sonde d'esquive : une créature téléportée à 12 m
+	# pendant sa frappe touchait encore, parce que sa lame « balayait » les douze
+	# mètres en une frame. Le défaut était latent depuis le passage du balayage à
+	# la frame ; le passage du geste de l'IA à la frame l'a simplement rendu
+	# fréquent, en laissant plus souvent une frappe en vol entre deux ticks.
+	#
+	# Un saut plus grand que ce qu'un bras peut parcourir en une frame n'est donc
+	# PAS une trajectoire : on repart de la nouvelle position sans rien tester.
+	# Le coup n'est pas annulé — il continue depuis là où le corps se trouve
+	# vraiment, ce qui est exactement ce qu'on voit à l'écran.
+	var teleported := false
+	if _strike_previous.size() == current.size() and current.size() > 0:
+		var jump := (current[0] - _strike_previous[0]).length()
+		teleported = jump > MAX_STRIKE_TRAVEL_PER_FRAME
+	if _strike_previous.size() == current.size() and not teleported:
 		for i in current.size():
 			var hit: Dictionary = player.sweep_segment(_strike_previous[i], current[i])
 			if hit.is_empty():

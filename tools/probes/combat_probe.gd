@@ -789,8 +789,9 @@ func _check_creature_windup_and_dodge() -> bool:
 	# On repart d'une créature AU REPOS : `_spawn_in_front` peut laisser passer
 	# des frames, pendant lesquelles le tick du manager lui fait déjà déclarer
 	# et porter un coup. Le témoin de télégraphie ne verrait alors rien.
-	creature.set("_windup_ticks", 0)
-	creature.set("_hold_ticks", -1)
+	creature.set("_attack_declared", false)
+	creature.set("_windup_left_ms", 0.0)
+	creature.set("_hold_left_ms", 0.0)
 	creature.set("_attack_cooldown_ticks", 0)
 	creature.set("_pending_strike", {})
 	creature.set("_strike_finished", false)
@@ -1557,12 +1558,13 @@ func _check_cover_and_stagger() -> bool:
 	var target := _spawn_in_front(1.2)
 	target.call("react_to_telegraph", MeleeAttack.Direction.ESTOC)   # sort la garde du chemin
 	target.set("_guard_ticks", 0)
-	target.set("_windup_ticks", 5)
+	target.set("_attack_declared", true)
+	target.set("_windup_left_ms", 500.0)
 	target.call("_start_pose", "windup", 0.5)
 	target.call("take_damage", 3.0)
-	var creature_staggered: bool = int(target.get("_windup_ticks")) == 0
+	var creature_staggered: bool = not bool(target.get("_attack_declared"))
 	ok = _report("créature frappée : son coup en préparation est annulé",
-		creature_staggered, "wind-up restant %d" % int(target.get("_windup_ticks"))) and ok
+		creature_staggered, "wind-up restant %.0f ms" % float(target.get("_windup_left_ms"))) and ok
 	_despawn(target)
 
 	# 3. STAGGER DU JOUEUR : encaisser interrompt sa frappe.
@@ -1860,13 +1862,15 @@ func _check_npc_feint_and_chamber() -> bool:
 
 	# CHAMBERING : la créature part dans la MÊME direction, en wind-up. C'est
 	# exactement la condition que le joueur doit remplir pour chambrer.
-	veteran.set("_windup_ticks", 3)
+	veteran.set("_attack_declared", true)
+	veteran.set("_windup_left_ms", 300.0)
 	veteran.set("attack_direction", MeleeAttack.Direction.TAILLE_DROITE)
 	var chambers: bool = veteran.call("is_chambering", MeleeAttack.Direction.TAILLE_DROITE)
 	var not_other: bool = not bool(veteran.call("is_chambering", MeleeAttack.Direction.ESTOC))
 	ok = _report("chambrer exige la MÊME direction", chambers and not_other) and ok
 	# Hors wind-up, il n'y a plus rien à chambrer.
-	veteran.set("_windup_ticks", 0)
+	veteran.set("_attack_declared", false)
+	veteran.set("_windup_left_ms", 0.0)
 	ok = _report("hors préparation, plus de chambering",
 		not bool(veteran.call("is_chambering", MeleeAttack.Direction.TAILLE_DROITE))) and ok
 	_despawn(novice)

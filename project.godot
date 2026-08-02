@@ -30,6 +30,7 @@ DayNightManager="*res://autoload/DayNightManager.gd"
 BlockPreview="*res://autoload/BlockPreview.gd"
 WeaponPreview="*res://autoload/WeaponPreview.gd"
 ProjectileManager="*res://autoload/ProjectileManager.gd"
+ImpactFeedback="*res://autoload/ImpactFeedback.gd"
 UITheme="*res://autoload/UITheme.gd"
 VillageManager="*res://autoload/VillageManager.gd"
 

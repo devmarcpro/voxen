@@ -277,6 +277,8 @@ func _resolve_creature_attack(creature: Node, player: Node, zone_hit: Dictionary
 	# simplement son cours. Le geste le plus exigeant de Mount & Blade.
 	if bool(player.call("is_chambering", creature.attack_direction)):
 		EventBus.ui_notification.emit("ui.combat.chambering")
+		EventBus.combat_impact.emit(
+			ImpactFeedback.IMPACT_CHAMBRE, creature.global_position, 1.0)
 		if player_skills != null:
 			player_skills.gain_xp("esquive", CHAMBER_XP)
 		return
@@ -308,6 +310,8 @@ func _resolve_creature_attack(creature: Node, player: Node, zone_hit: Dictionary
 		# Coup GLISSANT : la créature a touché du talon, aucun dégât. Le joueur
 		# doit savoir qu'il vient d'échapper à quelque chose.
 		EventBus.damage_dealt.emit(zone_hit["point"], 0, false, true)
+		EventBus.combat_impact.emit(
+			ImpactFeedback.IMPACT_GLISSANT, zone_hit["point"], 1.0)
 		return
 	zone_mult *= sweet
 	# BONUS DE VITESSE, mesuré pendant le balayage : charger fait mal, reculer
@@ -347,6 +351,23 @@ func _resolve_creature_attack(creature: Node, player: Node, zone_hit: Dictionary
 		damage = maxi(0, int(result["raw"]) - int(round(float(result["reduction"]) * type_modifier)))
 	if guarded:
 		damage = int(round(damage * GUARD_DAMAGE_FACTOR))
+
+	# RETOUR D'IMPACT SUBI. La nature du choc prime sur son chiffre : une garde
+	# qui tient, une garde écrasée et une lame qui entre dans la chair doivent se
+	# distinguer AVANT même qu'on lise les dégâts. C'est ce qui permet de
+	# comprendre un échange perdu sans regarder ses barres.
+	#
+	# `armure` n'existe que de ce côté-ci du duel : les créatures n'ont pas encore
+	# de mitigation d'armure (resolve_hit est appelé avec "" quand le joueur
+	# frappe), alors que le joueur, lui, en porte une.
+	var impact_kind := ImpactFeedback.IMPACT_CHAIR
+	if covered:
+		impact_kind = ImpactFeedback.IMPACT_PARE
+	elif crushed_guard:
+		impact_kind = ImpactFeedback.IMPACT_ECRASE
+	elif armor_dice != "" and int(result["reduction"]) > 0:
+		impact_kind = ImpactFeedback.IMPACT_ARMURE
+	EventBus.combat_impact.emit(impact_kind, zone_hit["point"], zone_mult)
 
 	player.take_damage(damage)
 	if player_skills != null and damage > 0:
