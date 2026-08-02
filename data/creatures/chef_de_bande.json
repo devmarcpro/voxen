@@ -46,12 +46,7 @@
   },
   "niveau_combat": 16,
   "world_gen": {
-    "biome_tags": [
-      "tempere",
-      "foret",
-      "plaine",
-      "mediterraneen"
-    ],
+    "biome_tags": [],
     "activite": "nuit"
   },
   "tags": [

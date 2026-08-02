@@ -66,7 +66,6 @@ module.trait_de_mana.name,法力箭
 module.soin_mineur.name,轻治疗
 module.frappe_lourde.name,重击
 module.morsure_simple.name,撕咬
-creature.sanglier.name,野猪
 ui.hud.sante,生命：{pv} / {pv_max}
 ui.hud.mana,法力：{mana} / {mana_max}
 ui.hud.or,金币：{or}
@@ -651,24 +650,6 @@ creature.braconnier.name,偷猎者
 creature.pillard.name,劫掠者
 creature.deserteur.name,逃兵
 creature.ermite.name,隐士
-creature.loup.name,狼
-creature.cerf.name,鹿
-creature.renard.name,狐狸
-creature.essaim_abeilles.name,蜂群
-creature.scorpion.name,蝎子
-creature.vautour.name,秃鹫
-creature.chameau_sauvage.name,野骆驼
-creature.ours_polaire.name,北极熊
-creature.loup_blanc.name,白狼
-creature.renne.name,驯鹿
-creature.morse.name,海象
-creature.crocodile.name,鳄鱼
-creature.nuee_moustiques.name,蚊群
-creature.serpent_venimeux.name,毒蛇
-creature.aigle.name,鹰
-creature.ours_brun.name,棕熊
-creature.bouquetin.name,野山羊
-creature.lynx.name,猞猁
 material.viande.name,肉
 material.peau.name,兽皮
 ui.toast.depecage,已剥取 {creature}：{portions} 份肉

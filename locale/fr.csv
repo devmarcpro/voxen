@@ -66,7 +66,6 @@ module.trait_de_mana.name,Trait de mana
 module.soin_mineur.name,Soin mineur
 module.frappe_lourde.name,Frappe lourde
 module.morsure_simple.name,Morsure
-creature.sanglier.name,Sanglier
 ui.hud.sante,PV : {pv} / {pv_max}
 ui.hud.mana,Mana : {mana} / {mana_max}
 ui.hud.or,Or : {or}
@@ -651,24 +650,6 @@ creature.braconnier.name,Braconnier
 creature.pillard.name,Pillard
 creature.deserteur.name,Déserteur
 creature.ermite.name,Ermite
-creature.loup.name,Loup
-creature.cerf.name,Cerf
-creature.renard.name,Renard
-creature.essaim_abeilles.name,Essaim d'abeilles
-creature.scorpion.name,Scorpion
-creature.vautour.name,Vautour
-creature.chameau_sauvage.name,Chameau sauvage
-creature.ours_polaire.name,Ours polaire
-creature.loup_blanc.name,Loup blanc
-creature.renne.name,Renne
-creature.morse.name,Morse
-creature.crocodile.name,Crocodile
-creature.nuee_moustiques.name,Nuée de moustiques
-creature.serpent_venimeux.name,Serpent venimeux
-creature.aigle.name,Aigle
-creature.ours_brun.name,Ours brun
-creature.bouquetin.name,Bouquetin
-creature.lynx.name,Lynx
 material.viande.name,Viande
 material.peau.name,Peau
 ui.toast.depecage,{creature} dépecé : {portions} portion(s) de viande

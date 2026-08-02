@@ -707,7 +707,7 @@ func _check_guard() -> bool:
 # --- 8. L'ennemi télégraphie, et un pas en arrière suffit ----------------
 
 func _check_creature_windup_and_dodge() -> bool:
-	var creature := _spawn_in_front(1.0, "sanglier")
+	var creature := _spawn_in_front(1.0, "bandit")
 	creature.set("ai_profile", "hostile")
 	var declared := [false]
 	var handler := func(attacker: Variant, _direction: String) -> void:

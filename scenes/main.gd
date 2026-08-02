@@ -382,7 +382,7 @@ func _mutation_step() -> void:
 		_mutation_count += 1
 
 
-## Spawn 50 sangliers en cercle autour du point de départ (critère G.8 :
+## Spawn 50 bandits en cercle autour du point de départ (critère G.8 :
 ## 50 créatures actives, tick < 8 ms). Portée d'aggro réglée pour que
 ## certaines poursuivent le joueur (chemin coûteux) et d'autres déambulent.
 func _spawn_bench_creatures() -> void:
@@ -393,7 +393,7 @@ func _spawn_bench_creatures() -> void:
 		var x := _start_pos.x + int(cos(angle) * radius)
 		var z := _start_pos.y + int(sin(angle) * radius)
 		var h := g.height_at(x, z)
-		CreatureManager.spawn("sanglier", Vector3(x, h + 0.5, z))
+		CreatureManager.spawn("bandit", Vector3(x, h + 0.5, z))
 	print("[BENCH] %d créatures spawnées." % CreatureManager.creatures.size())
 
 

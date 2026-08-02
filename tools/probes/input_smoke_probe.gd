@@ -53,7 +53,7 @@ func run() -> void:
 	camera.position = Vector3(0.5, float(cam_h) + 2.9, 0.5)  # feet sur le sommet du bloc de sol, +EYE_HEIGHT.
 	camera.rotation_degrees = Vector3(0.0, 0.0, 0.0)
 	camera.look_at(Vector3(spawn_x, cam_h + 0.5, spawn_z), Vector3.UP)
-	var boar := CreatureManager.spawn("sanglier", Vector3(spawn_x, cam_h + 0.5, spawn_z))
+	var boar := CreatureManager.spawn("bandit", Vector3(spawn_x, cam_h + 0.5, spawn_z))
 	player.selected_slot = 3  # L'épée (4e entrée : pioche/hache/pelle/épée).
 	await main.get_tree().process_frame
 	print("[TEST] créature spawnée, distance=%.1f" % camera.global_position.distance_to(boar.position))
@@ -94,7 +94,7 @@ func run() -> void:
 				break
 		attacks += 1
 	var boar_hp: float = boar.health if is_instance_valid(boar) else 0.0
-	print("[TEST] combat directionnel : %d cycles, sanglier %d → %d PV, mort=%s (PV joueur=%d/%d, endurance=%d/%d)" % [
+	print("[TEST] combat directionnel : %d cycles, bandit %d → %d PV, mort=%s (PV joueur=%d/%d, endurance=%d/%d)" % [
 		attacks, int(hp_start), int(boar_hp),
 		not is_instance_valid(boar) or boar.is_dead(),
 		int(player.health), int(player.health_max),
@@ -103,10 +103,12 @@ func run() -> void:
 	# moins une créature autour du joueur (CreatureManager.SPAWN_INTERVAL_TICKS).
 	print("[TEST] créatures avant attente spawn naturel : %d" % CreatureManager.creatures.size())
 	await main.get_tree().create_timer(6.0).timeout
-	# Sanglier exclu du spawn naturel (2026-07-20, demande explicite) : pool
-	# vide, donc AUCUN spawn naturel attendu tant qu'aucune autre créature
-	# hostile n'est ajoutée aux données.
-	print("[TEST] créatures après 6 s : %d (spawn naturel désactivé pour le sanglier — 0 attendu)" % CreatureManager.creatures.size())
+	# Le pool de spawn n'est plus vide depuis le 2026-08-02 : la faune animale
+	# a été supprimée, mais les humains l'ont remplacée (bandit la nuit,
+	# villageois/chasseur/nomade/marchand le jour). On n'attend donc plus
+	# « 0 » — le nombre dépend du biome, de l'heure et des budgets, et
+	# l'assertion utile est seulement que rien ne PLANTE.
+	print("[TEST] créatures après 6 s : %d (spawn naturel actif : humains)" % CreatureManager.creatures.size())
 	# Marche/gravité : lâcher la caméra bien au-dessus du sol doit la reposer
 	# exactement sur le PREMIER bloc solide réellement rencontré (collision
 	# sur le monde réel, pas sur la hauteur procédurale idéale — celle-ci peut

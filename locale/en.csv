@@ -66,7 +66,6 @@ module.trait_de_mana.name,Mana Bolt
 module.soin_mineur.name,Minor Heal
 module.frappe_lourde.name,Heavy Strike
 module.morsure_simple.name,Bite
-creature.sanglier.name,Boar
 ui.hud.sante,HP: {pv} / {pv_max}
 ui.hud.mana,Mana: {mana} / {mana_max}
 ui.hud.or,Gold: {or}
@@ -651,24 +650,6 @@ creature.braconnier.name,Poacher
 creature.pillard.name,Raider
 creature.deserteur.name,Deserter
 creature.ermite.name,Hermit
-creature.loup.name,Wolf
-creature.cerf.name,Deer
-creature.renard.name,Fox
-creature.essaim_abeilles.name,Bee swarm
-creature.scorpion.name,Scorpion
-creature.vautour.name,Vulture
-creature.chameau_sauvage.name,Wild camel
-creature.ours_polaire.name,Polar bear
-creature.loup_blanc.name,White wolf
-creature.renne.name,Reindeer
-creature.morse.name,Walrus
-creature.crocodile.name,Crocodile
-creature.nuee_moustiques.name,Mosquito swarm
-creature.serpent_venimeux.name,Venomous snake
-creature.aigle.name,Eagle
-creature.ours_brun.name,Brown bear
-creature.bouquetin.name,Ibex
-creature.lynx.name,Lynx
 material.viande.name,Meat
 material.peau.name,Hide
 ui.toast.depecage,{creature} butchered: {portions} portion(s) of meat

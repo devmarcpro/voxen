@@ -227,7 +227,7 @@ func _check_laws(generator: NoiseGenerator) -> void:
 
 	# Une BÊTE ne témoigne pas : sinon chasser sous l'œil d'un loup vous
 	# dénoncerait, ce qui serait absurde.
-	var boar := CreatureManager.spawn("sanglier", Vector3(0, 0, 0))
+	var boar := CreatureManager.spawn("bandit", Vector3(0, 0, 0))
 	if boar != null:
 		boar.logical_position = Vector3.ZERO
 		_check("une bête ne témoigne pas",

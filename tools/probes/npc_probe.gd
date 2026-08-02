@@ -39,12 +39,12 @@ func run() -> void:
 
 ## LE VERROU. Un sanglier et un marchand doivent être la même classe.
 func _check_unified_structure() -> void:
-	var boar := CreatureManager.spawn("sanglier", Vector3(0, 200, 0))
+	var boar := CreatureManager.spawn("bandit", Vector3(0, 200, 0))
 	var merchant := CreatureManager.spawn("marchand_ambulant", Vector3(0, 200, 4))
 	if boar == null or merchant == null:
 		_check("les deux créatures apparaissent", false)
 		return
-	_check("sanglier et marchand partagent le MÊME script",
+	_check("bandit et marchand partagent le MÊME script",
 		boar.get_script() == merchant.get_script(),
 		boar.get_script().resource_path.get_file())
 	# Les champs sociaux existent sur les DEUX : c'est ce qui permet au reste du
@@ -54,9 +54,9 @@ func _check_unified_structure() -> void:
 	# par la créature disparaîtrait dès que le joueur s'éloigne — elle est donc
 	# dans `Player.reputation`, retrouvée par `social_key`.
 	for field: String in ["village_cell", "job", "home_building", "social_key", "race_id"]:
-		_check("le sanglier porte aussi le champ « %s »" % field,
+		_check("le bandit porte aussi le champ « %s »" % field,
 			boar.get(field) != null)
-	_check("un sanglier n'est PAS un résident", not boar.call("is_resident"))
+	_check("un bandit n'est PAS un résident", not boar.call("is_resident"))
 	CreatureManager.despawn(boar)
 	CreatureManager.despawn(merchant)
 

@@ -77,9 +77,13 @@ func _ready() -> void:
 	# entre QUE si elle déclare des `world_gen.biome_tags` : les civils
 	# (villageois, forgeron...) n'en ont aucun et n'apparaissent donc jamais
 	# en pleine nature — ils viendront avec la population de village (3.4/E.25).
-	# "sanglier" exclu du spawn naturel (demande explicite 2026-07-20) — reste
-	# spawnable manuellement (spawn() direct, ex. le test de combat).
-	const NATURAL_SPAWN_EXCLUDED := ["sanglier"]
+	# Exclusion manuelle : une espèce peut porter des `biome_tags` (donc être
+	# cohérente avec un biome) sans pour autant devoir apparaître seule en
+	# pleine nature. Vide depuis le 2026-08-02 — la seule entrée était
+	# "sanglier", supprimé avec le reste de la faune animale. Le mécanisme
+	# reste : c'est le seul moyen de retirer une espèce du spawn sans lui
+	# effacer ses tags de biome.
+	const NATURAL_SPAWN_EXCLUDED: Array[String] = []
 	for id in GameData.creatures:
 		var data: Dictionary = GameData.creatures[id]
 		if id in NATURAL_SPAWN_EXCLUDED:

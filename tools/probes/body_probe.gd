@@ -126,7 +126,7 @@ func _check_creature_models() -> bool:
 		"OK" if ok else "ÉCHEC"])
 
 	# Et une créature réellement spawnée doit sortir texturée, pas blanche.
-	var creature := CreatureManager.spawn("loup", camera.position + Vector3(0.0, -3.0, 4.0))
+	var creature := CreatureManager.spawn("bandit", camera.position + Vector3(0.0, -3.0, 4.0))
 	var painted := 0
 	for mesh in _all_meshes(creature):
 		if (mesh.material_override as StandardMaterial3D) != null:
@@ -216,13 +216,13 @@ func _check_creature_models() -> bool:
 	# La médiane écarte les valeurs aberrantes ; l'échauffement écarte l'unique.
 	var spawns: Array[Node] = []
 	for i in 3:
-		var warm := CreatureManager.spawn("loup", camera.position + Vector3(float(i), -3.0, 6.0))
+		var warm := CreatureManager.spawn("bandit", camera.position + Vector3(float(i), -3.0, 6.0))
 		if warm != null:
 			spawns.append(warm)
 	var samples: Array[float] = []
 	for i in 12:
 		var t0 := Time.get_ticks_usec()
-		var c := CreatureManager.spawn("loup", camera.position + Vector3(float(i), -3.0, 8.0))
+		var c := CreatureManager.spawn("bandit", camera.position + Vector3(float(i), -3.0, 8.0))
 		if c == null:
 			break
 		samples.append(float(Time.get_ticks_usec() - t0) / 1000.0)

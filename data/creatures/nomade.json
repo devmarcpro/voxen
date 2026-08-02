@@ -50,7 +50,13 @@
   },
   "niveau_combat": 9,
   "world_gen": {
-    "biome_tags": []
+    "biome_tags": [
+      "desert",
+      "steppe",
+      "savane",
+      "lande"
+    ],
+    "activite": "toujours"
   },
   "tags": [
     "civil",

@@ -50,7 +50,12 @@
       "tempere",
       "foret",
       "plaine",
-      "mediterraneen"
+      "mediterraneen",
+      "montagne",
+      "lande",
+      "steppe",
+      "savane",
+      "desert"
     ],
     "activite": "nuit"
   },

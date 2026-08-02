@@ -471,7 +471,12 @@ func _build_dimension(cell: Vector2i, depth: int = 0) -> void:
 	if depth == _floor_count(cell) - 1:
 		var boss_room: Dictionary = floor_data["rooms"][floor_data["boss_room_index"]]
 		var boss_center: Vector3i = (boss_room["origin"] as Vector3i) + (boss_room["size"] as Vector3i) / 2
-		var boss := CreatureManager.spawn("sanglier", Vector3(boss_center.x + 0.5, boss_center.y + 1.0, boss_center.z + 0.5))
+		# « chef_de_bande » et non plus « sanglier » (2026-08-02, faune animale
+		# supprimée). Choix heureux : ce chef ne spawne PLUS en pleine nature
+		# depuis que bandit est le seul ennemi sauvage, donc le rencontrer est
+		# désormais propre aux donjons — un boss qu'on ne croise nulle part
+		# ailleurs, ce que le sanglier n'était pas.
+		var boss := CreatureManager.spawn("chef_de_bande", Vector3(boss_center.x + 0.5, boss_center.y + 1.0, boss_center.z + 0.5))
 		if boss != null:
 			boss.set_meta("dungeon_boss_cell", cell)
 

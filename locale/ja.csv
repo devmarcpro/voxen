@@ -66,7 +66,6 @@ module.trait_de_mana.name,マナの矢
 module.soin_mineur.name,小治癒
 module.frappe_lourde.name,強打
 module.morsure_simple.name,噛みつき
-creature.sanglier.name,イノシシ
 ui.hud.sante,HP: {pv} / {pv_max}
 ui.hud.mana,マナ: {mana} / {mana_max}
 ui.hud.or,所持金: {or}
@@ -651,24 +650,6 @@ creature.braconnier.name,密猟者
 creature.pillard.name,略奪者
 creature.deserteur.name,脱走兵
 creature.ermite.name,隠者
-creature.loup.name,オオカミ
-creature.cerf.name,シカ
-creature.renard.name,キツネ
-creature.essaim_abeilles.name,ミツバチの群れ
-creature.scorpion.name,サソリ
-creature.vautour.name,ハゲワシ
-creature.chameau_sauvage.name,野生ラクダ
-creature.ours_polaire.name,ホッキョクグマ
-creature.loup_blanc.name,白オオカミ
-creature.renne.name,トナカイ
-creature.morse.name,セイウチ
-creature.crocodile.name,ワニ
-creature.nuee_moustiques.name,蚊の群れ
-creature.serpent_venimeux.name,毒蛇
-creature.aigle.name,ワシ
-creature.ours_brun.name,ヒグマ
-creature.bouquetin.name,アイベックス
-creature.lynx.name,オオヤマネコ
 material.viande.name,肉
 material.peau.name,皮
 ui.toast.depecage,{creature} を解体：肉 {portions} 個
