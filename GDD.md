@@ -919,7 +919,7 @@ Les tables de sculpture ne s'achètent pas et ne se craftent pas librement : ell
 - Le **nom du projet**.
 - Donjons (3.5) : taille exacte des salles/connecteurs en blocs, taille de la bibliothèque de prefabs au lancement, fréquence de réapparition de nouveaux donjons dans le monde.
 - Monstres rares (12.4) : nombre de tiers de rareté.
-- Noms/cultures (12.5) : contenu exact des pools de noms pour les 10 cultures (C.9) — à écrire.
+- ~~Noms/cultures (12.5) : contenu exact des pools de noms pour les 10 cultures (C.9)~~ — **écrit le 2026-08-02** (`data/name_cultures/`, dix cultures au schéma B.11).
 - Le **lore** : noms propres des royaumes générés (les gabarits existent, 10.1/E.27), textes d'ambiance, mythologie du monde — à écrire au fil du contenu.
 - L'ajout des **saisons** (E.28 : l'architecture les accueille, gros impact agricole — à décider après playtest de la boucle agricole).
 - La réintroduction éventuelle de **créatures fantastiques** dans les zones à haute corruption (F.3 : prévu sans changement de système).

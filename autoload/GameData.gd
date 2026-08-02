@@ -26,6 +26,7 @@ const PATH_TREES := "res://data/trees"
 const PATH_PLANTS := "res://data/plants"
 const PATH_DUNGEON_ROOMS := "res://data/dungeon_rooms"
 const PATH_DUNGEON_CONNECTORS := "res://data/dungeon_connectors"
+const PATH_NAME_CULTURES := "res://data/name_cultures"
 const PATH_RACES := "res://data/races"
 const PATH_CLASSES := "res://data/classes"
 const PATH_TRANSFORMATIONS := "res://data/transformations"
@@ -154,6 +155,11 @@ var dialogue_lines: Array[Dictionary] = []
 ## pas de vox_model réel pour l'instant, voir DungeonGenerator).
 var dungeon_rooms: Dictionary = {}
 var dungeon_connectors: Dictionary = {}
+## Cultures de nommage (12.5/B.11/C.9) — data/name_cultures/*.json. Pilotent
+## les noms de PNJ, de villes et les titres de rôle, consommées par
+## `NameGenerator`. Axe INDÉPENDANT de la race : une même race peut porter
+## plusieurs cultures selon le royaume.
+var name_cultures: Dictionary = {}
 ## Races (C.2) et classes (C.3) de création de personnage (6.1).
 var races: Dictionary = {}
 var classes: Dictionary = {}
@@ -239,6 +245,7 @@ func load_all() -> bool:
 	_load_trees()
 	_load_plants()
 	_load_dialogue()
+	_load_name_cultures()
 	_load_dungeon_rooms()
 	_load_dungeon_connectors()
 	_load_races()
@@ -249,8 +256,8 @@ func load_all() -> bool:
 	_finalize_material_index()
 	_validate_translation_keys()
 
-	print("GameData : %d matériau(x), %d catégorie(s), %d biome(s), %d couche(s) de bruit, %d strate(s), %d compétence(s), %d objet(s), %d module(s), %d créature(s), %d essence(s) d'arbre, %d plante(s), %d salle(s)/%d connecteur(s) de donjon, %d race(s), %d classe(s)." % [
-		materials.size(), material_categories.size(), biomes.size(), noise_layers.size(), strata.size(), skills.size(), items.size(), modules.size(), creatures.size(), trees.size(), plants.size(), dungeon_rooms.size(), dungeon_connectors.size(), races.size(), classes.size()])
+	print("GameData : %d matériau(x), %d catégorie(s), %d biome(s), %d couche(s) de bruit, %d strate(s), %d compétence(s), %d objet(s), %d module(s), %d créature(s), %d essence(s) d'arbre, %d plante(s), %d salle(s)/%d connecteur(s) de donjon, %d race(s), %d classe(s), %d culture(s) de nommage." % [
+		materials.size(), material_categories.size(), biomes.size(), noise_layers.size(), strata.size(), skills.size(), items.size(), modules.size(), creatures.size(), trees.size(), plants.size(), dungeon_rooms.size(), dungeon_connectors.size(), races.size(), classes.size(), name_cultures.size()])
 	return _blocking_errors == 0
 
 
@@ -818,6 +825,54 @@ func _load_plants() -> void:
 			_blocking_error("id de plante dupliqué « %s »" % plant["id"])
 		else:
 			plants[plant["id"]] = plant
+
+
+## Cultures de nommage (12.5, schéma B.11, catalogue C.9).
+##
+## La validation est PLUS STRICTE que pour les autres collections, pour une
+## raison précise : un pool vide ne plante pas, il produit un nom TRONQUÉ.
+## « Marc » sans suffixe, ou pire une chaîne vide, se serait glissé en jeu
+## sans un message d'erreur — et le seul symptôme aurait été des PNJ à moitié
+## anonymes, qu'on met longtemps à relier à un fichier de données.
+## Exception unique : `famille_b` a le droit d'être `[""]`, c'est la
+## convention de B.11 pour les cultures à noms de famille pleins (le sino).
+func _load_name_cultures() -> void:
+	name_cultures.clear()
+	var pools := ["prenom_a", "prenom_b", "famille_a", "famille_b", "ville_a", "ville_b"]
+	for path in _list_json_recursive(PATH_NAME_CULTURES):
+		var raw: Variant = _load_json(path)
+		if not (raw is Dictionary):
+			continue
+		var culture: Dictionary = raw
+		var ok := true
+		for field in ["id", "name_key", "name_order", "race_affinity", "titres"]:
+			if not culture.has(field):
+				_blocking_error("champ « %s » manquant dans %s" % [field, path])
+				ok = false
+		for pool_name: String in pools:
+			var pool: Variant = culture.get(pool_name)
+			if not (pool is Array) or (pool as Array).is_empty():
+				_blocking_error("pool « %s » absent ou vide dans %s" % [pool_name, path])
+				ok = false
+				continue
+			# Un pool ne doit pas contenir d'entrée vide, SAUF famille_b (B.11).
+			if pool_name == "famille_b":
+				continue
+			for entry: Variant in (pool as Array):
+				if String(entry).strip_edges() == "":
+					_blocking_error("entrée vide dans le pool « %s » de %s" % [pool_name, path])
+					ok = false
+					break
+		var order := String(culture.get("name_order", ""))
+		if order != "prenom_nom" and order != "nom_prenom":
+			_blocking_error("name_order « %s » inconnu dans %s (attendu prenom_nom ou nom_prenom)" % [order, path])
+			ok = false
+		if not ok:
+			continue
+		if name_cultures.has(culture["id"]):
+			_blocking_error("id de culture dupliqué « %s »" % culture["id"])
+		else:
+			name_cultures[culture["id"]] = culture
 
 
 ## Salles de donjon (E.29, B.10 SIMPLIFIÉ) : data/dungeon_rooms/*.json —

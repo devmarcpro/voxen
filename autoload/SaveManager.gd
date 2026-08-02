@@ -55,7 +55,7 @@ var lost_chunks := 0
 ## invités ne possèdent pas la sauvegarde du monde (E.10, host seulement).
 const DISABLED_ARGS: Array[String] = [
 	"--bench", "--statique", "--bench-mutation", "--bench-creatures",
-	"--probe", "--probe-subdiv", "--probe-dungeon", "--probe-params",
+	"--probe", "--probe-subdiv", "--probe-dungeon", "--probe-interieur", "--probe-noms", "--probe-params",
 	"--probe-city", "--probe-ore", "--probe-faim", "--probe-equipement", "--probe-mort", "--probe-faune", "--probe-butin", "--probe-mesh", "--probe-invui", "--probe-survie", "--probe-saves", "--test-input", "--test-menu", "--test-ore", "--bench-network-client", "--join",
 	# 2026-07-28 : oublier une sonde ici n'est PAS bénin. `--probe-heure` appelle
 	# prepare_new_world() et, sans cette ligne, la sauvegarde de sortie créait un

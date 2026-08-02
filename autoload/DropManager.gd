@@ -17,8 +17,25 @@ const PICKUP_RADIUS := 3.0
 const PURGE_INTERVAL_TICKS := 100
 
 ## Caches actives : [{ "position": Vector3, "objects": Array[Dictionary],
-##                     "gold": int, "expire_tick": int }]
+##                     "gold": int, "expire_tick": int, "dimension": StringName,
+##                     "kind": String }]
+##
+## `dimension` (2026-08-02) — BUG RÉEL corrigé en même temps que le loot de
+## donjon. Un donjon est une dimension séparée qui occupe LES MÊMES
+## COORDONNÉES que l'overworld, près de l'origine du monde. Sans ce champ, une
+## cache posée dans une salle de donjon était visible ET ramassable depuis
+## l'overworld, à quelques blocs du point de spawn du joueur. Personne ne
+## l'avait vu parce que rien ne déposait encore de cache en donjon.
+##
+## `kind` : "cache" (défaut) ou "coffre" — purement visuel, le coffre de boss
+## mérite d'être reconnaissable de loin.
 var caches: Array[Dictionary] = []
+
+## Durée de vie des caches de donjon. Elles ne doivent PAS expirer au bout d'un
+## jour comme un butin de mort : elles font partie du décor de l'étage, et un
+## joueur qui explore lentement trouverait des salles vides sans comprendre
+## pourquoi. Elles disparaissent en étant ramassées, pas avec le temps.
+const DUNGEON_LIFETIME_TICKS := 1 << 40
 
 var _marker_root: Node3D
 var _markers: Array[Node3D] = []
@@ -31,18 +48,25 @@ func _ready() -> void:
 
 ## Dépose une cache. `objects` = instances d'objets (ItemFactory), `gold` =
 ## or lâché. Ne crée rien si les deux sont vides.
-func drop(position: Vector3, objects: Array, gold: int = 0) -> void:
+## `kind` : "coffre" pour un coffre de boss (marqueur distinct, jamais
+## expirant). Une cache est toujours attachée à la dimension COURANTE : c'est
+## celle où le joueur se trouve au moment du dépôt, donc celle où elle doit
+## être visible.
+func drop(position: Vector3, objects: Array, gold: int = 0, kind: String = "cache") -> void:
 	if objects.is_empty() and gold <= 0:
 		return
 	var typed: Array[Dictionary] = []
 	for obj: Variant in objects:
 		if obj is Dictionary:
 			typed.append(obj)
+	var in_dungeon := WorldManager.active_dimension != &"overworld"
 	caches.append({
 		"position": position,
 		"objects": typed,
 		"gold": gold,
-		"expire_tick": TickManager.tick_index + LIFETIME_TICKS,
+		"expire_tick": TickManager.tick_index + (DUNGEON_LIFETIME_TICKS if in_dungeon else LIFETIME_TICKS),
+		"dimension": WorldManager.active_dimension,
+		"kind": kind,
 	})
 	_refresh_markers()
 
@@ -58,15 +82,34 @@ func drop_materials(position: Vector3, stacks: Dictionary) -> void:
 		"materials": stacks.duplicate(),
 		"gold": 0,
 		"expire_tick": TickManager.tick_index + LIFETIME_TICKS,
+		"dimension": WorldManager.active_dimension,
+		"kind": "cache",
 	})
 	_refresh_markers()
 
 
-## Cache la plus proche de `position` dans PICKUP_RADIUS, ou -1.
+## Appelé par WorldManager à chaque bascule de dimension : les marqueurs
+## visibles changent entièrement (voir `_visible_here`).
+func on_dimension_changed() -> void:
+	_refresh_markers()
+
+
+## Une cache appartient-elle à la dimension où se trouve le joueur ?
+## Les caches d'avant 2026-08-02 n'ont pas le champ : on les suppose dans
+## l'overworld, ce qu'elles étaient toutes (rien ne déposait en donjon).
+func _visible_here(cache: Dictionary) -> bool:
+	return StringName(cache.get("dimension", &"overworld")) == WorldManager.active_dimension
+
+
+## Cache la plus proche de `position` dans PICKUP_RADIUS, ou -1. Ignore les
+## caches d'une AUTRE dimension : sans ce filtre, un joueur debout près de
+## l'origine de l'overworld ramassait le butin posé dans un donjon.
 func nearest_cache(position: Vector3) -> int:
 	var best := -1
 	var best_dist := PICKUP_RADIUS * PICKUP_RADIUS
 	for i in caches.size():
+		if not _visible_here(caches[i]):
+			continue
 		var d: float = (caches[i]["position"] as Vector3).distance_squared_to(position)
 		if d <= best_dist:
 			best_dist = d
@@ -123,12 +166,20 @@ func _refresh_markers() -> void:
 		_marker_root.name = "DropMarkers"
 		main.add_child(_marker_root)
 	for cache in caches:
+		# Une cache d'une autre dimension n'a pas de marqueur : le donjon
+		# partage les coordonnées de l'overworld, ses boîtes flotteraient
+		# donc en plein ciel près du point de spawn.
+		if not _visible_here(cache):
+			continue
+		var is_chest: bool = String(cache.get("kind", "cache")) == "coffre"
 		var marker := MeshInstance3D.new()
 		var box := BoxMesh.new()
-		box.size = Vector3(0.5, 0.35, 0.5)
+		# Le coffre de boss est plus gros et plus clair : c'est la récompense
+		# du donjon, il doit se repérer du seuil de la salle.
+		box.size = Vector3(0.9, 0.6, 0.6) if is_chest else Vector3(0.5, 0.35, 0.5)
 		marker.mesh = box
 		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.75, 0.6, 0.25)
+		mat.albedo_color = Color(0.95, 0.78, 0.30) if is_chest else Color(0.75, 0.6, 0.25)
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		marker.material_override = mat
 		marker.position = cache["position"]
@@ -148,6 +199,8 @@ func save_state() -> Array:
 			"materials": cache.get("materials", {}),
 			"gold": int(cache["gold"]),
 			"expire_tick": int(cache["expire_tick"]),
+			"dimension": String(cache.get("dimension", &"overworld")),
+			"kind": String(cache.get("kind", "cache")),
 		})
 	return out
 
@@ -171,5 +224,9 @@ func restore_state(data: Array) -> void:
 			"materials": cache.get("materials", {}),
 			"gold": int(cache.get("gold", 0)),
 			"expire_tick": int(cache.get("expire_tick", 0)),
+			# Sauvegardes d'avant 2026-08-02 : pas de dimension, et toutes
+			# étaient dans l'overworld — rien ne déposait encore en donjon.
+			"dimension": StringName(cache.get("dimension", "overworld")),
+			"kind": String(cache.get("kind", "cache")),
 		})
 	_refresh_markers()

@@ -437,11 +437,14 @@ func _village_population_tick(player_pos: Vector3) -> void:
 
 func _populate_village(cell: Vector2i, plan: Dictionary) -> void:
 	var residents: Array[Node] = []
-	var roster := VillagePopulation.roster(cell, WorldManager.world_seed, plan)
 	# UNE seule requête de royaume par village, pas une par habitant : elle est
 	# mise en cache, mais la faire vingt fois resterait vingt fois trop.
+	# Elle précède le roster depuis le 2026-08-02 : c'est le royaume qui donne
+	# sa CULTURE au village (12.5), donc les noms de ses habitants.
 	var kingdom: Dictionary = WorldManager.generator.kingdom_at_cell(cell)
 	var kingdom_id := String(kingdom.get("id", ""))
+	var roster := VillagePopulation.roster(cell, WorldManager.world_seed, plan,
+			String(kingdom.get("culture", "")))
 	for index in roster.size():
 		# UN MORT NE REVIENT PAS. Sans ce saut, s'éloigner puis revenir
 		# ressusciterait tout le village et le meurtre serait gratuit.

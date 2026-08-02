@@ -4,22 +4,23 @@ extends RefCounted
 ## pure, comme TreeGenerator/PlantGenerator/POIGenerator : mêmes coordonnées
 ## + même graine → même donjon, à chaque appel (G.1).
 ##
-## SIMPLIFICATIONS ASSUMÉES ET SIGNALÉES (MVP explicite du GDD D.3 étape 8 :
-## « 2-3 salles/connecteurs prefabs, un étage ») :
-## - Salles/connecteurs = BOÎTES pleines construites directement en blocs
-##   (data/dungeon_rooms/*.json, data/dungeon_connectors/*.json — géométrie
-##   `size`/`doors` seulement), PAS de vrais modèles .vox importés (aucune
-##   bibliothèque d'art de donjon n'existe encore — B.10 prévoit `vox_model`,
-##   ignoré ici).
+## CE QUE CE FICHIER DÉCIDE, ET CE QU'IL NE DÉCIDE PAS. Il produit le GRAPHE de
+## l'étage : quelles salles, où, reliées par quels couloirs. La FORME des
+## salles ne lui appartient pas — elles ne sont plus des boîtes depuis le
+## 2026-08-02, mais des cavités organiques sculptées au bruit par
+## `DungeonCavern`, et creusées par `DungeonManager._carve_room`. Ici, une
+## salle n'est qu'une boîte ENGLOBANTE servant au placement et au test de
+## chevauchement.
+##
+## SIMPLIFICATIONS ENCORE EN PLACE :
 ## - Salles JAMAIS tournées, seulement translatées : chaque salle garde
 ##   l'orientation de ses portes telle que déclarée dans son JSON. Formes
 ##   moins variées qu'un vrai algorithme avec rotation, mais génération
-##   robuste et simple (pas de géométrie de rotation à débugger dans ce MVP).
-## - Un seul étage (pas d'escalier/étage inférieur — E.29 le prévoit,
-##   différé).
-## - Peuplement (créatures/loot par salle, F.3/F.7) : PAS FAIT ici, seule la
-##   salle du boss reçoit UNE créature (voir DungeonManager, qui réutilise le
-##   seul monstre existant — "sanglier" — faute d'un vrai profil de donjon).
+##   robuste et simple. La déformation au bruit compense largement : deux
+##   salles du même gabarit ne se ressemblent plus.
+## - Pas de modèles .vox de décor importés (B.10 prévoit `vox_model`, ignoré).
+## - Peuplement en créatures : seul le boss du dernier étage existe. Le BUTIN,
+##   lui, est posé depuis le 2026-08-02 (voir DungeonLoot).
 
 const DIRS := {
 	"nord": Vector3i(0, 0, 1),
@@ -29,14 +30,32 @@ const DIRS := {
 }
 const OPPOSITE := {"nord": "sud", "sud": "nord", "est": "ouest", "ouest": "est"}
 
-const TARGET_ROOM_COUNT := 4  # Compte l'entrée — 3 salles supplémentaires (GDD : « 2-3 »).
-const MAX_ATTEMPTS_PER_DOOR := 6
+## Nombre de salles visé, entrée comprise. Le GDD n'en demandait que « 2-3 »
+## pour le jalon D.3.8 ; l'auteur en a demandé davantage le 2026-08-02, un
+## étage de quatre salles se traversant en moins d'une minute.
+##
+## Le compte MONTE AVEC LA PROFONDEUR : les premiers étages restent lisibles,
+## les derniers deviennent de vrais labyrinthes. C'est aussi ce qui rend la
+## descente coûteuse en temps, donc le retour à la surface un choix.
+const BASE_ROOM_COUNT := 8
+const ROOMS_PER_DEPTH := 2
+const MAX_ROOM_COUNT := 18
+## Tentatives de placement par porte ouverte. Relevé de 6 à 12 avec
+## l'agrandissement des salles : elles se gênent davantage, et un budget trop
+## court faisait échouer les placements tardifs — l'étage plafonnait alors bien
+## en dessous du nombre visé.
+const MAX_ATTEMPTS_PER_DOOR := 12
+
+
+## Nombre de salles d'un étage donné.
+static func room_count_for(depth: int) -> int:
+	return mini(MAX_ROOM_COUNT, BASE_ROOM_COUNT + ROOMS_PER_DEPTH * depth)
 
 
 ## Génère l'étage : { "rooms": [{ "def_id", "origin": Vector3i, "size": Vector3i,
 ## "tags": [], "graph_index": int }], "corridors": [{ "origin": Vector3i,
 ## "dir": String, "length": int }], "boss_room_index": int }.
-static func generate_floor(seed_value: int) -> Dictionary:
+static func generate_floor(seed_value: int, target_rooms: int = BASE_ROOM_COUNT) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 
@@ -58,7 +77,7 @@ static func generate_floor(seed_value: int) -> Dictionary:
 	})
 	open_doors.append({"room_index": 0, "door_index": 0})
 
-	while rooms.size() < TARGET_ROOM_COUNT and not open_doors.is_empty():
+	while rooms.size() < target_rooms and not open_doors.is_empty():
 		var pick := rng.randi() % open_doors.size()
 		var chosen: Dictionary = open_doors[pick]
 		open_doors.remove_at(pick)
@@ -118,7 +137,7 @@ static func generate_floor(seed_value: int) -> Dictionary:
 			placed = true
 			break
 		# Échec (toutes les candidates testées en collision) : la porte reste
-		# simplement inutilisée, pas de boucle infinie (max TARGET_ROOM_COUNT
+		# simplement inutilisée, pas de boucle infinie (max `target_rooms`
 		# itérations de toute façon).
 		if not placed:
 			continue

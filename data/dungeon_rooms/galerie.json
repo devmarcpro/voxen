@@ -1,16 +1,16 @@
 {
-  "id": "salle_moyenne",
+  "id": "galerie",
   "kind": "salle",
   "size_category": "moyenne",
   "size": [
-    15,
-    9,
-    15
+    21,
+    8,
+    11
   ],
   "doors": [
     {
       "position": [
-        7,
+        10,
         0,
         0
       ],
@@ -18,17 +18,17 @@
     },
     {
       "position": [
-        7,
+        10,
         0,
-        14
+        10
       ],
       "direction": "nord"
     },
     {
       "position": [
-        14,
+        20,
         0,
-        7
+        5
       ],
       "direction": "est"
     },
@@ -36,13 +36,12 @@
       "position": [
         0,
         0,
-        7
+        5
       ],
       "direction": "ouest"
     }
   ],
   "special_tags": [
-    "boss_room_eligible",
     "treasure_eligible"
   ]
 }

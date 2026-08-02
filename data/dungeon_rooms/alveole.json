@@ -1,16 +1,16 @@
 {
-  "id": "salle_moyenne",
+  "id": "alveole",
   "kind": "salle",
-  "size_category": "moyenne",
+  "size_category": "petite",
   "size": [
-    15,
     9,
-    15
+    9,
+    9
   ],
   "doors": [
     {
       "position": [
-        7,
+        4,
         0,
         0
       ],
@@ -18,17 +18,17 @@
     },
     {
       "position": [
-        7,
+        4,
         0,
-        14
+        8
       ],
       "direction": "nord"
     },
     {
       "position": [
-        14,
+        8,
         0,
-        7
+        4
       ],
       "direction": "est"
     },
@@ -36,13 +36,12 @@
       "position": [
         0,
         0,
-        7
+        4
       ],
       "direction": "ouest"
     }
   ],
   "special_tags": [
-    "boss_room_eligible",
     "treasure_eligible"
   ]
 }

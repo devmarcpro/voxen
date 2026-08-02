@@ -1,0 +1,100 @@
+{
+  "id": "culture_slave",
+  "name_key": "culture.slave.name",
+  "name_order": "prenom_nom",
+  "race_affinity": {
+    "humain": 1.0
+  },
+  "prenom_a": [
+    "Vlad",
+    "Bogd",
+    "Mir",
+    "Stan",
+    "Zor",
+    "Rad",
+    "Lud",
+    "Vel",
+    "Dob",
+    "Sve",
+    "Kaz",
+    "Yar"
+  ],
+  "prenom_b": [
+    "imir",
+    "islav",
+    "an",
+    "ana",
+    "oslav",
+    "enka",
+    "ka",
+    "omir",
+    "ek"
+  ],
+  "famille_a": [
+    "Novak",
+    "Petro",
+    "Volk",
+    "Zelen",
+    "Cherno",
+    "Bela",
+    "Gorod",
+    "Med",
+    "Sokol",
+    "Kras"
+  ],
+  "famille_b": [
+    "ov",
+    "enko",
+    "ski",
+    "itch",
+    "ova",
+    "in"
+  ],
+  "ville_a": [
+    "Novi",
+    "Beli",
+    "Cherno",
+    "Zlato",
+    "Gora",
+    "Rud",
+    "Svet",
+    "Kam",
+    "Bor",
+    "Vel"
+  ],
+  "ville_b": [
+    "grad",
+    "gorod",
+    "sk",
+    "polje",
+    "dol",
+    "var",
+    "itsa"
+  ],
+  "titres": {
+    "monarchie_hereditaire": {
+      "m": "Tsar",
+      "f": "Tsarine"
+    },
+    "republique_elue": {
+      "m": "Vétché",
+      "f": "Vétché"
+    },
+    "theocratie": {
+      "m": "Patriarche",
+      "f": "Matriarche"
+    },
+    "ploutocratie": {
+      "m": "Grand Marchand",
+      "f": "Grande Marchande"
+    },
+    "dictature_militaire": {
+      "m": "Voïvode",
+      "f": "Voïvode"
+    },
+    "guilde_maitre": {
+      "m": "Grand Maître",
+      "f": "Grande Maîtresse"
+    }
+  }
+}

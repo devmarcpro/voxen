@@ -222,6 +222,10 @@ func set_active_dimension(dim: StringName) -> void:
 	if chunk_root != null:
 		chunk_root.visible = dim == &"overworld"
 	CreatureManager.on_dimension_changed(dim)
+	# Les caches au sol sont filtrées par dimension (2026-08-02) : sans ce
+	# rafraîchissement, les marqueurs de la dimension qu'on vient de quitter
+	# resteraient affichés dans celle où l'on arrive.
+	DropManager.on_dimension_changed()
 
 
 ## Appelé par la caméra/le joueur : met à jour le centre de streaming.

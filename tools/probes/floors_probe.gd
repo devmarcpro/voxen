@@ -3,8 +3,8 @@ extends Probe
 ##
 ## Couvre les quatre points de la demande :
 ##  1. les salles sont bâties dans la matière démoniaque du nid, plus en pierre ;
-##  2. il existe un orifice de DESCENTE à chaque étage sauf le dernier ;
-##  3. le joueur arrive DOS à l'orifice de remontée ;
+##  2. il existe un ESCALIER de descente à chaque étage sauf le dernier ;
+##  3. le joueur arrive DOS à l'escalier de remontée ;
 ##  4. descente et remontée enchaînent les étages, et la remontée depuis le
 ##     premier fait bien sortir dans l'overworld.
 
@@ -78,21 +78,24 @@ func run() -> void:
 	ok = ok and alignment > 0.9
 
 	# --- 2 + 4. Descente jusqu'au fond ---
-	var core_id: int = GameData.material_runtime_ids.get(DungeonManager.ORIFICE_CORE, -1)
+	# Les « orifices » (disques plats) ont été remplacés le 2026-08-02 par de
+	# vraies volées d'escalier : on ne cherche plus un bloc de cœur au centre
+	# d'un disque, mais la MARCHE sur laquelle débouche le palier.
+	var core_id: int = GameData.material_runtime_ids.get(DungeonManager.STAIR_TREAD_DOWN, -1)
 	for expected_depth in range(1, total):
 		var key := DungeonManager._floor_key(cell, dm._current_depth)
 		var down := dm._descent_orifice_position(key)
-		# L'orifice de descente doit EXISTER sur cet étage (le dernier n'en a pas).
-		# floori() et non int() : int() tronque vers zéro, donc se trompe d'un bloc
-		# en coordonnées négatives — _carve_orifice utilise bien floor(), et la
-		# première version de cette sonde lisait donc le bloc VOISIN de l'orifice
-		# (d'où un id incohérent d'un étage à l'autre).
+		# L'escalier de descente doit EXISTER sur cet étage (le dernier n'en a
+		# pas). floori() et non int() : int() tronque vers zéro, donc se trompe
+		# d'un bloc en coordonnées négatives — la construction utilise bien
+		# floor(), et la première version de cette sonde lisait donc le bloc
+		# VOISIN (d'où un id incohérent d'un étage à l'autre).
 		var core_found := WorldManager.block_at_world(
 			Vector3i(floori(down.x), floori(down.y), floori(down.z)))
 		var core_ok := core_found == core_id
 		dm._descend()
 		await wait_frame()
-		print("[ETAGES]   descente → étage %d/%d (orifice en %s, cœur=%d attendu=%d %s)" % [
+		print("[ETAGES]   descente → étage %d/%d (palier en %s, marche=%d attendue=%d %s)" % [
 			dm._current_depth + 1, total, down, core_found, core_id,
 			"OK" if core_ok else "MANQUANT"])
 		ok = ok and dm._current_depth == expected_depth and core_ok

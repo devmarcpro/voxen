@@ -650,6 +650,16 @@ creature.braconnier.name,Poacher
 creature.pillard.name,Raider
 creature.deserteur.name,Deserter
 creature.ermite.name,Hermit
+culture.latine.name,Latin
+culture.nordique.name,Nordic
+culture.sino.name,Sinitic
+culture.nipponne.name,Japonic
+culture.slave.name,Slavic
+culture.arabo.name,Arabo-Berber
+culture.celte.name,Celtic
+culture.sylvestre.name,Sylvan
+culture.ignee.name,Igneous
+culture.resonance.name,Resonance
 material.viande.name,Meat
 material.peau.name,Hide
 ui.toast.depecage,{creature} butchered: {portions} portion(s) of meat
@@ -888,6 +898,7 @@ job.couturier,"Tailor"
 job.herboriste,"Herbalist"
 job.transporteur,"Carrier"
 ui.toast.villageois_tue,"A villager has died."
+ui.toast.coffre_boss,The boss drops a chest!
 gouvernance.monarchie_hereditaire,"hereditary monarchy"
 gouvernance.republique_elue,"elected republic"
 gouvernance.theocratie,"theocracy"
@@ -905,6 +916,7 @@ ui.loi.confiscation,"Item confiscated: it is illegal here."
 ui.loi.saisie,"Unable to pay, one of your goods is seized."
 ui.loi.gardes_hostiles,"The kingdom's guards are after you."
 ui.hud.cle.lois,"Laws"
+ui.hud.cle.localite,Settlement
 ui.hud.souris,Left click (hold): harvest/carve/attack · Right click: place
 ui.hud.hotbar,1-9/wheel: select · Ctrl+1-9/wheel: bank
 ui.input.move_forward,walk

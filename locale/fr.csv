@@ -650,6 +650,16 @@ creature.braconnier.name,Braconnier
 creature.pillard.name,Pillard
 creature.deserteur.name,Déserteur
 creature.ermite.name,Ermite
+culture.latine.name,Latine
+culture.nordique.name,Nordique
+culture.sino.name,Sino
+culture.nipponne.name,Nipponne
+culture.slave.name,Slave
+culture.arabo.name,Arabo-berbère
+culture.celte.name,Celte
+culture.sylvestre.name,Sylvestre
+culture.ignee.name,Ignée
+culture.resonance.name,Résonance
 material.viande.name,Viande
 material.peau.name,Peau
 ui.toast.depecage,{creature} dépecé : {portions} portion(s) de viande
@@ -888,6 +898,7 @@ job.couturier,"Couturier"
 job.herboriste,"Herboriste"
 job.transporteur,"Transporteur"
 ui.toast.villageois_tue,"Un habitant du village est mort."
+ui.toast.coffre_boss,Le boss lâche un coffre !
 gouvernance.monarchie_hereditaire,"monarchie héréditaire"
 gouvernance.republique_elue,"république élue"
 gouvernance.theocratie,"théocratie"
@@ -905,6 +916,7 @@ ui.loi.confiscation,"Objet confisqué : il est illégal ici."
 ui.loi.saisie,"Faute de pouvoir payer, un bien vous est saisi."
 ui.loi.gardes_hostiles,"Les gardes du royaume vous cherchent."
 ui.hud.cle.lois,"Lois"
+ui.hud.cle.localite,Localité
 ui.hud.souris,Clic gauche (maintenu) : récolter/sculpter/attaquer · Clic droit : poser
 ui.hud.hotbar,1-9/molette : choisir · Ctrl+1-9/molette : banque
 ui.input.move_forward,marcher

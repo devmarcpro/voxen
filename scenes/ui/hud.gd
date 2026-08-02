@@ -72,7 +72,7 @@ func _build() -> void:
 
 	_block("systeme", "ui.hud.bloc_systeme", ["fps", "chunks", "meshing"])
 	_block("lieu", "ui.hud.bloc_lieu",
-		["position", "biome", "royaume", "lois", "temperature", "fertilite", "cellule", "grille"])
+		["position", "biome", "royaume", "localite", "lois", "temperature", "fertilite", "cellule", "grille"])
 	_block("cible", "ui.hud.bloc_cible", ["materiau", "outil", "creature"])
 	_block("modules", "ui.hud.bloc_modules", ["module_j", "module_k", "module_l"])
 
@@ -296,6 +296,13 @@ func _refresh() -> void:
 			_put("royaume", "%s · %s" % [String(kingdom["name"]),
 				tr("gouvernance." + String(kingdom["government_type"]))])
 			_put("lois", _laws_summary(kingdom))
+		# NOM DE LA LOCALITÉ (12.5/E.31, 2026-08-02). Les villages n'avaient
+		# aucun nom : on ne pouvait désigner un lieu que par ses coordonnées.
+		# La ligne DISPARAÎT hors d'un village (`_put` masque une valeur vide),
+		# elle n'occupe donc pas le HUD en pleine nature.
+		var here: Vector2i = _player.current_cell()
+		var has_village := WorldManager.generator != null 				and not (WorldManager.generator.city_at_cell(here) as Dictionary).is_empty()
+		_put("localite", VillageManager.name_of(here) if has_village else "")
 		var cell: Vector2i = _player.current_cell()
 		var status := tr("ui.hud.cellule_libre")
 		if ClaimManager.is_claimed(cell):

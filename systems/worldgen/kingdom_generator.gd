@@ -164,11 +164,18 @@ static func identity(capital: Dictionary, world_seed: int,
 	# n'importe pas sa population, il naît de son territoire.
 	var center := POIGenerator.cell_center_world(cell)
 	var biome: Dictionary = generator.biome_at(center.x, center.y)
+	var race := _dominant_race(biome, hash_value)
+	# CULTURE (12.5/B.11) — axe INDÉPENDANT de la race : deux royaumes humains
+	# voisins peuvent sonner latin et sino. C'est elle qui donnera leur nom aux
+	# villes du royaume et aux PNJ qui y naissent, d'où sa place ici, dans
+	# l'identité : elle se décide une fois, avec le royaume, et ne bouge plus.
+	var culture := NameGenerator.culture_for_race(race, hash_value)
 	return {
 		"id": id_of(cell),
 		"name": WorldNamer.land_name(world_seed + cell.x * 7919 + cell.y * 104729),
 		"government_type": government,
-		"race": _dominant_race(biome, hash_value),
+		"race": race,
+		"culture": culture,
 		"capital": cell,
 		"size": String(capital["size"]),
 		"radius": int(capital["radius"]),

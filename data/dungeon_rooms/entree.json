@@ -2,9 +2,22 @@
   "id": "entree",
   "kind": "salle",
   "size_category": "petite",
-  "size": [7, 5, 7],
-  "doors": [
-    { "position": [3, 0, 6], "direction": "nord" }
+  "size": [
+    11,
+    8,
+    11
   ],
-  "special_tags": ["entree"]
+  "doors": [
+    {
+      "position": [
+        5,
+        0,
+        10
+      ],
+      "direction": "nord"
+    }
+  ],
+  "special_tags": [
+    "entree"
+  ]
 }

@@ -1,8 +1,8 @@
 {
-  "id": "corridor_droit",
+  "id": "corridor_long",
   "kind": "connecteur",
   "type": "corridor",
-  "length": 6,
+  "length": 11,
   "doors": [
     {
       "position": [
@@ -16,7 +16,7 @@
       "position": [
         0,
         0,
-        6
+        11
       ],
       "direction": "nord"
     }

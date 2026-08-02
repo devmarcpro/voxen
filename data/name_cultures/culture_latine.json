@@ -1,0 +1,103 @@
+{
+  "id": "culture_latine",
+  "name_key": "culture.latine.name",
+  "name_order": "prenom_nom",
+  "race_affinity": {
+    "humain": 1.0
+  },
+  "prenom_a": [
+    "Marc",
+    "Luc",
+    "Aur",
+    "Sev",
+    "Cass",
+    "Val",
+    "Corn",
+    "Fab",
+    "Oct",
+    "Tib",
+    "Jul",
+    "Prisc",
+    "Liv",
+    "Anton"
+  ],
+  "prenom_b": [
+    "us",
+    "ius",
+    "ianus",
+    "ella",
+    "ina",
+    "ia",
+    "anus",
+    "illa",
+    "or"
+  ],
+  "famille_a": [
+    "Corn",
+    "Val",
+    "Aemil",
+    "Horat",
+    "Claud",
+    "Serv",
+    "Marc",
+    "Tull",
+    "Fabr",
+    "Lucr"
+  ],
+  "famille_b": [
+    "ius",
+    "ianus",
+    "ellus",
+    "inus",
+    "atus",
+    "ellius"
+  ],
+  "ville_a": [
+    "Aqua",
+    "Vero",
+    "Nova",
+    "Porta",
+    "Castra",
+    "Villa",
+    "Monte",
+    "Terra",
+    "Alba",
+    "Aure"
+  ],
+  "ville_b": [
+    "nia",
+    "num",
+    "polis",
+    "augusta",
+    "magna",
+    "vetera",
+    "lucia",
+    "mara"
+  ],
+  "titres": {
+    "monarchie_hereditaire": {
+      "m": "Roi",
+      "f": "Reine"
+    },
+    "republique_elue": {
+      "m": "Consul",
+      "f": "Consule"
+    },
+    "theocratie": {
+      "m": "Pontife",
+      "f": "Pontife"
+    },
+    "ploutocratie": {
+      "m": "Questeur",
+      "f": "Questrice"
+    },
+    "dictature_militaire": {
+      "m": "Imperator",
+      "f": "Imperatrix"
+    },
+    "guilde_maitre": {
+      "m": "Grand Maître",
+      "f": "Grande Maîtresse"
+    }
+  }
+}
