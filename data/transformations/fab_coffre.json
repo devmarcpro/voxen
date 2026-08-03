@@ -1,0 +1,14 @@
+{
+  "id": "fab_coffre",
+  "name_key": "transformation.fab_coffre.name",
+  "station": "etabli",
+  "skill": "menuiserie",
+  "input": {
+    "category": "planches",
+    "amount": 6
+  },
+  "output": {
+    "material": "coffre",
+    "amount": 1
+  }
+}

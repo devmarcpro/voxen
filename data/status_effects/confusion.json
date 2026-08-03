@@ -1,0 +1,9 @@
+{
+  "id": "confusion",
+  "name_key": "status.confusion.name",
+  "duration_ticks": 120,
+  "stacks": false,
+  "tags": [
+    "controle"
+  ]
+}

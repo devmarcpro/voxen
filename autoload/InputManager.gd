@@ -44,15 +44,16 @@ const DEFAULTS := {
 
 	# --- Monde (player.gd) ---
 	"cycle_grid":     {"keys": [KEY_R], "cat": "monde"},
-	"talk":           {"keys": [KEY_E], "cat": "monde"},
+	# INTERACTION UNIQUE (2026-08-03) : elle remplace « parler » (E),
+	# « ramasser » (G) et « encaisser l'étal » (Y). Une seule touche pour tout
+	# ce qui se trouve dans le monde ; c'est le contexte qui décide, pas le
+	# joueur (voir Player._try_interact).
+	"interact":       {"keys": [KEY_E], "cat": "monde"},
 	"equip":          {"keys": [KEY_H], "cat": "monde"},   # était KEY_E — code mort.
-	"eat":            {"keys": [KEY_X], "cat": "monde"},   # était KEY_F — volait aussi.
-	"pickup":         {"keys": [KEY_G], "cat": "monde"},   # était KEY_C — descendait aussi en vol.
 	"sleep":          {"keys": [KEY_N], "cat": "monde"},
 	"toggle_claim":   {"keys": [KEY_V], "cat": "monde"},
 	"cycle_claim_role": {"keys": [KEY_B], "cat": "monde"},
 	"stall_stock":    {"keys": [KEY_T], "cat": "monde"},
-	"stall_collect":  {"keys": [KEY_Y], "cat": "monde"},   # était KEY_G, rendu à « ramasser ».
 
 	# --- Modules de compétence (5.1) ---
 	"module_1":       {"keys": [KEY_J], "cat": "modules"},

@@ -1,0 +1,14 @@
+{
+  "id": "taille_silex_taillee",
+  "name_key": "transformation.taille_silex_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "silex_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "silex",
+    "amount": 1
+  }
+}

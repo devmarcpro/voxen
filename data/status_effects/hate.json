@@ -1,0 +1,14 @@
+{
+  "id": "hate",
+  "name_key": "status.hate.name",
+  "duration_ticks": 100,
+  "stacks": false,
+  "tags": [
+    "hate"
+  ],
+  "modifiers": {
+    "vitesse_deplacement": {
+      "mult": 1.25
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "id": "eclat_de_pierre",
+  "name_key": "module.eclat_de_pierre.name",
+  "module_type": "effet",
+  "mana_cost_base": 6,
+  "power_base": 12,
+  "tags": [
+    "terre",
+    "projectile"
+  ],
+  "params": {
+    "vitesse": 15,
+    "portee": 20
+  },
+  "grimoire_domains": [
+    "terre"
+  ],
+  "book_type": "grimoire",
+  "degats_des": "2d5"
+}

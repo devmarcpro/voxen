@@ -568,7 +568,6 @@ transformation.cuisson_brique.name,Cuire des briques
 transformation.debit_planches.name,Débiter des planches
 transformation.taille_poutre.name,Tailler une poutre
 transformation.taille_manche.name,Tailler des manches
-transformation.taille_pierre.name,Tailler la pierre
 transformation.taille_dalle.name,Tailler des dalles
 transformation.taille_brique_pierre.name,Tailler des briques de pierre
 transformation.filage.name,Filer
@@ -928,15 +927,11 @@ ui.input.move_left,aller à gauche
 ui.input.move_right,aller à droite
 ui.input.descend,descendre
 ui.input.cycle_grid,grille 32/16/8/4
-ui.input.talk,parler
 ui.input.equip,équiper
-ui.input.eat,manger
-ui.input.pickup,ramasser
 ui.input.sleep,dormir
 ui.input.toggle_claim,revendiquer
 ui.input.cycle_claim_role,rôle de la cellule
 ui.input.stall_stock,mettre en vente (étal visé)
-ui.input.stall_collect,récolter l'or (étal visé)
 ui.input.module_1,modules
 ui.input.module_2,module 2
 ui.input.module_3,module 3
@@ -980,3 +975,129 @@ ui.combat.feinte_adverse,Feinte — le coup annoncé n'est pas venu.
 munition.fleche.name,Flèche
 munition.carreau.name,Carreau
 ui.combat.carquois_vide,Carquois vide.
+material.andesite_taillee.name,Andésite taillée
+transformation.taille_andesite_taillee.name,Tailler : Andésite
+material.ardoise_taillee.name,Ardoise taillée
+transformation.taille_ardoise_taillee.name,Tailler : Ardoise
+material.basalte_taillee.name,Basalte taillé
+transformation.taille_basalte_taillee.name,Tailler : Basalte
+material.breche_volcanique_taillee.name,Brèche volcanique taillée
+transformation.taille_breche_volcanique_taillee.name,Tailler : Brèche volcanique
+material.calcaire_taillee.name,Calcaire taillé
+transformation.taille_calcaire_taillee.name,Tailler : Calcaire
+material.calcite_taillee.name,Calcite taillée
+transformation.taille_calcite_taillee.name,Tailler : Calcite
+material.conglomerat_taillee.name,Conglomérat taillé
+transformation.taille_conglomerat_taillee.name,Tailler : Conglomérat
+material.craie_taillee.name,Craie taillée
+transformation.taille_craie_taillee.name,Tailler : Craie
+material.diorite_taillee.name,Diorite taillée
+transformation.taille_diorite_taillee.name,Tailler : Diorite
+material.dolomie_taillee.name,Dolomie taillée
+transformation.taille_dolomie_taillee.name,Tailler : Dolomie
+material.gneiss_taillee.name,Gneiss taillé
+transformation.taille_gneiss_taillee.name,Tailler : Gneiss
+material.granit_taillee.name,Granit taillé
+transformation.taille_granit_taillee.name,Tailler : Granit
+material.granit_noir_taillee.name,Granit noir taillé
+transformation.taille_granit_noir_taillee.name,Tailler : Granit noir
+material.gres_taillee.name,Grès taillé
+transformation.taille_gres_taillee.name,Tailler : Grès
+material.gypse_taillee.name,Gypse taillé
+transformation.taille_gypse_taillee.name,Tailler : Gypse
+material.kimberlite_taillee.name,Kimberlite taillée
+transformation.taille_kimberlite_taillee.name,Tailler : Kimberlite
+material.marbre_taillee.name,Marbre taillé
+transformation.taille_marbre_taillee.name,Tailler : Marbre
+material.obsidienne_taillee.name,Obsidienne taillée
+transformation.taille_obsidienne_taillee.name,Tailler : Obsidienne
+material.peridotite_taillee.name,Péridotite taillée
+transformation.taille_peridotite_taillee.name,Tailler : Péridotite
+transformation.taille_pierre_taillee.name,Tailler : Pierre
+material.pierre_ponce_taillee.name,Pierre ponce taillée
+transformation.taille_pierre_ponce_taillee.name,Tailler : Pierre ponce
+material.quartzite_taillee.name,Quartzite taillé
+transformation.taille_quartzite_taillee.name,Tailler : Quartzite
+material.rhyolite_taillee.name,Rhyolite taillée
+transformation.taille_rhyolite_taillee.name,Tailler : Rhyolite
+material.schiste_taillee.name,Schiste taillé
+transformation.taille_schiste_taillee.name,Tailler : Schiste
+material.serpentinite_taillee.name,Serpentinite taillée
+transformation.taille_serpentinite_taillee.name,Tailler : Serpentinite
+material.silex_taillee.name,Silex taillé
+transformation.taille_silex_taillee.name,Tailler : Silex
+material.travertin_taillee.name,Travertin taillé
+transformation.taille_travertin_taillee.name,Tailler : Travertin
+material.tuf_volcanique_taillee.name,Tuf volcanique taillé
+transformation.taille_tuf_volcanique_taillee.name,Tailler : Tuf volcanique
+item.grimoire.name,Grimoire
+item.manuel_de_combat.name,Manuel de combat
+lecture.echec.etourdissement,Étourdissement
+lecture.echec.perte_mana,Perte de mana
+lecture.echec.confusion,Confusion
+lecture.echec.invocation,Invocation hostile
+module.boule_de_feu.name,Boule de feu
+module.nappe_de_flammes.name,Nappe de flammes
+module.eclat_de_glace.name,Éclat de glace
+module.emprise_du_gel.name,Emprise du gel
+module.arc_electrique.name,Arc électrique
+module.fulguration.name,Fulguration
+module.eclat_de_pierre.name,Éclat de pierre
+module.carapace_de_roche.name,Carapace de roche
+module.regeneration.name,Régénération
+module.bouclier_arcane.name,Bouclier arcane
+module.clignotement.name,Clignotement
+module.rappel.name,Rappel
+module.drain_vital.name,Drain vital
+module.offrande_de_sang.name,Offrande de sang
+module.taillade_large.name,Taillade large
+module.estoc_perforant.name,Estoc perforant
+module.garde_de_fer.name,Garde de fer
+module.posture_agile.name,Posture agile
+module.charge_epaule.name,Charge d'épaule
+module.contre_riposte.name,Contre-riposte
+module.double_lancer.name,Double lancer
+module.triple_lancer.name,Triple lancer
+module.portee_accrue.name,Portée accrue
+module.projection_rapide.name,Projection rapide
+module.guidage.name,Guidage
+module.ricochet.name,Ricochet
+module.declencheur_impact.name,Déclencheur à l'impact
+module.declencheur_retarde.name,Déclencheur retardé
+ui.module.vide,(vide)
+ui.module.declenche.impact,à l'impact
+ui.module.declenche.delai,après un délai
+ui.module.declenche.parade,sur parade
+ui.menu.assemblage,Assemblage des compétences
+ui.menu.assemblage_aide,Range tes modules de gauche à droite : l'ordre décide de ce qui part. Un modificateur altère l'effet qui le SUIT ; un déclencheur envoie tout le reste à l'impact.
+ui.menu.assemblage_slot,Compétence {n}
+ui.menu.assemblage_cout,{cout} mana
+ui.menu.assemblage_sans_arme,Équipe une arme pour assembler ses compétences.
+ui.menu.assemblage_aucun_module,Aucun module appris. Lis un grimoire ou un manuel de combat.
+status.brulure.name,Brûlure
+status.ralentissement.name,Ralentissement
+status.gel.name,Gel
+status.poison.name,Poison
+status.saignement.name,Saignement
+status.etourdi.name,Étourdi
+status.confusion.name,Confusion
+status.terreur.name,Terreur
+status.infection.name,Infection
+status.affaibli.name,Affaibli
+status.regeneration.name,Régénération
+status.peau_de_pierre.name,Peau de pierre
+status.hate.name,Hâte
+status.beni.name,Béni
+ui.input.interact,interagir
+ui.toast.station_ouverte,{station} — artisanat ouvert
+ui.toast.etal_vide,Rien à encaisser
+ui.toast.lecture_reussie,Lecture réussie : {modules} module(s) appris
+ui.toast.lecture_echouee,Lecture échouée — le livre est perdu
+material.coffre.name,Coffre
+material.grand_coffre.name,Grand coffre
+transformation.fab_coffre.name,Fabriquer un coffre
+transformation.fab_grand_coffre.name,Fabriquer un grand coffre
+ui.coffre.titre,{coffre} — {utilise}/{capacite}
+ui.coffre.vide,Coffre vide
+ui.toast.coffre_pris,Coffre vidé : {objets} objet(s), {or_} or
+ui.toast.coffre_plein,Coffre plein

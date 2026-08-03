@@ -1,0 +1,14 @@
+{
+  "id": "taille_granit_noir_taillee",
+  "name_key": "transformation.taille_granit_noir_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "granit_noir_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "granit_noir",
+    "amount": 1
+  }
+}

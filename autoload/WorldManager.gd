@@ -778,6 +778,10 @@ func _on_data_reloaded() -> void:
 	_fine_meshes.clear()
 	_coarse_meshes.clear()
 	_lod_fine.clear()
+	# La palette de pierre taillée des tours est mise en cache par cellule et
+	# stocke des ids RUNTIME, qui viennent de glisser : sans cette purge, les
+	# tours déjà visitées se rebâtiraient dans les mauvaises roches.
+	DungeonTower.reset_caches()
 	_queue.clear()
 	_queue_idx = 0
 	# Les tâches en vol seront jetées à l'arrivée (générations différentes).
@@ -923,6 +927,30 @@ func station_in_cell(wx: int, wz: int, material_id: int) -> bool:
 					if int((chunk_edits as Dictionary)[idx]) == material_id:
 						return true
 	return false
+
+
+## Ce bloc appartient-il à une STRUCTURE SCELLÉE, inviolable quel que soit
+## l'outil ? (2026-08-02) Aujourd'hui : la tour de donjon (GDD 3.5, « structure
+## d'entrée scellée »).
+##
+## POURQUOI UN TEST DE LIEU ET NON UN TAG DE MATÉRIAU. La tour est bâtie en
+## pierre taillée depuis le 2026-08-02, et la pierre taillée est un matériau de
+## CONSTRUCTION que le joueur fabrique au tailleur de pierre et pose où il veut.
+## Marquer le matériau « incassable » aurait rendu indestructible tout ce que le
+## joueur bâtit avec — y compris sa propre maison. Ce qui doit être scellé, c'est
+## l'endroit.
+##
+## Le test est bon marché et court-circuité dans l'ordre le moins cher : hors
+## overworld, pas de générateur, puis emprise horizontale (une soustraction et
+## deux multiplications), et seulement ensuite le cache de cellule qui sait s'il
+## y a réellement un donjon là.
+func is_sealed_structure(pos: Vector3i) -> bool:
+	if active_dimension != &"overworld" or generator == null:
+		return false
+	var cell := ClaimManager.cell_of_block(pos.x, pos.z)
+	if not DungeonTower.contains(cell, pos.x, pos.z):
+		return false
+	return DungeonManager.is_dungeon_cell(cell)
 
 
 ## Remesh SYNCHRONE d'un chunk (thread principal) pour une édition instantanée.

@@ -1,0 +1,18 @@
+{
+  "id": "rappel",
+  "name_key": "module.rappel.name",
+  "module_type": "effet",
+  "mana_cost_base": 18,
+  "power_base": 0,
+  "tags": [
+    "espace",
+    "mobilite"
+  ],
+  "params": {
+    "delai": 6
+  },
+  "grimoire_domains": [
+    "espace"
+  ],
+  "book_type": "grimoire"
+}

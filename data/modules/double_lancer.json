@@ -1,0 +1,17 @@
+{
+  "id": "double_lancer",
+  "name_key": "module.double_lancer.name",
+  "module_type": "modificateur",
+  "mana_cost_base": 4,
+  "power_base": 0,
+  "tags": [
+    "maitrise"
+  ],
+  "params": {
+    "multicast": 2
+  },
+  "grimoire_domains": [
+    "maitrise"
+  ],
+  "book_type": "manuel"
+}

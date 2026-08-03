@@ -367,9 +367,12 @@ func relation_tier() -> String:
 	return Reputation.tier(_standing())
 
 
-## Fuit le joueur au lieu de l'ignorer (profil "fuit", F.3).
+## Fuit le joueur au lieu de l'ignorer (profil "fuit", F.3), OU sous TERREUR
+## (F.4, 2026-08-03). Le statut se greffe ici plutôt que dans l'IA : « fuir »
+## était déjà une notion du code, la terreur ne fait que l'activer
+## temporairement au lieu d'inventer un second chemin de fuite.
 func is_skittish() -> bool:
-	return ai_profile == "fuit"
+	return ai_profile == "fuit" or has_status("terreur")
 
 
 ## Encaisse `amount` points de dégâts. UN SEUL POINT D'ENTRÉE, pour que le
@@ -379,6 +382,34 @@ func is_skittish() -> bool:
 ## exactement comme chez le joueur. Sans lui, frapper une créature en plein
 ## wind-up ne l'empêchait pas de porter son coup : la récompense du timing —
 ## toucher le premier — n'existait pas, et parer devenait facultatif.
+## STATUTS (F.4, 2026-08-03) : une créature peut être ralentie, gelée, brûlée.
+## Créés À LA DEMANDE : la grande majorité des créatures n'en porte jamais, et
+## instancier un tracker par créature coûterait pour rien sur une population de
+## soixante.
+var _statuses: StatusTracker = null
+
+
+func apply_status(status_id: String, duration_ticks: int = 0, power: float = 1.0) -> void:
+	if _statuses == null:
+		_statuses = StatusTracker.new()
+		_statuses.setup(self, StatModifiers.new())
+	_statuses.apply(status_id, duration_ticks, power)
+
+
+func has_status(status_id: String) -> bool:
+	return _statuses != null and _statuses.has(status_id)
+
+
+## Fait vieillir les statuts d'un tick et applique leurs dégâts périodiques.
+## Appelé par le tick de la créature, jamais à la frame.
+func tick_statuses() -> void:
+	if _statuses == null:
+		return
+	var periodic := _statuses.tick()
+	if periodic > 0.0:
+		take_damage(periodic)
+
+
 func take_damage(amount: float) -> void:
 	health = maxf(0.0, health - amount)
 	if amount <= 0.0:
@@ -847,6 +878,12 @@ func react_to_telegraph(incoming: int) -> void:
 ## Une passe de tick (E.1) : IA + mouvement + cooldown d'attaque. Retourne
 ## un événement d'attaque à résoudre par CreatureManager, ou {} sinon.
 func tick_step(player_position: Vector3, player_ref: Node) -> Dictionary:
+	# ÉTOURDI (F.4) : « perd son prochain tour de décision ». Le retour anticipé
+	# est exactement ça — la créature ne décide rien ce tick-ci. Placé AVANT les
+	# décomptes de recharge à dessein : être étourdi ne doit pas faire avancer
+	# ses temps de recharge, sinon le statut offrirait un répit gratuit.
+	if has_status("etourdi"):
+		return {}
 	if _attack_cooldown_ticks > 0:
 		_attack_cooldown_ticks -= 1
 	if _guard_cooldown_ticks > 0:
@@ -878,6 +915,13 @@ func tick_step(player_position: Vector3, player_ref: Node) -> Dictionary:
 	# centre d'une créature au sol — mesurer la portée sur l'œil rendait la
 	# morsure (portée 1.7) PHYSIQUEMENT impossible, même collé au joueur
 	# (BUG RÉEL trouvé par le test de combat, corrigé le 2026-07-21).
+	# CONFUSION (F.4) : « 30 % d'agir au hasard ». Concrètement, la créature perd
+	# de vue sa cible et erre — on la traite comme non engagée pour ce tick, ce
+	# qui la fait retomber sur son errance normale au lieu d'inventer un
+	# comportement « aléatoire » qui n'existerait nulle part ailleurs.
+	if has_status("confusion") and randf() < 0.3:
+		_wander(player_position)
+		return {}
 	var body := player_position + Vector3(0.0, -0.9, 0.0)
 	var to_player := body - logical_position
 	# Distance RÉELLE (3D) pour l'agression/l'attaque — une créature au sol

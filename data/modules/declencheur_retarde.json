@@ -1,0 +1,20 @@
+{
+  "id": "declencheur_retarde",
+  "name_key": "module.declencheur_retarde.name",
+  "module_type": "declencheur",
+  "mana_cost_base": 7,
+  "power_base": 0,
+  "tags": [
+    "maitrise",
+    "declencheur"
+  ],
+  "params": {
+    "trigger": "delai",
+    "delay": 1.5
+  },
+  "grimoire_domains": [
+    "maitrise",
+    "espace"
+  ],
+  "book_type": "grimoire"
+}

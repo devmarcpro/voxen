@@ -20,8 +20,22 @@ const STARTER_QUALITY := 0.7
 
 ## Module de démonstration (étape D.3.6) : 3 modules assemblés, touches J/K/L
 ## (les touches 1-9 pilotent déjà la hotbar). Coût en mana par A.6.
-const MODULE_LOADOUT := ["trait_de_mana", "soin_mineur", "frappe_lourde"]
-## Actions de module, dans l'ordre du loadout (touches par défaut J/K/L —
+## Modules POSSÉDÉS et leur niveau : id -> niveau (0 = tout juste appris).
+## Alimenté par la LECTURE DES LIVRES (5.1), seule source de modules du jeu :
+## ils ne se craftent pas. Le loadout de démonstration ci-dessus reste jouable
+## d'emblée — retirer au joueur ses trois touches tant qu'il n'a pas trouvé un
+## grimoire aurait cassé la boucle de jeu existante pour un gain nul.
+var known_modules := {}
+## ASSEMBLAGES (GDD 5.1) : compétence d'arme → liste ordonnée de slots, chaque
+## slot étant une liste ordonnée d'ids de module.
+##   { "epee": [ ["double_lancer", "taillade_large"], [] ], "baton_magique": [...] }
+##
+## RATTACHÉS AU TYPE D'ARME et non à l'objet (lecture littérale du GDD : « chaque
+## TYPE d'arme possède un nombre de slots de compétences », et ce nombre dérive
+## du niveau dans cette compétence). Conséquence voulue : toutes tes épées
+## partagent tes techniques d'épée, et changer d'épée ne te fait rien perdre.
+var assemblies := {}
+## Actions de lancement (touches par défaut J/K/L —
 ## les touches 1-9 pilotent déjà la hotbar). Voir InputManager.DEFAULTS.
 const MODULE_ACTIONS := ["module_1", "module_2", "module_3"]
 
@@ -31,15 +45,14 @@ const MODULE_ACTIONS := ["module_1", "module_2", "module_3"]
 ## impossible la collision « deux commandes sur la même touche ».
 const ACTION_HANDLERS := {
 	"cycle_grid": "_cycle_grid_resolution",
-	"talk": "_try_talk",
+	"interact": "_try_interact",
 	"equip": "_try_equip",
-	"eat": "_try_eat",
-	"pickup": "_try_pickup",
+
+
 	"sleep": "_try_sleep",
 	"toggle_claim": "_toggle_claim",
 	"cycle_claim_role": "_cycle_claim_role",
 	"stall_stock": "_try_stock_stall",
-	"stall_collect": "_try_collect_stall",
 }
 ## C.1 : 6 stats, base 5.
 var stats := {"force": 5, "dexterite": 5, "endurance": 5, "volonte": 5, "perception": 5, "charisme": 5}
@@ -62,6 +75,8 @@ var inventory: Inventory
 ## statuts (F.4) et auras de modules (5.1) s'y brancheront sans toucher au
 ## joueur. Non sauvegardé : entièrement dérivé d'un état qui l'est.
 var modifiers := StatModifiers.new()
+## Statuts temporaires (F.4). Posé APRÈS `modifiers` : il s'y enregistre.
+var statuses := StatusTracker.new()
 ## Emplacements d'équipement (6.2) — l'armure portée alimente la mitigation
 ## d'E.3, jusque-là toujours nulle faute d'équipement.
 var equipment: Equipment
@@ -293,6 +308,7 @@ func _recompute_derived() -> void:
 	stamina_max = STAMINA_BASE + int(stats["endurance"]) * STAMINA_PER_ENDURANCE
 	stamina = stamina_max
 	mana = ManaPool.new(int(stats["volonte"]), skills.level("meditation"))
+	statuses.setup(self, modifiers)
 	# Les modificateurs sont dérivés, jamais sauvegardés : ils se reposent ici,
 	# ce qui couvre aussi bien la création que la restauration d'une partie.
 	_refresh_state_modifiers()
@@ -384,6 +400,15 @@ func save_state() -> Dictionary:
 		"active_hotbar": active_hotbar,
 		"active_res": active_res,
 		"skills": skills.save_state(),
+		# MODULES APPRIS (5.1) : à persister impérativement. Les livres sont à
+		# USAGE UNIQUE — un module oublié au rechargement est définitivement
+		# perdu, puisque le grimoire qui l'enseignait a été consommé.
+		"known_modules": known_modules.duplicate(),
+		"assemblies": assemblies.duplicate(true),
+		# STATUTS (F.4) : persistés en TICKS restants. Un poison contracté
+		# avant une sauvegarde doit continuer à agir au rechargement, sinon
+		# sauvegarder devient une purge gratuite.
+		"statuses": statuses.save_state(),
 		"inventory": inventory.save_state(),
 		"equipment": equipment.save_state(),
 		"collection": collection.save_state(),
@@ -408,6 +433,10 @@ func restore_state(data: Dictionary) -> void:
 		active_res = res
 	skills.restore_state(data.get("skills", {}))
 	skills.xp_modifier = float(data.get("xp_modifier", 1.0))
+	known_modules = (data.get("known_modules", {}) as Dictionary).duplicate()
+	assemblies = (data.get("assemblies", {}) as Dictionary).duplicate(true)
+	statuses.setup(self, modifiers)
+	statuses.restore_state(data.get("statuses", {}))
 	inventory.restore_state(data.get("inventory", {}))
 	equipment.restore_state(data.get("equipment", {}))
 	collection.restore_state(data.get("collection", {}))
@@ -446,6 +475,13 @@ func skill_level(skill_id: String) -> int:
 
 
 func take_damage(amount: int) -> void:
+	# RÉDUCTION PAR STATUT (F.4 : peau de pierre, garde de fer, bouclier
+	# arcane). Passe par le résolveur E.4 : `reduction_degats` n'est pas une
+	# stat de base, sa valeur nue est 0 et seuls les modificateurs la font
+	# monter. Bornée à 80 % — une invulnérabilité complète casserait le combat.
+	var reduction := clampf(modifiers.apply(0.0, "reduction_degats"), 0.0, 0.8)
+	if reduction > 0.0:
+		amount = int(round(float(amount) * (1.0 - reduction)))
 	health = maxf(0.0, health - amount)
 	# STAGGER (2026-08-02) : encaisser INTERROMPT son propre coup. Sans ça les
 	# deux camps se traversaient — on pouvait échanger à l'aveugle en sachant
@@ -552,13 +588,19 @@ func _unhandled_input(event: InputEvent) -> void:
 				if not button.pressed:
 					_progress = 0.0
 		elif button.button_index == MOUSE_BUTTON_RIGHT:
-			# Une arme en main garde ; tout le reste pose des blocs. Sans cette
-			# règle, lever sa garde poserait un bloc en plein duel.
-			if _equipped_weapon().is_empty():
-				if button.pressed:
-					_try_place()
-			else:
+			# LE CLIC DROIT UTILISE CE QU'ON TIENT (2026-08-03, demande de
+			# l'auteur). Trois cas, dans cet ordre, et l'ordre est la règle :
+			#   arme     → garde (le combat prime : lever sa garde ne doit
+			#              jamais poser un bloc ni manger en plein duel) ;
+			#   comestible ou livre → consommé / lu ;
+			#   reste    → pose de bloc, comportement historique.
+			# `_equipped_weapon` lit l'emplacement SÉLECTIONNÉ, pas l'équipement :
+			# le clic droit porte donc bien sur l'objet en main.
+			if not _equipped_weapon().is_empty():
 				_set_guard(button.pressed)
+			elif button.pressed:
+				if not _try_consume_held():
+					_try_place()
 		elif button.pressed and button.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_scroll_hotbar(-1, button.ctrl_pressed)
 		elif button.pressed and button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
@@ -584,7 +626,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 		for index in MODULE_ACTIONS.size():
 			if event.is_action_pressed(MODULE_ACTIONS[index]):
-				_try_cast_module(index)
+				_cast_from_key(index)
 				return
 
 
@@ -772,6 +814,7 @@ func _process(delta: float) -> void:
 	# et un archer qui recule à pleine vitesse en tirant serait intenable.
 	if _camera != null:
 		_camera.combat_stance = _guard_active or _attack.is_busy() or _ranged.is_busy()
+		_camera.status_speed = movement_multiplier()
 
 
 ## Progression de récolte normalisée (0..1) — pour la barre de l'UI.
@@ -2210,35 +2253,460 @@ func _collect_loot(creature: Node) -> void:
 		"portions": str(portions)}))
 
 
-## Lance un des 3 modules du loadout (E.3/A.6) sur la créature visée (sinon
-## droit devant). Le coût en mana insuffisant inflige la surchauffe (A.5/A.6).
-func _try_cast_module(slot: int) -> void:
-	if slot < 0 or slot >= MODULE_LOADOUT.size() or _module_cooldown_ticks > 0:
+## Compétence d'arme correspondant à l'arme tenue en main forte, ou "" si le
+## joueur n'a pas d'arme. C'est la clé de `assemblies`.
+func weapon_skill_id() -> String:
+	if equipment == null:
+		return ""
+	var weapon: Dictionary = equipment.equipped("arme_1")
+	if weapon.is_empty():
+		return ""
+	# `combat_skill` et non `skill` : c'est le nom du champ dans les
+	# fonctionnalités (data/functionalities/*.json), et c'est lui qui désigne la
+	# compétence d'arme dont dérive le nombre de slots.
+	var functionality: Dictionary = GameData.functionalities.get(
+			String(weapon.get("functionality", "")), {})
+	return String(functionality.get("combat_skill", ""))
+
+
+## Slots de compétence disponibles pour un type d'arme (GDD 5.1 : `2 + N/20`).
+func assembly_slot_count(skill_id: String) -> int:
+	return SpellAssembly.skill_slots(skills.level(skill_id))
+
+
+## Slots de modules par compétence (GDD 5.1 : `2 + N/25`).
+func assembly_module_count(skill_id: String) -> int:
+	return SpellAssembly.module_slots(skills.level(skill_id))
+
+
+## Assemblage rangé dans le slot `slot` du type d'arme `skill_id` (liste vide si
+## rien). Toujours borné aux slots RÉELLEMENT disponibles : un assemblage rangé
+## à un niveau élevé puis relu après une perte de niveau ne doit pas être
+## lançable, mais il n'est pas effacé pour autant.
+func assembly_at(skill_id: String, slot: int) -> Array:
+	if slot < 0 or slot >= assembly_slot_count(skill_id):
+		return []
+	var slots: Array = assemblies.get(skill_id, [])
+	return slots[slot] if slot < slots.size() else []
+
+
+## Range un assemblage. Rejette les modules INCONNUS (on ne peut assembler que
+## ce qu'on a appris dans un livre — 5.1) et tronque au nombre de slots de
+## modules autorisé : c'est ici, et pas dans l'interface, que la règle tient.
+func set_assembly(skill_id: String, slot: int, module_ids: Array) -> bool:
+	if skill_id.is_empty() or slot < 0 or slot >= assembly_slot_count(skill_id):
+		return false
+	var clean: Array[String] = []
+	for id: Variant in module_ids:
+		var module_id := String(id)
+		if not known_modules.has(module_id) or not GameData.modules.has(module_id):
+			continue
+		clean.append(module_id)
+		if clean.size() >= assembly_module_count(skill_id):
+			break
+	var slots: Array = assemblies.get(skill_id, [])
+	while slots.size() < assembly_slot_count(skill_id):
+		slots.append([] as Array[String])
+	slots[slot] = clean
+	assemblies[skill_id] = slots
+	return true
+
+
+## Coût en mana d'un assemblage, arme tenue comprise (A.6). Exposé pour que
+## l'interface puisse l'AFFICHER pendant qu'on assemble : sans ce retour
+## immédiat, on ne construit pas un sort, on tâtonne.
+func assembly_cost(skill_id: String, slot: int) -> float:
+	return SpellAssembly.mana_cost(assembly_at(skill_id, slot), known_modules,
+			_held_mana_conductivity())
+
+
+## Conductivité mana de l'arme en main forte (A.6 : réduit le coût des sorts).
+## C'est ce qui rend la gemme d'un bâton structurante.
+func _held_mana_conductivity() -> float:
+	if equipment == null:
+		return 0.0
+	return float((equipment.equipped("arme_1") as Dictionary).get("mana_conductivity", 0.0))
+
+
+## LIT un livre de l'inventaire (GDD 5.1/A.7) : jet de compétence Lecture, gain
+## de modules en cas de réussite, effet d'échec sinon — et le livre est CONSOMMÉ
+## dans les deux cas (« usage unique, réussite ou échec »).
+##
+## Retourne le résultat pour que l'interface puisse le DIRE. Une lecture qui
+## échoue sans message laisserait le joueur devant un livre disparu sans rien
+## comprendre — et l'échec est une mécanique voulue, pas un accident.
+func read_book(obj: Dictionary) -> Dictionary:
+	if not BookFactory.is_book(obj):
+		return {}
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var result: Dictionary = BookFactory.resolve_reading(
+			obj, skills.level("lecture"), int(stats.get("perception", 5)), rng)
+
+	# Le livre part AVANT l'application des effets : un échec qui invoque un
+	# ennemi ne doit pas pouvoir laisser le livre dans l'inventaire si l'effet
+	# interrompt la suite.
+	inventory.remove_object_units(obj, 1)
+
+	# La Lecture progresse À L'USAGE (façon Elin/Elona, 5.1), y compris sur un
+	# échec : on apprend en se cassant les dents. L'échec rapporte moins.
+	skills.gain_xp("lecture", 12.0 if result.get("reussite", false) else 4.0)
+
+	if result.get("reussite", false):
+		for module_id: String in (result["modules"] as Array):
+			# Un module DÉJÀ CONNU monte d'un niveau au lieu d'être ignoré
+			# (5.1 : « les modules montent de niveau, sans plafond »). Sans
+			# cela, tout livre en double serait du butin mort.
+			known_modules[module_id] = int(known_modules.get(module_id, -1)) + 1
+	else:
+		_apply_reading_failure(result.get("echec", {}))
+	# Signature IMPOSÉE par EventBus (book_id, success, reader) : le signal
+	# préexistait au système de livres. On lui donne ce qu'il attend et on rend
+	# le détail à l'appelant.
+	EventBus.book_read.emit(String(obj.get("item_id", "")), bool(result.get("reussite", false)), self)
+	return result
+
+
+## Applique l'effet d'un échec de lecture (table en données, GDD A.7).
+func _apply_reading_failure(failure: Dictionary) -> void:
+	if failure.is_empty():
 		return
-	var module: Dictionary = GameData.modules[MODULE_LOADOUT[slot]]
-	var module_level := 0  # Modules non progressés à ce stade (pas encore de livres, 5.1).
-	var cost: float = float(module["mana_cost_base"]) / PlayerSkills.skill_factor(module_level)
-	var overheat := mana.spend(cost, skills.level("controle_mana"))
+	match String(failure.get("effet", "")):
+		"mana":
+			mana.spend(absf(float(failure.get("valeur", 0.0))), 0)
+		"etourdi", "confusion":
+			# VRAI STATUT depuis le 2026-08-03 (F.4). C'était un compteur privé,
+			# stand-in assumé faute de système de statuts — il ne bloquait que
+			# les modules, ne se sauvegardait pas et n'était visible nulle part.
+			statuses.apply(String(failure.get("effet", "etourdi")),
+					int(float(failure.get("duree_s", 5.0)) * 10.0), 1.0)
+		"invocation_hostile":
+			# `get_position_for_ai` et non `global_position` : Player est un Node
+			# pur (la position vit sur la caméra), pas un Node3D.
+			CreatureManager.spawn("bandit", get_position_for_ai() + Vector3(2.0, 0.0, 2.0))
+
+
+## Ticks d'étourdissement restants (échec de lecture). Décompté dans _physics.
+var _reading_stun_ticks := 0
+
+
+## Les trois touches de lancement pointent sur les TROIS PREMIERS SLOTS DE
+## COMPÉTENCE du type d'arme tenu (5.1). Elles remplacent le loadout figé de
+## trois modules codés en dur, qui n'avait plus de sens dès lors qu'un sort est
+## un assemblage rangé dans un slot d'arme.
+##
+## L'assemblage lié à la HOTBAR reste lançable autrement (voir
+## `cast_selected_assembly`) : les deux chemins mènent au même code.
+func _cast_from_key(index: int) -> void:
+	var skill_id := weapon_skill_id()
+	if skill_id.is_empty():
+		return
+	cast_assembly(skill_id, index)
+
+
+## Lance l'ASSEMBLAGE actuellement en main (5.1/A.6). Remplace le lancement d'un
+## module isolé : un sort est désormais une SUITE ORDONNÉE de modules, compilée
+## par SpellAssembly, et c'est l'ordre qui décide de ce qui part.
+##
+## Le coût est payé UNE FOIS pour tout l'assemblage, modificateurs compris — un
+## assemblage bâclé coûte donc réellement cher (A.6). Le déficit inflige la
+## surchauffe (A.5), comme pour tout lancer.
+func cast_selected_assembly() -> bool:
+	var entry := _selected_entry()
+	if String(entry.get("kind", "")) != "assemblage":
+		return false
+	return cast_assembly(String(entry.get("skill", "")), int(entry.get("slot", -1)))
+
+
+func cast_assembly(skill_id: String, slot: int) -> bool:
+	# ÉTOURDI / CONFUS : on ne lance pas (F.4). Le déplacement et la mêlée
+	# restent possibles — c'est la fiche du statut qui décide du reste, par ses
+	# modificateurs, et non ce point d'appel.
+	if _module_cooldown_ticks > 0 or statuses.has("etourdi") or statuses.has("confusion"):
+		return false
+	var module_ids := assembly_at(skill_id, slot)
+	if module_ids.is_empty():
+		return false
+	var compiled := SpellAssembly.compile(module_ids, known_modules)
+	var casts: Array = compiled.get("casts", [])
+	if casts.is_empty():
+		return false
+
+	var overheat := mana.spend(assembly_cost(skill_id, slot), skills.level("controle_mana"))
 	if overheat > 0.0:
 		health = maxf(0.0, health - overheat)
 	_module_cooldown_ticks = 5
 
-	if _target_creature != null and is_instance_valid(_target_creature):
-		var power: float = float(module["power_base"]) * PlayerSkills.skill_factor(module_level)
-		var damage := CombatResolver.roll_dice(String(module.get("degats_des", "1d4"))) + int(power * 0.1)
-		# Même point d'entrée que la mêlée : un module qui blesse doit staggerer
-		# comme une lame, sinon on pourrait couper un wind-up à l'épée mais pas
-		# au sort — une exception que rien ne justifierait.
-		_target_creature.take_damage(float(damage))
-		_target_creature.provoke()
-		if _target_creature.is_dead():
-			_creature_defeated(_target_creature)
+	_execute_casts(casts)
+
+	# MONTÉE DE NIVEAU À L'USAGE (5.1, sans plafond). Chaque module qui a
+	# réellement participé est crédité, y compris ceux enfouis derrière un
+	# déclencheur — sinon les charges utiles ne progresseraient jamais et
+	# construire un sort profond serait puni.
+	for module_id: String in SpellAssembly.modules_fired(compiled):
+		known_modules[module_id] = int(known_modules.get(module_id, 0)) + 1
+	skills.gain_xp(skill_id, 6.0)
+	return true
+
+
+## Exécute un niveau de l'arbre compilé.
+##
+## PORTÉE ACTUELLE, ET C'EST UNE LIMITE RÉELLE : seuls les effets qui BLESSENT
+## ou qui SOIGNENT sont simulés. Les projectiles ne volent pas encore (ils
+## touchent la cible visée immédiatement), les zones ne persistent pas, et la
+## mobilité (clignotement, charge) n'est pas appliquée. La compilation, le coût,
+## l'ordre, le multi-cast et les déclencheurs sont eux complets et testés :
+## c'est la couche de PRÉSENTATION qui manque, pas la grammaire.
+## `origin` : d'où part cette salve. Vaut l'œil du joueur au premier niveau, et
+## le POINT D'IMPACT du porteur pour une charge utile de déclencheur — c'est ce
+## qui fait qu'une explosion déclenchée éclate là où le projectile est arrivé,
+## et non dans la main du lanceur.
+func _execute_casts(casts: Array, depth: int = 0, origin: Vector3 = Vector3.INF) -> void:
+	if origin == Vector3.INF:
+		origin = _camera.global_position if _camera != null else get_position_for_ai()
+	for cast: Dictionary in casts:
+		var trigger: Dictionary = cast.get("trigger", {})
+		var volley: Array = cast.get("volley", [])
+		for index in volley.size():
+			var shot: Dictionary = volley[index]
+			# LE DÉCLENCHEUR EST PORTÉ PAR LE PREMIER TIR DE LA VOLÉE, pas par
+			# tous : sinon une volée de trois projectiles déclencherait sa charge
+			# utile trois fois, et un multi-cast multiplierait silencieusement
+			# les dégâts d'un déclencheur au lieu de multiplier ses porteurs.
+			var carried: Dictionary = trigger if index == 0 else {}
+			_apply_effect(String(shot["module"]), float(shot.get("power", 0.0)),
+					shot.get("mods", {}), carried, depth, origin, index, volley.size())
+
+
+## Teintes de projectile par domaine. Un sort doit se RECONNAÎTRE en vol :
+## sans couleur, une boule de feu et un éclat de glace sont le même bâtonnet
+## brun, et tout le travail d'assemblage devient invisible en jeu.
+const SPELL_COLORS := {
+	"feu": Color(1.0, 0.45, 0.12),
+	"eau_glace": Color(0.45, 0.80, 1.0),
+	"foudre": Color(0.95, 0.92, 0.35),
+	"terre": Color(0.62, 0.50, 0.34),
+	"vie": Color(0.40, 0.95, 0.50),
+	"arcane": Color(0.65, 0.45, 1.0),
+	"espace": Color(0.85, 0.85, 0.95),
+	"corruption": Color(0.55, 0.12, 0.45),
+}
+
+
+func _apply_effect(module_id: String, power: float, mods: Dictionary = {},
+		trigger: Dictionary = {}, depth: int = 0, origin: Vector3 = Vector3.ZERO,
+		index: int = 0, volley_size: int = 1) -> void:
+	var module: Dictionary = GameData.modules.get(module_id, {})
+	if module.is_empty():
+		return
+	var tags: Array = module.get("tags", [])
+
+	if "soin" in tags or "vie" in tags:
+		health = minf(health_max, health + power * 0.5)
+		_fire_payload(trigger, depth, origin)
+		return
+
+	# PROJECTILE : il VOLE désormais réellement (2026-08-03). C'est ce qui donne
+	# un effet observable à `vitesse`, `portee`, `guidage` et `ricochet`, et ce
+	# qui permet au déclencheur de partir à l'IMPACT plutôt qu'aussitôt après.
+	if "projectile" in tags:
+		_launch_spell_projectile(module_id, module, power, mods, trigger, depth,
+				index, volley_size)
+		return
+
+	# PROTECTION / POSTURE / ENTRAVE / MOBILITÉ (2026-08-03) : ils passent
+	# désormais par les STATUTS (F.4) et par un déplacement réel, au lieu de ne
+	# rien produire. La table ci-dessous est la seule chose qui relie un module à
+	# son statut — la mécanique, elle, est entièrement en données.
+	if _apply_non_damaging(module_id, module, power, tags):
+		_fire_payload(trigger, depth, origin)
+		return
+	if not module.has("degats_des"):
+		# Reste ce qui n'a toujours pas de simulation (zones persistantes). Le
+		# déclencheur part quand même, sinon un assemblage bâti sur un effet non
+		# simulé perdrait silencieusement toute sa charge utile.
+		_fire_payload(trigger, depth, origin)
+		return
+	if _target_creature == null or not is_instance_valid(_target_creature):
+		_fire_payload(trigger, depth, origin)
+		return
+	var damage := CombatResolver.roll_dice(String(module["degats_des"])) + int(power * 0.1)
+	# Même point d'entrée que la mêlée : un module qui blesse doit staggerer
+	# comme une lame, sinon on pourrait couper un wind-up à l'épée mais pas
+	# au sort — une exception que rien ne justifierait.
+	_target_creature.take_damage(float(damage))
+	_target_creature.provoke()
+	if _target_creature.is_dead():
+		_creature_defeated(_target_creature)
+	_fire_payload(trigger, depth, _target_creature.logical_position)
+
+
+## Facteur de vitesse de déplacement, statuts compris (F.4). Interrogé par la
+## caméra à chaque frame : elle porte le mouvement mais ignore tout des statuts.
+func movement_multiplier() -> float:
+	return clampf(modifiers.apply(1.0, "vitesse_deplacement"), 0.0, 3.0)
+
+
+## Quel STATUT un module pose-t-il sur son lanceur ? Table explicite plutôt
+## qu'une convention de nommage : un module et un statut sont deux notions
+## distinctes, et plusieurs modules peuvent poser le même statut (la carapace de
+## roche et une potion de peau de pierre donnent le même effet).
+const MODULE_STATUS := {
+	"carapace_de_roche": "peau_de_pierre",
+	"garde_de_fer": "peau_de_pierre",
+	"bouclier_arcane": "peau_de_pierre",
+	"posture_agile": "hate",
+	"regeneration": "regeneration",
+}
+
+
+## Effets qui ne blessent pas : statuts posés sur soi, entraves posées autour,
+## déplacements. Retourne true si le module a été traité ici.
+func _apply_non_damaging(module_id: String, module: Dictionary, power: float,
+		tags: Array) -> bool:
+	var params: Dictionary = module.get("params", {})
+
+	# 1. STATUT SUR SOI (protection, posture, régénération).
+	if MODULE_STATUS.has(module_id):
+		# La DURÉE vient de la fiche du module (`duree`, en secondes de jeu) et
+		# la PUISSANCE de son niveau : monter un module allonge et renforce son
+		# effet, comme pour tout le reste (A.6).
+		var ticks := int(float(params.get("duree", 10.0)) * 10.0)
+		statuses.apply(String(MODULE_STATUS[module_id]), ticks, 1.0 + power * 0.02)
+		return true
+
+	# 2. ZONE PERSISTANTE (nappe de flammes, emprise du gel). Elle DURE, ce qui
+	# donne enfin un sens au paramètre `duree` de ces modules : jusqu'ici leur
+	# effet s'appliquait à l'instant du lancer et disparaissait, autrement dit
+	# une nappe n'était qu'une explosion.
+	#
+	# Posée AU SOL DEVANT le lanceur et non sur lui : une nappe de flammes
+	# centrée sur soi est un suicide, pas un sort.
+	if "zone" in tags and _camera != null:
+		var aim := -_camera.global_basis.z
+		aim.y = 0.0
+		var here := get_position_for_ai()
+		var centre: Vector3 = here + (aim.normalized() * 4.0 if aim.length_squared() > 0.001 else Vector3.ZERO)
+		var status_id := "brulure" if "feu" in tags else ("ralentissement" if "entrave" in tags else "")
+		ZoneManager.spawn(centre,
+				float(params.get("rayon", 3.0)),
+				int(float(params.get("duree", 6.0)) * 10.0),
+				status_id,
+				String(module.get("degats_des", "")),
+				1.0 + power * 0.02,
+				Color(1.0, 0.45, 0.12, 0.35) if "feu" in tags else Color(0.45, 0.8, 1.0, 0.3),
+				self)
+		return true
+
+	# 3. ENTRAVE INSTANTANÉE AUTOUR DE SOI, pour les modules d'entrave qui ne
+	# sont pas des zones : ralentit les créatures dans le rayon, sur-le-champ.
+	if "entrave" in tags:
+		var radius := float(params.get("rayon", 3.0))
+		var here := get_position_for_ai()
+		for creature in CreatureManager.creatures:
+			if not is_instance_valid(creature) or creature.is_dead():
+				continue
+			if creature.dimension != WorldManager.active_dimension:
+				continue
+			if creature.logical_position.distance_to(here) > radius:
+				continue
+			if creature.has_method("apply_status"):
+				creature.apply_status("ralentissement", 0, 1.0)
+		return true
+
+	# 4. MOBILITÉ (clignotement, charge d'épaule) : un déplacement réel, pas un
+	# statut. On avance dans l'axe du REGARD, en s'arrêtant au premier obstacle —
+	# se téléporter dans la roche est le seul résultat inacceptable.
+	if "mobilite" in tags and _camera != null:
+		var distance := float(params.get("distance", 6.0))
+		var aim := -_camera.global_basis.z
+		aim.y = 0.0
+		if aim.length_squared() < 0.001:
+			return true
+		var from := _camera.global_position
+		var to := from + aim.normalized() * distance
+		if WorldManager.line_blocked(from, to):
+			# Obstacle : on rabote jusqu'à trouver un point libre plutôt que
+			# d'annuler le sort — un clignotement qui ne fait rien mais coûte sa
+			# mana serait pire qu'un clignotement court.
+			# `: Vector3` explicite : itérer un tableau littéral donne un
+			# Variant, dont l'inférence est traitée comme une erreur ici.
+			for fraction: float in [0.75, 0.5, 0.25]:
+				var candidate: Vector3 = from + aim.normalized() * distance * fraction
+				if not WorldManager.line_blocked(from, candidate):
+					to = candidate
+					break
+		if _camera.has_method("teleport_to"):
+			_camera.teleport_to(to)
+		else:
+			_camera.global_position = to
+		return true
+	return false
+
+
+## Lance un projectile de sort. Les modificateurs accumulés par l'assemblage
+## deviennent ici des paramètres de vol RÉELS — c'est le point où l'ordre des
+## slots cesse d'être une abstraction.
+func _launch_spell_projectile(module_id: String, module: Dictionary, power: float,
+		mods: Dictionary, trigger: Dictionary, depth: int,
+		index: int, volley_size: int) -> void:
+	if _camera == null:
+		return
+	var params: Dictionary = module.get("params", {})
+	var aim := -_camera.global_basis.z
+	# UNE VOLÉE S'ÉVENTAILLE. Trois projectiles superposés se lisent comme un
+	# seul et rendent le multi-cast invisible : c'est l'écart qui le montre.
+	if volley_size > 1:
+		var spread := deg_to_rad(7.0) * (float(index) - float(volley_size - 1) * 0.5)
+		aim = aim.rotated(Vector3.UP, spread)
+	var stats := {
+		"vitesse_projectile": float(params.get("vitesse", 20.0)) + float(mods.get("vitesse", 0.0)),
+		"dice": String(module.get("degats_des", "1d6")),
+		"penetration": 0.0,
+		"skill": weapon_skill_id(),
+		"module": module_id,
+	}
+	var domain := ""
+	for d: String in (module.get("grimoire_domains", []) as Array):
+		if SPELL_COLORS.has(d):
+			domain = d
+			break
+	var payload := trigger
+	var carrier_depth := depth
+	ProjectileManager.launch(
+		_camera.global_position + aim * 0.6, aim, stats,
+		1.0 + power * 0.05, 1.0, self,
+		{
+			"gravity": false,
+			"range": float(params.get("portee", 25.0)) + float(mods.get("portee", 0.0)),
+			"homing": float(mods.get("guidage", 0.0)),
+			"bounces": int(mods.get("rebonds", 0.0)),
+			"color": SPELL_COLORS.get(domain, Color(0.8, 0.8, 0.9)),
+			# LE DÉCLENCHEUR PART D'ICI, au point où la course s'achève.
+			"on_end": func(point: Vector3, _victim: Variant) -> void:
+				_fire_payload(payload, carrier_depth, point),
+		})
+
+
+## Fait partir la charge utile d'un déclencheur, depuis `point`.
+func _fire_payload(trigger: Dictionary, depth: int, point: Vector3) -> void:
+	if trigger.is_empty() or depth >= SpellAssembly.MAX_DEPTH:
+		return
+	_execute_casts(trigger.get("casts", []), depth + 1, point)
 
 
 # --- Récolte (A.2, par ticks) ---
 
 func _on_tick(_tick_index: int) -> void:
 	mana.on_tick()
+	# STATUTS (F.4) : le tracker rend les dégâts périodiques, le joueur les
+	# applique par SON chemin de dégâts — un statut ne doit pas contourner le
+	# stagger ni la mort.
+	var periodic := statuses.tick()
+	if periodic > 0.0:
+		take_damage(int(ceil(periodic)))
+	elif periodic < 0.0:
+		health = minf(health_max, health - periodic)
 	hunger = maxf(0.0, hunger - HUNGER_DECAY_PER_TICK)
 	fatigue = maxf(0.0, fatigue - FATIGUE_DECAY_PER_TICK)
 	_hunger_tick_effects()
@@ -2255,6 +2723,8 @@ func _on_tick(_tick_index: int) -> void:
 		return
 	if _module_cooldown_ticks > 0:
 		_module_cooldown_ticks -= 1
+	if _reading_stun_ticks > 0:
+		_reading_stun_ticks -= 1
 	if not _mining or not _target_valid:
 		_progress = 0.0
 		_bouncing = false
@@ -2264,10 +2734,19 @@ func _on_tick(_tick_index: int) -> void:
 		return
 	var mat_name: String = GameData.material_by_runtime[material_id]
 	var mat: Dictionary = GameData.materials[mat_name]
-	# Blocs INCASSABLES (tour de donjon) : aucun outil n'en vient à bout.
-	# Un simple `durete` très élevée ne suffirait pas — la progression sans
-	# plafond (A.1) finirait par produire un outil capable de la percer.
-	if "incassable" in (mat.get("tags", []) as Array):
+	# Blocs INCASSABLES : aucun outil n'en vient à bout. Un simple `durete` très
+	# élevée ne suffirait pas — la progression sans plafond (A.1) finirait par
+	# produire un outil capable de la percer.
+	#
+	# DEUX RÈGLES, et la distinction compte (2026-08-02). Le tag protège une
+	# MATIÈRE (matériaux démoniaques) ; la seconde protège un LIEU. Depuis que
+	# la tour de donjon est bâtie en pierre taillée — un matériau de
+	# construction que le joueur fabrique et pose lui-même — l'incassabilité ne
+	# pouvait plus être portée par le matériau : la rendre incassable aurait
+	# rendu toute construction du joueur indestructible. C'est la STRUCTURE
+	# qu'il faut sceller (GDD 3.5 : « structure d'entrée scellée »), pas le
+	# granit taillé.
+	if "incassable" in (mat.get("tags", []) as Array) or WorldManager.is_sealed_structure(_target):
 		_bouncing = true
 		_progress = 0.0
 		return
@@ -2449,6 +2928,16 @@ func all_entries() -> Array[Dictionary]:
 		# `count` = blocs entiers (compat) ; `volume` = total fractionnaire (13.27).
 		entries.append({"kind": "material", "id": id,
 			"count": int(inventory.material_stacks.get(id, 0)), "volume": vol})
+	# ASSEMBLAGES (5.1) : un sort ou une attaque spéciale se lie à un slot de
+	# hotbar comme n'importe quel objet (choix de l'auteur, 2026-08-03). Seuls
+	# les assemblages NON VIDES sont proposés — lier un slot vide ne donnerait
+	# qu'une case morte dans la barre.
+	for skill_id: String in assemblies:
+		var slots: Array = assemblies[skill_id]
+		for slot in slots.size():
+			if (slots[slot] as Array).is_empty():
+				continue
+			entries.append({"kind": "assemblage", "skill": skill_id, "slot": slot})
 	return entries
 
 
@@ -2502,6 +2991,11 @@ func _binding_for(entry: Dictionary) -> Dictionary:
 			var uid := int((entry.get("object", {}) as Dictionary).get("uid", -1))
 			if uid >= 0:
 				return {"kind": "object", "uid": uid}
+		"assemblage":
+			# Liée par (compétence, slot) et non par contenu : réordonner les
+			# modules d'un assemblage ne doit pas le faire tomber de la barre.
+			return {"kind": "assemblage", "skill": String(entry.get("skill", "")),
+				"slot": int(entry.get("slot", -1))}
 	return {}
 
 
@@ -2521,6 +3015,15 @@ func _resolve_binding(binding: Dictionary) -> Dictionary:
 			if obj.is_empty():
 				return {}
 			return {"kind": "object", "object": obj}
+		"assemblage":
+			var skill_id := String(binding.get("skill", ""))
+			var slot := int(binding.get("slot", -1))
+			# Un assemblage VIDÉ depuis le menu, ou devenu hors slots après une
+			# perte de niveau, rend une entrée vide : la barre montre un trou
+			# plutôt qu'un sort qui ne partirait pas.
+			if assembly_at(skill_id, slot).is_empty():
+				return {}
+			return {"kind": "assemblage", "skill": skill_id, "slot": slot}
 	return {}
 
 
@@ -2661,15 +3164,18 @@ func _try_stock_stall() -> void:
 
 
 ## Ramasse la cache d'objets au sol la plus proche (A.10).
-func _try_pickup() -> void:
+## Retourne true si un butin a été ramassé — c'est ce qui permet à
+## `_try_interact` d'enchaîner sur le bloc puis sur le dialogue.
+func _try_pickup() -> bool:
 	var index := DropManager.nearest_cache(get_position_for_ai())
 	if index < 0:
-		return
+		return false
 	var count: int = (DropManager.caches[index]["objects"] as Array).size()
 	var recovered := DropManager.collect(index, inventory)
 	gold += recovered
 	EventBus.ui_notification.emit(tr("ui.toast.ramasse").format({
 		"objets": str(count), "or": str(recovered)}))
+	return true
 
 
 ## Crédite les bonus de potentiel d'un plat (A.9.1) :
@@ -3055,7 +3561,32 @@ func _refresh_state_modifiers() -> void:
 ## ne rend que 50 % de sa nutrition et n'accorde aucun bonus de potentiel —
 ## le rendement plein passera par la cuisine (7.7), pas encore implémentée.
 ## Le risque d'infection du cru (F.5) attend le système de statuts (F.4).
-func _try_eat() -> void:
+## Utilise l'objet en main : NOURRITURE ou LIVRE. Retourne true si quelque
+## chose a été consommé — l'appelant retombe alors sur la pose de bloc.
+##
+## Le livre est ici et pas ailleurs parce que « consommer ce qu'on tient » le
+## décrit exactement : il est à usage unique et disparaît à la lecture (5.1).
+## Jusqu'ici rien n'appelait `read_book` — les grimoires se ramassaient et ne
+## se lisaient nulle part.
+func _try_consume_held() -> bool:
+	var entry := _selected_entry()
+	if String(entry.get("kind", "")) == "object":
+		var obj: Dictionary = entry["object"]
+		if BookFactory.is_book(obj):
+			var result := read_book(obj)
+			if bool(result.get("reussite", false)):
+				EventBus.ui_notification.emit(tr("ui.toast.lecture_reussie").format({
+					"modules": str((result.get("modules", []) as Array).size())}))
+			else:
+				EventBus.ui_notification.emit("ui.toast.lecture_echouee")
+			return true
+	return _try_eat()
+
+
+## Mange le comestible en main. Retourne true si l'action a été TRAITÉE (y
+## compris un refus expliqué : « pas comestible » est une réponse, et le clic
+## ne doit pas retomber sur la pose de bloc après l'avoir affichée).
+func _try_eat() -> bool:
 	# Comestible EN MAIN : soit une instance (viande — modèle objet), soit un
 	# matériau empilé (blé, tubercule — récolte de bloc).
 	var entry := _selected_entry()
@@ -3065,19 +3596,25 @@ func _try_eat() -> void:
 	if instance.is_empty():
 		mat_name = _selected_material()
 		if mat_name == "":
-			return
+			# RIEN EN MAIN QUI SE MANGE : non traité. C'est le seul cas qui doit
+			# rendre false, pour que le clic droit retombe sur la pose de bloc.
+			return false
 		mat = GameData.stackable(mat_name)
 	if not (mat.get("nutrition", {}) as Dictionary).has("faim"):
+		# Un MATÉRIAU non comestible est un matériau à POSER : on laisse la main
+		# au clic droit plutôt que d'afficher un refus à chaque pose de bloc.
+		if instance.is_empty():
+			return false
 		EventBus.ui_notification.emit("ui.toast.pas_comestible")
-		return
+		return true
 	if hunger >= hunger_max:
 		EventBus.ui_notification.emit("ui.toast.rassasie")
-		return
+		return true
 	if instance.is_empty():
 		if not inventory.remove_material(mat_name, 1):
-			return
+			return false
 	elif not inventory.remove_object_units(instance, 1):
-		return
+		return false
 	var nutrition: Dictionary = mat["nutrition"]
 	var gain := float(nutrition["faim"])
 	if not bool(nutrition["cuit"]):
@@ -3090,6 +3627,7 @@ func _try_eat() -> void:
 		_credit_potential(mat.get("potentiel", {}), float(nutrition["faim"]))
 	EventBus.ui_notification.emit(tr("ui.toast.mange").format({
 		"item": tr(String(mat["name_key"])), "faim": str(int(round(gain)))}))
+	return true
 
 
 func _try_collect_stall() -> void:
@@ -3319,6 +3857,77 @@ func _cycle_grid_resolution() -> void:
 ## désigne un PNJ exactement comme il désignerait une proie. Avoir deux
 ## curseurs, l'un pour frapper l'autre pour parler, obligerait à deviner lequel
 ## est actif.
+## INTERACTION CONTEXTUELLE (touche E, 2026-08-03). Une seule touche pour tout
+## ce qui se trouve DANS LE MONDE, au lieu de trois (E parler, G ramasser,
+## Y encaisser) qu'il fallait connaître et distinguer à l'avance.
+##
+## L'ORDRE EST LA RÈGLE, du plus proche au plus lointain :
+##   1. un butin au sol à portée de ramassage — c'est ce qu'on vient chercher ;
+##   2. le bloc visé, s'il est un étal (encaisser) ou un poste de travail
+##      (ouvrir l'artisanat) ;
+##   3. la créature visée, si elle accepte de parler.
+##
+## Le butin passe devant le dialogue à dessein : un PNJ debout sur un coffre est
+## une situation banale, et ramasser est le geste qu'on répète le plus.
+func _try_interact() -> void:
+	if _try_pickup():
+		return
+	if _try_interact_block():
+		return
+	_try_talk()
+
+
+## Poste de travail visé : ouvre l'artisanat. Renvoie true si quelque chose a
+## été fait. Les huit stations (C.8) sont reconnues par leur CATÉGORIE, pas par
+## une liste d'ids — en ajouter une neuvième en données suffira.
+func _try_interact_block() -> bool:
+	if not _target_valid:
+		return false
+	var block_id := WorldManager.block_at_world(_target)
+	if block_id <= 0 or block_id >= GameData.material_by_runtime.size():
+		return false
+	var mat_name: String = GameData.material_by_runtime[block_id]
+	var mat: Dictionary = GameData.materials.get(mat_name, {})
+
+	# COFFRE (F.6) : tout prendre. Placé en tête des blocs interactifs — c'est
+	# le contenant le plus courant, et le geste qu'on répète.
+	if ContainerManager.is_chest(_target):
+		var use := ContainerManager.usage(_target)
+		var chest := ContainerManager.contents(_target)
+		var count: int = (chest["objects"] as Array).size() + (chest["materials"] as Dictionary).size()
+		if count == 0 and int(chest["gold"]) == 0:
+			EventBus.ui_notification.emit("ui.coffre.vide")
+			return true
+		var recovered := ContainerManager.take_all(_target, inventory)
+		gold += recovered
+		EventBus.ui_notification.emit(tr("ui.toast.coffre_pris").format({
+			"objets": str(count), "or_": str(recovered)}))
+		return true
+
+	# ÉTAL : encaisser la recette (7.1). Il n'est pas de catégorie « station »,
+	# c'est un meuble de commerce — d'où le test par id.
+	if mat_name == "etal_de_vente":
+		var amount := ShopManager.collect_gold(_target)
+		if amount > 0:
+			gold += amount
+			EventBus.ui_notification.emit(tr("ui.toast.etal_collecte").format({
+				"montant": str(amount)}))
+		else:
+			EventBus.ui_notification.emit("ui.toast.etal_vide")
+		return true
+
+	if String(mat.get("category", "")) != "station":
+		return false
+	var menu := get_node_or_null("/root/Main/GameMenu")
+	if menu == null:
+		return false
+	menu.call("_open")
+	menu.call("_select_tab", "craft")
+	EventBus.ui_notification.emit(tr("ui.toast.station_ouverte").format({
+		"station": tr(String(mat.get("name_key", mat_name)))}))
+	return true
+
+
 func _try_talk() -> void:
 	if _target_creature == null or not is_instance_valid(_target_creature):
 		return

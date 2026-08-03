@@ -1,0 +1,14 @@
+{
+  "id": "taille_tuf_volcanique_taillee",
+  "name_key": "transformation.taille_tuf_volcanique_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "tuf_volcanique_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "tuf_volcanique",
+    "amount": 1
+  }
+}

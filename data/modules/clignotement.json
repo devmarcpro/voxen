@@ -1,0 +1,18 @@
+{
+  "id": "clignotement",
+  "name_key": "module.clignotement.name",
+  "module_type": "effet",
+  "mana_cost_base": 12,
+  "power_base": 0,
+  "tags": [
+    "espace",
+    "mobilite"
+  ],
+  "params": {
+    "distance": 8
+  },
+  "grimoire_domains": [
+    "espace"
+  ],
+  "book_type": "grimoire"
+}

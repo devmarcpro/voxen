@@ -52,13 +52,27 @@ func _clear_all() -> void:
 ## Lance un projectile. `stats` vient de `WeaponStats.derive` (dés, pénétration,
 ## type de dégâts) ; `hardness` et `quality` sont ceux de l'arme, figés au
 ## départ comme pour une frappe de mêlée.
+## `options` (2026-08-03) : comportements propres aux PROJECTILES DE SORT, que
+## la fleche n'a pas. Absent = fleche, exactement comme avant.
+##   "gravity"  : false pour un projectile magique (une boule de feu ne retombe
+##                pas comme un trait) ;
+##   "range"    : portee en blocs — le projectile s'eteint au-dela, ce qui donne
+##                enfin un effet mesurable au modificateur de portee ;
+##   "homing"   : force de guidage (0 = aucun) ;
+##   "bounces"  : rebonds restants sur le decor ;
+##   "color"    : teinte du projectile ;
+##   "on_end"   : Callable(position, victime) appelee quand la course s'acheve,
+##                touchee ou non. C'est par elle que la CHARGE UTILE d'un
+##                declencheur part a l'impact — sans ce rappel, un declencheur
+##                n'a aucun moyen de savoir que son porteur est arrive.
 func launch(origin: Vector3, direction: Vector3, stats: Dictionary,
-		hardness: float, quality: float, shooter: Node) -> void:
+		hardness: float, quality: float, shooter: Node, options: Dictionary = {}) -> void:
 	var speed := float(stats.get("vitesse_projectile", 46.0))
 	_flying_dimension = WorldManager.active_dimension
-	var arrow := _build_arrow()
+	var arrow := _build_arrow(options.get("color", Color(0.55, 0.42, 0.25)))
 	_flying.append({
 		"position": origin,
+		"origin": origin,
 		"velocity": direction.normalized() * speed,
 		"initial_speed": speed,
 		"stats": stats,
@@ -67,6 +81,11 @@ func launch(origin: Vector3, direction: Vector3, stats: Dictionary,
 		"shooter": shooter,
 		"age": 0.0,
 		"node": arrow,
+		"gravity": bool(options.get("gravity", true)),
+		"range": float(options.get("range", 0.0)),
+		"homing": float(options.get("homing", 0.0)),
+		"bounces": int(options.get("bounces", 0)),
+		"on_end": options.get("on_end", Callable()),
 	})
 	if arrow != null:
 		arrow.global_position = origin
@@ -82,8 +101,16 @@ func _process(delta: float) -> void:
 	for shot: Dictionary in _flying:
 		if _advance(shot, delta):
 			still_flying.append(shot)
-		elif shot["node"] != null:
+			continue
+		if shot["node"] != null:
 			(shot["node"] as Node3D).queue_free()
+		# FIN DE COURSE : c'est ici, et seulement ici, que la charge utile d'un
+		# declencheur part. Appelee que le projectile ait touche ou expire — un
+		# sort qui rate doit quand meme declencher, sinon le declencheur devient
+		# un pari sur la precision plutot qu'un choix d'assemblage.
+		var callback: Callable = shot.get("on_end", Callable())
+		if callback.is_valid():
+			callback.call(shot["position"] as Vector3, shot.get("last_victim"))
 	_flying = still_flying
 
 
@@ -95,7 +122,22 @@ func _advance(shot: Dictionary, delta: float) -> bool:
 		return false
 	var from: Vector3 = shot["position"]
 	var velocity: Vector3 = shot["velocity"]
-	velocity.y -= GRAVITY * delta
+	if bool(shot.get("gravity", true)):
+		velocity.y -= GRAVITY * delta
+	# PORTEE (sorts) : le projectile s'eteint au-dela. C'est ce qui donne enfin
+	# un effet mesurable au modificateur de portee, jusqu'ici decoratif.
+	var reach := float(shot.get("range", 0.0))
+	if reach > 0.0 and from.distance_to(shot.get("origin", from) as Vector3) > reach:
+		return false
+	# GUIDAGE : inflechit la vitesse vers la creature la plus proche, sans
+	# teleporter le projectile dessus — un projectile guide doit se VOIR virer,
+	# sinon le modificateur ne se distingue pas d'une visee parfaite.
+	var homing := float(shot.get("homing", 0.0))
+	if homing > 0.0:
+		var target := _nearest_creature(from, 40.0)
+		if target != null:
+			var wanted: Vector3 = (target.logical_position - from).normalized() * velocity.length()
+			velocity = velocity.lerp(wanted, clampf(homing / 100.0 * delta * 6.0, 0.0, 1.0))
 	var to := from + velocity * delta
 	shot["velocity"] = velocity
 	if velocity.length() < MIN_SPEED:
@@ -142,9 +184,28 @@ func _advance(shot: Dictionary, delta: float) -> bool:
 		# vitesse la frame entière fait moins d'un mètre, et une flèche plantée
 		# à dix centimètres près ne se discute pas.
 		if victim != null and best_t < 1.0:
+			shot["last_victim"] = victim
 			_note_impact(shot, victim, best_hit)
+			return false
+		# REBOND (sorts) : au lieu de s'arreter, le projectile repart. La normale
+		# exacte du bloc touche n'est pas calculee — on inverse la composante
+		# dominante de la vitesse, ce qui suffit a un ricochet lisible et ne
+		# coute qu'une comparaison.
+		var bounces := int(shot.get("bounces", 0))
+		if bounces > 0:
+			shot["bounces"] = bounces - 1
+			var v: Vector3 = shot["velocity"]
+			var axis := 0
+			if absf(v.y) > absf(v[axis]):
+				axis = 1
+			if absf(v.z) > absf(v[axis]):
+				axis = 2
+			v[axis] = -v[axis]
+			shot["velocity"] = v * 0.85
+			return true
 		return false
 	if victim != null:
+		shot["last_victim"] = victim
 		_note_impact(shot, victim, best_hit)
 		return false
 
@@ -156,6 +217,22 @@ func _advance(shot: Dictionary, delta: float) -> bool:
 		if velocity.length_squared() > 0.0001:
 			node.look_at(to + velocity, Vector3.UP)
 	return true
+
+
+## Creature vivante la plus proche dans `radius`, ou null. Sert au guidage.
+func _nearest_creature(from: Vector3, radius: float) -> Node:
+	var best: Node = null
+	var best_dist := radius * radius
+	for creature in CreatureManager.creatures:
+		if not is_instance_valid(creature) or creature.is_dead():
+			continue
+		if creature.dimension != WorldManager.active_dimension:
+			continue
+		var d: float = creature.logical_position.distance_squared_to(from)
+		if d < best_dist:
+			best_dist = d
+			best = creature
+	return best
 
 
 ## CONSTATE un impact. Aucun dégât ici — le tick est la seule autorité, comme
@@ -212,7 +289,7 @@ func _on_tick(_tick_index: int) -> void:
 ## Flèche visible : une aiguille, pas un modèle. Elle passe trop vite pour qu'on
 ## en voie autre chose que la direction — et il en vole potentiellement plusieurs
 ## par seconde, donc elle doit être bon marché.
-func _build_arrow() -> Node3D:
+func _build_arrow(color: Color = Color(0.55, 0.42, 0.25)) -> Node3D:
 	var scene := get_tree().current_scene
 	if scene == null:
 		return null
@@ -220,7 +297,7 @@ func _build_arrow() -> Node3D:
 	var shaft := BoxMesh.new()
 	shaft.size = Vector3(0.03, 0.03, 0.7)
 	arrow.mesh = shaft
-	arrow.material_override = PlayerBody.tinted_material(Color(0.55, 0.42, 0.25))
+	arrow.material_override = PlayerBody.tinted_material(color)
 	scene.add_child(arrow)
 	return arrow
 

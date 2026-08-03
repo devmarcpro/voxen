@@ -1,0 +1,22 @@
+{
+  "id": "drain_vital",
+  "name_key": "module.drain_vital.name",
+  "module_type": "effet",
+  "mana_cost_base": 9,
+  "power_base": 14,
+  "tags": [
+    "corruption",
+    "projectile",
+    "vol_de_vie"
+  ],
+  "params": {
+    "vitesse": 16,
+    "portee": 18,
+    "vol": 40
+  },
+  "grimoire_domains": [
+    "corruption"
+  ],
+  "book_type": "grimoire",
+  "degats_des": "2d6"
+}

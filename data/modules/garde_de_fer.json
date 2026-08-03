@@ -1,0 +1,19 @@
+{
+  "id": "garde_de_fer",
+  "name_key": "module.garde_de_fer.name",
+  "module_type": "effet",
+  "mana_cost_base": 8,
+  "power_base": 14,
+  "tags": [
+    "arme",
+    "protection"
+  ],
+  "params": {
+    "duree": 14,
+    "reduction": 35
+  },
+  "grimoire_domains": [
+    "postures"
+  ],
+  "book_type": "manuel"
+}

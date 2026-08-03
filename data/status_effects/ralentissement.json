@@ -1,0 +1,14 @@
+{
+  "id": "ralentissement",
+  "name_key": "status.ralentissement.name",
+  "duration_ticks": 100,
+  "stacks": false,
+  "tags": [
+    "entrave"
+  ],
+  "modifiers": {
+    "vitesse_deplacement": {
+      "mult": 0.7
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "beni",
+  "name_key": "status.beni.name",
+  "duration_ticks": 300,
+  "stacks": false,
+  "tags": [
+    "benediction"
+  ],
+  "modifiers": {
+    "perception": {
+      "add": 1.0
+    },
+    "charisme": {
+      "add": 1.0
+    }
+  }
+}

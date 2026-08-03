@@ -1,0 +1,12 @@
+{
+  "id": "brulure",
+  "name_key": "status.brulure.name",
+  "duration_ticks": 30,
+  "stacks": true,
+  "tags": [
+    "feu"
+  ],
+  "periodic": {
+    "degats_des": "1d4"
+  }
+}

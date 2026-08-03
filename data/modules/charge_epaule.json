@@ -1,0 +1,21 @@
+{
+  "id": "charge_epaule",
+  "name_key": "module.charge_epaule.name",
+  "module_type": "effet",
+  "mana_cost_base": 9,
+  "power_base": 13,
+  "tags": [
+    "arme",
+    "mobilite",
+    "recul"
+  ],
+  "params": {
+    "distance": 6,
+    "recul": 3
+  },
+  "grimoire_domains": [
+    "techniques"
+  ],
+  "book_type": "manuel",
+  "degats_des": "2d5"
+}

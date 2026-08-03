@@ -1,0 +1,14 @@
+{
+  "id": "taille_gneiss_taillee",
+  "name_key": "transformation.taille_gneiss_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "gneiss_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "gneiss",
+    "amount": 1
+  }
+}

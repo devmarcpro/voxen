@@ -1,0 +1,14 @@
+{
+  "id": "taille_kimberlite_taillee",
+  "name_key": "transformation.taille_kimberlite_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "kimberlite_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "kimberlite",
+    "amount": 1
+  }
+}

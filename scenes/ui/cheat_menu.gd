@@ -118,6 +118,7 @@ func _build_menu() -> void:
 	_build_teleport_rows()
 	_build_item_rows()
 	_build_creature_rows()
+	_build_module_rows()
 	_build_creative_rows()
 
 
@@ -310,6 +311,198 @@ func _build_item_rows() -> void:
 		_player.collection.entries.clear()
 		_set_status("Collection vidée.")))
 	_list.add_child(row)
+
+
+# --- Modules, livres et assemblages (GDD 5.1) -------------------------------
+#
+# POURQUOI CETTE SECTION EXISTE. Un module ne s'obtient QUE par la lecture d'un
+# livre, et un livre ne se trouve QU'EN DONJON : tester un assemblage demandait
+# donc de descendre plusieurs étages, de trouver une cache, de réussir un jet de
+# Lecture, et de recommencer pour chaque module manquant. C'est intenable pour
+# régler l'équilibrage d'un système dont tout l'intérêt est la combinatoire.
+
+## Difficulté des livres fabriqués ici. Trois crans qui couvrent la plage utile :
+## un livre trivial (lisible sans compétence), un livre moyen, et un livre que
+## seul un lecteur chevronné ouvre — c'est-à-dire les trois cas que le jet A.7
+## doit distinguer.
+const CHEAT_BOOK_POWERS := {"facile": 0.0, "moyen": 0.5, "redoutable": 1.0}
+
+
+func _build_module_rows() -> void:
+	_add_section("Modules — tout apprendre, oublier, monter en niveau")
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP)
+	row.add_child(_compact("Tout apprendre", func() -> void:
+		for module_id: String in GameData.modules:
+			if not _player.known_modules.has(module_id):
+				_player.known_modules[module_id] = 0
+		_set_status("%d module(s) connus." % (_player.known_modules as Dictionary).size())))
+	row.add_child(_compact("Tout oublier", func() -> void:
+		_player.known_modules.clear()
+		# Les assemblages partent avec : garder un slot qui référence un module
+		# oublié afficherait un sort que le joueur ne peut plus ni lancer ni
+		# reconstituer.
+		_player.assemblies.clear()
+		_set_status("Modules et assemblages effacés.")))
+	row.add_child(_compact("+10 niveaux", func() -> void:
+		for module_id: String in (_player.known_modules as Dictionary).keys():
+			_player.known_modules[module_id] = int(_player.known_modules[module_id]) + 10
+		_set_status("+10 niveaux sur %d module(s)." % (_player.known_modules as Dictionary).size())))
+	row.add_child(_compact("Mana infinie", func() -> void:
+		_player.mana.current = _player.mana.maximum
+		_set_status("Mana au maximum (%d)." % int(_player.mana.maximum))))
+	_list.add_child(row)
+
+	# GRILLE COMPLÈTE. Le libellé porte le RÔLE et le coût : c'est ce qui permet
+	# de composer un assemblage sans quitter le menu pour aller lire les fiches.
+	# Un clic apprend le module, ou le monte d'un niveau s'il est déjà connu.
+	var grid := GridContainer.new()
+	grid.columns = 4
+	var ids: Array = GameData.modules.keys()
+	ids.sort()
+	for module_id: String in ids:
+		var module: Dictionary = GameData.modules[module_id]
+		# `: String` explicite : `Dictionary.get` rend un Variant, dont
+		# l'inférence est traitée comme une erreur dans ce projet.
+		var role: String = {"effet": "E", "modificateur": "M", "declencheur": "D"}.get(
+				String(module.get("module_type", "effet")), "?")
+		var label := "[%s] %s · %d" % [role, tr(String(module.get("name_key", module_id))),
+				int(module.get("mana_cost_base", 0))]
+		grid.add_child(_compact(label, _learn_module.bind(module_id)))
+	_list.add_child(grid)
+
+	_add_section("Livres — grimoires et manuels de combat")
+	var books := HBoxContainer.new()
+	books.add_theme_constant_override("separation", UITheme.GAP)
+	for kind: String in ["grimoire", "manuel"]:
+		for tier: String in ["facile", "moyen", "redoutable"]:
+			books.add_child(_compact("%s %s" % [
+					"Grimoire" if kind == "grimoire" else "Manuel", tier],
+					_give_book.bind(kind, float(CHEAT_BOOK_POWERS[tier]))))
+	_list.add_child(books)
+
+	var books2 := HBoxContainer.new()
+	books2.add_theme_constant_override("separation", UITheme.GAP)
+	books2.add_child(_compact("Lire tout", _read_all_books))
+	books2.add_child(_compact("Lecture niv. 50", func() -> void:
+		while _player.skills.level("lecture") < 50:
+			_player.skills.gain_xp("lecture", 20000.0)
+		_set_status("Lecture au niveau %d." % _player.skills.level("lecture"))))
+	books2.add_child(_compact("Lecture niv. 0", func() -> void:
+		# Remettre la compétence à zéro n'est pas prévu par PlayerSkills (la
+		# progression ne redescend jamais) : on réécrit l'entrée directement,
+		# ce qui est précisément le privilège d'un menu de triche.
+		if (_player.skills.skills as Dictionary).has("lecture"):
+			_player.skills.skills["lecture"]["level"] = 0
+			_player.skills.skills["lecture"]["xp"] = 0.0
+		_set_status("Lecture remise à zéro — les échecs redeviennent probables.")))
+	books2.add_child(_compact("Vider les livres", func() -> void:
+		var removed := 0
+		for obj: Dictionary in (_player.inventory.objects as Array).duplicate():
+			if BookFactory.is_book(obj):
+				_player.inventory.remove_object_units(obj, int(obj.get("count", 1)))
+				removed += 1
+		_set_status("%d livre(s) retiré(s)." % removed)))
+	_list.add_child(books2)
+
+	_add_section("Assemblages — slots et sorts tout faits")
+	var asm := HBoxContainer.new()
+	asm.add_theme_constant_override("separation", UITheme.GAP)
+	asm.add_child(_compact("Slots max (arme tenue)", func() -> void:
+		var skill_id: String = String(_player.weapon_skill_id())
+		if skill_id.is_empty():
+			_set_status("Aucune arme équipée : les slots dépendent de sa compétence.")
+			return
+		# 125 = le niveau où les deux formules du GDD 5.1 plafonnent
+		# (`2 + N/20` à 6 et `2 + N/25` à 5).
+		while _player.skills.level(skill_id) < 125:
+			_player.skills.gain_xp(skill_id, 200000.0)
+		_set_status("%s niveau %d → %d slots de %d modules." % [
+				skill_id, _player.skills.level(skill_id),
+				_player.assembly_slot_count(skill_id), _player.assembly_module_count(skill_id)])))
+	asm.add_child(_compact("Sorts d'exemple", _fill_example_assemblies))
+	asm.add_child(_compact("Vider les assemblages", func() -> void:
+		_player.assemblies.clear()
+		_set_status("Assemblages effacés.")))
+	_list.add_child(asm)
+
+
+func _learn_module(module_id: String) -> void:
+	var known: Dictionary = _player.known_modules
+	if known.has(module_id):
+		known[module_id] = int(known[module_id]) + 1
+		_set_status("%s : niveau %d." % [
+				tr(String((GameData.modules[module_id] as Dictionary)["name_key"])),
+				int(known[module_id])])
+	else:
+		known[module_id] = 0
+		_set_status("%s appris." % tr(String(
+				(GameData.modules[module_id] as Dictionary)["name_key"])))
+
+
+func _give_book(book_type: String, power: float) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var book: Dictionary = BookFactory.create(book_type, power, rng)
+	if book.is_empty():
+		_set_status("Aucun module de ce type au catalogue.")
+		return
+	_player.inventory.add_object(book)
+	_set_status("%s (difficulté %d, %d module(s), domaine « %s »)." % [
+			tr(String(book["name_key"])), int(book["difficulty"]),
+			(book["modules"] as Array).size(), String(book["domain"])])
+
+
+## Lit TOUS les livres portés, et rapporte le bilan. C'est le seul moyen de
+## voir la distribution réussite/échec du jet A.7 sans passer une soirée à
+## ouvrir des grimoires un par un.
+func _read_all_books() -> void:
+	var reussites := 0
+	var echecs := 0
+	var gagnes := 0
+	for obj: Dictionary in (_player.inventory.objects as Array).duplicate():
+		if not BookFactory.is_book(obj):
+			continue
+		var result: Dictionary = _player.read_book(obj)
+		if bool(result.get("reussite", false)):
+			reussites += 1
+			gagnes += (result.get("modules", []) as Array).size()
+		else:
+			echecs += 1
+	if reussites + echecs == 0:
+		_set_status("Aucun livre dans l'inventaire.")
+		return
+	_set_status("%d réussite(s), %d échec(s) — %d module(s) obtenus." % [
+			reussites, echecs, gagnes])
+
+
+## Range trois assemblages qui EXERCENT chacun une mécanique différente : la
+## volée, le déclencheur récursif, et la modification d'un effet. Ils servent à
+## voir le système marcher sans avoir à le composer soi-même — et à vérifier
+## d'un coup d'œil que l'ordre des slots change bien le résultat.
+func _fill_example_assemblies() -> void:
+	var skill_id: String = String(_player.weapon_skill_id())
+	if skill_id.is_empty():
+		_set_status("Aucune arme équipée : un assemblage appartient à un type d'arme.")
+		return
+	var exemples := [
+		["triple_lancer", "boule_de_feu", "boule_de_feu", "boule_de_feu"],
+		["boule_de_feu", "declencheur_impact", "double_lancer", "eclat_de_glace", "eclat_de_glace"],
+		["portee_accrue", "guidage", "arc_electrique"],
+		["carapace_de_roche"],
+	]
+	for liste: Array in exemples:
+		for module_id: String in liste:
+			if not (_player.known_modules as Dictionary).has(module_id):
+				_player.known_modules[module_id] = 0
+	var posed := 0
+	for index in exemples.size():
+		if index >= _player.assembly_slot_count(skill_id):
+			break
+		if _player.set_assembly(skill_id, index, exemples[index]):
+			posed += 1
+	_set_status("%d sort(s) rangé(s) sur « %s » (slots de %d modules)." % [
+			posed, skill_id, _player.assembly_module_count(skill_id)])
 
 
 # --- Créatures --------------------------------------------------------------

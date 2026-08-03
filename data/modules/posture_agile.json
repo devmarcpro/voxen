@@ -1,0 +1,19 @@
+{
+  "id": "posture_agile",
+  "name_key": "module.posture_agile.name",
+  "module_type": "effet",
+  "mana_cost_base": 6,
+  "power_base": 10,
+  "tags": [
+    "arme",
+    "mobilite"
+  ],
+  "params": {
+    "duree": 14,
+    "vitesse": 25
+  },
+  "grimoire_domains": [
+    "postures"
+  ],
+  "book_type": "manuel"
+}

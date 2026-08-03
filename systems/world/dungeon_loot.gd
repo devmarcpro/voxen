@@ -37,6 +37,13 @@ const LOOT_ITEMS := [
 ## serait mécanique ; une sur trois laisse des pièces vides, donc de la
 ## variation, donc l'envie d'ouvrir la suivante.
 const CACHE_ROOM_RATIO := 0.34
+## Probabilité qu'une cache d'étage contienne un LIVRE (grimoire ou manuel).
+## Les donjons en sont la SOURCE PRINCIPALE (GDD 3.5/5.1) et les modules ne
+## s'obtiennent que par eux — trop bas, la progression magique se bloque ; trop
+## haut, les livres cessent d'être un événement.
+const CACHE_BOOK_CHANCE := 0.45
+## Part des culs-de-sac portant une cache.
+const DEAD_END_RATIO := 0.5
 ## Or d'une cache au sol : plancher + bonus par étage.
 const CACHE_GOLD_BASE := 8
 const CACHE_GOLD_PER_DEPTH := 6
@@ -90,13 +97,20 @@ static func _make_item(rng: RandomNumberGenerator, depth: int) -> Dictionary:
 ## Caches au sol de l'étage : [{ "position": Vector3, "objects": Array, "gold": int }].
 ## `rooms` vient de DungeonGenerator.generate_floor(). La salle 0 (l'entrée) est
 ## exclue : trouver le butin avant d'avoir marché ne récompense rien.
-static func floor_caches(rooms: Array, depth: int, seed_value: int) -> Array:
+## `floor_data` et non plus `rooms` (2026-08-02) : le butin d'un labyrinthe se
+## pose dans les salles ET dans les CULS-DE-SAC, que seule la grille connaît.
+static func floor_caches(floor_data: Dictionary, depth: int, seed_value: int) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var out: Array = []
+	var rooms: Array = floor_data.get("rooms", [])
 	for i in rooms.size():
-		if i == 0:
-			continue
+		# TOUTES les salles sont candidates depuis le 2026-08-02. La salle 0
+		# était exclue parce qu'elle était la salle d'ENTRÉE du graphe, où poser
+		# du butin aurait été le donner. Dans un labyrinthe il n'y a plus de
+		# salle d'entrée — le joueur arrive sur l'escalier de remontée, pas dans
+		# une salle — et garder l'exclusion privait l'étage d'un tiers de son
+		# butin sans raison.
 		if rng.randf() > CACHE_ROOM_RATIO:
 			continue
 		var room: Dictionary = rooms[i]
@@ -112,11 +126,42 @@ static func floor_caches(rooms: Array, depth: int, seed_value: int) -> Array:
 			var obj := _make_item(rng, depth)
 			if not obj.is_empty():
 				objects.append(obj)
+		# LIVRE (5.1) : sa difficulté suit la profondeur, donc sa richesse en
+		# modules — descendre est ce qui donne accès aux sorts puissants.
+		if rng.randf() < CACHE_BOOK_CHANCE:
+			var book := BookFactory.create(
+					"grimoire" if rng.randf() < 0.5 else "manuel",
+					clampf(float(depth) / 6.0, 0.0, 1.0), rng)
+			if not book.is_empty():
+				objects.append(book)
 		var gold := CACHE_GOLD_BASE + CACHE_GOLD_PER_DEPTH * depth + rng.randi_range(0, 12)
 		out.append({
 			"position": Vector3(px + 0.5, float(origin.y) + 1.2, pz + 0.5),
 			"objects": objects,
 			"gold": gold,
+		})
+
+	# CULS-DE-SAC : la moitié d'entre eux porte une petite cache. C'est ce qui
+	# paie l'exploration d'une impasse — sinon le joueur apprend en trois
+	# minutes à ne suivre que les couloirs qui mènent quelque part, et le
+	# tressage du labyrinthe ne sert plus à rien.
+	for spot: Vector3i in (floor_data.get("dead_ends", []) as Array):
+		if rng.randf() > DEAD_END_RATIO:
+			continue
+		var objects: Array = []
+		var obj := _make_item(rng, depth)
+		if not obj.is_empty():
+			objects.append(obj)
+		if rng.randf() < CACHE_BOOK_CHANCE * 0.5:
+			var book := BookFactory.create(
+					"grimoire" if rng.randf() < 0.5 else "manuel",
+					clampf(float(depth) / 6.0, 0.0, 1.0), rng)
+			if not book.is_empty():
+				objects.append(book)
+		out.append({
+			"position": Vector3(spot.x + 0.5, 1.2, spot.z + 0.5),
+			"objects": objects,
+			"gold": CACHE_GOLD_BASE / 2 + rng.randi_range(0, 10),
 		})
 	return out
 
@@ -133,6 +178,14 @@ static func boss_chest(depth: int, seed_value: int) -> Dictionary:
 		var obj := _make_item(rng, depth + 1)
 		if not obj.is_empty():
 			objects.append(obj)
+	# Le coffre de boss porte TOUJOURS un livre, et le plus difficile du donjon.
+	# C'est la récompense du fond : le GDD réserve aux salles de boss ce qui ne
+	# se trouve nulle part ailleurs (3.1/3.5).
+	var prize := BookFactory.create(
+			"grimoire" if rng.randf() < 0.5 else "manuel",
+			clampf(float(depth + 1) / 6.0, 0.2, 1.0), rng)
+	if not prize.is_empty():
+		objects.append(prize)
 	return {
 		"objects": objects,
 		"gold": CHEST_GOLD_BASE + CHEST_GOLD_PER_DEPTH * depth + rng.randi_range(0, 60),

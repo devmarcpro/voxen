@@ -1,6 +1,6 @@
 {
-  "id": "taille_pierre",
-  "name_key": "transformation.taille_pierre.name",
+  "id": "taille_pierre_taillee",
+  "name_key": "transformation.taille_pierre_taillee.name",
   "station": "tailleur",
   "skill": "minage",
   "output": {
@@ -8,7 +8,7 @@
     "amount": 1
   },
   "input": {
-    "category": "roche",
+    "material": "pierre",
     "amount": 1
   }
 }

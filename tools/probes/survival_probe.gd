@@ -65,9 +65,16 @@ func run() -> void:
 	player.fatigue = 0.0
 	player.hunger = 100.0
 	player.health = player.health_max
-	var force_epuise: int = player.effective_stat("force")
+	# LES TICKS D'ABORD, LA LECTURE ENSUITE (corrigé le 2026-08-03). La stat
+	# était lue AVANT toute exécution de tick : or les jauges ne se traduisent en
+	# modificateurs que dans `_hunger_tick_effects`, appelé au tick (E.4 — « les
+	# jauges viennent de bouger : reporter leur effet avant que quoi que ce soit
+	# ne lise une stat CE TICK »). La sonde lisait donc la valeur d'AVANT
+	# l'épuisement et concluait à l'absence de malus. Le comportement du jeu est
+	# correct ; c'était la mesure qui était prise trop tôt.
 	for i in 1000:
 		player._on_tick(0)
+	var force_epuise: int = player.effective_stat("force")
 	print("[SURVIE] épuisé : Force=%d (base %d, -10%%) santé=%.0f/%.0f (aucun dégât attendu)" % [
 			force_epuise, int(player.stats["force"]), player.health, player.health_max])
 	ok = ok and force_epuise < int(player.stats["force"]) and player.health >= player.health_max - 0.01

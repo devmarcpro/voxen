@@ -1,0 +1,14 @@
+{
+  "id": "regeneration",
+  "name_key": "status.regeneration.name",
+  "duration_ticks": 120,
+  "stacks": false,
+  "tags": [
+    "soin",
+    "vie"
+  ],
+  "periodic": {
+    "degats_des": "1d4",
+    "soin": true
+  }
+}

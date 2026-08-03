@@ -1,0 +1,38 @@
+{
+  "id": "granit_noir_taillee",
+  "name_key": "material.granit_noir_taillee.name",
+  "category": "construction",
+  "stats": {
+    "durete": 35,
+    "densite": 18,
+    "valeur_base": 12,
+    "conductivite_mana": 10,
+    "flammabilite": 0,
+    "isolation": 25,
+    "conductivite_electrique": 8,
+    "flottabilite": 1,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 2,
+    "friction": 50
+  },
+  "tags": [
+    "pierre_taillee"
+  ],
+  "color": "#58565B",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 7212,
+    "amplitude": 0.05,
+    "scale": 3
+  },
+  "texture_style": "bricks",
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "none"
+  }
+}

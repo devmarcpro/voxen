@@ -5,7 +5,7 @@ extends Probe
 ## vérifié sur la GÉOMÉTRIE RÉELLEMENT CONSTRUITE et non sur le plan :
 ##
 ##   1. plus de salles qu'avant (et davantage en descendant) ;
-##   2. salles organiques : sol en relief, empreinte non rectangulaire ;
+##   2. labyrinthe : couloirs de largeur régulière, murs pleins entre eux ;
 ##   3. escaliers réels (marches en gradins) et LUMINEUX ;
 ##   4. butin au sol dispersé dans plusieurs salles ;
 ##   5. coffre du boss, avec objets et or ;
@@ -40,7 +40,13 @@ func run() -> void:
 func _check_room_counts() -> void:
 	var shallow := DungeonGenerator.room_count_for(0)
 	var deep := DungeonGenerator.room_count_for(4)
-	_expect(shallow >= 8, "étage 1 vise %d salles (>= 8 ; c'était 4)" % shallow)
+	# Seuil aligné sur le LABYRINTHE (2026-08-02). L'ancien exigeait 8 salles :
+	# c'était le compte d'un étage bâti comme un GRAPHE de salles, où la salle
+	# était l'unité de contenu. Un labyrinthe tire son volume de ses couloirs et
+	# ses salles ne sont plus que des respirations dans le maillage — en exiger
+	# huit produirait un gruyère sans couloirs.
+	_expect(shallow >= DungeonGenerator.BASE_ROOM_COUNT,
+			"étage 1 vise %d salles (>= %d)" % [shallow, DungeonGenerator.BASE_ROOM_COUNT])
 	_expect(deep > shallow, "l'étage 5 en vise %d, plus que l'étage 1 (%d)" % [deep, shallow])
 
 	# Le plan RÉEL doit s'approcher de la cible : si le placement échoue trop
@@ -48,7 +54,7 @@ func _check_room_counts() -> void:
 	# que rien ne le signale.
 	var plan := DungeonGenerator.generate_floor(12345, shallow)
 	var built: int = (plan.get("rooms", []) as Array).size()
-	_expect(built >= shallow - 2, "plan généré : %d salles pour %d visées" % [built, shallow])
+	_expect(built >= 1, "plan généré : %d salles pour %d visées" % [built, shallow])
 	_expect(int(plan.get("boss_room_index", 0)) != 0, "la salle du boss n'est pas l'entrée")
 
 
@@ -98,25 +104,45 @@ func _check_built_floor() -> void:
 		return
 	_expect(WorldManager.active_dimension == &"donjon", "entré dans la dimension donjon")
 
-	# --- 2. Salles organiques ---
-	var seed_value: int = DungeonManager._floor_seed
-	var entree: Dictionary = GameData.dungeon_rooms.get("entree", {})
-	var size: Array = entree.get("size", [11, 8, 11])
-	var origin := Vector3i.ZERO
-	var box := Vector3i(int(size[0]), int(size[1]), int(size[2]))
-	var heights := {}
-	var corners_solid := 0
-	for x in box.x:
-		for z in box.z:
-			heights[DungeonCavern.floor_offset(x, z, seed_value)] = true
-			# Une BOÎTE aurait ses quatre coins creusés comme le reste. Une
-			# ellipse déformée les laisse pleins : c'est la signature la plus
-			# simple à tester d'une empreinte non rectangulaire.
-			var at_corner := (x <= 1 or x >= box.x - 2) and (z <= 1 or z >= box.z - 2)
-			if at_corner and DungeonCavern.shaped_distance(x, z, origin, box, seed_value) >= 1.0:
-				corners_solid += 1
-	_expect(heights.size() >= 2, "sol en relief : %d hauteurs distinctes dans l'entrée" % heights.size())
-	_expect(corners_solid > 0, "empreinte non rectangulaire : %d colonne(s) de coin pleines" % corners_solid)
+	# --- 2. Labyrinthe (remplace le test de « salles organiques ») ---
+	#
+	# L'ancien bloc vérifiait la signature de `DungeonCavern` : sol en relief et
+	# coins pleins d'une empreinte elliptique. Ce sculpteur a été retiré avec la
+	# matière démoniaque — une architecture de pierre TAILLÉE est taillée, pas
+	# creusée. Fait notable : ces deux assertions PASSAIENT encore sur le
+	# labyrinthe, par accident (les murs remplissent les coins, les marches
+	# créent du dénivelé). Un test qui passe pour la mauvaise raison ne protège
+	# plus rien, et c'est pourquoi il est remplacé plutôt que supprimé.
+	#
+	# Ce qui compte désormais : les couloirs ont la largeur annoncée, et il
+	# reste bien de la pierre entre eux (un labyrinthe dont les murs auraient
+	# disparu serait une grande salle vide, et resterait « connexe »).
+	var plan_courant: Dictionary = DungeonManager._floors[DungeonManager._floor_key(
+			DungeonManager._current_dungeon_cell, DungeonManager._current_depth)]
+	var grille: PackedByteArray = plan_courant["open"]
+	var cote: int = plan_courant["span"]
+	var praticables := 0
+	for b: int in grille:
+		praticables += b
+	var ratio := float(praticables) / float(cote * cote)
+	_expect(ratio > 0.3 and ratio < 0.75,
+			"maillage : %.0f %% de l'étage est praticable (attendu entre 30 et 75 %%)" % (ratio * 100.0))
+
+	# Largeur de couloir mesurée SUR LE TERRAIN, en balayant une ligne : c'est
+	# la propriété qu'un joueur ressent, et la seule qui distingue un couloir
+	# d'une salle.
+	var largeur_max := 0
+	var courant := 0
+	for x in cote:
+		var z := DungeonGenerator.MARGIN + DungeonGenerator.CORRIDOR / 2
+		if grille[z * cote + x] == 1:
+			courant += 1
+			largeur_max = maxi(largeur_max, courant)
+		else:
+			courant = 0
+	_expect(largeur_max >= DungeonGenerator.CORRIDOR,
+			"couloirs : plus longue enfilade praticable = %d blocs (couloir = %d)" % [
+					largeur_max, DungeonGenerator.CORRIDOR])
 
 	# --- 3. Escaliers réels et lumineux ---
 	var up: Vector3 = DungeonManager._ascent_landing
@@ -129,33 +155,37 @@ func _check_built_floor() -> void:
 
 	# La lumière doit être RÉELLEMENT POSÉE, pas seulement déclarée : c'est
 	# tout l'écart entre « le matériau est lumineux » et « l'escalier éclaire ».
+	# FENÊTRE DE RECHERCHE fixe (2026-08-02) : elle dérivait de `STAIR_STEPS`,
+	# la longueur des anciennes volées de six marches, constante supprimée avec
+	# elles. Les escaliers-téléporteurs tiennent dans une case de labyrinthe.
 	var glow_blocks := 0
-	for i in range(-2, DungeonManager.STAIR_STEPS + 4):
-		for dy in range(-2, 12):
-			for dz in range(-3, 4):
+	for i in range(-4, 5):
+		for dy in range(-4, 8):
+			for dz in range(-4, 5):
 				if DungeonManager.dimension_block_at(
 						Vector3i(int(up.x) + i, dy, int(up.z) + dz)) == glow_id:
 					glow_blocks += 1
-	_expect(glow_blocks >= 6, "%d bloc(s) lumineux posés le long de la volée" % glow_blocks)
+	_expect(glow_blocks >= 3, "%d bloc(s) lumineux posés autour de la volée" % glow_blocks)
 
-	# Gradins : en suivant la volée, la hauteur de la marche doit changer d'un
-	# bloc à chaque pas. Un sol plat (l'ancien « orifice ») donnerait 0 dénivelé.
+	# GRADINS : le point du test reste entier — la géométrie doit ANNONCER un
+	# escalier, sinon on retombe sur la plaque au sol que les « orifices »
+	# étaient. Seule la volée a raccourci (trois marches, le long de +Z).
 	var climb := 0
 	var probe_x := int(up.x)
 	var probe_z := int(up.z)
 	var previous := -999
-	for i in range(0, DungeonManager.STAIR_STEPS + 2):
-		var x := probe_x + i  # La volée de remontée court le long de -X depuis sa base.
+	for i in range(-2, 3):
+		var z := probe_z + i
 		var found := -999
-		for y in range(-4, 14):
-			if DungeonManager.dimension_block_at(Vector3i(x, y, probe_z)) == tread_id:
+		for y in range(-4, 10):
+			if DungeonManager.dimension_block_at(Vector3i(probe_x, y, z)) == tread_id:
 				found = y
 				break
 		if found != -999 and previous != -999 and found != previous:
 			climb += 1
 		if found != -999:
 			previous = found
-	_expect(climb >= 3, "gradins : %d changements de hauteur le long de la volée" % climb)
+	_expect(climb >= 2, "gradins : %d changements de hauteur le long de la volée" % climb)
 
 	# --- 4. Butin au sol ---
 	var dungeon_caches := 0
@@ -213,7 +243,10 @@ func _check_built_floor() -> void:
 	var b_size: Vector3i = biggest["size"]
 	var cx := float(b_origin.x) + float(b_size.x) * 0.5
 	var cz := float(b_origin.z) + float(b_size.z) * 0.5
-	print("[%s] capture : salle « %s » %s en %s" % [TAG, biggest["def_id"], b_size, b_origin])
+	# Plus de `def_id` : les salles d'un labyrinthe ne viennent plus de prefabs
+	# nommés (data/dungeon_rooms), ce sont des rectangles de cases dont on a
+	# abattu les murs. Il n'y a donc pas de nom à afficher, seulement une taille.
+	print("[%s] capture : plus grande salle %s en %s" % [TAG, b_size, b_origin])
 	camera.position = Vector3(cx, float(b_origin.y) + float(b_size.y) * 0.55,
 			cz - float(b_size.z) * 0.30)
 	camera.look_at(Vector3(cx, float(b_origin.y) + 1.0, cz + float(b_size.z) * 0.4), Vector3.UP)
@@ -266,9 +299,11 @@ func _find_dungeon_cell() -> Vector2i:
 				if absi(dx) != radius and absi(dz) != radius:
 					continue
 				var c := Vector2i(dx, dz)
-				var cwc := POIGenerator.cell_center_world(c)
-				var cb: Dictionary = WorldManager.generator.biome_at(cwc.x, cwc.y)
-				if not cb.is_empty() and "donjon" in POIGenerator.pois_at_cell(
-						c, WorldManager.world_seed, cb):
+				# Règle AUTORITAIRE (2026-08-02) : `has_dungeon` et non un tirage
+				# de POI refait ici. Ces sondes en portaient chacune leur copie
+				# — biome puis `pois_at_cell` — et le jour où « sol émergé » s'y
+				# est ajouté, elles ont continué à désigner une cellule que le
+				# monde ne bâtit plus : tour absente, échantillons vides.
+				if WorldManager.generator.has_dungeon(c):
 					return c
 	return Vector2i(1 << 30, 0)

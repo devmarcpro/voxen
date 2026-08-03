@@ -1,0 +1,14 @@
+{
+  "id": "taille_breche_volcanique_taillee",
+  "name_key": "transformation.taille_breche_volcanique_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "breche_volcanique_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "breche_volcanique",
+    "amount": 1
+  }
+}

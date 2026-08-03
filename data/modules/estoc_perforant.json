@@ -1,0 +1,20 @@
+{
+  "id": "estoc_perforant",
+  "name_key": "module.estoc_perforant.name",
+  "module_type": "effet",
+  "mana_cost_base": 6,
+  "power_base": 15,
+  "tags": [
+    "arme",
+    "percant"
+  ],
+  "params": {
+    "portee": 4,
+    "penetration": 40
+  },
+  "grimoire_domains": [
+    "frappes"
+  ],
+  "book_type": "manuel",
+  "degats_des": "2d8"
+}

@@ -1539,14 +1539,11 @@ func _in_city_footprint(wx: int, wz: int, city: Dictionary) -> bool:
 ## Ids runtime de la palette démoniaque, résolus une seule fois : une
 ## recherche de dictionnaire par bloc coûterait cher sur une structure de
 ## cette taille (jusqu'à ~100 000 blocs par cellule).
-var _tower_palette := PackedInt32Array()
-
-
-func _tower_palette_ids() -> PackedInt32Array:
-	if _tower_palette.is_empty():
-		for id: String in DungeonTower.PALETTE:
-			_tower_palette.append(int(GameData.material_runtime_ids.get(id, 0)))
-	return _tower_palette
+## Palette de pierres taillées de CETTE cellule (2026-08-02) : chaque tour est
+## bâtie dans une roche différente. Le cache vit dans DungeonTower, partagé avec
+## DungeonManager — les étages doivent être dans la MÊME pierre que leur tour.
+func _tower_palette_ids(cell: Vector2i) -> PackedInt32Array:
+	return DungeonTower.palette_for(cell, world_seed)
 
 
 ## Cellule de donjon dont la tour couvre (wx, wz), ou null. Une tour tient
@@ -1579,9 +1576,9 @@ func _tower_block_at(wx: int, wy: int, wz: int) -> int:
 	if cell == null:
 		return -1
 	var ground := _tower_ground(cell)
-	if wy < ground or float(wy - ground) > DungeonTower.DOME_HEIGHT + DungeonTower.SPIKE_HEIGHT:
+	if wy < ground or float(wy - ground) > DungeonTower.MAX_HEIGHT:
 		return -1
-	return DungeonTower.block_at(cell, wx, wy, wz, ground, world_seed, _tower_palette_ids())
+	return DungeonTower.block_at(cell, wx, wy, wz, ground, world_seed, _tower_palette_ids(cell))
 
 
 ## Cellule dont la tour recouvre une partie de ce chunk, ou null. L'emprise
@@ -1603,12 +1600,20 @@ func _tower_info(cell: Vector2i) -> Dictionary:
 	if cached != null:
 		return cached
 	var centre := POIGenerator.cell_center_world(cell)
+	var ground := int(floorf(_height(float(centre.x), float(centre.y))))
 	var biome := biome_at(centre.x, centre.y)
 	var is_dungeon := false
 	if not biome.is_empty():
 		is_dungeon = "donjon" in POIGenerator.pois_at_cell(cell, world_seed, biome)
-	var info := {"donjon": is_dungeon,
-		"sol": int(floorf(_height(float(centre.x), float(centre.y)))) if is_dungeon else 0}
+	# SOL ÉMERGÉ EXIGÉ (2026-08-02). Le tirage de POI ne consulte que le BIOME,
+	# jamais l'altitude : une cellule de mangrove ou de côte dont le centre est
+	# sous le niveau de la mer décrochait quand même un donjon. Invisible tant
+	# que la structure était une termitière basse ; la tour de pierre taillée,
+	# haute de 111 blocs, l'a rendu criant — une tour plantée en pleine eau,
+	# dont les quatre entrées débouchent sous la surface.
+	if is_dungeon and ground <= water_level + 1:
+		is_dungeon = false
+	var info := {"donjon": is_dungeon, "sol": ground if is_dungeon else 0}
 	_tower_cache_mutex.lock()
 	if _tower_cache.size() > 512:
 		_tower_cache.clear()
@@ -1617,11 +1622,32 @@ func _tower_info(cell: Vector2i) -> Dictionary:
 	return info
 
 
+## Cette cellule porte-t-elle un donjon ? RÈGLE DE RÉFÉRENCE, source unique.
+##
+## Elle vivait en double : ici (via `_tower_info`, qui décide si la tour est
+## bâtie) et dans `DungeonManager._is_donjon_cell`, qui refaisait le tirage de
+## POI dans son coin. Les deux s'accordaient tant que la règle se résumait au
+## biome. Le jour où l'altitude s'y est ajoutée (2026-08-02, pas de donjon sous
+## le niveau de la mer), elles ont divergé : le générateur ne bâtissait plus la
+## tour, DungeonManager continuait d'annoncer un donjon — cellule marquée comme
+## donjon, mais rigoureusement rien sur le terrain.
+##
+## `sol` ne vaut pas seulement pour la tour : c'est aussi la garantie que le
+## donjon existe à un endroit atteignable à pied.
+func has_dungeon(cell: Vector2i) -> bool:
+	return bool(_tower_info(cell)["donjon"])
+
+
+## Altitude de base de la tour d'une cellule (0 si pas de donjon).
+func dungeon_ground(cell: Vector2i) -> int:
+	return int(_tower_info(cell)["sol"])
+
+
 ## Sommet ABSOLU de la tour recouvrant tout ou partie de la colonne-chunk
 ## `col` (16×16 blocs), ou -1 s'il n'y en a aucune.
 ##
 ## POURQUOI (bug corrigé le 2026-07-28) : la termitière monte à 128 blocs
-## (DOME_HEIGHT + SPIKE_HEIGHT) au-dessus du sol, mais ni `cy_range` ni
+## (MAX_HEIGHT) au-dessus du sol, mais ni `cy_range` ni
 ## `prepare_context` ne le savaient — tous deux ne renvoyaient que la hauteur du
 ## TERRAIN (plus les arbres/plantes/ville). Conséquence en chaîne :
 ##  - WorldManager._range_for/_missing_cys ne DEMANDAIENT jamais les chunks
@@ -1651,7 +1677,7 @@ func tower_top_for_column(col: Vector2i) -> int:
 		var info := _tower_info(candidate)
 		if not bool(info["donjon"]):
 			continue
-		top = maxi(top, int(info["sol"]) + int(DungeonTower.DOME_HEIGHT + DungeonTower.SPIKE_HEIGHT))
+		top = maxi(top, int(info["sol"]) + DungeonTower.MAX_HEIGHT)
 	return top
 
 
@@ -1680,7 +1706,7 @@ func _tower_in_chunk(cpos: Vector3i) -> Variant:
 		# « chunk uniforme ». C'était la cause principale de la chute de
 		# performance, bien avant le coût du bruit lui-même.
 		var ground := int(info["sol"])
-		if y1 < ground or y0 > ground + int(DungeonTower.DOME_HEIGHT + DungeonTower.SPIKE_HEIGHT):
+		if y1 < ground or y0 > ground + DungeonTower.MAX_HEIGHT:
 			continue
 		return candidate
 	return null
@@ -2265,10 +2291,12 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 	if tower_cell != null:
 		var cell: Vector2i = tower_cell
 		var ground := _tower_ground(cell)
-		var palette := _tower_palette_ids()
-		var max_height := DungeonTower.DOME_HEIGHT + DungeonTower.SPIKE_HEIGHT
+		var palette := _tower_palette_ids(cell)
+		var max_height := float(DungeonTower.MAX_HEIGHT)
+		var centre := DungeonTower.center_of(cell)
 		for lz in ChunkData.SIZE:
 			var wz := chunk_bz + lz
+			var dz := float(wz - centre.y)
 			for lx in ChunkData.SIZE:
 				var wx := chunk_bx + lx
 				if not DungeonTower.contains(cell, wx, wz):
@@ -2279,15 +2307,18 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 				var top := DungeonTower.height_at(cell, wx, wz, world_seed)
 				if top <= 0.0:
 					continue
+				var dx := float(wx - centre.x)
 				for ly in ChunkData.SIZE:
 					var wy := y0 + ly
-					var local_y := float(wy - ground)
-					if local_y < 0.0 or local_y > top or local_y > max_height:
+					var local_y := wy - ground
+					if local_y < 0 or float(local_y) > top or float(local_y) > max_height:
 						continue
-					var depth := top - local_y
+					# Creusement (salle, tunnels, puits) puis maçonnerie. Cette
+					# boucle DOIT rester le miroir exact de DungeonTower.block_at
+					# — elle n'existe que pour hisser `height_at` hors de l'axe Y.
 					var id := 0
-					if not DungeonTower.is_cavity(wx, wy, wz, depth, world_seed):
-						id = DungeonTower._material_for(wx, wy, wz, depth, world_seed, palette)
+					if not DungeonTower._is_carved(dx, local_y, dz):
+						id = DungeonTower._material_for(wx, wy, wz, local_y, world_seed, palette)
 					var index := ChunkData.index_of(lx, ly, lz)
 					blocks.encode_u16(index << 1, id)
 

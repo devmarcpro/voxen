@@ -22,11 +22,12 @@ func run() -> void:
 				if maxi(absi(dx), absi(dz)) != radius:
 					continue
 				var c := Vector2i(dx, dz)
-				var centre := POIGenerator.cell_center_world(c)
-				var biome := g.biome_at(centre.x, centre.y)
-				if biome.is_empty():
-					continue
-				if "donjon" in POIGenerator.pois_at_cell(c, WorldManager.world_seed, biome):
+				# Règle AUTORITAIRE (2026-08-02) : `has_dungeon` et non un tirage
+				# de POI refait ici. Ces sondes en portaient chacune leur copie
+				# — biome puis `pois_at_cell` — et le jour où « sol émergé » s'y
+				# est ajouté, elles ont continué à désigner une cellule que le
+				# monde ne bâtit plus : tour absente, échantillons vides.
+				if g.has_dungeon(c):
 					cell = c
 					found = true
 					break
@@ -54,10 +55,14 @@ func run() -> void:
 	ok = ok and WorldManager.active_dimension == &"donjon" and dm._current_depth == 0
 
 	# --- 1. Matière du nid ---
-	var palette_names := DungeonTower.PALETTE
+	# Palette par cellule depuis le 2026-08-02 (pierre taillée tirée de la
+	# cellule) : on la demande à DungeonTower pour CETTE cellule au lieu de lire
+	# une constante qui n'existe plus.
 	var nest_ids := {}
-	for name: String in palette_names:
-		nest_ids[int(GameData.material_runtime_ids.get(name, -1))] = name
+	for rid: int in DungeonTower.palette_for(cell, WorldManager.world_seed):
+		# `material_by_runtime` est un Array[String] indexé par id, PAS un
+		# Dictionary : `Array.get()` ne prend qu'un argument.
+		nest_ids[rid] = String(GameData.material_by_runtime[rid]) if rid >= 0 and rid < GameData.material_by_runtime.size() else "?"
 	var sol_id := WorldManager.block_at_world(Vector3i(3, 0, 3))
 	var pierre_id: int = GameData.material_runtime_ids.get("pierre", -1)
 	var sol_name: String = nest_ids.get(sol_id, "?")
@@ -71,7 +76,10 @@ func run() -> void:
 	var yaw: float = dm._arrival_yaw(up, arrival)
 	# Le vecteur « regard » reconstruit depuis le yaw doit s'éloigner de l'orifice.
 	var look := Vector3(-sin(deg_to_rad(yaw)), 0.0, -cos(deg_to_rad(yaw)))
-	var away := (arrival - up).normalized()
+	# Comparaison HORIZONTALE : `look` est reconstruit depuis un lacet, donc plat
+	# par construction. Garder la composante verticale de `away` faisait chuter
+	# le produit scalaire sans qu'aucune orientation ne soit fausse.
+	var away := Vector3(arrival.x - up.x, 0.0, arrival.z - up.z).normalized()
 	var alignment := look.dot(away)
 	print("[ETAGES] arrivée : yaw=%.1f° alignement avec « dos à l'orifice »=%.2f (attendu ~1)" % [
 		yaw, alignment])
@@ -90,8 +98,11 @@ func run() -> void:
 		# d'un bloc en coordonnées négatives — la construction utilise bien
 		# floor(), et la première version de cette sonde lisait donc le bloc
 		# VOISIN (d'où un id incohérent d'un étage à l'autre).
+		# UN BLOC SOUS le palier : `_descent_orifice_position` rend le point où
+		# se tiennent les PIEDS du joueur, pas la marche elle-même. Lire à la
+		# hauteur du palier revenait à lire l'air juste au-dessus de la marche.
 		var core_found := WorldManager.block_at_world(
-			Vector3i(floori(down.x), floori(down.y), floori(down.z)))
+			Vector3i(floori(down.x), floori(down.y) - 1, floori(down.z)))
 		var core_ok := core_found == core_id
 		dm._descend()
 		await wait_frame()

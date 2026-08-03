@@ -43,6 +43,8 @@ const PROBES := {
 	"--test-triche":          "res://tools/probes/cheat_shot_probe.gd",
 	"--probe-butin":          "res://tools/probes/loot_probe.gd",
 	"--probe-mesh":           "res://tools/probes/mesh_profile_probe.gd",
+	"--probe-assemblage":     "res://tools/probes/assembly_probe.gd",
+	"--probe-refonte-donjon": "res://tools/probes/dungeon_rework_probe.gd",
 	"--probe-invui":          "res://tools/probes/inventory_ui_probe.gd",
 	"--probe-survie":         "res://tools/probes/survival_probe.gd",
 	"--probe-saves":          "res://tools/probes/saves_probe.gd",

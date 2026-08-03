@@ -1,0 +1,19 @@
+{
+  "id": "regeneration",
+  "name_key": "module.regeneration.name",
+  "module_type": "effet",
+  "mana_cost_base": 14,
+  "power_base": 18,
+  "tags": [
+    "vie",
+    "soin"
+  ],
+  "params": {
+    "duree": 12,
+    "par_tick": 2
+  },
+  "grimoire_domains": [
+    "vie"
+  ],
+  "book_type": "grimoire"
+}

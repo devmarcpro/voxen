@@ -146,8 +146,8 @@ const HELP_LINES: Array = [
 	["ui.hud.souris"],
 	["ui.hud.hotbar", ["cycle_grid"]],
 	[["module_1", "module_2", "module_3"], ["toggle_claim"], ["cycle_claim_role"], ["world_map"], ["inventory"]],
-	[["eat"], ["equip"], ["pickup"], ["sleep"], ["talk"]],
-	[["stall_stock"], ["stall_collect"], ["save_game"], ["reload_data"], ["cheat_menu"]],
+	[["equip"], ["sleep"], ["interact"]],
+	[["stall_stock"], ["save_game"], ["reload_data"], ["cheat_menu"]],
 ]
 
 
@@ -355,13 +355,23 @@ func _refresh_target() -> void:
 			int(creature_info["health"]), int(creature_info["health_max"]), hint])
 
 
+## Les trois touches de lancement montrent désormais les ASSEMBLAGES des trois
+## premiers slots de compétence de l'ARME TENUE (5.1), et non plus un trio de
+## modules figé. Changer d'arme change donc ce que font J/K/L — c'est la
+## conséquence directe du rattachement des assemblages au type d'arme, et le HUD
+## doit le dire, sinon le joueur lance un sort qu'il n'attendait pas.
 func _refresh_modules() -> void:
-	for index in _player.MODULE_LOADOUT.size():
-		var module: Dictionary = GameData.modules[_player.MODULE_LOADOUT[index]]
-		_put(["module_j", "module_k", "module_l"][index],
-			tr("ui.hud.module_valeur").format({
-				"nom": tr(module["name_key"]),
-				"cout": str(int(module["mana_cost_base"]))}))
+	var keys := ["module_j", "module_k", "module_l"]
+	var skill_id := String(_player.weapon_skill_id())
+	for index in keys.size():
+		var modules: Array = [] if skill_id.is_empty() else _player.assembly_at(skill_id, index)
+		if modules.is_empty():
+			_put(keys[index], "—")
+			continue
+		var compiled: Dictionary = SpellAssembly.compile(modules, _player.known_modules)
+		_put(keys[index], tr("ui.hud.module_valeur").format({
+			"nom": SpellAssembly.describe(compiled),
+			"cout": str(int(_player.assembly_cost(skill_id, index)))}))
 
 
 ## Résumé des lois locales. UNE LOI QU'ON DÉCOUVRE PAR LA SANCTION N'EST PAS UNE

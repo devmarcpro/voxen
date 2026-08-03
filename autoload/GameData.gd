@@ -18,6 +18,10 @@ const PATH_SKILLS := "res://data/skills"
 const PATH_FUNCTIONALITIES := "res://data/functionalities"
 const PATH_ITEMS := "res://data/items"
 const PATH_MODULES := "res://data/modules"
+## Statuts temporaires (GDD F.4) — brûlure, hâte, peau de pierre…
+const PATH_STATUS_EFFECTS := "res://data/status_effects"
+## Table des effets d'échec de lecture (GDD A.7, extensible en données).
+const PATH_READING_FAILURES := "res://data/reading_failures.json"
 const PATH_CREATURES := "res://data/creatures"
 const PATH_HITBOX_TEMPLATES := "res://data/hitbox_templates.json"
 const PATH_ARMOR_TYPE_MODIFIERS := "res://data/armor_type_modifiers.json"
@@ -127,6 +131,14 @@ var functionalities: Dictionary = {}
 var items: Dictionary = {}
 ## Modules de compétence (B.4).
 var modules: Dictionary = {}
+## Fiches de statut (F.4), indexées par id. Substrat partagé des sorts,
+## des potions (F.9), de la nourriture avariée (F.5) et des échecs de
+## lecture (A.7) — pas une annexe du système de sorts.
+var status_effects: Dictionary = {}
+## Effets d'échec de lecture, par gravité (« mineur » / « grave ») — GDD A.7.
+## Chargée sans validation bloquante : un fichier absent dégrade la lecture
+## ratée en simple perte du livre, ce qui reste jouable.
+var reading_failures: Dictionary = {}
 ## Créatures / PNJ (B.5).
 var creatures: Dictionary = {}
 ## Zones de coup par gabarit de squelette (combat directionnel, 2026-07-28) —
@@ -244,6 +256,8 @@ func load_all() -> bool:
 	_load_functionalities()
 	_load_items()
 	_load_modules()
+	_load_reading_failures()
+	_load_status_effects()
 	_load_hitbox_templates()   # avant les créatures : elles valident leur gabarit.
 	_load_armor_type_modifiers()
 	_load_weapon_parts()   # avant les objets : ils referencent des pieces.
@@ -757,15 +771,26 @@ func _load_items() -> void:
 		# frapper ni à récolter : elle porte un `equip_slot` et contribue des
 		# dés de réduction (A.4.2). Tout autre type exige sa fonctionnalité.
 		var is_armor := String(item.get("type", "")) == "armure"
+		# Un LIVRE (5.1, 2026-08-02) n'a ni fonctionnalité ni emplacement : il ne
+		# frappe pas, ne se récolte pas et ne se porte pas. Il se LIT, et c'est
+		# son seul usage. Il n'a pas non plus de recette réelle — le GDD est
+		# explicite : « les modules ne se craftent pas », les livres se trouvent
+		# en donjon ou s'achètent.
+		var is_book := String(item.get("type", "")) == "livre"
 		var required := ["id", "name_key", "type", "recipe", "stat_weights"]
-		required.append("equip_slot" if is_armor else "functionality")
+		if is_armor:
+			required.append("equip_slot")
+		elif not is_book:
+			required.append("functionality")
 		for field in required:
 			if not item.has(field):
 				_blocking_error("champ « %s » manquant dans %s" % [field, path])
 				ok = false
 		if not ok:
 			continue
-		if is_armor:
+		if is_book:
+			pass  # Rien de plus à valider : ni emplacement ni fonctionnalité.
+		elif is_armor:
 			if not (String(item["equip_slot"]) in Equipment.SLOTS
 					or Equipment.SLOT_GROUPS.has(String(item["equip_slot"]))):
 				_blocking_error("emplacement d'équipement inconnu « %s » dans l'objet « %s » (6.2)" % [
@@ -965,6 +990,25 @@ func _load_dungeon_connectors() -> void:
 
 
 ## Modules de compétence (B.4) : sorts/attaques assemblables (section 5).
+func _load_status_effects() -> void:
+	status_effects.clear()
+	for path in _list_json_recursive(PATH_STATUS_EFFECTS):
+		var raw: Variant = _load_json(path)
+		if not (raw is Dictionary):
+			continue
+		var status: Dictionary = raw
+		for field in ["id", "name_key", "duration_ticks"]:
+			if not status.has(field):
+				_blocking_error("champ « %s » manquant dans %s" % [field, path])
+				return
+		status_effects[status["id"]] = status
+
+
+func _load_reading_failures() -> void:
+	var raw: Variant = _load_json(PATH_READING_FAILURES)
+	reading_failures = raw if raw is Dictionary else {}
+
+
 func _load_modules() -> void:
 	modules.clear()
 	for path in _list_json_recursive(PATH_MODULES):

@@ -155,6 +155,9 @@ func _on_tick(_tick_index: int) -> void:
 		if creature.is_dead():
 			dead.append(creature)
 			continue
+		# STATUTS (F.4) avant la décision : une créature gelée ou brûlée doit
+		# subir son statut ce tick-ci, pas au suivant.
+		creature.tick_statuses()
 		var event: Dictionary = creature.tick_step(player_pos, player)
 		if not event.is_empty():
 			# Le coup est déjà CONSTATÉ par le balayage à la frame : le tick

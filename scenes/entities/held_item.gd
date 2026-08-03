@@ -55,11 +55,20 @@ var in_hand := false
 ## construits sur un autre axe et seraient mis de travers.
 var is_part_weapon := false
 
-## D'OÙ vient l'objet à afficher. La hotbar par défaut ; « bouclier » pour
+## D'OÙ vient l'objet à afficher. La hotbar par défaut ; « main_gauche » pour
 ## l'exemplaire accroché à la main gauche, qui suit l'ÉQUIPEMENT et non
 ## l'emplacement sélectionné. Sans cette distinction, le bouclier se serait
 ## reconstruit à chaque changement d'objet en main et aurait clignoté.
+##
+## « explicite » (2026-08-02) : l'entrée est POSÉE par l'appelant dans
+## `explicit_entry` au lieu d'être lue sur le joueur. C'est ce qui permet aux
+## OBJETS AU SOL (DropManager) de réutiliser tel quel tout le pipeline de rendu
+## d'objet — pièces d'arme assemblées, extrusion de sprites, .vox remappé, cube
+## de matériau — au lieu d'en écrire une seconde version qui divergerait au
+## premier ajout de type d'objet.
 var source := "hotbar"
+## Entrée affichée quand `source == "explicite"`. Voir ci-dessus.
+var explicit_entry := {}
 
 var _player: Node
 var _current_key := ""
@@ -81,7 +90,9 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if _player == null:
+	# La source explicite n'a PAS besoin du joueur : un objet au sol existe
+	# indépendamment de lui (et peut vivre dans une dimension où il n'est pas).
+	if _player == null and source != "explicite":
 		return
 	var entry: Dictionary = _source_entry()
 	var key := ""
@@ -103,6 +114,8 @@ func _process(_delta: float) -> void:
 ## Entrée à afficher selon la source. Une main gauche sans bouclier reçoit une
 ## entrée VIDE, que `_rebuild` traduit déjà en « rien à montrer ».
 func _source_entry() -> Dictionary:
+	if source == "explicite":
+		return explicit_entry
 	if source == "main_gauche":
 		# La main gauche porte un BOUCLIER ou une SECONDE ARME (dual wielding,
 		# 2026-08-02) — jamais les deux, l'emplacement est le même. Elle suit
@@ -145,7 +158,25 @@ func _rebuild(entry: Dictionary) -> void:
 				position = HAND_TOOL_POSITION if in_hand else TOOL_POSITION
 				visible = true
 				return
-			var model := VoxLoader.load_model(String(item.get("vox_model", "")))
+			# LIVRES (5.1) : ni pièces, ni sprites, ni .vox — ils n'ont pas de
+			# modèle et n'en auront pas tant qu'un asset n'existe pas. Une forme
+			# procédurale suffit à les rendre reconnaissables au sol, ce qui est
+			# tout ce qu'on leur demande.
+			if BookFactory.is_book(obj):
+				_build_book(obj)
+				position = HAND_TOOL_POSITION if in_hand else TOOL_POSITION
+				visible = true
+				return
+			# CHEMIN VIDE = PAS DE MODÈLE, et surtout pas un appel au chargeur.
+			# `item.get("vox_model", "")` rend "" pour tout objet sans modèle ;
+			# VoxLoader préfixe alors "res://" et pousse une erreur « fichier
+			# introuvable « res:// » » — à CHAQUE reconstruction, donc en boucle
+			# pour un objet posé au sol. Constaté en jeu réel le 2026-08-03.
+			var vox_path := String(item.get("vox_model", ""))
+			if vox_path.is_empty():
+				visible = false
+				return
+			var model := VoxLoader.load_model(vox_path)
 			if model.is_empty():
 				visible = false
 				return
@@ -168,6 +199,25 @@ func _rebuild(entry: Dictionary) -> void:
 			visible = true
 		_:
 			visible = false
+
+
+## Forme procédurale d'un LIVRE : un parallélépipède aplati, teinté selon son
+## type. Pas d'asset à produire, et le grimoire se distingue du manuel au premier
+## coup d'œil — ce qui est la seule chose qui compte pour du butin au sol.
+func _build_book(obj: Dictionary) -> void:
+	for child in get_children():
+		child.queue_free()
+	var box := BoxMesh.new()
+	box.size = Vector3(0.22, 0.05, 0.30)   # proportions d'un livre fermé
+	mesh = box
+	var mat := StandardMaterial3D.new()
+	# Grimoire : bleu arcane. Manuel de combat : cuir fauve. Les deux teintes
+	# viennent des mêmes familles que les modules qu'ils contiennent.
+	var grimoire := String(obj.get("book_type", "grimoire")) == "grimoire"
+	mat.albedo_color = Color(0.28, 0.32, 0.62) if grimoire else Color(0.46, 0.30, 0.17)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material_override = mat
+	scale = Vector3.ONE * (HAND_SCALE if in_hand else HELD_SCALE)
 
 
 ## Assemble l'arme à partir de ses PIÈCES 3D : le manche à l'origine, la tête

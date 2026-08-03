@@ -399,6 +399,7 @@ var _combat_panel: EquipmentPanel
 var _combat_stance: Label
 var _combat_skill: Label
 var _combat_stats: VBoxContainer
+var _assembly_box: VBoxContainer
 
 
 func _build_combat() -> Control:
@@ -429,7 +430,121 @@ func _build_combat() -> Control:
 	_combat_stats.add_theme_constant_override("separation", 2)
 	scroll.add_child(_combat_stats)
 	box.add_child(scroll)
+
+	# --- ASSEMBLAGE DES COMPÉTENCES (GDD 5.1, 2026-08-03) ---
+	# C'est ici qu'on fabrique ses sorts et ses attaques spéciales (choix de
+	# l'auteur : « on assemble les compétences dans le menu combat »). Placé sous
+	# les stats d'arme À DESSEIN : les slots disponibles dérivent du niveau dans
+	# la compétence de l'arme équipée, qui se lit juste au-dessus.
+	var sep := HSeparator.new()
+	box.add_child(sep)
+	var title := Label.new()
+	title.text = tr("ui.menu.assemblage")
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HEADING)
+	box.add_child(title)
+	var aide := UITheme.dim(tr("ui.menu.assemblage_aide"))
+	aide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(aide)
+	var asm_scroll := ScrollContainer.new()
+	asm_scroll.custom_minimum_size = Vector2(0, 220)
+	asm_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_assembly_box = VBoxContainer.new()
+	_assembly_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_assembly_box.add_theme_constant_override("separation", 6)
+	asm_scroll.add_child(_assembly_box)
+	box.add_child(asm_scroll)
 	return box
+
+
+## Reconstruit l'éditeur d'assemblage. UNE LISTE DÉROULANTE PAR SLOT DE MODULE,
+## lues de gauche à droite : c'est littéralement le modèle de données (une liste
+## ORDONNÉE d'ids), donc rien ne peut diverger entre ce qu'on voit et ce qui
+## sera lancé. Le glisser-déposer serait plus joli et cacherait l'ordre, qui est
+## précisément ce que le joueur doit manipuler.
+func _refresh_assembly() -> void:
+	if _assembly_box == null:
+		return
+	for child in _assembly_box.get_children():
+		child.queue_free()
+
+	var skill_id := String(_player.weapon_skill_id())
+	if skill_id.is_empty():
+		_assembly_box.add_child(UITheme.dim(tr("ui.menu.assemblage_sans_arme")))
+		return
+	var known: Dictionary = _player.known_modules
+	if known.is_empty():
+		_assembly_box.add_child(UITheme.dim(tr("ui.menu.assemblage_aucun_module")))
+		return
+
+	# Modules connus, triés par nom affiché : la liste doit être cherchable à
+	# l'œil, pas dans l'ordre d'apprentissage.
+	var choices: Array[String] = []
+	for module_id: String in known:
+		if GameData.modules.has(module_id):
+			choices.append(module_id)
+	choices.sort_custom(func(a: String, b: String) -> bool:
+		return tr(String((GameData.modules[a] as Dictionary)["name_key"])) 				< tr(String((GameData.modules[b] as Dictionary)["name_key"])))
+
+	var slot_count: int = _player.assembly_slot_count(skill_id)
+	var module_count: int = _player.assembly_module_count(skill_id)
+	for slot in slot_count:
+		var current: Array = _player.assembly_at(skill_id, slot)
+		var frame := VBoxContainer.new()
+		frame.add_theme_constant_override("separation", 2)
+
+		var header := Label.new()
+		header.text = tr("ui.menu.assemblage_slot").format({"n": str(slot + 1)})
+		frame.add_child(header)
+
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		for position in module_count:
+			var option := OptionButton.new()
+			option.add_item(tr("ui.module.vide"), -1)
+			for index in choices.size():
+				var module_id: String = choices[index]
+				option.add_item(tr(String((GameData.modules[module_id] as Dictionary)["name_key"])), index)
+			option.selected = 0
+			if position < current.size():
+				var pos := choices.find(String(current[position]))
+				option.selected = pos + 1 if pos >= 0 else 0
+			option.item_selected.connect(
+					_on_assembly_changed.bind(skill_id, slot, position, choices))
+			row.add_child(option)
+		frame.add_child(row)
+
+		# RETOUR IMMÉDIAT : description compilée + coût réel. Sans lui on
+		# n'assemble pas un sort, on tâtonne — et l'ordre, qui est tout le sujet,
+		# ne se voit qu'une fois lancé.
+		var compiled: Dictionary = SpellAssembly.compile(current, known)
+		var summary := UITheme.dim("%s   —   %s" % [
+				SpellAssembly.describe(compiled),
+				tr("ui.menu.assemblage_cout").format({
+					"cout": str(int(_player.assembly_cost(skill_id, slot)))})])
+		summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		frame.add_child(summary)
+		_assembly_box.add_child(frame)
+
+
+## Une liste déroulante a changé : on relit TOUTE la rangée et on range
+## l'assemblage complet. Reconstruire depuis l'écran plutôt que de muter une
+## case garantit que le modèle est toujours exactement ce qui est affiché.
+func _on_assembly_changed(selected: int, skill_id: String, slot: int,
+		position: int, choices: Array) -> void:
+	var current: Array = (_player.assembly_at(skill_id, slot) as Array).duplicate()
+	var module_count: int = _player.assembly_module_count(skill_id)
+	while current.size() < module_count:
+		current.append("")
+	current[position] = "" if selected <= 0 else choices[selected - 1]
+	# Les trous sont RETIRÉS et non conservés : un assemblage est une suite, pas
+	# une grille à cases vides — laisser un trou au milieu ferait croire à un
+	# emplacement réservé alors que l'interpréteur ne lit que la suite.
+	var clean: Array[String] = []
+	for id: Variant in current:
+		if String(id) != "":
+			clean.append(String(id))
+	_player.set_assembly(skill_id, slot, clean)
+	_refresh_assembly()
 
 
 func _refresh_combat() -> void:
@@ -456,6 +571,7 @@ func _refresh_combat() -> void:
 		_combat_stats.add_child(UITheme.dim(tr("ui.combat.bouclier_ligne").format({
 			"couverture": int(shield["couverture"]),
 			"absorption": int(round(float(shield["absorption"]) * 100.0))})))
+	_refresh_assembly()
 
 
 ## Une ligne de chiffres pour une main. Ce sont les valeurs RÉELLEMENT utilisées

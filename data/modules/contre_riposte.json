@@ -1,0 +1,18 @@
+{
+  "id": "contre_riposte",
+  "name_key": "module.contre_riposte.name",
+  "module_type": "declencheur",
+  "mana_cost_base": 5,
+  "power_base": 0,
+  "tags": [
+    "arme",
+    "contre"
+  ],
+  "params": {
+    "trigger": "parade"
+  },
+  "grimoire_domains": [
+    "techniques"
+  ],
+  "book_type": "manuel"
+}

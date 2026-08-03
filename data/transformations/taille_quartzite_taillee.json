@@ -1,0 +1,14 @@
+{
+  "id": "taille_quartzite_taillee",
+  "name_key": "transformation.taille_quartzite_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "quartzite_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "quartzite",
+    "amount": 1
+  }
+}

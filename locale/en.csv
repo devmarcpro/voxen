@@ -568,7 +568,6 @@ transformation.cuisson_brique.name,Fire bricks
 transformation.debit_planches.name,Cut planks
 transformation.taille_poutre.name,Cut a beam
 transformation.taille_manche.name,Cut handles
-transformation.taille_pierre.name,Cut stone
 transformation.taille_dalle.name,Cut slabs
 transformation.taille_brique_pierre.name,Cut stone bricks
 transformation.filage.name,Spin thread
@@ -928,15 +927,11 @@ ui.input.move_left,strafe left
 ui.input.move_right,strafe right
 ui.input.descend,descend
 ui.input.cycle_grid,grid 32/16/8/4
-ui.input.talk,talk
 ui.input.equip,equip
-ui.input.eat,eat
-ui.input.pickup,pick up
 ui.input.sleep,sleep
 ui.input.toggle_claim,claim
 ui.input.cycle_claim_role,cell role
 ui.input.stall_stock,list for sale (targeted stall)
-ui.input.stall_collect,collect gold (targeted stall)
 ui.input.module_1,modules
 ui.input.module_2,module 2
 ui.input.module_3,module 3
@@ -980,3 +975,129 @@ ui.combat.feinte_adverse,Feint — the announced blow never came.
 munition.fleche.name,Arrow
 munition.carreau.name,Bolt
 ui.combat.carquois_vide,Out of ammunition.
+material.andesite_taillee.name,Cut andesite
+transformation.taille_andesite_taillee.name,Cut: Andesite
+material.ardoise_taillee.name,Cut slate
+transformation.taille_ardoise_taillee.name,Cut: Slate
+material.basalte_taillee.name,Cut basalt
+transformation.taille_basalte_taillee.name,Cut: Basalt
+material.breche_volcanique_taillee.name,Cut volcanic breccia
+transformation.taille_breche_volcanique_taillee.name,Cut: Volcanic breccia
+material.calcaire_taillee.name,Cut limestone
+transformation.taille_calcaire_taillee.name,Cut: Limestone
+material.calcite_taillee.name,Cut calcite
+transformation.taille_calcite_taillee.name,Cut: Calcite
+material.conglomerat_taillee.name,Cut conglomerate
+transformation.taille_conglomerat_taillee.name,Cut: Conglomerate
+material.craie_taillee.name,Cut chalk
+transformation.taille_craie_taillee.name,Cut: Chalk
+material.diorite_taillee.name,Cut diorite
+transformation.taille_diorite_taillee.name,Cut: Diorite
+material.dolomie_taillee.name,Cut dolomite
+transformation.taille_dolomie_taillee.name,Cut: Dolomite
+material.gneiss_taillee.name,Cut gneiss
+transformation.taille_gneiss_taillee.name,Cut: Gneiss
+material.granit_taillee.name,Cut granite
+transformation.taille_granit_taillee.name,Cut: Granite
+material.granit_noir_taillee.name,Cut black granite
+transformation.taille_granit_noir_taillee.name,Cut: Black granite
+material.gres_taillee.name,Cut sandstone
+transformation.taille_gres_taillee.name,Cut: Sandstone
+material.gypse_taillee.name,Cut gypsum
+transformation.taille_gypse_taillee.name,Cut: Gypsum
+material.kimberlite_taillee.name,Cut kimberlite
+transformation.taille_kimberlite_taillee.name,Cut: Kimberlite
+material.marbre_taillee.name,Cut marble
+transformation.taille_marbre_taillee.name,Cut: Marble
+material.obsidienne_taillee.name,Cut obsidian
+transformation.taille_obsidienne_taillee.name,Cut: Obsidian
+material.peridotite_taillee.name,Cut peridotite
+transformation.taille_peridotite_taillee.name,Cut: Peridotite
+transformation.taille_pierre_taillee.name,Cut: Stone
+material.pierre_ponce_taillee.name,Cut pumice
+transformation.taille_pierre_ponce_taillee.name,Cut: Pumice
+material.quartzite_taillee.name,Cut quartzite
+transformation.taille_quartzite_taillee.name,Cut: Quartzite
+material.rhyolite_taillee.name,Cut rhyolite
+transformation.taille_rhyolite_taillee.name,Cut: Rhyolite
+material.schiste_taillee.name,Cut shale
+transformation.taille_schiste_taillee.name,Cut: Shale
+material.serpentinite_taillee.name,Cut serpentinite
+transformation.taille_serpentinite_taillee.name,Cut: Serpentinite
+material.silex_taillee.name,Cut flint
+transformation.taille_silex_taillee.name,Cut: Flint
+material.travertin_taillee.name,Cut travertine
+transformation.taille_travertin_taillee.name,Cut: Travertine
+material.tuf_volcanique_taillee.name,Cut volcanic tuff
+transformation.taille_tuf_volcanique_taillee.name,Cut: Volcanic tuff
+item.grimoire.name,Grimoire
+item.manuel_de_combat.name,Combat manual
+lecture.echec.etourdissement,Dazed
+lecture.echec.perte_mana,Mana loss
+lecture.echec.confusion,Confusion
+lecture.echec.invocation,Hostile summoning
+module.boule_de_feu.name,Fireball
+module.nappe_de_flammes.name,Sheet of flame
+module.eclat_de_glace.name,Ice shard
+module.emprise_du_gel.name,Frost grip
+module.arc_electrique.name,Electric arc
+module.fulguration.name,Thunderstrike
+module.eclat_de_pierre.name,Stone shard
+module.carapace_de_roche.name,Rock carapace
+module.regeneration.name,Regeneration
+module.bouclier_arcane.name,Arcane shield
+module.clignotement.name,Blink
+module.rappel.name,Recall
+module.drain_vital.name,Life drain
+module.offrande_de_sang.name,Blood offering
+module.taillade_large.name,Wide slash
+module.estoc_perforant.name,Piercing thrust
+module.garde_de_fer.name,Iron guard
+module.posture_agile.name,Agile stance
+module.charge_epaule.name,Shoulder charge
+module.contre_riposte.name,Counter-riposte
+module.double_lancer.name,Double cast
+module.triple_lancer.name,Triple cast
+module.portee_accrue.name,Extended range
+module.projection_rapide.name,Swift projection
+module.guidage.name,Homing
+module.ricochet.name,Ricochet
+module.declencheur_impact.name,Impact trigger
+module.declencheur_retarde.name,Delayed trigger
+ui.module.vide,(empty)
+ui.module.declenche.impact,on impact
+ui.module.declenche.delai,after a delay
+ui.module.declenche.parade,on parry
+ui.menu.assemblage,Skill assembly
+ui.menu.assemblage_aide,Arrange your modules left to right: order decides what fires. A modifier alters the effect that FOLLOWS it; a trigger sends everything after it off on impact.
+ui.menu.assemblage_slot,Skill {n}
+ui.menu.assemblage_cout,{cout} mana
+ui.menu.assemblage_sans_arme,Equip a weapon to assemble its skills.
+ui.menu.assemblage_aucun_module,No modules learned. Read a grimoire or a combat manual.
+status.brulure.name,Burning
+status.ralentissement.name,Slowed
+status.gel.name,Frozen
+status.poison.name,Poison
+status.saignement.name,Bleeding
+status.etourdi.name,Dazed
+status.confusion.name,Confused
+status.terreur.name,Terror
+status.infection.name,Infection
+status.affaibli.name,Weakened
+status.regeneration.name,Regeneration
+status.peau_de_pierre.name,Stoneskin
+status.hate.name,Haste
+status.beni.name,Blessed
+ui.input.interact,interact
+ui.toast.station_ouverte,{station} — crafting opened
+ui.toast.etal_vide,Nothing to collect
+ui.toast.lecture_reussie,Read successfully: {modules} module(s) learned
+ui.toast.lecture_echouee,Reading failed — the book is lost
+material.coffre.name,Chest
+material.grand_coffre.name,Large chest
+transformation.fab_coffre.name,Craft a chest
+transformation.fab_grand_coffre.name,Craft a large chest
+ui.coffre.titre,{coffre} — {utilise}/{capacite}
+ui.coffre.vide,Empty chest
+ui.toast.coffre_pris,Chest emptied: {objets} item(s), {or_} gold
+ui.toast.coffre_plein,Chest is full

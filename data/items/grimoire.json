@@ -1,0 +1,12 @@
+{
+  "id": "grimoire",
+  "name_key": "item.grimoire.name",
+  "type": "livre",
+  "recipe": {},
+  "stat_weights": {},
+  "effects": [],
+  "tags": [
+    "livre",
+    "grimoire"
+  ]
+}

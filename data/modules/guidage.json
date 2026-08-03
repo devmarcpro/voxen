@@ -1,0 +1,21 @@
+{
+  "id": "guidage",
+  "name_key": "module.guidage.name",
+  "module_type": "modificateur",
+  "mana_cost_base": 6,
+  "power_base": 0,
+  "tags": [
+    "maitrise",
+    "guidage"
+  ],
+  "params": {
+    "mods": {
+      "guidage": 60
+    }
+  },
+  "grimoire_domains": [
+    "espace",
+    "maitrise"
+  ],
+  "book_type": "grimoire"
+}

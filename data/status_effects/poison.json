@@ -1,0 +1,12 @@
+{
+  "id": "poison",
+  "name_key": "status.poison.name",
+  "duration_ticks": 200,
+  "stacks": true,
+  "tags": [
+    "poison"
+  ],
+  "periodic": {
+    "degats_des": "1d3"
+  }
+}

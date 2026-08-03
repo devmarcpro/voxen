@@ -1,0 +1,14 @@
+{
+  "id": "taille_travertin_taillee",
+  "name_key": "transformation.taille_travertin_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "travertin_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "travertin",
+    "amount": 1
+  }
+}

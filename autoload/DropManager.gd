@@ -27,8 +27,10 @@ const PURGE_INTERVAL_TICKS := 100
 ## l'overworld, à quelques blocs du point de spawn du joueur. Personne ne
 ## l'avait vu parce que rien ne déposait encore de cache en donjon.
 ##
-## `kind` : "cache" (défaut) ou "coffre" — purement visuel, le coffre de boss
-## mérite d'être reconnaissable de loin.
+## `kind` : "cache" (défaut). Le genre "coffre" existait pour le butin de boss ;
+## depuis le 2026-08-03 celui-ci est un VRAI coffre posé (ContainerManager), et
+## plus aucune cache ne l'utilise. Le champ reste lu pour les sauvegardes
+## antérieures.
 var caches: Array[Dictionary] = []
 
 ## Durée de vie des caches de donjon. Elles ne doivent PAS expirer au bout d'un
@@ -36,6 +38,11 @@ var caches: Array[Dictionary] = []
 ## joueur qui explore lentement trouverait des salles vides sans comprendre
 ## pourquoi. Elles disparaissent en étant ramassées, pas avec le temps.
 const DUNGEON_LIFETIME_TICKS := 1 << 40
+
+## Script de rendu d'objet, réutilisé pour les objets au sol (voir
+## `_build_cache_markers`). `preload` et non `class_name` : le script n'en
+## déclare pas, et la ressource doit exister avant le premier dépôt.
+const HELD_ITEM_SCRIPT := preload("res://scenes/entities/held_item.gd")
 
 var _marker_root: Node3D
 var _markers: Array[Node3D] = []
@@ -167,24 +174,69 @@ func _refresh_markers() -> void:
 		main.add_child(_marker_root)
 	for cache in caches:
 		# Une cache d'une autre dimension n'a pas de marqueur : le donjon
-		# partage les coordonnées de l'overworld, ses boîtes flotteraient
+		# partage les coordonnées de l'overworld, ses objets flotteraient
 		# donc en plein ciel près du point de spawn.
 		if not _visible_here(cache):
 			continue
-		var is_chest: bool = String(cache.get("kind", "cache")) == "coffre"
-		var marker := MeshInstance3D.new()
-		var box := BoxMesh.new()
-		# Le coffre de boss est plus gros et plus clair : c'est la récompense
-		# du donjon, il doit se repérer du seuil de la salle.
-		box.size = Vector3(0.9, 0.6, 0.6) if is_chest else Vector3(0.5, 0.35, 0.5)
-		marker.mesh = box
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.95, 0.78, 0.30) if is_chest else Color(0.75, 0.6, 0.25)
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		marker.material_override = mat
-		marker.position = cache["position"]
-		_marker_root.add_child(marker)
-		_markers.append(marker)
+		_build_cache_markers(cache)
+
+
+## Construit les VRAIS OBJETS AU SOL d'une cache (2026-08-02, demande explicite
+## « rajouter dans le code la fonctionnalité pour avoir des items par terre »).
+##
+## Chaque objet du tas a sa propre représentation, rendue avec SON modèle —
+## épée, livre, lingot — et non plus une boîte jaune unique pour tout le tas. On
+## voit ce qui traîne avant de s'en approcher, ce qui est tout l'intérêt d'un
+## butin au sol dans un donjon.
+##
+## RÉUTILISE `HeldItem` en source « explicite » plutôt que de refaire le rendu.
+## Ce pipeline sait déjà assembler une arme en pièces, extruder un sprite
+## d'outil, remapper un .vox par matériaux et texturer un cube de bloc : en
+## réécrire une variante ici aurait garanti qu'elle diverge au premier type
+## d'objet ajouté.
+func _build_cache_markers(cache: Dictionary) -> void:
+	var base: Vector3 = cache["position"]
+	var objects: Array = cache.get("objects", [])
+	# Les objets d'un même tas sont disposés en cercle pour ne pas se
+	# superposer, et tournés différemment : un tas de trois épées empilées au
+	# même point ne se lit pas comme trois épées.
+	for i in objects.size():
+		var pivot := Node3D.new()
+		var angle := TAU * float(i) / float(maxi(objects.size(), 1))
+		var spread := 0.0 if objects.size() == 1 else 0.45
+		pivot.position = base + Vector3(cos(angle) * spread, 0.15, sin(angle) * spread)
+		pivot.rotation_degrees = Vector3(0.0, rad_to_deg(angle) + 35.0, 0.0)
+		_marker_root.add_child(pivot)
+		# `HeldItem` est un SCRIPT posé sur un MeshInstance3D dans main.tscn, pas
+		# une scène : il n'y a rien à instancier, on construit le nœud et on lui
+		# attache le script. Les propriétés doivent être posées AVANT
+		# `add_child`, qui déclenche `_ready`.
+		var item := MeshInstance3D.new()
+		item.set_script(HELD_ITEM_SCRIPT)
+		item.source = "explicite"
+		item.explicit_entry = {"kind": "object", "object": objects[i]}
+		item.in_hand = false
+		pivot.add_child(item)
+		_markers.append(pivot)
+
+	# L'OR et les MATÉRIAUX en vrac n'ont pas de modèle d'objet : ils gardent un
+	# repère géométrique. Le coffre de boss aussi — c'est un contenant, pas un
+	# objet du catalogue, et il doit se repérer depuis le seuil de la salle.
+	var is_chest: bool = String(cache.get("kind", "cache")) == "coffre"
+	var loose: bool = int(cache.get("gold", 0)) > 0 or not (cache.get("materials", {}) as Dictionary).is_empty()
+	if not is_chest and not loose:
+		return
+	var marker := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(0.9, 0.6, 0.6) if is_chest else Vector3(0.35, 0.25, 0.35)
+	marker.mesh = box
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.95, 0.78, 0.30) if is_chest else Color(0.85, 0.7, 0.2)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	marker.material_override = mat
+	marker.position = base + Vector3(0.0, 0.1, 0.0)
+	_marker_root.add_child(marker)
+	_markers.append(marker)
 
 
 # --- Sauvegarde (E.10, via SaveManager) ---

@@ -84,7 +84,7 @@ func _check_no_collisions() -> void:
 ## Les trois touches historiquement doublées ne portent qu'une action chacune,
 ## et les commandes qui avaient été évincées existent bien quelque part.
 func _check_historical_collisions() -> void:
-	for entry: Array in [[KEY_E, "talk"], [KEY_F, "toggle_fly"], [KEY_C, "descend"]]:
+	for entry: Array in [[KEY_E, "interact"], [KEY_F, "toggle_fly"], [KEY_C, "descend"]]:
 		var holders: Array[String] = []
 		for action: String in InputManager.DEFAULTS:
 			if int(entry[0]) in InputManager._keys_for(action):
@@ -92,7 +92,9 @@ func _check_historical_collisions() -> void:
 		_expect(holders.size() == 1 and holders[0] == String(entry[1]),
 				"%s -> %s (attendu « %s » seul)" % [
 						OS.get_keycode_string(int(entry[0])), holders, entry[1]])
-	for action: String in ["equip", "eat", "pickup"]:
+	# « eat » et « pickup » n'existent plus (2026-08-03) : manger est passé au
+	# clic droit, ramasser a été absorbé par l'interaction contextuelle.
+	for action: String in ["equip", "sleep", "interact"]:
 		_expect(not InputManager._keys_for(action).is_empty(),
 				"« %s » a bien une touche (%s)" % [action, InputManager.key_label(action)])
 
@@ -100,9 +102,9 @@ func _check_historical_collisions() -> void:
 ## Réaffecter une touche déjà prise la RETIRE à son ancienne action, au lieu
 ## de créer la collision silencieuse que la sonde entière traque.
 func _check_rebind_frees_previous() -> void:
-	var stolen: int = int(InputManager._keys_for("talk")[0])
+	var stolen: int = int(InputManager._keys_for("interact")[0])
 	InputManager.rebind("sleep", stolen)
-	var talk_keys := InputManager._keys_for("talk")
+	var talk_keys := InputManager._keys_for("interact")
 	_expect(not (stolen in talk_keys),
 			"touche volée à « talk » (il lui reste %s)" % [talk_keys])
 	_expect(stolen in InputManager._keys_for("sleep"),

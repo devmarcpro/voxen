@@ -1,0 +1,20 @@
+{
+  "id": "portee_accrue",
+  "name_key": "module.portee_accrue.name",
+  "module_type": "modificateur",
+  "mana_cost_base": 3,
+  "power_base": 0,
+  "tags": [
+    "maitrise"
+  ],
+  "params": {
+    "mods": {
+      "portee": 12
+    }
+  },
+  "grimoire_domains": [
+    "maitrise",
+    "espace"
+  ],
+  "book_type": "grimoire"
+}

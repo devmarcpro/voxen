@@ -1,0 +1,14 @@
+{
+  "id": "taille_ardoise_taillee",
+  "name_key": "transformation.taille_ardoise_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "ardoise_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "ardoise",
+    "amount": 1
+  }
+}

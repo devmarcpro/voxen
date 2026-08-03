@@ -100,15 +100,34 @@ static func craft(item_id: String, material_choices: Dictionary, quality: float)
 	var functionality: Dictionary = GameData.functionalities.get(item.get("functionality", ""), {})
 
 	# Dureté de base : moyenne pondérée selon stat_weights.durete (A.4).
+	#
+	# RENORMALISATION SUR LES CATÉGORIES RÉELLEMENT FOURNIES (2026-08-03).
+	# Deux objets du catalogue (`arc`, `rondache`) pondèrent leur dureté sur une
+	# catégorie que leur RECETTE ne demande pas : 0,1 et 0,3 de « minerai » pour
+	# des recettes en bois pur. L'ancien code poussait une erreur et SAUTAIT le
+	# terme — la somme des poids ne valait donc plus 1, et l'objet sortait
+	# silencieusement 10 % (arc) à 30 % (rondache) plus tendre que sa fiche ne
+	# l'annonce. Le défaut existe depuis toujours ; il ne s'est vu que le jour où
+	# le butin de donjon en a fabriqué assez pour inonder la console.
+	#
+	# On répartit désormais le poids manquant sur ce qui est présent, ce qui rend
+	# la dureté cohérente avec la matière réellement employée. Le signalement
+	# reste, en AVERTISSEMENT : c'est une incohérence de données à trancher
+	# (ajouter le métal à la recette, ou retirer le poids), pas un cas normal.
 	var hardness_weights: Dictionary = (item["stat_weights"] as Dictionary).get("durete", {})
 	var base_hardness := 0.0
+	var weight_total := 0.0
+	for category in hardness_weights:
+		if GameData.materials.has(String(material_choices.get(category, ""))):
+			weight_total += float(hardness_weights[category])
 	for category in hardness_weights:
 		var mat_id: String = material_choices.get(category, "")
 		var mat: Variant = GameData.materials.get(mat_id)
 		if mat == null:
-			push_error("ItemFactory : matériau manquant pour la catégorie « %s » de « %s »." % [category, item_id])
+			push_warning("ItemFactory : « %s » pondère sa dureté sur « %s », absent de sa recette — poids redistribué." % [item_id, category])
 			continue
-		base_hardness += float(hardness_weights[category]) * float(mat["stats"]["durete"])
+		var share: float = float(hardness_weights[category]) / maxf(weight_total, 0.0001)
+		base_hardness += share * float(mat["stats"]["durete"])
 
 	# Poids : Σ densité × quantité des entrées de la recette (A.4.1).
 	var weight := 0.0

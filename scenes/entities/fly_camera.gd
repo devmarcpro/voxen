@@ -93,6 +93,11 @@ var _jump_requested := false
 ## payer pour que la secousse reste une surcouche et ne contamine jamais l'état
 ## de visée — voir ImpactFeedback.camera_shake().
 var _applied_shake := Vector3.ZERO
+## Facteur de vitesse dû aux STATUTS (F.4 : ralentissement, gel, hâte). POUSSÉ
+## par Player à chaque frame, exactement comme la posture ci-dessous : la caméra
+## porte le mouvement mais ne connaît ni les statuts ni le résolveur E.4, et il
+## n'y a aucune raison de lui apprendre.
+var status_speed := 1.0
 ## Posture de combat : garde levée ou coup engagé. Poussée par Player à chaque
 ## frame — la caméra ne connaît ni arme ni endurance, et n'a pas à les
 ## connaître : elle ne reçoit qu'un booléen de posture.
@@ -216,6 +221,7 @@ func _process(delta: float) -> void:
 			# notre avatar chez les autres pour une raison qu'ils ne voient pas.
 			NetworkManager.rpc_broadcast_pose.rpc(global_position,
 				rotation.y - _applied_shake.y, rotation.x - _applied_shake.x)
+
 
 
 ## Vitesse horizontale voulue (blocs/s) à partir des touches enfoncées.
@@ -462,6 +468,11 @@ func _process_walk(delta: float) -> void:
 		speed = SNEAK_SPEED
 	elif Input.is_action_pressed("sprint"):
 		speed = SPRINT_SPEED
+	# STATUTS (F.4, 2026-08-03) : ralentissement, gel, hâte. La caméra ne connaît
+	# pas les statuts et n'a pas à les connaître — elle demande un facteur au
+	# joueur, qui le tient du résolveur E.4. Un gel donne 0 et immobilise
+	# réellement, ce qu'aucun autre chemin ne permettait d'exprimer.
+	speed *= status_speed
 	# JEU DE JAMBES : hors posture de combat, ceci rend exactement
 	# `direction.normalized() * speed` — la marche Minecraft d'origine, au
 	# millième. En posture de combat, le recul et le pas de côté sont pondérés et

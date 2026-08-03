@@ -1,0 +1,20 @@
+{
+  "id": "eclat_de_glace",
+  "name_key": "module.eclat_de_glace.name",
+  "module_type": "effet",
+  "mana_cost_base": 7,
+  "power_base": 11,
+  "tags": [
+    "glace",
+    "projectile"
+  ],
+  "params": {
+    "vitesse": 24,
+    "portee": 30
+  },
+  "grimoire_domains": [
+    "eau_glace"
+  ],
+  "book_type": "grimoire",
+  "degats_des": "2d4"
+}

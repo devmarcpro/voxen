@@ -769,6 +769,7 @@ func _row_label(key: String) -> Label:
 	return label
 
 
+
 func _button(key: String, callback: Callable) -> Button:
 	var b := Button.new()
 	b.text = tr(key)

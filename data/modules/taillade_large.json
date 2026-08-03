@@ -1,0 +1,20 @@
+{
+  "id": "taillade_large",
+  "name_key": "module.taillade_large.name",
+  "module_type": "effet",
+  "mana_cost_base": 7,
+  "power_base": 12,
+  "tags": [
+    "arme",
+    "zone"
+  ],
+  "params": {
+    "arc": 140,
+    "portee": 3
+  },
+  "grimoire_domains": [
+    "frappes"
+  ],
+  "book_type": "manuel",
+  "degats_des": "2d6"
+}
