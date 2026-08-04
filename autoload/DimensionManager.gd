@@ -86,6 +86,9 @@ var _return_stack: Array[Vector3] = []
 ## royaumes et que la file de spawn — le tick et la frame sont des budgets de
 ## simulation, jamais de construction.
 var _streamed := {}          # dimension → { Vector2i(colonne) → true }
+## Chunks modifiés par le JOUEUR, et donc jamais évinçables : eux ne se
+## regénèrent pas.
+var _edited := {}            # dimension → { Vector3i(chunk) → true }
 
 
 func _process(_delta: float) -> void:
@@ -118,7 +121,47 @@ func _stream_around_player() -> void:
 					continue
 				done[column] = true
 				_build_column(declaration, column)
+				_evict_far(center, radius)
 				return   # UNE par frame, et on rend la main.
+
+
+## Libère les chunks trop lointains.
+##
+## POURQUOI C'EST NÉCESSAIRE : le streaming n'ajoutait jamais rien qu'il ne
+## garde. Une longue exploration faisait donc monter la mémoire sans fin — un
+## défaut qui ne se voit pas en dix minutes de test et qui devient une sortie
+## brutale au bout d'une heure.
+##
+## POURQUOI C'EST DÉLICAT : dans une dimension, le terrain généré et les blocs
+## posés par le joueur vivent dans le MÊME magasin — contrairement à
+## l'overworld, qui garde ses éditions dans un diff séparé. Évincer sans
+## distinction effacerait ce que le joueur a bâti, et il ne s'en apercevrait
+## qu'en revenant. On ne libère donc QUE les chunks jamais touchés : le terrain
+## se regénère à l'identique, un mur non.
+func _evict_far(center: Vector2i, radius: int) -> void:
+	var store: Dictionary = _stores.get(active, {})
+	var edited: Dictionary = _edited.get(active, {})
+	var done: Dictionary = _streamed.get(active, {})
+	# Marge : on garde un anneau de plus que ce qu'on génère, sinon un joueur
+	# qui fait deux pas en avant puis deux en arrière verrait le monde se
+	# reconstruire sous ses pieds à chaque fois.
+	var keep := radius + 3
+	var doomed: Array[Vector3i] = []
+	for ck: Vector3i in store:
+		if edited.has(ck):
+			continue
+		if maxi(absi(ck.x - center.x), absi(ck.z - center.y)) <= keep:
+			continue
+		doomed.append(ck)
+	# UN SEUL PAR FRAME, comme la génération : libérer trente chunks d'un coup
+	# ferait le à-coup qu'on cherche justement à éviter.
+	if doomed.is_empty():
+		return
+	var ck: Vector3i = doomed[0]
+	var meshes: Dictionary = _meshes.get_or_add(active, {})
+	_drop_mesh(meshes, ck)
+	store.erase(ck)
+	done.erase(Vector2i(ck.x, ck.z))
 
 
 ## Bâtit une colonne de chunks (16×16 blocs, toute la hauteur utile) depuis la
@@ -312,6 +355,11 @@ func block_at_in(dimension: StringName, pos: Vector3i) -> int:
 func apply_block(pos: Vector3i, material_id: int) -> bool:
 	if _backends.has(active):
 		return bool((_backends[active] as Node).call("dimension_apply_block", pos, material_id))
+	# ON RETIENT QUE CE CHUNK A ÉTÉ TOUCHÉ. C'est ce qui le rendra
+	# inévinçable : le terrain se regénère à l'identique, un mur bâti par le
+	# joueur non.
+	(_edited.get_or_add(active, {}) as Dictionary)[
+			Vector3i(pos.x >> 4, pos.y >> 4, pos.z >> 4)] = true
 	return set_block_in(active, pos, material_id, true)
 
 
@@ -354,6 +402,7 @@ func remesh_all(dimension: StringName) -> void:
 ## mémoire, et c'est déjà la règle de l'overworld (G.1).
 func free_dimension(dimension: StringName) -> void:
 	_streamed.erase(dimension)
+	_edited.erase(dimension)
 	for ck: Vector3i in (_meshes.get(dimension, {}) as Dictionary):
 		(_meshes[dimension][ck] as MeshInstance3D).queue_free()
 	_meshes.erase(dimension)

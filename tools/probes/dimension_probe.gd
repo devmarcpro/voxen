@@ -199,6 +199,27 @@ func _check_generic_dimension() -> void:
 	_expect(chunks_after > chunks_before,
 			"le monde se génère à la demande au lieu d'être borné")
 
+	# CE QUE LE JOUEUR A BÂTI SURVIT À L'ÉVICTION.
+	#
+	# Dans une dimension, le terrain généré et les blocs posés vivent dans le
+	# MÊME magasin — l'overworld, lui, garde ses éditions dans un diff séparé.
+	# Évincer sans distinction effacerait le travail du joueur, et il ne s'en
+	# apercevrait qu'en revenant sur ses pas. C'est le genre de perte qu'aucune
+	# erreur ne signale.
+	var mark := Vector3i(roundi(here.x), roundi(here.y) + 6, roundi(here.z))
+	var stone: int = GameData.material_runtime_ids.get("verre_songe", 1)
+	WorldManager.set_block(mark, stone)
+	_expect(WorldManager.block_at_world(mark) == stone, "on peut bâtir dans la faille")
+	# On s'éloigne largement au-delà du rayon de conservation, puis on revient.
+	player.teleport_to(Vector3(here.x + 400.0, here.y, here.z + 400.0))
+	for i in 60:
+		await wait_frame()
+	player.teleport_to(here)
+	for i in 20:
+		await wait_frame()
+	_expect(WorldManager.block_at_world(mark) == stone,
+			"le bloc posé est toujours là après un aller-retour lointain")
+
 	# CHAQUE DIMENSION N'EMPLOIE QUE SES PROPRES BLOCS (demande de l'auteur,
 	# 2026-08-04 : « sinon on va pas s'en sortir »).
 	#
