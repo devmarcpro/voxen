@@ -10,9 +10,14 @@
   "vitesse_base": 3.0,
   "portee": 1.5,
   "type_degats": "percant",
-  "poids_reference": 20,
+  "poids_reference": 18,
   "parts": {
-    "manche": "court",
-    "tete": "lame_courte"
-  }
+    "manche": "poignee_dague",
+    "tete": "lame_dague"
+  },
+  "attaques": [
+    "estoc",
+    "taille_gauche",
+    "taille_droite"
+  ]
 }

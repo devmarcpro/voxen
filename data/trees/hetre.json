@@ -4,10 +4,10 @@
   "wood_material": "hetre",
   "leaf_material": "feuilles_hetre",
   "height_range": [
-    6,
-    10
+    14,
+    18
   ],
-  "trunk_radius": 1,
+  "trunk_radius": 2,
   "branch_parameters": {
     "start_fraction": 0.5,
     "count_range": [
@@ -20,10 +20,10 @@
       4
     ]
   },
-  "canopy_shape": "spherical",
+  "canopy_shape": "broad",
   "canopy_radius_range": [
-    3,
-    4
+    5,
+    7
   ],
   "special_tags": []
 }

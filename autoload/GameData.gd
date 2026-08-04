@@ -18,6 +18,11 @@ const PATH_SKILLS := "res://data/skills"
 const PATH_FUNCTIONALITIES := "res://data/functionalities"
 const PATH_ITEMS := "res://data/items"
 const PATH_MODULES := "res://data/modules"
+## Statuts temporaires (GDD F.4) — brûlure, hâte, peau de pierre…
+const PATH_STATUS_EFFECTS := "res://data/status_effects"
+const PATH_DIMENSIONS := "res://data/dimensions"
+## Table des effets d'échec de lecture (GDD A.7, extensible en données).
+const PATH_READING_FAILURES := "res://data/reading_failures.json"
 const PATH_CREATURES := "res://data/creatures"
 const PATH_HITBOX_TEMPLATES := "res://data/hitbox_templates.json"
 const PATH_ARMOR_TYPE_MODIFIERS := "res://data/armor_type_modifiers.json"
@@ -26,10 +31,12 @@ const PATH_TREES := "res://data/trees"
 const PATH_PLANTS := "res://data/plants"
 const PATH_DUNGEON_ROOMS := "res://data/dungeon_rooms"
 const PATH_DUNGEON_CONNECTORS := "res://data/dungeon_connectors"
+const PATH_NAME_CULTURES := "res://data/name_cultures"
 const PATH_RACES := "res://data/races"
 const PATH_CLASSES := "res://data/classes"
 const PATH_TRANSFORMATIONS := "res://data/transformations"
 const PATH_PLATS := "res://data/plats"
+const PATH_MUNITIONS := "res://data/munitions"
 
 ## Les 6 stats de personnage (C.1) — pour la validation des bonus race/classe.
 const CHARACTER_STATS: Array[String] = [
@@ -125,6 +132,18 @@ var functionalities: Dictionary = {}
 var items: Dictionary = {}
 ## Modules de compétence (B.4).
 var modules: Dictionary = {}
+## Fiches de statut (F.4), indexées par id. Substrat partagé des sorts,
+## des potions (F.9), de la nourriture avariée (F.5) et des échecs de
+## lecture (A.7) — pas une annexe du système de sorts.
+var status_effects: Dictionary = {}
+## DIMENSIONS (3.5) : registre des mondes autres que l'overworld. Une dimension
+## déclare son ambiance et, si elle en a un, le nœud qui sait la construire.
+## Sans ce registre, « pas l'overworld » voulait dire « donjon ».
+var dimensions: Dictionary = {}
+## Effets d'échec de lecture, par gravité (« mineur » / « grave ») — GDD A.7.
+## Chargée sans validation bloquante : un fichier absent dégrade la lecture
+## ratée en simple perte du livre, ce qui reste jouable.
+var reading_failures: Dictionary = {}
 ## Créatures / PNJ (B.5).
 var creatures: Dictionary = {}
 ## Zones de coup par gabarit de squelette (combat directionnel, 2026-07-28) —
@@ -154,6 +173,11 @@ var dialogue_lines: Array[Dictionary] = []
 ## pas de vox_model réel pour l'instant, voir DungeonGenerator).
 var dungeon_rooms: Dictionary = {}
 var dungeon_connectors: Dictionary = {}
+## Cultures de nommage (12.5/B.11/C.9) — data/name_cultures/*.json. Pilotent
+## les noms de PNJ, de villes et les titres de rôle, consommées par
+## `NameGenerator`. Axe INDÉPENDANT de la race : une même race peut porter
+## plusieurs cultures selon le royaume.
+var name_cultures: Dictionary = {}
 ## Races (C.2) et classes (C.3) de création de personnage (6.1).
 var races: Dictionary = {}
 var classes: Dictionary = {}
@@ -164,6 +188,11 @@ var transformations: Dictionary = {}
 ## blocs. `nutrition.cuit = true` → nutrition PLEINE (A.9.1) et bonus de
 ## potentiel crédités à la consommation (6.4).
 var plats: Dictionary = {}
+## Munitions (flèches, carreaux). Ce sont des RESSOURCES comme les plats — non
+## posables, instanciées en inventaire, empilées — et elles vivent donc dans le
+## même registre. Les distinguer par une classe à part aurait dupliqué le
+## stockage, la consommation et l'affichage pour un seul champ de différence.
+var munitions: Dictionary = {}
 ## RESSOURCES : objets empilables d'inventaire qui ne sont PAS des blocs
 ## (viandes, peaux — 7.7). Registre distinct de `materials` À DESSEIN : elles
 ## n'ont pas d'id runtime, pas d'entrée de palette, et ne peuvent donc pas
@@ -189,8 +218,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	# Hot-reload F5 (D.2) — debug uniquement.
 	if not OS.is_debug_build():
 		return
-	var key := event as InputEventKey
-	if key != null and key.pressed and not key.echo and key.physical_keycode == KEY_F5:
+	if event.is_action_pressed("reload_data"):
 		reload_data()
 
 
@@ -233,6 +261,9 @@ func load_all() -> bool:
 	_load_functionalities()
 	_load_items()
 	_load_modules()
+	_load_reading_failures()
+	_load_status_effects()
+	_load_dimensions()
 	_load_hitbox_templates()   # avant les créatures : elles valident leur gabarit.
 	_load_armor_type_modifiers()
 	_load_weapon_parts()   # avant les objets : ils referencent des pieces.
@@ -240,18 +271,24 @@ func load_all() -> bool:
 	_load_trees()
 	_load_plants()
 	_load_dialogue()
+	_load_name_cultures()
 	_load_dungeon_rooms()
 	_load_dungeon_connectors()
 	_load_races()
 	_load_classes()
 	_load_transformations()
 	_load_plats()
+	_load_munitions()
 	_generate_parametric_resources()
+	# APRÈS les essences et les matériaux, AVANT l'index : une pousse emprunte sa
+	# couleur aux feuilles de son essence, et doit recevoir son id runtime avec
+	# les autres matériaux.
+	_generate_sapling_materials()
 	_finalize_material_index()
 	_validate_translation_keys()
 
-	print("GameData : %d matériau(x), %d catégorie(s), %d biome(s), %d couche(s) de bruit, %d strate(s), %d compétence(s), %d objet(s), %d module(s), %d créature(s), %d essence(s) d'arbre, %d plante(s), %d salle(s)/%d connecteur(s) de donjon, %d race(s), %d classe(s)." % [
-		materials.size(), material_categories.size(), biomes.size(), noise_layers.size(), strata.size(), skills.size(), items.size(), modules.size(), creatures.size(), trees.size(), plants.size(), dungeon_rooms.size(), dungeon_connectors.size(), races.size(), classes.size()])
+	print("GameData : %d matériau(x), %d catégorie(s), %d biome(s), %d couche(s) de bruit, %d strate(s), %d compétence(s), %d objet(s), %d module(s), %d créature(s), %d essence(s) d'arbre, %d plante(s), %d salle(s)/%d connecteur(s) de donjon, %d race(s), %d classe(s), %d culture(s) de nommage." % [
+		materials.size(), material_categories.size(), biomes.size(), noise_layers.size(), strata.size(), skills.size(), items.size(), modules.size(), creatures.size(), trees.size(), plants.size(), dungeon_rooms.size(), dungeon_connectors.size(), races.size(), classes.size(), name_cultures.size()])
 	return _blocking_errors == 0
 
 
@@ -374,6 +411,41 @@ func palette_size() -> int:
 
 ## Plats cuisinés (7.7) — recettes à station Cuisine. Ils rejoignent
 ## `resources` : même modèle d'instance, même consommation.
+## Charge les munitions. Même forme que les plats — un identifiant, une recette,
+## une densité — moins la nutrition : on ne mange pas une flèche.
+func _load_munitions() -> void:
+	munitions.clear()
+	for path in _list_json_recursive(PATH_MUNITIONS):
+		var raw: Variant = _load_json(path)
+		if not (raw is Dictionary):
+			continue
+		var ammo: Dictionary = raw
+		var ok := true
+		for field in ["id", "name_key", "recipe", "par_fabrication"]:
+			if not ammo.has(field):
+				_blocking_error("champ « %s » manquant dans %s" % [field, path])
+				ok = false
+		if not ok:
+			continue
+		var recipe: Dictionary = ammo["recipe"]
+		if not skills.has(String(recipe.get("skill", ""))):
+			_blocking_error("compétence inconnue « %s » (munition « %s »)" % [
+					recipe.get("skill", "?"), ammo["id"]])
+		munitions[ammo["id"]] = ammo
+		resources[ammo["id"]] = {
+			"id": ammo["id"],
+			"name_key": ammo["name_key"],
+			"category": "ressource",
+			"item_kind": "munition",
+			"color": String(ammo.get("color", "#8A6A3C")),
+			"stats": {"densite": float(ammo.get("densite", 1)),
+				"valeur_base": float(ammo.get("valeur_base", 2))},
+			"nutrition": {},
+			"potentiel": {},
+			"tags": ["munition"],
+		}
+
+
 func _load_plats() -> void:
 	plats.clear()
 	for path in _list_json_recursive(PATH_PLATS):
@@ -431,6 +503,22 @@ func _load_plats() -> void:
 ## l'id de la créature (B.1 : « la couleur d'une variante = couleur de la
 ## source décalée déterministiquement »), puis résolution de collision par
 ## petits pas — la validation d'unicité des couleurs reste vraie.
+func _load_dimensions() -> void:
+	dimensions.clear()
+	for path in _list_json_recursive(PATH_DIMENSIONS):
+		var raw: Variant = _load_json(path)
+		if not (raw is Dictionary):
+			continue
+		var dimension: Dictionary = raw
+		for field in ["id", "name_key"]:
+			if not dimension.has(field):
+				_blocking_error("champ « %s » manquant dans %s" % [field, path])
+		if dimensions.has(dimension.get("id", "")):
+			_blocking_error("id de dimension dupliqué « %s »" % dimension["id"])
+			continue
+		dimensions[String(dimension["id"])] = dimension
+
+
 func _generate_parametric_resources() -> void:
 	for creature_id: String in creatures:
 		var creature: Dictionary = creatures[creature_id]
@@ -451,6 +539,48 @@ func _generate_parametric_resources() -> void:
 				})
 		_add_parametric("peau_de_" + creature_id, "material.peau.name", creature,
 				"#8A6A4F", {})
+
+
+## POUSSES : un matériau POSABLE par essence (B.1, « Pousse de [essence] »).
+##
+## Des ressources n'auraient pas suffi : une ressource ne se pose pas, et une
+## pousse qu'on ne peut pas planter ne sert à rien. Ce sont donc de vrais
+## matériaux, avec un id runtime et une entrée de palette, générés depuis le
+## catalogue d'essences — écrire trente-huit fichiers à la main aurait divergé
+## dès la première essence ajoutée.
+func _generate_sapling_materials() -> void:
+	for species_id: String in trees:
+		var species: Dictionary = trees[species_id]
+		var id := "pousse_" + species_id
+		if materials.has(id):
+			continue  # Un fichier écrit à la main gagne toujours.
+		var leaf: Dictionary = materials.get(String(species.get("leaf_material", "")), {})
+		materials[id] = {
+			"id": id,
+			"name_key": "material.pousse.name",
+			"category": "vegetal",
+			"stats": {
+				# TENDRE ET LÉGÈRE : une pousse s'arrache à la main, et la
+				# transporter par centaines ne doit pas peser un arbre.
+				"durete": 1, "densite": 1, "valeur_base": 4,
+				"conductivite_mana": 3, "flammabilite": 70, "isolation": 10,
+				"conductivite_electrique": 2, "flottabilite": 60, "luminosite": 0,
+				"fertilite": 60, "transparence": 20, "elasticite": 40, "friction": 35,
+			},
+			"tags": ["organique", "vegetal", "pousse"],
+			# COULEUR DÉCALÉE, pas recopiée. Reprendre telle quelle la couleur des
+			# feuilles donnait deux blocs distincts pour une seule entrée de
+			# palette — `--probe-butin` l'a signalé sur les 38 essences d'un
+			# coup. `_variant_color` fait exactement ce décalage déterministe,
+			# et c'est déjà lui qui distingue les viandes et les peaux.
+			"color": _variant_color(String(leaf.get("color", "#4C8B3A")), id),
+			"noise": {"type": "procedural", "seed_offset": 940, "amplitude": 0.05, "scale": 1},
+			"harvest": {"tool_category": "mains_nues", "skill": "herboristerie"},
+			"world_gen": {"mode": "aucun", "biome_tags": []},
+			"parametric": {"source": "tree", "source_id": species_id},
+			"source_name_key": String(species.get("name_key", "")),
+		}
+		_derive_tags(materials[id])
 
 
 ## Crée un matériau paramétrique dérivé de `source`, s'il n'existe pas déjà
@@ -709,15 +839,26 @@ func _load_items() -> void:
 		# frapper ni à récolter : elle porte un `equip_slot` et contribue des
 		# dés de réduction (A.4.2). Tout autre type exige sa fonctionnalité.
 		var is_armor := String(item.get("type", "")) == "armure"
+		# Un LIVRE (5.1, 2026-08-02) n'a ni fonctionnalité ni emplacement : il ne
+		# frappe pas, ne se récolte pas et ne se porte pas. Il se LIT, et c'est
+		# son seul usage. Il n'a pas non plus de recette réelle — le GDD est
+		# explicite : « les modules ne se craftent pas », les livres se trouvent
+		# en donjon ou s'achètent.
+		var is_book := String(item.get("type", "")) == "livre"
 		var required := ["id", "name_key", "type", "recipe", "stat_weights"]
-		required.append("equip_slot" if is_armor else "functionality")
+		if is_armor:
+			required.append("equip_slot")
+		elif not is_book:
+			required.append("functionality")
 		for field in required:
 			if not item.has(field):
 				_blocking_error("champ « %s » manquant dans %s" % [field, path])
 				ok = false
 		if not ok:
 			continue
-		if is_armor:
+		if is_book:
+			pass  # Rien de plus à valider : ni emplacement ni fonctionnalité.
+		elif is_armor:
 			if not (String(item["equip_slot"]) in Equipment.SLOTS
 					or Equipment.SLOT_GROUPS.has(String(item["equip_slot"]))):
 				_blocking_error("emplacement d'équipement inconnu « %s » dans l'objet « %s » (6.2)" % [
@@ -767,7 +908,10 @@ func _load_trees() -> void:
 			_blocking_error("matériau de bois inconnu « %s » pour l'arbre « %s »" % [tree["wood_material"], tree["id"]])
 		if not materials.has(tree["leaf_material"]):
 			_blocking_error("matériau de feuilles inconnu « %s » pour l'arbre « %s »" % [tree["leaf_material"], tree["id"]])
-		if not (tree["canopy_shape"] in ["spherical", "conical", "flat", "weeping"]):
+		# LA LISTE FAIT FOI CÔTÉ GÉNÉRATEUR, pas ici : elle était recopiée à la
+		# main dans ce fichier, si bien qu'ajouter une silhouette au générateur
+		# faisait échouer 25 arbres au boot sans que le générateur soit en cause.
+		if not (tree["canopy_shape"] in TreeGenerator.CANOPY_SHAPES):
 			_blocking_error("canopy_shape invalide « %s » pour l'arbre « %s »" % [tree["canopy_shape"], tree["id"]])
 		if trees.has(tree["id"]):
 			_blocking_error("id d'essence d'arbre dupliqué « %s »" % tree["id"])
@@ -821,6 +965,54 @@ func _load_plants() -> void:
 			plants[plant["id"]] = plant
 
 
+## Cultures de nommage (12.5, schéma B.11, catalogue C.9).
+##
+## La validation est PLUS STRICTE que pour les autres collections, pour une
+## raison précise : un pool vide ne plante pas, il produit un nom TRONQUÉ.
+## « Marc » sans suffixe, ou pire une chaîne vide, se serait glissé en jeu
+## sans un message d'erreur — et le seul symptôme aurait été des PNJ à moitié
+## anonymes, qu'on met longtemps à relier à un fichier de données.
+## Exception unique : `famille_b` a le droit d'être `[""]`, c'est la
+## convention de B.11 pour les cultures à noms de famille pleins (le sino).
+func _load_name_cultures() -> void:
+	name_cultures.clear()
+	var pools := ["prenom_a", "prenom_b", "famille_a", "famille_b", "ville_a", "ville_b"]
+	for path in _list_json_recursive(PATH_NAME_CULTURES):
+		var raw: Variant = _load_json(path)
+		if not (raw is Dictionary):
+			continue
+		var culture: Dictionary = raw
+		var ok := true
+		for field in ["id", "name_key", "name_order", "race_affinity", "titres"]:
+			if not culture.has(field):
+				_blocking_error("champ « %s » manquant dans %s" % [field, path])
+				ok = false
+		for pool_name: String in pools:
+			var pool: Variant = culture.get(pool_name)
+			if not (pool is Array) or (pool as Array).is_empty():
+				_blocking_error("pool « %s » absent ou vide dans %s" % [pool_name, path])
+				ok = false
+				continue
+			# Un pool ne doit pas contenir d'entrée vide, SAUF famille_b (B.11).
+			if pool_name == "famille_b":
+				continue
+			for entry: Variant in (pool as Array):
+				if String(entry).strip_edges() == "":
+					_blocking_error("entrée vide dans le pool « %s » de %s" % [pool_name, path])
+					ok = false
+					break
+		var order := String(culture.get("name_order", ""))
+		if order != "prenom_nom" and order != "nom_prenom":
+			_blocking_error("name_order « %s » inconnu dans %s (attendu prenom_nom ou nom_prenom)" % [order, path])
+			ok = false
+		if not ok:
+			continue
+		if name_cultures.has(culture["id"]):
+			_blocking_error("id de culture dupliqué « %s »" % culture["id"])
+		else:
+			name_cultures[culture["id"]] = culture
+
+
 ## Salles de donjon (E.29, B.10 SIMPLIFIÉ) : data/dungeon_rooms/*.json —
 ## géométrie en boîte (`size`) + points d'attache (`doors`), pas de vrai
 ## `vox_model` pour l'instant (DungeonGenerator construit la salle en blocs
@@ -869,6 +1061,25 @@ func _load_dungeon_connectors() -> void:
 
 
 ## Modules de compétence (B.4) : sorts/attaques assemblables (section 5).
+func _load_status_effects() -> void:
+	status_effects.clear()
+	for path in _list_json_recursive(PATH_STATUS_EFFECTS):
+		var raw: Variant = _load_json(path)
+		if not (raw is Dictionary):
+			continue
+		var status: Dictionary = raw
+		for field in ["id", "name_key", "duration_ticks"]:
+			if not status.has(field):
+				_blocking_error("champ « %s » manquant dans %s" % [field, path])
+				return
+		status_effects[status["id"]] = status
+
+
+func _load_reading_failures() -> void:
+	var raw: Variant = _load_json(PATH_READING_FAILURES)
+	reading_failures = raw if raw is Dictionary else {}
+
+
 func _load_modules() -> void:
 	modules.clear()
 	for path in _list_json_recursive(PATH_MODULES):

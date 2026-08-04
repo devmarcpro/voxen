@@ -1,158 +1,667 @@
 keys,ja
-biome.calotte_glaciaire.name,氷冠
-biome.cote.name,海岸
-biome.desert_aride.name,乾燥砂漠
-biome.desert_froid.name,寒冷砂漠
-biome.desert_rocheux.name,岩石砂漠
-biome.foret_de_mana.name,マナの森
-biome.foret_mixte.name,混交林
-biome.foret_pluviale_temperee.name,温帯雨林
-biome.foret_temperee.name,温帯林
-biome.foret_tropicale_seche.name,熱帯乾燥林
-biome.jungle_tropicale.name,熱帯ジャングル
-biome.lande.name,荒野
-biome.mangrove.name,マングローブ
-biome.marais_froid.name,寒冷湿地
-biome.marecage.name,沼地
-biome.mediterraneen.name,地中海性気候
-biome.montagne.name,山岳
-biome.montagne_cristalline.name,水晶山脈
+material.terre.name,土
+material.pierre.name,石
+material.chene.name,オーク材
+material.terre_fertile.name,肥沃な土
+material.sable.name,砂
+material.gres.name,砂岩
+material.calcaire.name,石灰岩
+material.ardoise.name,粘板岩
+material.basalte.name,玄武岩
+material.granit.name,花崗岩
+material.granit_noir.name,黒花崗岩
+material.fer.name,鉄
+material.pin.name,松材
+material.cuivre.name,銅
+material.feuilles_chene.name,オークの葉
 biome.plaine_temperee.name,温帯平原
-biome.prairie.name,草原
-biome.savane.name,サバンナ
-biome.steppe.name,ステップ
+biome.foret_temperee.name,温帯林
+biome.desert_aride.name,乾燥砂漠
+biome.montagne.name,山岳
+skill.minage.name,採掘
+skill.bucheronnage.name,伐採
+skill.terrassement.name,掘削
+skill.herboristerie.name,薬草学
+skill.collecte.name,採取
+functionality.recolte_minage.name,採掘道具
+functionality.recolte_bucheronnage.name,伐採道具
+functionality.recolte_terrassement.name,掘削道具
+item.pioche.name,つるはし
+item.hache.name,斧
+item.pelle.name,シャベル
+ui.hud.fps,FPS: {fps}
+ui.hud.chunks,チャンク：表示 {meshes} · キャッシュ {cache} · 待機 {file}
+ui.hud.meshing,メッシュ化：平均 {moyen} ms · 最大 {max} ms
+ui.hud.pos,"座標：{x}, {y}, {z}"
+ui.hud.biome,バイオーム: {biome}
+ui.hud.fertilite,肥沃度：{pct}%
+ui.hud.temperature,気温：{deg}°C
+ui.hud.cible,対象：{materiau} — {progres} %
+ui.hud.cible_rebond,対象：{materiau} — 道具が弾かれる！
+ui.hud.outil,道具: {outil}
+ui.outil.mains_nues,素手
+ui.hud.grille,グリッド: {res} px
+ui.toast.budget_subdivision,この区域の詳細限界に達しました
+ui.toast.niveau,{competence} がレベル {niveau} に上がった！
+ui.toast.etal_vendu,売却：{item} を {prix} 金貨で
+ui.toast.etal_stock,出品：{item} を {prix} 金貨で
+ui.toast.etal_collecte,回収：{montant} 金貨
+ui.inv.titre,持ち物
+ui.inv.poids,重量: {poids} / {capacite}
+ui.inv.surcharge,重量超過 — 移動速度低下
+ui.inv.competences,スキル
+ui.inv.competence_ligne,{nom} — レベル {niveau}（{xp} / {xp_max} XP · 潜在能力 {potentiel}）
+ui.inv.outil_ligne,{nom}（品質 {qualite} · 硬度 {durete}）
+ui.inv.vide,(持ち物なし)
+skill.epee.name,剣
+skill.mains_nues.name,素手
+skill.meditation.name,瞑想
+skill.controle_mana.name,マナ制御
+skill.esquive.name,回避
+skill.encaissement.name,頑強
+functionality.morsure.name,噛みつき
+functionality.epee.name,剣
+item.epee.name,剣
+module.trait_de_mana.name,マナの矢
+module.soin_mineur.name,小治癒
+module.frappe_lourde.name,強打
+module.morsure_simple.name,噛みつき
+ui.hud.sante,HP: {pv} / {pv_max}
+ui.hud.mana,マナ: {mana} / {mana_max}
+ui.hud.or,所持金: {or}
+ui.toast.creature_tuee,{creature} を倒した！
+functionality.mains_nues.name,素手
+ui.hud.module,モジュール {slot}：{nom}（マナ {cout}）
+ui.role.base,役割：拠点
+ui.role.habitation,役割：住居
+ui.role.champs,役割：農地
+ui.role.ressources_naturelles,役割：自然資源
+ui.hud.cellule,"区画 {x},{z}：{statut}"
+ui.hud.cellule_revendiquee,領有済み（{role}）
+ui.hud.cellule_libre,未領有（V で領有）
+ui.role_name.base,拠点
+ui.role_name.habitation,居住区
+ui.role_name.champs,農地
+ui.role_name.ressources_naturelles,資源地
+ui.map.titre,ワールドマップ
+ui.map.danger.0,平穏
+ui.map.danger.1,危険
+ui.map.danger.2,致命的
+ui.map.aide,WASD：視点移動 · ホイール：ズーム（無限） · L：表示切替 · クリック：高速移動 · Esc：閉じる
+stat.force.name,筋力
+stat.dexterite.name,器用さ
+stat.endurance.name,耐久力
+stat.volonte.name,意志力
+stat.perception.name,知覚
+stat.charisme.name,魅力
+material.sapin.name,モミ材
+material.aiguilles_sapin.name,モミの葉
+material.bois_palmier.name,ヤシ材
+material.feuilles_palmier.name,ヤシの葉
+material.bois_baobab.name,バオバブ材
+material.feuilles_baobab.name,バオバブの葉
+tree.chene.name,オーク
+tree.sapin.name,モミ
+tree.palmier.name,ヤシ
+tree.baobab.name,バオバブ
+material.eau.name,水
+material.epicea.name,トウヒ材
+material.meleze.name,カラマツ材
+material.cedre.name,スギ材
+material.hetre.name,ブナ材
+material.bouleau.name,カバ材
+material.erable.name,カエデ材
+material.frene.name,トネリコ材
+material.orme.name,ニレ材
+material.if.name,イチイ材
+material.noyer.name,クルミ材
+material.cerisier.name,サクラ材
+material.olivier.name,オリーブ材
+material.ebene.name,黒檀
+material.gaiac.name,リグナムバイタ
+material.acajou.name,マホガニー
+material.teck.name,チーク材
+material.balsa.name,バルサ材
+material.bambou.name,竹
+material.saule.name,ヤナギ材
+material.liege.name,コルク
+material.peuplier.name,ポプラ材
+material.tilleul.name,シナノキ材
+material.charme.name,シデ材
+material.robinier.name,ニセアカシア材
+material.chataignier.name,クリ材
+material.platane.name,プラタナス材
+material.aulne.name,ハンノキ材
+material.buis.name,ツゲ材
+material.cypres.name,ヒノキ材
+material.sequoia.name,セコイア材
+material.acacia.name,アカシア材
+material.eucalyptus.name,ユーカリ材
+material.pommier.name,リンゴ材
+material.noisetier.name,ハシバミ材
+material.bois_flotte.name,流木
+material.bois_calcine.name,焦げた木
+material.etain.name,錫
+material.zinc.name,亜鉛
+material.bronze.name,青銅
+material.laiton.name,真鍮
+material.acier.name,鋼
+material.acier_trempe.name,焼入鋼
+material.argent.name,銀
+material.or.name,金
+material.platine.name,白金
+material.plomb.name,鉛
+material.nickel.name,ニッケル
+material.cobalt.name,コバルト
+material.titane.name,チタン
+material.tungstene.name,タングステン
+material.aluminium.name,アルミニウム
+material.chrome.name,クロム
+material.manganese.name,マンガン
+material.bismuth.name,ビスマス
+material.antimoine.name,アンチモン
+material.diorite.name,閃緑岩
+material.andesite.name,安山岩
+material.dolomie.name,苦灰岩
+material.craie.name,白亜
+material.marbre.name,大理石
+material.quartzite.name,珪岩
+material.schiste.name,頁岩
+material.gneiss.name,片麻岩
+material.tuf_volcanique.name,凝灰岩
+material.pierre_ponce.name,軽石
+material.obsidienne.name,黒曜石
+material.silex.name,火打石
+material.gypse.name,石膏
+material.rhyolite.name,流紋岩
+material.peridotite.name,かんらん岩
+material.serpentinite.name,蛇紋岩
+material.travertin.name,トラバーチン
+material.conglomerat.name,礫岩
+material.breche_volcanique.name,火山角礫岩
+material.kimberlite.name,キンバーライト
+material.calcite.name,方解石
+material.tourbe.name,泥炭
+material.argile.name,粘土
+material.gravier.name,砂利
+material.lin.name,亜麻
+material.coton.name,綿
+material.paille.name,藁
+material.chanvre.name,麻
+material.laine.name,羊毛
+material.soie.name,絹
+material.cuir.name,革
+material.fourrure.name,毛皮
+material.eau_salee.name,海水
+material.lave.name,溶岩
+material.huile.name,油
+material.goudron.name,タール
+material.boue.name,泥
+material.seve.name,樹液
+material.houille.name,瀝青炭
+material.lignite.name,褐炭
+material.anthracite.name,無煙炭
+material.soufre.name,硫黄
+material.salpetre.name,硝石
+material.sel_gemme.name,岩塩
+material.graphite.name,黒鉛
+material.mica.name,雲母
+material.pyrite.name,黄鉄鉱
+material.malachite.name,孔雀石
+material.argile_refractaire.name,耐火粘土
+material.guano.name,グアノ
+material.tourbe_compactee.name,圧縮泥炭
+material.bitume.name,瀝青
+material.cinabre.name,辰砂
+material.ocre.name,黄土
+material.lapis_lazuli.name,ラピスラズリ
+material.turquoise.name,トルコ石
+material.ambre.name,琥珀
+material.fluorine.name,蛍石
+material.amiante.name,石綿
+material.phosphorite.name,燐鉱石
+material.os_fossile.name,化石骨
+material.ammonite.name,アンモナイト
+material.bois_petrifie.name,珪化木
+material.coquillage_fossile.name,貝化石
+material.geode.name,晶洞
+material.meteorite_ferreuse.name,鉄隕石
+material.glace.name,氷
+material.neige.name,雪
+material.quartz.name,水晶
+material.amethyste.name,アメジスト
+material.topaze.name,トパーズ
+material.grenat.name,ガーネット
+material.opale.name,オパール
+material.jade.name,翡翠
+material.rubis.name,ルビー
+material.saphir.name,サファイア
+material.emeraude.name,エメラルド
+material.diamant.name,ダイヤモンド
+material.verre.name,ガラス
+material.brique.name,レンガ
+material.etal_de_vente.name,露店
+material.chaume_tresse.name,葺き藁
+material.papier.name,紙
+material.feuilles_bouleau.name,カバの葉
+material.feuilles_sequoia.name,セコイアの葉
+material.feuilles_saule.name,ヤナギの葉
+tree.bouleau.name,カバ
+tree.sequoia.name,セコイア
+tree.saule.name,シダレヤナギ
+material.feuilles_acacia.name,アカシアの葉
+tree.acacia.name,アカシア
+material.feuilles_acajou.name,マホガニーの葉
+tree.acajou.name,マホガニー
+material.feuilles_aulne.name,ハンノキの葉
+tree.aulne.name,ハンノキ
+material.feuilles_balsa.name,バルサの葉
+tree.balsa.name,バルサ
+material.feuilles_bambou.name,竹の葉
+tree.bambou.name,竹
+material.feuilles_buis.name,ツゲの葉
+tree.buis.name,ツゲ
+material.feuilles_cedre.name,スギの葉
+tree.cedre.name,スギ
+material.feuilles_cerisier.name,サクラの葉
+tree.cerisier.name,サクラ
+material.feuilles_charme.name,シデの葉
+tree.charme.name,シデ
+material.feuilles_chataignier.name,クリの葉
+tree.chataignier.name,クリ
+material.feuilles_cypres.name,ヒノキの葉
+tree.cypres.name,ヒノキ
+material.feuilles_ebene.name,黒檀の葉
+tree.ebene.name,黒檀
+material.feuilles_epicea.name,トウヒの葉
+tree.epicea.name,トウヒ
+material.feuilles_erable.name,カエデの葉
+tree.erable.name,カエデ
+material.feuilles_eucalyptus.name,ユーカリの葉
+tree.eucalyptus.name,ユーカリ
+material.feuilles_frene.name,トネリコの葉
+tree.frene.name,トネリコ
+material.feuilles_gaiac.name,リグナムバイタの葉
+tree.gaiac.name,リグナムバイタ
+material.feuilles_hetre.name,ブナの葉
+tree.hetre.name,ブナ
+material.feuilles_if.name,イチイの葉
+tree.if.name,イチイ
+material.feuilles_liege.name,コルクガシの葉
+tree.liege.name,コルクガシ
+material.feuilles_meleze.name,カラマツの葉
+tree.meleze.name,カラマツ
+material.feuilles_noisetier.name,ハシバミの葉
+tree.noisetier.name,ハシバミ
+material.feuilles_noyer.name,クルミの葉
+tree.noyer.name,クルミ
+material.feuilles_olivier.name,オリーブの葉
+tree.olivier.name,オリーブ
+material.feuilles_orme.name,ニレの葉
+tree.orme.name,ニレ
+material.feuilles_peuplier.name,ポプラの葉
+tree.peuplier.name,ポプラ
+material.feuilles_platane.name,プラタナスの葉
+tree.platane.name,プラタナス
+material.feuilles_pommier.name,リンゴの葉
+tree.pommier.name,リンゴ
+material.feuilles_robinier.name,ニセアカシアの葉
+tree.robinier.name,ニセアカシア
+material.feuilles_teck.name,チークの葉
+tree.teck.name,チーク
+material.feuilles_tilleul.name,シナノキの葉
+tree.tilleul.name,シナノキ
 biome.taiga.name,タイガ
 biome.toundra.name,ツンドラ
+biome.marecage.name,沼地
+biome.cote.name,海岸
+biome.mediterraneen.name,地中海性気候
+biome.jungle_tropicale.name,熱帯ジャングル
+biome.savane.name,サバンナ
+biome.prairie.name,草原
+biome.foret_tropicale_seche.name,熱帯乾燥林
+biome.mangrove.name,マングローブ
+biome.marais_froid.name,寒冷湿地
+biome.foret_de_mana.name,マナの森
+biome.montagne_cristalline.name,水晶山脈
+material.herbe.name,草
+ui.map.zoom_info,格子：{grille} 区画（128 ブロック） — 表示：{calque}
+ui.map.layer.biome,バイオーム/地形
+ui.map.layer.danger,危険度
+ui.map.layer.revendications,領有
+ui.map.layer.exploration,探索
+material.fleurs.name,花
+material.buisson.name,低木
+material.fougere.name,シダ
+material.herbe_seche.name,枯草
+biome.calotte_glaciaire.name,氷冠
+biome.steppe.name,ステップ
+biome.foret_mixte.name,混交林
+biome.desert_rocheux.name,岩石砂漠
+material.tige_verte.name,青い茎
+material.epi_ble.name,麦の穂
+material.tubercule.name,塊茎
+material.fruit_calebasse.name,ひょうたん
+material.petale_safran.name,サフランの花弁
+material.pistil_safran.name,サフランの雌しべ
+material.epine.name,棘
+material.algue.name,海藻
+plant.ble.name,小麦
+plant.pomme_de_terre.name,ジャガイモ
+plant.calebasse.name,ひょうたん
+plant.safran.name,サフラン
+plant.ronces.name,いばら
+plant.algue.name,海藻
+ui.toast.cellule_donjon,この区画にはダンジョンがある — 領有できません
+ui.toast.partie_sauvegardee,ゲームを保存しました
+ui.donjon.titre,⚔ ダンジョン
+ui.donjon.infos,危険度：{danger} · 部屋数：{salles} · 1 階層
+ui.donjon.compte,{secondes} 秒後に入場 — 離れると中止
+ui.donjon.chargement,ダンジョンを生成中...
+ui.donjon.danger.0,平穏
+ui.donjon.danger.1,危険
+ui.donjon.danger.2,致命的
+ui.menu.titre,VOXEN
+ui.menu.solo,シングルプレイ
+ui.menu.multi,マルチプレイ
+ui.menu.parametres,設定
+ui.menu.quitter,終了
+ui.menu.continuer,つづきから
+ui.menu.nouvelle,新しいゲーム
+ui.menu.retour,戻る
+ui.menu.distance_affichage,描画距離
+ui.menu.aucun_monde,保存された世界がありません
+ui.menu.nom_monde,世界の名前
+ui.menu.nom_defaut,新しい世界
+ui.menu.graine,シード
+ui.menu.monde_info,シード {graine} · {jour} 日目
+ui.menu.relief,起伏
+ui.menu.niveau_mer,海面の高さ
+ui.menu.temperature,気温
+ui.menu.humidite,湿度
+ui.menu.arbres,樹木の密度
+ui.menu.rivieres,河川
+ui.menu.cavernes,洞窟
+ui.menu.biome_force,単一バイオーム
+ui.menu.biome_aucun,— すべてのバイオーム —
+ui.menu.creer,作成して開始
+ui.menu.apercu,世界のプレビュー
+ui.menu.spawn_hint,地図をクリックして開始地点を選択
+ui.menu.regions,大陸：{continents} · 海洋：{oceans}
+ui.menu.host,ホストする（既定の世界）
+ui.menu.rejoindre,参加
+ui.menu.ip,IP アドレス
+ui.menu.langue,言語
 category.bois.name,木材
-category.construction.name,建材
 category.cristal.name,結晶
 category.fossile.name,化石
-category.gaz.name,気体
-category.lingot.name,インゴット
 category.liquide.name,液体
 category.meteorologique.name,気象
 category.minerai.name,鉱石
 category.mineral.name,鉱物
-category.planches.name,板材
 category.roche.name,岩石
-category.station.name,作業台
 category.synthetique.name,合成素材
 category.terre.name,土
-category.textile.name,織物
 category.vegetal.name,植物繊維
-class.artisan.name,職人
-class.chasseur.name,狩人
-class.guerrier.name,戦士
-class.mage.name,魔法使い
-class.marchand.name,商人
-class.vagabond.name,放浪者
-functionality.arbalete.name,クロスボウ
-functionality.arc.name,弓
-functionality.baton_magique.name,魔法の杖
-functionality.dague.name,短剣
-functionality.epee.name,剣
-functionality.hache_arme.name,戦斧
-functionality.lance.name,槍
-functionality.mains_nues.name,素手
-functionality.masse.name,メイス
-functionality.morsure.name,噛みつき
-functionality.recolte_bucheronnage.name,伐採道具
-functionality.recolte_collecte.name,収集道具
-functionality.recolte_herboristerie.name,採取道具
-functionality.recolte_minage.name,採掘道具
-functionality.recolte_terrassement.name,掘削道具
-item.arbalete.name,クロスボウ
-item.arc.name,弓
-item.baton_magique.name,魔法の杖
-item.bottes.name,ブーツ
-item.casque.name,兜
-item.cuirasse.name,胸当て
-item.dague.name,短剣
-item.epee.name,剣
-item.faucille.name,鎌
-item.gants.name,篭手
-item.hache.name,斧
-item.hache_arme.name,戦斧
-item.jambieres.name,脛当て
-item.lance.name,槍
-item.masse.name,メイス
-item.pelle.name,シャベル
-item.pioche.name,つるはし
-item.seau.name,バケツ
-material.peau.name,皮
-material.viande.name,肉
-module.frappe_lourde.name,強打
-module.morsure_simple.name,噛みつき
-module.soin_mineur.name,小治癒
-module.trait_de_mana.name,マナの矢
-plant.algue.name,海藻
-plant.ble.name,小麦
-plant.calebasse.name,ひょうたん
-plant.pomme_de_terre.name,ジャガイモ
-plant.ronces.name,いばら
-plant.safran.name,サフラン
-race.cendreux.name,灰生まれ
-race.echomorphe.name,エコーモルフ
-race.elfe.name,エルフ
+category.gaz.name,気体
+ui.type.arme,武器
+ui.type.outil,道具
+ui.type.objet,アイテム
+ui.menu.onglet.personnage,キャラクター
+ui.menu.onglet.inventaire,所持品
+ui.menu.onglet.carte,地図
+ui.menu.onglet.royaume,王国
+ui.menu.onglet.monde,世界
+ui.menu.tri.nom,名前
+ui.menu.tri.categorie,分類
+ui.menu.tri.quantite,数量
+ui.menu.tri.durete,硬度
+ui.menu.tri.densite,密度
+ui.menu.tri.valeur,価値
+ui.menu.tri.poids,重量
+ui.menu.trier_par,並び替え：
+ui.menu.ordre_desc,降順
+ui.menu.carte_aide,WASD：マスごとに移動（時間が経過）· L：レイヤー · Esc：閉じる
+ui.menu.ouvrir_carte,ワールドマップを開く
+ui.menu.encyclopedie,図鑑
+ui.menu.enc.biomes,バイオーム
+ui.menu.enc.creatures,生き物
+ui.menu.enc.arbres,樹木
+ui.menu.enc.compte,素材 {materiaux} 種 · 植物 {plantes} 種を収録
+ui.menu.enc.factions,勢力と他の王国：近日公開
+ui.menu.niveau_combat,戦闘レベル：{niveau}
+ui.menu.niveau_general,総合レベル：{niveau}
+ui.menu.aucune_competence,まだ習得した技能はありません。
+ui.menu.royaume_total,領有区画：{total}
+ui.menu.royaume_vide,領有区画なし（ゲーム中に V キー）。
+ui.menu.royaume_cases,区画：
+ui.menu.inv_objet_info,{categorie} · 品質 {qualite} · 硬度 {durete} · 重量 {poids}
+ui.menu.inv_mat_info,{categorie} · 硬度 {durete} · 密度 {densite} · 価値 {valeur}
+skill.forge.name,鍛冶
+skill.menuiserie.name,木工
+ui.menu.onglet.craft,クラフト
+ui.menu.craft_aide,レシピによる作成（基本ルート） — 素材を選んでください。
+ui.menu.craft_titre,{nom} — {competence} Lv {niveau} · 設備：{station}
+ui.menu.craft_manque,— 素材なし —
+ui.menu.fabriquer,作成
+ui.menu.craft_qualite,予想品質：{palier}
+ui.qualite.miserable,粗悪
+ui.qualite.pauvre,並以下
+ui.qualite.correct,普通
+ui.qualite.bon,良好
+ui.qualite.excellent,優秀
+ui.qualite.chef_oeuvre,傑作
+ui.qualite.legendaire,伝説級
+ui.qualite.mythique,神話級
+ui.station.etabli,作業台
+ui.station.forge,鍛冶場
+ui.station.aucune,なし
+ui.toast.craft_reussi,アイテムを作成しました
 race.humain.name,人間
+race.elfe.name,エルフ
 race.nain.name,ドワーフ
 race.sylvide.name,シルヴィド
-skill.arbalete.name,クロスボウ
-skill.arc.name,弓
-skill.baton_magique.name,魔法の杖
-skill.bucheronnage.name,伐採
-skill.collecte.name,採取
-skill.controle_mana.name,マナ制御
+race.cendreux.name,灰生まれ
+race.echomorphe.name,エコーモルフ
+class.guerrier.name,戦士
+class.mage.name,魔法使い
+class.artisan.name,職人
+class.chasseur.name,狩人
+class.marchand.name,商人
+class.vagabond.name,放浪者
+ui.menu.creation_perso,キャラクター作成
+ui.menu.race,種族
+ui.menu.classe,クラス
+ui.menu.points_restants,振り分けポイント：{restants} / {total}
+ui.menu.commencer,冒険を始める
+ui.menu.perso_competences,初期技能：{competences}
+ui.menu.perso_or,初期所持金：{or}
+category.lingot.name,インゴット
+ui.menu.transformations,精錬 / 加工
+ui.menu.transformer,加工する
+material.lingot_aluminium.name,アルミニウム インゴット
+transformation.fonte_aluminium.name,アルミニウムの精錬
+material.lingot_antimoine.name,アンチモン インゴット
+transformation.fonte_antimoine.name,アンチモンの精錬
+material.lingot_argent.name,銀インゴット
+transformation.fonte_argent.name,銀の精錬
+material.lingot_bismuth.name,ビスマス インゴット
+transformation.fonte_bismuth.name,ビスマスの精錬
+material.lingot_chrome.name,クロム インゴット
+transformation.fonte_chrome.name,クロムの精錬
+material.lingot_cobalt.name,コバルト インゴット
+transformation.fonte_cobalt.name,コバルトの精錬
+material.lingot_cuivre.name,銅インゴット
+transformation.fonte_cuivre.name,銅の精錬
+material.lingot_etain.name,錫インゴット
+transformation.fonte_etain.name,錫の精錬
+material.lingot_fer.name,鉄インゴット
+transformation.fonte_fer.name,鉄の精錬
+material.lingot_manganese.name,マンガン インゴット
+transformation.fonte_manganese.name,マンガンの精錬
+material.lingot_nickel.name,ニッケル インゴット
+transformation.fonte_nickel.name,ニッケルの精錬
+material.lingot_or.name,金インゴット
+transformation.fonte_or.name,金の精錬
+material.lingot_platine.name,白金インゴット
+transformation.fonte_platine.name,白金の精錬
+material.lingot_plomb.name,鉛インゴット
+transformation.fonte_plomb.name,鉛の精錬
+material.lingot_titane.name,チタン インゴット
+transformation.fonte_titane.name,チタンの精錬
+material.lingot_tungstene.name,タングステン インゴット
+transformation.fonte_tungstene.name,タングステンの精錬
+material.lingot_zinc.name,亜鉛インゴット
+transformation.fonte_zinc.name,亜鉛の精錬
+ui.menu.transform_aucune,精錬できる粗鉱がありません。
+ui.menu.transform_ligne,{n_in}× {entree}（所持：{possede}） → {n_out}× {sortie}
+biome.desert_froid.name,寒冷砂漠
+biome.foret_pluviale_temperee.name,温帯雨林
+biome.lande.name,荒野
+material.etabli.name,作業台
+material.four.name,炉
+ui.menu.craft_station,設備：{station}（{etat}）
+ui.menu.station_dispo,利用可能
+ui.menu.station_absente,この区画にはありません
+ui.menu.craft_competence,技能：{competence}（Lv {niveau}）
+ui.menu.craft_resultat,結果：{nom} — 品質 約{palier}
+transformation.fab_etabli.name,作業台を作る
+transformation.fab_four.name,炉を作る
+ui.menu.stats_composant,部品
+ui.menu.stats_produit,完成品
+material.scierie.name,製材所
+material.tailleur.name,石切り台
+material.metier_tisser.name,織機
+material.alambic.name,蒸留器
+material.enclume.name,金床
+material.planches.name,板材
+material.poutre.name,梁
+material.manche.name,柄
+material.pierre_taillee.name,石の切石
+material.dalle.name,石板
+material.brique_pierre.name,石レンガ
+material.charbon.name,木炭
+material.fil.name,糸
+material.tissu.name,布
+material.corde.name,縄
+material.torche.name,松明
+category.construction.name,建材
+category.textile.name,織物
+category.planches.name,板材
+category.station.name,作業台
+ui.station.scierie,製材所
+ui.station.tailleur,石切り台
+ui.station.tissage,織機
+ui.station.alambic,蒸留器
+ui.station.enclume,金床
+transformation.fab_scierie.name,製材所を作る
+transformation.fab_tailleur.name,石切り台を作る
+transformation.fab_metier_tisser.name,織機を作る
+transformation.fab_alambic.name,蒸留器を作る
+transformation.fab_enclume.name,金床を作る
+transformation.alliage_acier.name,鋼を鍛える
+transformation.alliage_bronze.name,青銅を鍛える
+transformation.alliage_laiton.name,真鍮を鍛える
+transformation.charbon_de_bois.name,木炭
+transformation.fonte_verre.name,ガラスを溶かす
+transformation.cuisson_brique.name,レンガを焼く
+transformation.debit_planches.name,板材を挽く
+transformation.taille_poutre.name,梁を削る
+transformation.taille_manche.name,柄を削る
+transformation.taille_dalle.name,石板を切る
+transformation.taille_brique_pierre.name,石レンガを切る
+transformation.filage.name,糸を紡ぐ
+transformation.tissage_tissu.name,布を織る
+transformation.tressage_corde.name,縄を綯う
+transformation.extraction_huile.name,油を搾る
+transformation.fab_torche.name,松明を作る
+item.dague.name,短剣
+functionality.dague.name,短剣
+item.masse.name,メイス
+functionality.masse.name,メイス
+item.lance.name,槍
+functionality.lance.name,槍
+item.hache_arme.name,戦斧
+functionality.hache_arme.name,戦斧
+item.arc.name,弓
+functionality.arc.name,弓
+item.arbalete.name,クロスボウ
+functionality.arbalete.name,クロスボウ
+item.baton_magique.name,魔法の杖
+functionality.baton_magique.name,魔法の杖
+item.faucille.name,鎌
+item.seau.name,バケツ
 skill.dague.name,短剣
-skill.encaissement.name,頑強
-skill.epee.name,剣
-skill.esquive.name,回避
-skill.forge.name,鍛冶
-skill.hache_arme.name,戦斧
-skill.herboristerie.name,薬草学
-skill.lance.name,槍
-skill.mains_nues.name,素手
 skill.masse.name,メイス
-skill.meditation.name,瞑想
-skill.menuiserie.name,木工
-skill.minage.name,採掘
-skill.terrassement.name,掘削
-stat.charisme.name,魅力
-stat.dexterite.name,器用さ
-stat.endurance.name,耐久力
-stat.force.name,筋力
-stat.perception.name,知覚
-stat.volonte.name,意志力
+skill.lance.name,槍
+skill.hache_arme.name,戦斧
+skill.arc.name,弓
+skill.arbalete.name,クロスボウ
+skill.baton_magique.name,魔法の杖
+functionality.recolte_herboristerie.name,採取道具
+functionality.recolte_collecte.name,収集道具
+ui.menu.craft_a_la_main,手作業（所持品）
+ui.menu.voyage_en_cours,移動中...
+ui.toast.mange,{item} を食べた（空腹 +{faim}）
+ui.toast.pas_comestible,手に食べられる物がありません
+ui.toast.rassasie,お腹は空いていません
+item.casque.name,兜
+item.cuirasse.name,胸当て
+item.jambieres.name,脛当て
+item.bottes.name,ブーツ
+item.gants.name,篭手
+ui.toast.equipe,{item} を装備した
+ui.toast.desequipe,{item} を外した
+ui.toast.pas_equipable,このアイテムは装備できません
 ui.equipement.titre,装備
 ui.equipement.vide,(なし)
-ui.hud.biome,バイオーム: {biome}
-ui.hud.fps,FPS: {fps}
-ui.hud.grille,グリッド: {res} px
-ui.hud.mana,マナ: {mana} / {mana_max}
-ui.hud.or,所持金: {or}
-ui.hud.outil,道具: {outil}
-ui.hud.sante,HP: {pv} / {pv_max}
-ui.inv.competences,スキル
-ui.inv.poids,重量: {poids} / {capacite}
-ui.inv.surcharge,重量超過 — 移動速度低下
-ui.inv.titre,持ち物
-ui.inv.vide,(持ち物なし)
-ui.map.danger.0,平穏
-ui.map.danger.1,危険
-ui.map.danger.2,致命的
-ui.map.titre,ワールドマップ
-ui.outil.mains_nues,素手
-ui.role_name.base,拠点
-ui.role_name.champs,農地
-ui.role_name.habitation,居住区
-ui.role_name.ressources_naturelles,資源地
-ui.slot.amulette,首飾り
-ui.slot.dos,背中
-ui.slot.jambes,脚
-ui.slot.mains,手
-ui.slot.pieds,足
+ui.equipement.protection,防御：{des}
 ui.slot.tete,頭
 ui.slot.torse,胴
+ui.slot.jambes,脚
+ui.slot.pieds,足
+ui.slot.mains,手
+ui.slot.anneau_1,指輪 1
+ui.slot.anneau_2,指輪 2
+ui.slot.amulette,首飾り
+ui.slot.arme_1,武器 1
+ui.slot.arme_2,武器 2
+ui.slot.accessoire_1,装飾品 1
+ui.slot.accessoire_2,装飾品 2
+ui.slot.dos,背中
+ui.toast.mort,死亡した — {or} 金貨と {objets} 個のアイテムをその場に残した
+ui.toast.ramasse,回収：アイテム {objets} 個と {or} 金貨
+creature.villageois.name,村人
+creature.fermier.name,農夫
+creature.forgeron.name,鍛冶屋
+creature.marchand_ambulant.name,行商人
+creature.garde_village.name,村の衛兵
+creature.pretre_sanctuaire.name,祠の司祭
+creature.erudit.name,学者
+creature.tavernier.name,宿屋の主人
+creature.chasseur.name,狩人
+creature.nomade.name,遊牧民
+creature.maitre_guilde.name,ギルド長
+creature.souverain.name,君主
+creature.bandit.name,山賊
+creature.chef_de_bande.name,山賊の頭
+creature.braconnier.name,密猟者
+creature.pillard.name,略奪者
+creature.deserteur.name,脱走兵
+creature.ermite.name,隠者
+culture.latine.name,ラテン
+culture.nordique.name,北欧
+culture.sino.name,漢
+culture.nipponne.name,和
+culture.slave.name,スラヴ
+culture.arabo.name,アラブ・ベルベル
+culture.celte.name,ケルト
+culture.sylvestre.name,森人
+culture.ignee.name,焔
+culture.resonance.name,響き
+material.viande.name,肉
+material.peau.name,皮
+ui.toast.depecage,{creature} を解体：肉 {portions} 個
 ui.type.viande,肉
 ui.type.peau,皮
 ui.type.armure,防具
@@ -172,7 +681,6 @@ ui.menu.detail.nutrition,栄養：{faim}（生：{cru}）
 ui.menu.detail.potentiel,{stat} の潜在能力：+{valeur}
 ui.menu.detail.emplacement,装備部位：{slot}
 ui.toast.depose,地面に置いた
-ui.hud.controles3,1-9/ホイール：選択 · Ctrl+1-9/ホイール：バンク · R：グリッド 32/16/8/4
 material.lit.name,ベッド
 transformation.fab_lit.name,ベッドを作る
 ui.toast.pas_de_lit,ベッドに照準を合わせてください
@@ -186,14 +694,11 @@ skill.cuisine.name,料理
 material.fourneau.name,かまど
 transformation.fab_fourneau.name,かまどを作る
 ui.toast.potentiel,潜在能力が向上：{details}
-ui.menu.ouvrir_carte,ワールドマップを開く
-
 ui.carte.heure,{heure} — {phase}
 ui.phase.aube,夜明け
 ui.phase.jour,昼
 ui.phase.crepuscule,夕暮れ
 ui.phase.nuit,夜
-ui.menu.carte_aide,WASD：マスごとに移動（時間が経過）· L：レイヤー · Esc：閉じる
 ui.donjon.tour,塔の中に足を踏み入れた…
 ui.toast.incassable,このブロックは破壊できない
 ui.menu.supprimer,削除
@@ -204,3 +709,425 @@ material.os_calcine.name,焼けた骨
 material.basalte_maudit.name,呪われた玄武岩
 material.scorie_ardente.name,燃えるスラグ
 material.croute_demoniaque.name,悪魔の外殻
+item.epee_courte.name,ショートソード
+functionality.epee_courte.name,ショートソード
+item.espadon.name,グレートソード
+functionality.espadon.name,グレートソード
+item.rapiere.name,レイピア
+functionality.rapiere.name,レイピア
+item.hachette.name,手斧
+functionality.hachette.name,手斧
+item.hache_double.name,双刃斧
+functionality.hache_double.name,双刃斧
+item.hallebarde.name,ハルバード
+functionality.hallebarde.name,ハルバード
+item.trident.name,トライデント
+functionality.trident.name,トライデント
+item.faux_de_guerre.name,ウォーサイズ
+functionality.faux_de_guerre.name,ウォーサイズ
+item.marteau_guerre.name,ウォーハンマー
+functionality.marteau_guerre.name,ウォーハンマー
+item.masse_ailettes.name,フランジメイス
+functionality.masse_ailettes.name,フランジメイス
+item.gourdin.name,棍棒
+functionality.gourdin.name,棍棒
+item.pioche_combat.name,ウォーピック
+functionality.pioche_combat.name,ウォーピック
+item.baton_ferre.name,鉄石突きの杖
+functionality.baton_ferre.name,鉄石突きの杖
+ui.combat.coup_glissant,空振り — 近すぎて柄で打ってしまった
+ui.combat.chambering,完璧な受け — 刃が打ち合う
+ui.menu.craft_gemme,宝石（象嵌）
+ui.menu.gemme_aucune,なし
+ui.menu.gemme_sans,宝石なし：この武器には付呪できません。
+ui.menu.gemme_effet,象嵌済み：マナ伝導率 {mana} · +{poids} kg。ダメージには影響しません。
+ui.menu.section_etat,状態
+ui.menu.section_attributs,能力値
+ui.gauge.vie,体力
+ui.gauge.mana,マナ
+ui.gauge.faim,空腹
+ui.gauge.fatigue,疲労
+ui.gauge.endurance,スタミナ
+ui.hud.bloc_systeme,システム
+ui.hud.bloc_lieu,場所
+ui.hud.bloc_cible,対象
+ui.hud.bloc_modules,モジュール
+ui.hud.cle.fps,FPS
+ui.hud.cle.chunks,チャンク
+ui.hud.cle.meshing,メッシュ化
+ui.hud.cle.position,座標
+ui.hud.cle.biome,バイオーム
+ui.hud.cle.temperature,気温
+ui.hud.cle.fertilite,肥沃度
+ui.hud.cle.cellule,区画
+ui.hud.cle.grille,格子
+ui.hud.cle.materiau,ブロック
+ui.hud.cle.outil,道具
+ui.hud.cle.creature,生き物
+ui.hud.cle.module_j,J キー
+ui.hud.cle.module_k,K キー
+ui.hud.cle.module_l,L キー
+ui.hud.chunks_valeur,{meshes} · キャッシュ {cache} · 待機 {file}
+ui.hud.meshing_valeur,{moyen} ms · 最大 {max} ms
+ui.hud.grille_valeur,{res} px
+ui.hud.module_valeur,{nom}（マナ {cout}）
+ui.hud.cible_rebond_valeur,{materiau} — 道具が弾かれる！
+ui.hud.aide_bascule,{touche}：このヘルプを隠す
+skill.baton_ferre.name,鉄石突きの杖
+skill.epee_courte.name,ショートソード
+skill.espadon.name,グレートソード
+skill.faux_de_guerre.name,ウォーサイズ
+skill.gourdin.name,棍棒
+skill.hache_double.name,双刃斧
+skill.hachette.name,手斧
+skill.hallebarde.name,ハルバード
+skill.marteau_guerre.name,ウォーハンマー
+skill.masse_ailettes.name,フランジメイス
+skill.pioche_combat.name,ウォーピック
+skill.rapiere.name,レイピア
+skill.trident.name,トライデント
+skill.tranchant.name,斬撃
+skill.percant.name,刺突
+skill.contondant.name,打撃
+skill.dual_wielding.name,二刀流
+skill.bouclier.name,盾
+skill.deux_mains.name,両手持ち
+skill.magie_offensive.name,攻撃魔法
+skill.magie_defensive.name,防御魔法
+skill.discretion.name,隠密
+skill.athletisme.name,運動
+skill.lecture.name,読解
+skill.negociation.name,交渉
+skill.leadership.name,統率
+skill.dressage.name,調教
+skill.agriculture.name,農業
+skill.elevage.name,牧畜
+skill.navigation.name,航海
+skill.alchimie.name,錬金術
+skill.couture.name,裁縫
+item.rondache.name,バックラー
+functionality.rondache.name,バックラー
+item.ecu.name,カイトシールド
+functionality.ecu.name,カイトシールド
+item.pavois.name,パヴィス
+functionality.pavois.name,パヴィス
+ui.toast.collection_don,コレクションに追加 — アイテムは失われます。
+ui.menu.onglet.collection,コレクション
+ui.menu.touches,キー設定
+ui.menu.touches_aide,キーをクリックすると再割り当てできます。
+ui.menu.touches_appuyez,新しいキーを押してください（Esc で中止）。
+ui.menu.touches_attente,...
+ui.menu.touches_defaut,既定のキー設定に戻す
+ui.menu.touches_cat_deplacement,移動
+ui.menu.touches_cat_monde,世界
+ui.menu.touches_cat_modules,モジュール
+ui.menu.touches_cat_interface,インターフェース
+ui.menu.multi_experimental,試験的：共有されるのは他プレイヤーと地形ブロックのみです。生き物・時刻・所持品・戦闘は同期されません。
+ui.collection.progression,{offerts} / {total} 点（{pct}%）
+ui.collection.page,ページ {page} / {pages}
+ui.collection.manquant,未収集
+ui.collection.offrir,寄贈する（アイテムは失われます）
+ui.collection.deja_mieux,より良い品質で収集済み
+ui.collection.rien_a_offrir,所持品に該当なし
+ui.collection.tri,並び替え：
+ui.collection.tri_nom,名前
+ui.collection.tri_type,種類
+ui.collection.tri_etat,未収集を先に
+ui.collection.tri_qualite,品質
+ui.collection.qualite,品質 {palier}
+dialogue.salut_neutre,こんにちは、旅の方。
+dialogue.meteo,今日はいい天気になりそうだ。
+dialogue.occupe,話している暇はなくてね。
+dialogue.matin,今日は早いね。
+dialogue.soir,日が暮れる。早くお帰り。
+dialogue.nuit,こんな時間に何をしている？
+dialogue.hostile_1,お前か！近寄るな。
+dialogue.hostile_2,お前がやったことは知っている。
+dialogue.mefiant_1,見張っているぞ。
+dialogue.mefiant_2,さっさと行きな。
+dialogue.amical_1,また会えて嬉しいよ！
+dialogue.amical_2,いつでも歓迎するよ。
+dialogue.devoue_1,何か入り用なら、遠慮なく言ってくれ。
+dialogue.devoue_2,この辺りでは、あんたの評判はいいよ。
+dialogue.forgeron_1,炉の火は完全には消さないものさ。
+dialogue.forgeron_2,いい鉱石を持ってきな、話はそれからだ。
+dialogue.garde_1,異常なし。結構なことだ。
+dialogue.garde_2,町では武器をしまっておけ。
+dialogue.fermier_1,土は手をかけた分だけ返してくれる。
+dialogue.fermier_2,この調子であと一季節、そうすれば一息つける。
+dialogue.vendeur_1,品物を見ていっておくれ。
+dialogue.vendeur_2,何でも交渉次第さ。ほとんど何でもね。
+dialogue.cuisinier_1,今は煮込み中だ。あとで来てくれ。
+dialogue.mineur_1,この辺りの岩は硬いんだ。
+dialogue.bucheron_1,生木は使い物にならん。覚えておきな。
+dialogue.eleveur_1,家畜は元気にしているよ。
+dialogue.herboriste_1,どの草にも使い道がある。そして頃合いがね。
+dialogue.couturier_1,良い布は良い鎧に値する。
+dialogue.transporteur_1,街道は昔ほど安全じゃない。
+ui.dialogue.parler,話す
+ui.dialogue.offrir,贈り物をする
+ui.dialogue.commercer,取引する
+ui.dialogue.quetes,依頼
+ui.dialogue.recruter,仲間にする
+ui.dialogue.fermer,立ち去る
+ui.dialogue.metier,{metier}
+ui.dialogue.relation,関係：{palier}
+ui.dialogue.deja_parle,今日はもう話しました
+ui.dialogue.rien_a_offrir,贈れる物がありません
+ui.dialogue.pas_marchand,商人ではありません
+ui.dialogue.pas_de_quetes,用件はないようだ
+ui.dialogue.pas_recrutable,ついてこないだろう
+ui.dialogue.cadeau_accepte,{nom} は贈り物を受け取った。
+ui.dialogue.interagir,E：話す
+relation.hostile,敵対
+relation.mefiant,警戒
+relation.neutre,中立
+relation.amical,友好
+relation.devoue,献身
+job.garde,衛兵
+job.fermier,農夫
+job.forgeron,鍛冶屋
+job.vendeur,商人
+job.cuisinier,料理人
+job.mineur,鉱夫
+job.bucheron,木こり
+job.eleveur,牧夫
+job.couturier,仕立屋
+job.herboriste,薬草師
+job.transporteur,運び屋
+ui.toast.villageois_tue,村人が一人亡くなった。
+ui.toast.coffre_boss,ボスが宝箱を落とした！
+gouvernance.monarchie_hereditaire,世襲君主制
+gouvernance.republique_elue,選挙共和制
+gouvernance.theocratie,神権政治
+gouvernance.ploutocratie,金権政治
+gouvernance.dictature_militaire,軍事独裁
+gouvernance.anarchie,無政府
+taille_royaume.hameau_etat,集落国家
+taille_royaume.cite_etat,都市国家
+taille_royaume.petit_royaume,小王国
+taille_royaume.grand_royaume,大王国
+ui.hud.cle.royaume,王国
+ui.hud.terres_sauvages,無法の荒野
+ui.loi.amende,罰金を徴収された：土地の法で禁じられている。
+ui.loi.confiscation,アイテムを没収された：ここでは違法だ。
+ui.loi.saisie,支払えないため、所持品を差し押さえられた。
+ui.loi.gardes_hostiles,王国の衛兵があなたを追っている。
+ui.hud.cle.lois,法
+ui.hud.cle.localite,集落
+ui.hud.souris,左クリック（長押し）：採取/掘削/攻撃 · 右クリック：設置
+ui.hud.hotbar,1-9/ホイール：選択 · Ctrl+1-9/ホイール：預ける
+ui.input.move_forward,前進
+ui.input.jump,ジャンプ
+ui.input.toggle_fly,飛行/歩行
+ui.input.sprint,ダッシュ
+ui.input.sneak,忍び歩き
+ui.input.move_back,後退
+ui.input.move_left,左へ移動
+ui.input.move_right,右へ移動
+ui.input.descend,下降
+ui.input.cycle_grid,格子 32/16/8/4
+ui.input.equip,装備
+ui.input.sleep,眠る
+ui.input.toggle_claim,領有する
+ui.input.cycle_claim_role,区画の役割
+ui.input.stall_stock,出品する（狙った露店）
+ui.input.module_1,モジュール
+ui.input.module_2,モジュール 2
+ui.input.module_3,モジュール 3
+ui.input.inventory,所持品
+ui.input.world_map,地図
+ui.input.map_legend,地図の表示切替
+ui.input.debug_hud,ヘルプと診断
+ui.input.cheat_menu,チートメニュー
+ui.input.reload_data,データ再読込
+ui.input.save_game,保存
+ui.loi.aucune,なし（無政府）
+ui.loi.interdit,{objet} 禁制
+ui.erreur.save_illisible,セーブデータを読み込めません（破損しています）。
+ui.erreur.save_trop_recente,より新しいバージョンで作成されたセーブデータです。
+ui.erreur.save_trop_ancienne,セーブデータが古すぎます：このバージョンでは読み込めません。
+ui.erreur.chunks_perdus,一部の改変された区域を読み戻せませんでした。
+loi.meurtre,殺人は罰せられる
+loi.vol,窃盗は罰せられる
+loi.agression,暴行は罰せられる
+ui.menu.onglet.combat,戦闘
+ui.menu.combat_aide,武器か盾を手にドラッグしてください。構えは装備から自動的に決まります。
+ui.menu.posture_competence,鍛えられる技能：{competence}
+ui.posture.mains_nues,素手
+ui.posture.une_main,片手武器
+ui.posture.deux_mains,両手武器
+ui.posture.arme_bouclier,武器と盾
+ui.posture.deux_armes,二刀流
+ui.combat.fiche,間合い {allonge} m · {des} · 速度 {vitesse} · 受け {parade} ms · スタミナ {endurance} · {mains} 手
+ui.combat.bouclier_ligne,盾：範囲 {couverture} · 吸収 {absorption} %
+ui.toast.deux_mains_occupe,両手武器が既に両手を塞いでいます。
+ui.combat.pare_par_adversaire,受けられた — 方向を読まれています。
+ui.combat.garde_ecrasee,受けを打ち砕かれた — 一撃が突き抜ける。
+ui.combat.bouclier_brise,盾が砕けた！
+ui.combat.bouclier_structure,盾：{reste} / {total}
+ui.combat.attaques,攻撃：{directions}
+ui.direction.estoc,刺突
+ui.direction.taille_gauche,左薙ぎ
+ui.direction.taille_droite,右薙ぎ
+ui.direction.overhead,振り下ろし
+ui.combat.feinte_adverse,フェイント — 予告された一撃は来なかった。
+munition.fleche.name,矢
+munition.carreau.name,ボルト
+ui.combat.carquois_vide,矢が尽きた。
+material.andesite_taillee.name,安山岩の切石
+transformation.taille_andesite_taillee.name,切り出し：安山岩
+material.ardoise_taillee.name,粘板岩の切石
+transformation.taille_ardoise_taillee.name,切り出し：粘板岩
+material.basalte_taillee.name,玄武岩の切石
+transformation.taille_basalte_taillee.name,切り出し：玄武岩
+material.breche_volcanique_taillee.name,火山角礫岩の切石
+transformation.taille_breche_volcanique_taillee.name,切り出し：火山角礫岩
+material.calcaire_taillee.name,石灰岩の切石
+transformation.taille_calcaire_taillee.name,切り出し：石灰岩
+material.calcite_taillee.name,方解石の切石
+transformation.taille_calcite_taillee.name,切り出し：方解石
+material.conglomerat_taillee.name,礫岩の切石
+transformation.taille_conglomerat_taillee.name,切り出し：礫岩
+material.craie_taillee.name,白亜の切石
+transformation.taille_craie_taillee.name,切り出し：白亜
+material.diorite_taillee.name,閃緑岩の切石
+transformation.taille_diorite_taillee.name,切り出し：閃緑岩
+material.dolomie_taillee.name,苦灰岩の切石
+transformation.taille_dolomie_taillee.name,切り出し：苦灰岩
+material.gneiss_taillee.name,片麻岩の切石
+transformation.taille_gneiss_taillee.name,切り出し：片麻岩
+material.granit_taillee.name,花崗岩の切石
+transformation.taille_granit_taillee.name,切り出し：花崗岩
+material.granit_noir_taillee.name,黒花崗岩の切石
+transformation.taille_granit_noir_taillee.name,切り出し：黒花崗岩
+material.gres_taillee.name,砂岩の切石
+transformation.taille_gres_taillee.name,切り出し：砂岩
+material.gypse_taillee.name,石膏の切石
+transformation.taille_gypse_taillee.name,切り出し：石膏
+material.kimberlite_taillee.name,キンバーライトの切石
+transformation.taille_kimberlite_taillee.name,切り出し：キンバーライト
+material.marbre_taillee.name,大理石の切石
+transformation.taille_marbre_taillee.name,切り出し：大理石
+material.obsidienne_taillee.name,黒曜石の切石
+transformation.taille_obsidienne_taillee.name,切り出し：黒曜石
+material.peridotite_taillee.name,かんらん岩の切石
+transformation.taille_peridotite_taillee.name,切り出し：かんらん岩
+transformation.taille_pierre_taillee.name,切り出し：石
+material.pierre_ponce_taillee.name,軽石の切石
+transformation.taille_pierre_ponce_taillee.name,切り出し：軽石
+material.quartzite_taillee.name,珪岩の切石
+transformation.taille_quartzite_taillee.name,切り出し：珪岩
+material.rhyolite_taillee.name,流紋岩の切石
+transformation.taille_rhyolite_taillee.name,切り出し：流紋岩
+material.schiste_taillee.name,頁岩の切石
+transformation.taille_schiste_taillee.name,切り出し：頁岩
+material.serpentinite_taillee.name,蛇紋岩の切石
+transformation.taille_serpentinite_taillee.name,切り出し：蛇紋岩
+material.silex_taillee.name,火打石の切石
+transformation.taille_silex_taillee.name,切り出し：火打石
+material.travertin_taillee.name,トラバーチンの切石
+transformation.taille_travertin_taillee.name,切り出し：トラバーチン
+material.tuf_volcanique_taillee.name,凝灰岩の切石
+transformation.taille_tuf_volcanique_taillee.name,切り出し：凝灰岩
+item.grimoire.name,魔道書
+item.manuel_de_combat.name,戦闘教本
+lecture.echec.etourdissement,朦朧
+lecture.echec.perte_mana,マナ喪失
+lecture.echec.confusion,混乱
+lecture.echec.invocation,敵の召喚
+module.boule_de_feu.name,火球
+module.nappe_de_flammes.name,焔の絨毯
+module.eclat_de_glace.name,氷の破片
+module.emprise_du_gel.name,氷結の縛め
+module.arc_electrique.name,電弧
+module.fulguration.name,雷撃
+module.eclat_de_pierre.name,石の礫
+module.carapace_de_roche.name,岩の甲殻
+module.regeneration.name,再生
+module.bouclier_arcane.name,秘術の盾
+module.clignotement.name,瞬歩
+module.rappel.name,帰還
+module.drain_vital.name,生命吸収
+module.offrande_de_sang.name,血の供物
+module.taillade_large.name,薙ぎ払い
+module.estoc_perforant.name,刺突
+module.garde_de_fer.name,鉄壁の構え
+module.posture_agile.name,軽身の構え
+module.charge_epaule.name,体当たり
+module.contre_riposte.name,返し技
+module.double_lancer.name,二重詠唱
+module.triple_lancer.name,三重詠唱
+module.portee_accrue.name,射程延長
+module.projection_rapide.name,速射
+module.guidage.name,誘導
+module.ricochet.name,跳弾
+module.declencheur_impact.name,着弾起動
+module.declencheur_retarde.name,遅延起動
+ui.module.vide,（空）
+ui.module.declenche.impact,着弾時
+ui.module.declenche.delai,遅延後
+ui.module.declenche.parade,受け流し時
+ui.menu.assemblage,スキル構成
+ui.menu.assemblage_aide,モジュールを左から右へ並べる。順序が結果を決める。修正子は後続の効果を変え、起動子は以降すべてを着弾時に放つ。
+ui.menu.assemblage_slot,スキル {n}
+ui.menu.assemblage_cout,マナ {cout}
+ui.menu.assemblage_sans_arme,武器を装備するとスキルを構成できる。
+ui.menu.assemblage_aucun_module,習得したモジュールがない。魔道書か戦闘教本を読もう。
+status.brulure.name,燃焼
+status.ralentissement.name,鈍足
+status.gel.name,凍結
+status.poison.name,毒
+status.saignement.name,出血
+status.etourdi.name,朦朧
+status.confusion.name,混乱
+status.terreur.name,恐慌
+status.infection.name,感染
+status.affaibli.name,衰弱
+status.regeneration.name,再生
+status.peau_de_pierre.name,石の肌
+status.hate.name,加速
+status.beni.name,祝福
+ui.input.interact,調べる
+ui.toast.station_ouverte,{station} — 製作を開いた
+ui.toast.etal_vide,回収するものがない
+ui.toast.lecture_reussie,読解成功：{modules} 個のモジュールを習得
+ui.toast.lecture_echouee,読解失敗 — 本は失われた
+material.coffre.name,木箱
+material.grand_coffre.name,大箱
+transformation.fab_coffre.name,木箱を作る
+transformation.fab_grand_coffre.name,大箱を作る
+ui.coffre.titre,{coffre} — {utilise}/{capacite}
+ui.coffre.vide,空の箱
+ui.toast.coffre_pris,箱を空にした：{objets} 個、{or_} ゴールド
+ui.toast.coffre_plein,箱が一杯だ
+ui.menu.assemblage_armes,武器技
+ui.menu.assemblage_sorts,呪文
+ui.menu.assemblage_niveau,{competence} — レベル {niveau}
+ui.menu.assemblage_reserve_vide,この種のモジュールは未習得。
+ui.module.role.effet,効果
+ui.module.role.modificateur,修正子
+ui.module.role.declencheur,起動子
+module.enchainement_double.name,二連撃
+module.enchainement_triple.name,三連撃
+module.allonge_accrue.name,間合い延長
+module.frappe_vive.name,速撃
+ui.coffre.inventaire,持ち物
+ui.coffre.contenu,箱
+ui.coffre.tout_deposer,すべて預ける
+ui.coffre.tout_prendre,すべて取る
+ui.coffre.fermer,閉じる
+ui.coffre.or,{or_} ゴールド
+ui.coffre.aide,行をクリックで移動。Esc または E で閉じる。
+item.foreuse.name,ドリル
+functionality.foreuse.name,ドリル
+item.foreuse_plus.name,ドリルプラス
+functionality.foreuse_plus.name,ドリルプラス
+item.foreuse_pro.name,ドリルプロ
+functionality.foreuse_pro.name,ドリルプロ
+item.foreuse_max.name,ドリルマックス
+functionality.foreuse_max.name,ドリルマックス
+material.pousse.name,苗木
+ui.toast.pousse_grandie,苗木が木に育ちました。
+dimension.donjon.name,ダンジョン
+dimension.faille_de_mana.name,マナの裂け目

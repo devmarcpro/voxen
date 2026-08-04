@@ -36,13 +36,19 @@ const JOBS: Array[String] = [
 const JOB_NONE := ""
 
 
-## Roster d'un village : liste de { "creature_id", "job", "plot" }.
+## Roster d'un village : liste de { "creature_id", "job", "plot", "prenom",
+## "nom_famille", "culture" }.
 ##
 ## `plot` est l'INDEX DE TUILE du bâtiment attribué, tel que le produit
 ## `CityGenerator.tile_plan` — le lien entre un habitant et une maison précise,
 ## qui rendra possible la décimation (3.4), la réoccupation par le joueur et
 ## l'assignation de postes (14.2) sans rien recalculer.
-static func roster(cell: Vector2i, world_seed: int, plan: Dictionary) -> Array[Dictionary]:
+## `culture` : culture de nommage du royaume qui tient la cellule (12.5), ou
+## celle de la race dominante si la cellule est en terres sauvages. Elle est
+## résolue UNE FOIS pour tout le village — c'est ce qui fait que ses habitants
+## sonnent comme leur pays et non comme dix pays différents (E.31).
+static func roster(cell: Vector2i, world_seed: int, plan: Dictionary,
+		culture_id: String = "") -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var buildings: Array[int] = _habitable_plots(plan)
 	if buildings.is_empty():
@@ -58,6 +64,14 @@ static func roster(cell: Vector2i, world_seed: int, plan: Dictionary) -> Array[D
 	# sans domicile, donc sans routine et sans point de chute la nuit.
 	population = mini(population, buildings.size() * RESIDENTS_PER_HOUSE)
 
+	# Culture par défaut si l'appelant n'en fournit pas : celle de la race la
+	# plus courante. Un village hors de tout royaume doit quand même avoir des
+	# noms cohérents entre eux.
+	var culture := culture_id
+	if culture == "":
+		culture = NameGenerator.culture_for_race("humain",
+				NoiseGenerator.pcg_hash(cell.x, cell.y, world_seed + SEED_POPULATION))
+
 	var jobs := _jobs_for(population, rng)
 	for index in population:
 		var job: String = jobs[index]
@@ -66,7 +80,20 @@ static func roster(cell: Vector2i, world_seed: int, plan: Dictionary) -> Array[D
 			continue
 		@warning_ignore("integer_division")
 		var plot: int = buildings[index / RESIDENTS_PER_HOUSE]
-		out.append({"creature_id": creature_id, "job": job, "plot": plot})
+		# IDENTITÉ (12.5/E.31). Le rang dans le roster entre dans la graine :
+		# sans lui, tous les habitants d'un village porteraient le même nom,
+		# la graine étant celle de la cellule. Chaque habitant est un
+		# FONDATEUR ici — la démographie (12.2) et donc l'héritage du nom de
+		# famille n'existent pas encore, et `NameGenerator` sait déjà les
+		# accueillir le jour venu (`inherited_family_name`).
+		var npc_seed := NoiseGenerator.pcg_hash(cell.x, cell.y,
+				world_seed + SEED_POPULATION + index * 7717)
+		var identity := NameGenerator.identity(culture, npc_seed)
+		out.append({
+			"creature_id": creature_id, "job": job, "plot": plot,
+			"culture": culture,
+			"prenom": identity["prenom"], "nom_famille": identity["nom_famille"],
+		})
 	return out
 
 

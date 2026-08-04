@@ -1,0 +1,15 @@
+{
+  "id": "gel",
+  "name_key": "status.gel.name",
+  "duration_ticks": 30,
+  "stacks": false,
+  "tags": [
+    "entrave",
+    "glace"
+  ],
+  "modifiers": {
+    "vitesse_deplacement": {
+      "mult": 0.0
+    }
+  }
+}

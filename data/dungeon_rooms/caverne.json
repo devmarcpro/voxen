@@ -1,0 +1,48 @@
+{
+  "id": "caverne",
+  "kind": "salle",
+  "size_category": "grande",
+  "size": [
+    17,
+    11,
+    15
+  ],
+  "doors": [
+    {
+      "position": [
+        8,
+        0,
+        0
+      ],
+      "direction": "sud"
+    },
+    {
+      "position": [
+        8,
+        0,
+        14
+      ],
+      "direction": "nord"
+    },
+    {
+      "position": [
+        16,
+        0,
+        7
+      ],
+      "direction": "est"
+    },
+    {
+      "position": [
+        0,
+        0,
+        7
+      ],
+      "direction": "ouest"
+    }
+  ],
+  "special_tags": [
+    "boss_room_eligible",
+    "treasure_eligible"
+  ]
+}

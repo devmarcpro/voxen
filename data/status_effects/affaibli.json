@@ -1,0 +1,23 @@
+{
+  "id": "affaibli",
+  "name_key": "status.affaibli.name",
+  "duration_ticks": 600,
+  "stacks": false,
+  "tags": [
+    "malediction"
+  ],
+  "modifiers": {
+    "force": {
+      "mult": 0.8
+    },
+    "dexterite": {
+      "mult": 0.8
+    },
+    "endurance": {
+      "mult": 0.8
+    },
+    "volonte": {
+      "mult": 0.8
+    }
+  }
+}

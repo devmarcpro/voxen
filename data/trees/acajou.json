@@ -4,8 +4,8 @@
   "wood_material": "acajou",
   "leaf_material": "feuilles_acajou",
   "height_range": [
-    8,
-    12
+    14,
+    18
   ],
   "trunk_radius": 2,
   "branch_parameters": {
@@ -20,10 +20,10 @@
       4
     ]
   },
-  "canopy_shape": "spherical",
+  "canopy_shape": "broad",
   "canopy_radius_range": [
-    3,
-    4
+    5,
+    7
   ],
   "special_tags": []
 }

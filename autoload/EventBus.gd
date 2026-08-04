@@ -48,6 +48,23 @@ signal attack_telegraphed(attacker, direction: String)
 @warning_ignore("unused_signal")
 signal damage_dealt(world_position: Vector3, amount: int, critical: bool, glancing: bool)
 
+## CONTACT d'arme, pour le retour d'impact (2026-08-02). Distinct de
+## `damage_dealt`, et il faut les deux : `damage_dealt` porte un RÉSULTAT
+## chiffré (combien, où, critique), celui-ci porte la NATURE du choc (le fer
+## est-il entré dans la chair, a-t-il sonné sur une armure, la garde a-t-elle
+## tenu, les deux lames se sont-elles entrechoquées).
+##
+## Les fusionner obligerait le retour d'impact à deviner la nature du contact à
+## partir du nombre de dégâts — or une parade, un coup glissant et un
+## chambering valent tous les trois zéro, et n'ont rigoureusement rien à faire
+## sentir de commun.
+##
+## `kind` : voir les constantes IMPACT_* d'ImpactFeedback.
+## `force` : produit des multiplicateurs offensifs (zone × sweet spot ×
+## vitesse) ; 1.0 = coup nominal.
+@warning_ignore("unused_signal")
+signal combat_impact(kind: String, world_position: Vector3, force: float)
+
 ## Mort du joueur (A.10) : lieu, nombre d'objets tombés, or perdu.
 signal player_died(position: Vector3, dropped_count: int, lost_gold: int)
 

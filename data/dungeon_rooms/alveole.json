@@ -1,0 +1,47 @@
+{
+  "id": "alveole",
+  "kind": "salle",
+  "size_category": "petite",
+  "size": [
+    9,
+    9,
+    9
+  ],
+  "doors": [
+    {
+      "position": [
+        4,
+        0,
+        0
+      ],
+      "direction": "sud"
+    },
+    {
+      "position": [
+        4,
+        0,
+        8
+      ],
+      "direction": "nord"
+    },
+    {
+      "position": [
+        8,
+        0,
+        4
+      ],
+      "direction": "est"
+    },
+    {
+      "position": [
+        0,
+        0,
+        4
+      ],
+      "direction": "ouest"
+    }
+  ],
+  "special_tags": [
+    "treasure_eligible"
+  ]
+}

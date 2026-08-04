@@ -1,0 +1,22 @@
+{
+  "id": "fleche",
+  "name_key": "munition.fleche.name",
+  "color": "#8A6A3C",
+  "valeur_base": 2,
+  "densite": 1,
+  "par_fabrication": 12,
+  "recipe": {
+    "station": "etabli",
+    "skill": "menuiserie",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 1
+      },
+      {
+        "category": "minerai",
+        "amount": 1
+      }
+    ]
+  }
+}

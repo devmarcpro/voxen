@@ -43,19 +43,76 @@ func run() -> void:
 		TAG, made, float(light.get("weight", 0.0)), float(heavy.get("weight", 0.0)),
 		"OK" if differ else "ÉCHEC"])
 
+	# LES BOUTONS SONT-ILS FONCTIONNELS ? Une capture montre qu'ils EXISTENT et
+	# ne dit rien de plus : une action qui plante à l'appel a exactement la même
+	# apparence. On exerce donc les actions nommées de la section modules/livres,
+	# celles qui ne sont pas de simples fermetures d'une ligne.
+	var modules_ok := true
+	menu.call("_learn_module", "boule_de_feu")
+	modules_ok = modules_ok and (player.known_modules as Dictionary).has("boule_de_feu")
+	menu.call("_give_book", "grimoire", 0.5)
+	var livres := 0
+	for obj: Dictionary in player.inventory.objects:
+		if BookFactory.is_book(obj):
+			livres += 1
+	modules_ok = modules_ok and livres > 0
+	menu.call("_fill_example_assemblies")
+	var skill_id: String = String(player.weapon_skill_id())
+	var range_ok: bool = skill_id.is_empty() or not (player.assembly_at(skill_id, 0) as Array).is_empty()
+	menu.call("_read_all_books")
+	var restants := 0
+	for obj: Dictionary in player.inventory.objects:
+		if BookFactory.is_book(obj):
+			restants += 1
+	print("[%s] triche modules : appris=%s livre donné=%d assemblage posé=%s livres après lecture=%d" % [
+		TAG, (player.known_modules as Dictionary).has("boule_de_feu"), livres, range_ok, restants])
+	modules_ok = modules_ok and range_ok and restants == 0
+
 	if can_capture():
 		await screenshot("triche_general.png")
 		print("[%s] %s" % [TAG, capture_path("triche_general.png")])
-		# Bascule sur l'onglet Armes pour la seconde capture.
+		# BAS DE L'ONGLET GÉNÉRAL (2026-08-03). Une seule capture ne montrait
+		# que le haut : tout ce qui a été ajouté ensuite — créatures, modules,
+		# livres, assemblages — restait invisible, donc invérifiable.
+		var scroll := _find_scroll(menu)
+		if scroll != null:
+			scroll.scroll_vertical = 1 << 20   # borné par Godot au maximum réel
+			await wait_seconds(0.4)
+			var bas: int = scroll.scroll_vertical
+			await screenshot("triche_general_bas.png")
+			print("[%s] %s" % [TAG, capture_path("triche_general_bas.png")])
+			# MILIEU : la grille des modules, la plus longue section ajoutée,
+			# tombe entre les deux extrêmes et n'apparaissait sur aucune des deux.
+			scroll.scroll_vertical = int(float(bas) * 0.62)
+			await wait_seconds(0.4)
+			await screenshot("triche_general_milieu.png")
+			print("[%s] %s" % [TAG, capture_path("triche_general_milieu.png")])
+		# UNE CAPTURE PAR ONGLET, quel qu'en soit le nombre. La sonde n'en
+		# photographiait que deux, en dur ; les quatre onglets de contenu
+		# ajoutés le 2026-08-03 n'auraient été vus par personne, et une grille
+		# qui déborde ou se replie ne se voit que comme ça.
 		var tabs := _find_tabs(menu)
 		if tabs != null:
-			tabs.current_tab = 1
-			await wait_seconds(0.4)
-			await screenshot("triche_armes.png")
-			print("[%s] %s" % [TAG, capture_path("triche_armes.png")])
+			for index in tabs.get_tab_count():
+				tabs.current_tab = index
+				await wait_seconds(0.4)
+				var file_name := "triche_%s.png" % tabs.get_tab_title(index).to_lower().replace(" ", "_")
+				await screenshot(file_name)
+				print("[%s] %s" % [TAG, capture_path(file_name)])
 	else:
 		print("[%s] captures ignorées : mode headless" % TAG)
-	finish(differ, TAG)
+	finish(differ and modules_ok, TAG)
+
+
+## Premier ScrollContainer trouvé — celui de l'onglet « Général ».
+func _find_scroll(node: Node) -> ScrollContainer:
+	for child in node.get_children():
+		if child is ScrollContainer:
+			return child
+		var found := _find_scroll(child)
+		if found != null:
+			return found
+	return null
 
 
 func _find_tabs(node: Node) -> TabContainer:

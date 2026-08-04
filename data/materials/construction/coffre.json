@@ -1,0 +1,39 @@
+{
+  "id": "coffre",
+  "name_key": "material.coffre.name",
+  "category": "construction",
+  "stats": {
+    "durete": 8,
+    "densite": 8,
+    "valeur_base": 24,
+    "conductivite_mana": 0,
+    "flammabilite": 50,
+    "isolation": 20,
+    "conductivite_electrique": 0,
+    "flottabilite": 40,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 20,
+    "friction": 45
+  },
+  "tags": [
+    "meuble",
+    "conteneur"
+  ],
+  "color": "#7A5A32",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 7401,
+    "amplitude": 0.06,
+    "scale": 3
+  },
+  "texture_style": "planks",
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "none"
+  }
+}

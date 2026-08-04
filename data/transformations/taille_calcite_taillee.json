@@ -1,0 +1,14 @@
+{
+  "id": "taille_calcite_taillee",
+  "name_key": "transformation.taille_calcite_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "calcite_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "calcite",
+    "amount": 1
+  }
+}

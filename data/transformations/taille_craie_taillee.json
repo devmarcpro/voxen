@@ -1,0 +1,14 @@
+{
+  "id": "taille_craie_taillee",
+  "name_key": "transformation.taille_craie_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "craie_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "craie",
+    "amount": 1
+  }
+}

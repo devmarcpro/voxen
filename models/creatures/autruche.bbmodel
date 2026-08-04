@@ -1,0 +1,1520 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "autruche",
+  "model_identifier": "autruche",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "mesh_croupe",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -4.0,
+        19.5,
+        0.8
+      ],
+      "to": [
+        4.0,
+        29.5,
+        8.0
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        0.0,
+        24.5,
+        3.2
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "1a149d99-3cfb-5339-95c1-70e4dd92d252"
+    },
+    {
+      "name": "mesh_torse",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -4.5,
+        19.0,
+        -1.2
+      ],
+      "to": [
+        4.5,
+        30.0,
+        1.2
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        0.0,
+        24.5,
+        0.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "afe91a0b-8613-535a-b42e-44a348a3111f"
+    },
+    {
+      "name": "mesh_poitrail",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -4.0,
+        18.5,
+        -8.0
+      ],
+      "to": [
+        4.0,
+        30.0,
+        -0.8
+      ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        0.0,
+        24.5,
+        -4.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "71acd29e-bd97-543e-ab2c-0f391b2e93f5"
+    },
+    {
+      "name": "mesh_cou_1",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -1.6199999999999999,
+        27.279999999999998,
+        -13.333333333333332
+      ],
+      "to": [
+        1.6199999999999999,
+        30.52,
+        -8.0
+      ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        0.0,
+        28.9,
+        -8.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "9c6268b6-843c-5c90-886f-2fd30ef0e3d5"
+    },
+    {
+      "name": "mesh_cou_2",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -1.458,
+        27.442,
+        -18.666666666666664
+      ],
+      "to": [
+        1.458,
+        30.357999999999997,
+        -13.333333333333332
+      ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        0.0,
+        28.9,
+        -13.333333333333332
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "4c401f2d-5ebf-58ed-b7fe-786f81bfa8f2"
+    },
+    {
+      "name": "mesh_cou_3",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -1.296,
+        27.604,
+        -23.999999999999996
+      ],
+      "to": [
+        1.296,
+        30.195999999999998,
+        -18.666666666666664
+      ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        0.0,
+        28.9,
+        -18.666666666666664
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "6086a127-9b5f-56af-8b4b-6db350824d7d"
+    },
+    {
+      "name": "mesh_tete",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -2.5,
+        36.65,
+        -29.0
+      ],
+      "to": [
+        2.5,
+        41.65,
+        -24.0
+      ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        0.0,
+        38.9,
+        -24.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "13da6ea1-5cbb-561a-a25a-3f5d48fa0e37"
+    },
+    {
+      "name": "mesh_museau",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -1.3,
+        37.15,
+        -32.0
+      ],
+      "to": [
+        1.3,
+        39.15,
+        -28.0
+      ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        0.0,
+        38.9,
+        -24.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "5979fae0-36aa-5391-a164-281e20001308"
+    },
+    {
+      "name": "mesh_queue_1",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -3.0,
+        24.25,
+        8.0
+      ],
+      "to": [
+        3.0,
+        30.25,
+        14.0
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        0.0,
+        27.25,
+        8.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "07bf1869-14a9-54ee-98c2-25cd395b18f3"
+    },
+    {
+      "name": "mesh_cuisse_droite",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        1.0799999999999998,
+        9.0,
+        -0.41999999999999993
+      ],
+      "to": [
+        4.319999999999999,
+        21.0,
+        2.82
+      ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        2.6999999999999997,
+        20,
+        1.2
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "536df318-2adf-50ac-a7df-52dafc648a3a"
+    },
+    {
+      "name": "mesh_mollet_droite",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        1.3499999999999999,
+        2.7,
+        -0.1499999999999999
+      ],
+      "to": [
+        4.05,
+        10.5,
+        2.55
+      ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        2.6999999999999997,
+        10.0,
+        1.2
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "d080150d-7474-5bfe-888c-cade615750aa"
+    },
+    {
+      "name": "mesh_serre_droite",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        1.3499999999999999,
+        0.0,
+        -2.3099999999999996
+      ],
+      "to": [
+        4.05,
+        3.7,
+        2.55
+      ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        2.6999999999999997,
+        3.2,
+        1.2
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "4bd88c45-a7b7-52ba-810d-5c277ef079fb"
+    },
+    {
+      "name": "mesh_cuisse_gauche",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -4.319999999999999,
+        9.0,
+        -0.41999999999999993
+      ],
+      "to": [
+        -1.0799999999999998,
+        21.0,
+        2.82
+      ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        -2.6999999999999997,
+        20,
+        1.2
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "59fe5ccb-62f0-5b18-9c18-6a7189dda188"
+    },
+    {
+      "name": "mesh_mollet_gauche",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -4.05,
+        2.7,
+        -0.1499999999999999
+      ],
+      "to": [
+        -1.3499999999999999,
+        10.5,
+        2.55
+      ],
+      "autouv": 0,
+      "color": 5,
+      "origin": [
+        -2.6999999999999997,
+        10.0,
+        1.2
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "1f96e7f3-95b8-5326-a244-44ee5b9de792"
+    },
+    {
+      "name": "mesh_serre_gauche",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -4.05,
+        0.0,
+        -2.3099999999999996
+      ],
+      "to": [
+        -1.3499999999999999,
+        3.7,
+        2.55
+      ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        -2.6999999999999997,
+        3.2,
+        1.2
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "58bdaeef-881c-56c6-8fba-2c36a9f2aa83"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "racine",
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "color": 0,
+      "uuid": "d8d878d2-b764-5735-9535-9611685a523b",
+      "export": true,
+      "mirror_uv": false,
+      "isOpen": true,
+      "visibility": true,
+      "autouv": 0,
+      "children": [
+        {
+          "name": "bassin",
+          "origin": [
+            0.0,
+            24.5,
+            3.2
+          ],
+          "color": 0,
+          "uuid": "d3569961-d464-5674-a4e8-de5fbb2e0481",
+          "export": true,
+          "mirror_uv": false,
+          "isOpen": true,
+          "visibility": true,
+          "autouv": 0,
+          "children": [
+            "1a149d99-3cfb-5339-95c1-70e4dd92d252",
+            {
+              "name": "colonne_1",
+              "origin": [
+                0.0,
+                24.5,
+                0.0
+              ],
+              "color": 0,
+              "uuid": "eb080c11-cce1-5a5a-ac2d-dad580adb4e8",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "visibility": true,
+              "autouv": 0,
+              "children": [
+                "afe91a0b-8613-535a-b42e-44a348a3111f",
+                {
+                  "name": "colonne_2",
+                  "origin": [
+                    0.0,
+                    24.5,
+                    -4.0
+                  ],
+                  "color": 0,
+                  "uuid": "621645ba-df39-5726-8a28-2d7648e8889a",
+                  "export": true,
+                  "mirror_uv": false,
+                  "isOpen": true,
+                  "visibility": true,
+                  "autouv": 0,
+                  "children": [
+                    "71acd29e-bd97-543e-ab2c-0f391b2e93f5",
+                    {
+                      "name": "cou_1",
+                      "origin": [
+                        0.0,
+                        28.9,
+                        -8.0
+                      ],
+                      "color": 0,
+                      "uuid": "02d617a0-9f1c-5a8c-8d46-157fb521620d",
+                      "export": true,
+                      "mirror_uv": false,
+                      "isOpen": true,
+                      "visibility": true,
+                      "autouv": 0,
+                      "children": [
+                        "9c6268b6-843c-5c90-886f-2fd30ef0e3d5",
+                        {
+                          "name": "cou_2",
+                          "origin": [
+                            0.0,
+                            28.9,
+                            -13.333333333333332
+                          ],
+                          "color": 0,
+                          "uuid": "195c2407-6179-5774-9f66-90a5f7890232",
+                          "export": true,
+                          "mirror_uv": false,
+                          "isOpen": true,
+                          "visibility": true,
+                          "autouv": 0,
+                          "children": [
+                            "4c401f2d-5ebf-58ed-b7fe-786f81bfa8f2",
+                            {
+                              "name": "cou_3",
+                              "origin": [
+                                0.0,
+                                28.9,
+                                -18.666666666666664
+                              ],
+                              "color": 0,
+                              "uuid": "a6e17ec2-7abc-58d4-801b-0f28100861f4",
+                              "export": true,
+                              "mirror_uv": false,
+                              "isOpen": true,
+                              "visibility": true,
+                              "autouv": 0,
+                              "children": [
+                                "6086a127-9b5f-56af-8b4b-6db350824d7d",
+                                {
+                                  "name": "tete",
+                                  "origin": [
+                                    0.0,
+                                    38.9,
+                                    -24.0
+                                  ],
+                                  "color": 0,
+                                  "uuid": "eeef10d6-59b3-562d-8caf-3386ec970ba4",
+                                  "export": true,
+                                  "mirror_uv": false,
+                                  "isOpen": true,
+                                  "visibility": true,
+                                  "autouv": 0,
+                                  "children": [
+                                    "13da6ea1-5cbb-561a-a25a-3f5d48fa0e37",
+                                    "5979fae0-36aa-5391-a164-281e20001308",
+                                    {
+                                      "name": "attach_tete",
+                                      "origin": [
+                                        0.0,
+                                        41.65,
+                                        -26.5
+                                      ],
+                                      "color": 0,
+                                      "uuid": "1b681065-b0ca-5ce3-9c70-c490ecca6910",
+                                      "export": true,
+                                      "mirror_uv": false,
+                                      "isOpen": true,
+                                      "visibility": true,
+                                      "autouv": 0,
+                                      "children": []
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "attach_dos",
+                  "origin": [
+                    0.0,
+                    30.0,
+                    0.0
+                  ],
+                  "color": 0,
+                  "uuid": "6b411999-0041-5438-a8b8-c9a11eb6abe4",
+                  "export": true,
+                  "mirror_uv": false,
+                  "isOpen": true,
+                  "visibility": true,
+                  "autouv": 0,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "name": "queue_1",
+              "origin": [
+                0.0,
+                27.25,
+                8.0
+              ],
+              "color": 0,
+              "uuid": "f180dfdd-e6eb-5f67-85b5-e165cfba0ff5",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "visibility": true,
+              "autouv": 0,
+              "children": [
+                "07bf1869-14a9-54ee-98c2-25cd395b18f3"
+              ]
+            },
+            {
+              "name": "cuisse_droite",
+              "origin": [
+                2.6999999999999997,
+                20,
+                1.2
+              ],
+              "color": 0,
+              "uuid": "c93c62c7-8cfe-5c8c-9672-01f148bd590e",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "visibility": true,
+              "autouv": 0,
+              "children": [
+                "536df318-2adf-50ac-a7df-52dafc648a3a",
+                {
+                  "name": "mollet_droite",
+                  "origin": [
+                    2.6999999999999997,
+                    10.0,
+                    1.2
+                  ],
+                  "color": 0,
+                  "uuid": "fa524ecc-1ffb-5855-944a-bef9d5da7525",
+                  "export": true,
+                  "mirror_uv": false,
+                  "isOpen": true,
+                  "visibility": true,
+                  "autouv": 0,
+                  "children": [
+                    "d080150d-7474-5bfe-888c-cade615750aa",
+                    {
+                      "name": "serre_droite",
+                      "origin": [
+                        2.6999999999999997,
+                        3.2,
+                        1.2
+                      ],
+                      "color": 0,
+                      "uuid": "c3bc1287-c6fd-5f1b-88e8-007da2c8682c",
+                      "export": true,
+                      "mirror_uv": false,
+                      "isOpen": true,
+                      "visibility": true,
+                      "autouv": 0,
+                      "children": [
+                        "4bd88c45-a7b7-52ba-810d-5c277ef079fb"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "cuisse_gauche",
+              "origin": [
+                -2.6999999999999997,
+                20,
+                1.2
+              ],
+              "color": 0,
+              "uuid": "15f76552-7999-528c-9b0d-6964d801b703",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "visibility": true,
+              "autouv": 0,
+              "children": [
+                "59fe5ccb-62f0-5b18-9c18-6a7189dda188",
+                {
+                  "name": "mollet_gauche",
+                  "origin": [
+                    -2.6999999999999997,
+                    10.0,
+                    1.2
+                  ],
+                  "color": 0,
+                  "uuid": "e5e6b1a5-29ca-543d-adf5-0a1ee858e8ea",
+                  "export": true,
+                  "mirror_uv": false,
+                  "isOpen": true,
+                  "visibility": true,
+                  "autouv": 0,
+                  "children": [
+                    "1f96e7f3-95b8-5326-a244-44ee5b9de792",
+                    {
+                      "name": "serre_gauche",
+                      "origin": [
+                        -2.6999999999999997,
+                        3.2,
+                        1.2
+                      ],
+                      "color": 0,
+                      "uuid": "39912219-d9c2-587c-a5d9-f19747043c04",
+                      "export": true,
+                      "mirror_uv": false,
+                      "isOpen": true,
+                      "visibility": true,
+                      "autouv": 0,
+                      "children": [
+                        "58bdaeef-881c-56c6-8fba-2c36a9f2aa83"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "textures": []
+}

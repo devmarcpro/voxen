@@ -1,0 +1,33 @@
+{
+  "mineur": [
+    {
+      "id": "etourdissement",
+      "name_key": "lecture.echec.etourdissement",
+      "seuil": 0,
+      "effet": "etourdi",
+      "duree_s": 5.0
+    },
+    {
+      "id": "perte_mana",
+      "name_key": "lecture.echec.perte_mana",
+      "seuil": 0,
+      "effet": "mana",
+      "valeur": -10.0
+    }
+  ],
+  "grave": [
+    {
+      "id": "confusion",
+      "name_key": "lecture.echec.confusion",
+      "seuil": 8,
+      "effet": "confusion",
+      "duree_s": 12.0
+    },
+    {
+      "id": "invocation",
+      "name_key": "lecture.echec.invocation",
+      "seuil": 12,
+      "effet": "invocation_hostile"
+    }
+  ]
+}

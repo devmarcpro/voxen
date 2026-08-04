@@ -21,7 +21,7 @@ const SORT_KEYS: Array = [
 	["ui.menu.tri.valeur", "valeur"],
 	["ui.menu.tri.poids", "poids"],
 ]
-const TABS: Array = ["personnage", "inventaire", "craft", "collection", "carte", "royaume", "monde"]
+const TABS: Array = ["personnage", "combat", "inventaire", "craft", "collection", "carte", "royaume", "monde"]
 
 var is_open := false
 
@@ -44,8 +44,6 @@ var _context_entry := {}
 ## Onglets à contenu simple (labels rafraîchis).
 var _perso_label: Label
 var _royaume_label: Label
-## Craft.
-var _craft_list: VBoxContainer
 ## Craft refondu (2026-07-26) : recettes GROUPÉES PAR TABLE (station) scrollables
 ## à gauche + panneau détail à droite.
 var _craft_sections: VBoxContainer
@@ -71,7 +69,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
 		return
-	if key.physical_keycode == KEY_TAB:
+	if event.is_action_pressed("inventory"):
 		_toggle()
 		get_viewport().set_input_as_handled()
 	elif key.physical_keycode == KEY_ESCAPE and is_open:
@@ -144,6 +142,7 @@ func _build() -> void:
 	vbox.add_child(content)
 
 	_panels["personnage"] = _build_personnage()
+	_panels["combat"] = _build_combat()
 	_panels["inventaire"] = _build_inventaire()
 	_panels["craft"] = _build_craft()
 	_panels["collection"] = _build_collection()
@@ -385,10 +384,335 @@ func _encyclo_section(title_key: String, collection: Dictionary) -> VBoxContaine
 	return section
 
 
-func _build_inventaire() -> Control:
+# --- Onglet COMBAT (2026-08-02) ------------------------------------------
+#
+# L'équipement des mains et le combat vivaient dans deux mondes qui ne se
+# parlaient pas : on équipait un bouclier dans un menu contextuel, et on tenait
+# une arme par la hotbar. Rien ne disait au joueur ce que ses deux mains
+# faisaient ensemble, ni quelle compétence il entraînait.
+#
+# Cet onglet est cette réponse : les deux mains, la POSTURE qui en découle
+# (GDD 6.2 : deux mains / arme + bouclier / deux armes), et les chiffres réels
+# de ce qu'on porte. On n'y choisit pas une posture — on la constate, parce
+# qu'elle se déduit de l'équipement et jamais d'un bouton.
+var _combat_panel: EquipmentPanel
+var _combat_stance: Label
+var _combat_skill: Label
+var _combat_stats: VBoxContainer
+var _assembly_box: VBoxContainer
+
+
+func _build_combat() -> Control:
 	var box := VBoxContainer.new()
 	box.visible = false
+	box.add_theme_constant_override("separation", 10)
+
+	_combat_panel = EquipmentPanel.new()
+	_combat_panel.setup(_player, true)
+	_combat_panel.changed.connect(_refresh_combat)
+	box.add_child(_combat_panel)
+
+	var hint := UITheme.dim(tr("ui.menu.combat_aide"))
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(hint)
+
+	_combat_stance = Label.new()
+	_combat_stance.add_theme_font_size_override("font_size", UITheme.FONT_HEADING)
+	box.add_child(_combat_stance)
+	_combat_skill = Label.new()
+	box.add_child(_combat_skill)
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_combat_stats = VBoxContainer.new()
+	_combat_stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_combat_stats.add_theme_constant_override("separation", 2)
+	scroll.add_child(_combat_stats)
+	box.add_child(scroll)
+
+	# --- ASSEMBLAGE DES COMPÉTENCES (GDD 5.1, 2026-08-03) ---
+	# C'est ici qu'on fabrique ses sorts et ses attaques spéciales (choix de
+	# l'auteur : « on assemble les compétences dans le menu combat »). Placé sous
+	# les stats d'arme À DESSEIN : les slots disponibles dérivent du niveau dans
+	# la compétence de l'arme équipée, qui se lit juste au-dessus.
+	var sep := HSeparator.new()
+	box.add_child(sep)
+	var title := Label.new()
+	title.text = tr("ui.menu.assemblage")
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HEADING)
+	box.add_child(title)
+	var aide := UITheme.dim(tr("ui.menu.assemblage_aide"))
+	aide.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(aide)
+	var asm_scroll := ScrollContainer.new()
+	asm_scroll.custom_minimum_size = Vector2(0, 220)
+	asm_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_assembly_box = VBoxContainer.new()
+	_assembly_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_assembly_box.add_theme_constant_override("separation", 6)
+	asm_scroll.add_child(_assembly_box)
+	box.add_child(asm_scroll)
+	return box
+
+
+## Reconstruit l'ÉDITEUR D'ASSEMBLAGE (2026-08-03, réécrit).
+##
+## DEUX ZONES INDÉPENDANTES, sur demande de l'auteur : techniques d'ARME à
+## gauche, SORTS à droite. Chacune a sa réserve de modules et ses propres slots,
+## et un module ne peut aller que du bon côté. C'est un écart assumé avec le
+## GDD 5.1 (« n'importe quel module dans n'importe quel slot ») ; la règle vit
+## dans le modèle (Player.set_assembly), pas ici.
+##
+## DES CASES ET DU GLISSER-DÉPOSER, et non plus des listes déroulantes. Dans ce
+## système l'ORDRE décide de tout : un modificateur avant ou après un effet donne
+## deux sorts différents. Une liste déroulante DIT l'ordre mais ne permet pas de
+## le CHANGER — il fallait vider et recomposer pour déplacer un module d'un cran.
+func _refresh_assembly() -> void:
+	if _assembly_box == null:
+		return
+	for child in _assembly_box.get_children():
+		child.queue_free()
+
+	var known: Dictionary = _player.known_modules
+	if known.is_empty():
+		_assembly_box.add_child(UITheme.dim(tr("ui.menu.assemblage_aucun_module")))
+		return
+
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_assembly_box.add_child(columns)
+
+	var weapon_family := String(_player.weapon_skill_id())
+	columns.add_child(_build_assembly_column(
+			weapon_family, tr("ui.menu.assemblage_armes"),
+			tr("ui.menu.assemblage_sans_arme")))
+	columns.add_child(_build_assembly_column(
+			String(_player.SPELL_FAMILY), tr("ui.menu.assemblage_sorts"), ""))
+
+
+## Une colonne : titre, réserve des modules du bon type, puis les slots.
+func _build_assembly_column(family: String, title: String, empty_hint: String) -> Control:
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", UITheme.GAP)
+
+	var header := Label.new()
+	header.text = title
+	header.add_theme_color_override("font_color", UITheme.TEXT_ACCENT)
+	column.add_child(header)
+
+	if family.is_empty():
+		# Côté ARMES sans arme équipée : les slots dérivent de la compétence de
+		# l'arme, il n'y a donc rien à afficher tant qu'on n'en porte pas.
+		column.add_child(UITheme.dim(empty_hint))
+		return column
+
+	var wanted := String(_player.family_book_type(family))
+	var skill_id := String(_player.family_skill(family))
+	column.add_child(UITheme.dim(tr("ui.menu.assemblage_niveau").format({
+		"competence": tr("skill.%s.name" % skill_id),
+		"niveau": str(_player.skills.level(skill_id))})))
+
+	# --- Réserve : les modules APPRIS du bon type, triés par nom ---
+	var pool: Array[String] = []
+	for module_id: String in (_player.known_modules as Dictionary):
+		var module: Dictionary = GameData.modules.get(module_id, {})
+		if module.is_empty() or String(module.get("book_type", "grimoire")) != wanted:
+			continue
+		pool.append(module_id)
+	pool.sort_custom(func(a: String, b: String) -> bool:
+		return tr(String((GameData.modules[a] as Dictionary)["name_key"])) \
+				< tr(String((GameData.modules[b] as Dictionary)["name_key"])))
+
+	var reserve := GridContainer.new()
+	reserve.columns = 2
+	reserve.add_theme_constant_override("h_separation", UITheme.GAP)
+	reserve.add_theme_constant_override("v_separation", UITheme.GAP)
+	if pool.is_empty():
+		column.add_child(UITheme.dim(tr("ui.menu.assemblage_reserve_vide")))
+	else:
+		for module_id in pool:
+			var cell := ModuleSlot.new()
+			cell.kind = "reserve"
+			cell.family = family
+			cell.module_id = module_id
+			reserve.add_child(cell)
+		column.add_child(reserve)
+
+	column.add_child(UITheme.rule())
+
+	# --- Slots d'assemblage ---
+	var slot_count: int = _player.assembly_slot_count(family)
+	var module_count: int = _player.assembly_module_count(family)
+	for slot in slot_count:
+		var current: Array = _player.assembly_at(family, slot)
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", UITheme.GAP)
+		var index_label := Label.new()
+		index_label.text = str(slot + 1)
+		index_label.custom_minimum_size.x = 16
+		line.add_child(index_label)
+		for position in module_count:
+			var cell := ModuleSlot.new()
+			cell.kind = "assemblage"
+			cell.family = family
+			cell.slot = slot
+			cell.position_index = position
+			cell.module_id = String(current[position]) if position < current.size() else ""
+			cell.dropped.connect(_on_module_dropped)
+			cell.cleared.connect(_on_module_cleared)
+			line.add_child(cell)
+		column.add_child(line)
+
+		var compiled: Dictionary = SpellAssembly.compile(current, _player.known_modules)
+		var summary := UITheme.dim("%s   —   %s" % [
+				SpellAssembly.describe(compiled),
+				tr("ui.menu.assemblage_cout").format({
+					"cout": str(int(_player.assembly_cost(family, slot)))})])
+		summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		column.add_child(summary)
+	return column
+
+
+## Un module a été déposé. On recompose l'assemblage CIBLE en entier, et on
+## retire la source si elle venait d'un autre slot — c'est ce qui fait qu'un
+## glissement DÉPLACE au lieu de dupliquer.
+func _on_module_dropped(payload: Dictionary, target: ModuleSlot) -> void:
+	var module_id := String(payload.get("module", ""))
+	if module_id.is_empty():
+		return
+	var from_slot: bool = String(payload.get("kind", "")) == "assemblage"
+	var src_family := String(payload.get("family", ""))
+	var src_slot := int(payload.get("slot", -1))
+	var src_position := int(payload.get("position", -1))
+
+	# ÉCHANGE plutôt qu'écrasement quand les deux cases sont occupées et de la
+	# même famille : c'est le geste attendu quand on réordonne, et il évite de
+	# perdre le module qui se trouvait là.
+	var displaced := target.module_id
+	var cible: Array = (_player.assembly_at(target.family, target.slot) as Array).duplicate()
+	while cible.size() <= target.position_index:
+		cible.append("")
+	cible[target.position_index] = module_id
+
+	if from_slot and src_family == target.family and src_slot == target.slot:
+		# Même slot : simple permutation interne.
+		while cible.size() <= src_position:
+			cible.append("")
+		cible[src_position] = displaced
+		_player.set_assembly(target.family, target.slot, _compact_ids(cible))
+	else:
+		_player.set_assembly(target.family, target.slot, _compact_ids(cible))
+		if from_slot:
+			# Venu d'un AUTRE slot : on l'en retire, sinon le module existerait
+			# à deux endroits pour un seul glissement.
+			var source: Array = (_player.assembly_at(src_family, src_slot) as Array).duplicate()
+			if src_position >= 0 and src_position < source.size():
+				source[src_position] = displaced
+			_player.set_assembly(src_family, src_slot, _compact_ids(source))
+	_refresh_assembly()
+
+
+func _on_module_cleared(target: ModuleSlot) -> void:
+	var current: Array = (_player.assembly_at(target.family, target.slot) as Array).duplicate()
+	if target.position_index >= 0 and target.position_index < current.size():
+		current.remove_at(target.position_index)
+	_player.set_assembly(target.family, target.slot, _compact_ids(current))
+	_refresh_assembly()
+
+
+## Retire les trous. Un assemblage est une SUITE, pas une grille à cases vides :
+## laisser un trou au milieu ferait croire à un emplacement réservé alors que
+## l'interpréteur ne lit que la suite.
+func _compact_ids(ids: Array) -> Array:
+	var out: Array[String] = []
+	for id: Variant in ids:
+		if String(id) != "":
+			out.append(String(id))
+	return out
+
+
+func _refresh_combat() -> void:
+	if _combat_panel == null:
+		return
+	_combat_panel.refresh()
+	var stance := String(_player.combat_stance())
+	_combat_stance.text = tr("ui.posture." + stance)
+	# La table vit sur le JOUEUR : `player.gd` n'a pas de `class_name`, on lit
+	# donc la constante sur l'instance et non sur un type qui n'existe pas.
+	var skill := String((_player.STANCE_SKILL as Dictionary).get(stance, ""))
+	_combat_skill.text = "" if skill == "" else tr("ui.menu.posture_competence").format({
+		"competence": tr("skill.%s.name" % skill)})
+	_combat_skill.visible = skill != ""
+
+	for child in _combat_stats.get_children():
+		child.queue_free()
+	_combat_line(tr("ui.slot.arme_1"), _player.call("_current_weapon_stats"))
+	var offhand: Dictionary = _player.offhand_stats()
+	if not offhand.is_empty():
+		_combat_line(tr("ui.slot.arme_2"), offhand)
+	var shield: Dictionary = _player.shield_profile()
+	if bool(shield.get("present", false)):
+		_combat_stats.add_child(UITheme.dim(tr("ui.combat.bouclier_ligne").format({
+			"couverture": int(shield["couverture"]),
+			"absorption": int(round(float(shield["absorption"]) * 100.0))})))
+	_refresh_assembly()
+
+
+## Une ligne de chiffres pour une main. Ce sont les valeurs RÉELLEMENT utilisées
+## par le combat (WeaponStats), pas une copie : un écran qui recalculerait ses
+## propres nombres finirait par mentir.
+func _combat_line(title: String, stats: Dictionary) -> void:
+	if stats.is_empty():
+		return
+	var header := Label.new()
+	header.text = title
+	header.add_theme_color_override("font_color", Color(0.6, 0.85, 1.0))
+	_combat_stats.add_child(header)
+	# RÉPERTOIRE : ce que l'arme sait faire. Sans cet affichage, le joueur
+	# découvrirait par accident que sa masse ne pique pas — il croirait à un
+	# bug de visée plutôt qu'à une propriété de l'arme.
+	var names: Array[String] = []
+	for direction: int in (stats.get("directions", []) as Array):
+		names.append(tr("ui.direction." + MeleeAttack.direction_name(direction)))
+	if not names.is_empty():
+		_combat_stats.add_child(UITheme.dim(tr("ui.combat.attaques").format({
+			"directions": ", ".join(names)})))
+	_combat_stats.add_child(UITheme.dim(tr("ui.combat.fiche").format({
+		"allonge": "%.2f" % float(stats.get("reach", 0.0)),
+		"des": String(stats.get("dice", "")),
+		"vitesse": "%.1f" % float(stats.get("speed", 0.0)),
+		"parade": int(round(float(stats.get("parry_window_ms", 0.0)))),
+		"endurance": "%.1f" % float(stats.get("stamina_cost", 0.0)),
+		"mains": int(stats.get("hands", 1)),
+	})))
+
+
+var _inv_equipment: EquipmentPanel
+
+
+func _build_inventaire() -> Control:
+	# DEUX COLONNES (2026-08-02, demande de l'auteur) : le personnage et son
+	# équipement à gauche, la liste à droite. On glisse donc un objet de la
+	# liste DIRECTEMENT sur la silhouette pour l'équiper, au lieu de passer par
+	# un menu contextuel qui n'affichait jamais ce qu'on portait déjà.
+	var split := HBoxContainer.new()
+	split.visible = false
+	split.add_theme_constant_override("separation", 16)
+	_inv_equipment = EquipmentPanel.new()
+	_inv_equipment.setup(_player, false)
+	_inv_equipment.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	# Le panneau d'équipement et la liste partagent le MÊME joueur : équiper
+	# depuis la silhouette doit retirer l'objet de la liste dans la foulée.
+	_inv_equipment.changed.connect(_refresh_inventory)
+	split.add_child(_inv_equipment)
+
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_theme_constant_override("separation", 8)
+	split.add_child(box)
 
 	# Barre de tri.
 	var controls := HBoxContainer.new()
@@ -446,7 +770,7 @@ func _build_inventaire() -> Control:
 	for slot in _player.HOTBAR_SLOTS:
 		_inv_hotbar.add_child(_hotbar_slot(slot))
 	box.add_child(_inv_hotbar)
-	return box
+	return split
 
 
 func _change_bank(delta: int) -> void:
@@ -526,6 +850,7 @@ func _refresh() -> void:
 		return
 	match _current_tab:
 		"personnage": _refresh_personnage()
+		"combat": _refresh_combat()
 		"inventaire": _refresh_inventory()
 		"craft": _refresh_craft()
 		"collection": _refresh_collection()
@@ -657,6 +982,8 @@ func _refresh_royaume() -> void:
 
 func _refresh_inventory() -> void:
 	_refresh_hotbar_strip()
+	if _inv_equipment != null:
+		_inv_equipment.refresh()
 	if _inv_list == null:
 		return
 	for child in _inv_list.get_children():
@@ -709,7 +1036,7 @@ func _inventory_row(entry: Dictionary) -> Control:
 	elif entry.has("obj"):
 		var obj: Dictionary = entry["obj"]                # outil : sprite teinté
 		var item: Dictionary = GameData.items.get(obj.get("item_id", ""), {})
-		tex = ToolSprite.item_icon(item, obj.get("materials", {}), SWATCH_SIZE)
+		tex = WeaponPreview.item_icon(item, obj.get("materials", {}), SWATCH_SIZE)
 	swatch.texture = tex if tex != null else BlockIcon.cube_texture(entry["swatch"], SWATCH_SIZE)
 	swatch.custom_minimum_size = Vector2(SWATCH_SIZE, SWATCH_SIZE)
 	swatch.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -773,7 +1100,7 @@ func _entry_icon(entry: Dictionary, size: int) -> Texture2D:
 	if entry.get("kind", "") == "object":
 		var obj: Dictionary = entry.get("object", {})
 		var item: Dictionary = GameData.items.get(obj.get("item_id", ""), {})
-		var tex := ToolSprite.item_icon(item, obj.get("materials", {}), size)
+		var tex := WeaponPreview.item_icon(item, obj.get("materials", {}), size)
 		if tex != null:
 			return tex
 		return BlockIcon.item_texture(_object_color(obj), size)
@@ -1127,7 +1454,7 @@ func _recipe_name(recipe: Dictionary) -> String:
 func _recipe_icon(recipe: Dictionary) -> Texture2D:
 	if recipe["type"] == "item":
 		var item: Dictionary = GameData.items[recipe["id"]]
-		var t: Texture2D = ToolSprite.item_icon(item, {"bois": "chene", "minerai": "fer"}, 40)
+		var t: Texture2D = WeaponPreview.item_icon(item, {"bois": "chene", "minerai": "fer"}, 40)
 		if t != null:
 			return t
 		return BlockIcon.cube_texture(Color(0.6, 0.6, 0.6), 40)
@@ -1738,7 +2065,7 @@ func _collection_slot(key: String) -> Control:
 func _collection_icon(key: String) -> Texture2D:
 	var item: Dictionary = GameData.items.get(key, {})
 	if not item.is_empty():
-		var tex: Texture2D = ToolSprite.item_icon(item,
+		var tex: Texture2D = WeaponPreview.item_icon(item,
 			{"bois": "chene", "minerai": "fer", "textile": "lin"}, int(SWATCH_SIZE))
 		if tex != null:
 			return tex

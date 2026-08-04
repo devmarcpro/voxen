@@ -26,27 +26,27 @@
   "vegetation": [
     {
       "id": "ebene",
-      "density": 0.008
+      "density": 0.00224
     },
     {
       "id": "gaiac",
-      "density": 0.006
+      "density": 0.00168
     },
     {
       "id": "acajou",
-      "density": 0.008
+      "density": 0.00224
     },
     {
       "id": "teck",
-      "density": 0.008
+      "density": 0.00224
     },
     {
       "id": "balsa",
-      "density": 0.008
+      "density": 0.00224
     },
     {
       "id": "bambou",
-      "density": 0.02
+      "density": 0.0056
     }
   ],
   "village_palette": {

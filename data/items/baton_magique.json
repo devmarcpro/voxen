@@ -15,11 +15,11 @@
     "inputs": [
       {
         "category": "bois",
-        "amount": 1
+        "amount": 5
       },
       {
         "category": "minerai",
-        "amount": 1
+        "amount": 2
       }
     ]
   },

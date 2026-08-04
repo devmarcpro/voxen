@@ -55,11 +55,20 @@ var in_hand := false
 ## construits sur un autre axe et seraient mis de travers.
 var is_part_weapon := false
 
-## D'OÙ vient l'objet à afficher. La hotbar par défaut ; « bouclier » pour
+## D'OÙ vient l'objet à afficher. La hotbar par défaut ; « main_gauche » pour
 ## l'exemplaire accroché à la main gauche, qui suit l'ÉQUIPEMENT et non
 ## l'emplacement sélectionné. Sans cette distinction, le bouclier se serait
 ## reconstruit à chaque changement d'objet en main et aurait clignoté.
+##
+## « explicite » (2026-08-02) : l'entrée est POSÉE par l'appelant dans
+## `explicit_entry` au lieu d'être lue sur le joueur. C'est ce qui permet aux
+## OBJETS AU SOL (DropManager) de réutiliser tel quel tout le pipeline de rendu
+## d'objet — pièces d'arme assemblées, extrusion de sprites, .vox remappé, cube
+## de matériau — au lieu d'en écrire une seconde version qui divergerait au
+## premier ajout de type d'objet.
 var source := "hotbar"
+## Entrée affichée quand `source == "explicite"`. Voir ci-dessus.
+var explicit_entry := {}
 
 var _player: Node
 var _current_key := ""
@@ -81,7 +90,9 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if _player == null:
+	# La source explicite n'a PAS besoin du joueur : un objet au sol existe
+	# indépendamment de lui (et peut vivre dans une dimension où il n'est pas).
+	if _player == null and source != "explicite":
 		return
 	var entry: Dictionary = _source_entry()
 	var key := ""
@@ -103,9 +114,18 @@ func _process(_delta: float) -> void:
 ## Entrée à afficher selon la source. Une main gauche sans bouclier reçoit une
 ## entrée VIDE, que `_rebuild` traduit déjà en « rien à montrer ».
 func _source_entry() -> Dictionary:
-	if source == "bouclier":
+	if source == "explicite":
+		return explicit_entry
+	if source == "main_gauche":
+		# La main gauche porte un BOUCLIER ou une SECONDE ARME (dual wielding,
+		# 2026-08-02) — jamais les deux, l'emplacement est le même. Elle suit
+		# l'ÉQUIPEMENT et non la hotbar : c'est ce qui permet de garder au
+		# bouclier tout en changeant d'outil en main forte.
 		var shield: Dictionary = _player.equipped_shield()
-		return {} if shield.is_empty() else {"kind": "object", "object": shield}
+		if not shield.is_empty():
+			return {"kind": "object", "object": shield}
+		var offhand: Dictionary = _player.offhand_weapon()
+		return {} if offhand.is_empty() else {"kind": "object", "object": offhand}
 	return _player.held_entry()
 
 
@@ -138,7 +158,25 @@ func _rebuild(entry: Dictionary) -> void:
 				position = HAND_TOOL_POSITION if in_hand else TOOL_POSITION
 				visible = true
 				return
-			var model := VoxLoader.load_model(String(item.get("vox_model", "")))
+			# LIVRES (5.1) : ni pièces, ni sprites, ni .vox — ils n'ont pas de
+			# modèle et n'en auront pas tant qu'un asset n'existe pas. Une forme
+			# procédurale suffit à les rendre reconnaissables au sol, ce qui est
+			# tout ce qu'on leur demande.
+			if BookFactory.is_book(obj):
+				_build_book(obj)
+				position = HAND_TOOL_POSITION if in_hand else TOOL_POSITION
+				visible = true
+				return
+			# CHEMIN VIDE = PAS DE MODÈLE, et surtout pas un appel au chargeur.
+			# `item.get("vox_model", "")` rend "" pour tout objet sans modèle ;
+			# VoxLoader préfixe alors "res://" et pousse une erreur « fichier
+			# introuvable « res:// » » — à CHAQUE reconstruction, donc en boucle
+			# pour un objet posé au sol. Constaté en jeu réel le 2026-08-03.
+			var vox_path := String(item.get("vox_model", ""))
+			if vox_path.is_empty():
+				visible = false
+				return
+			var model := VoxLoader.load_model(vox_path)
 			if model.is_empty():
 				visible = false
 				return
@@ -163,6 +201,25 @@ func _rebuild(entry: Dictionary) -> void:
 			visible = false
 
 
+## Forme procédurale d'un LIVRE : un parallélépipède aplati, teinté selon son
+## type. Pas d'asset à produire, et le grimoire se distingue du manuel au premier
+## coup d'œil — ce qui est la seule chose qui compte pour du butin au sol.
+func _build_book(obj: Dictionary) -> void:
+	for child in get_children():
+		child.queue_free()
+	var box := BoxMesh.new()
+	box.size = Vector3(0.22, 0.05, 0.30)   # proportions d'un livre fermé
+	mesh = box
+	var mat := StandardMaterial3D.new()
+	# Grimoire : bleu arcane. Manuel de combat : cuir fauve. Les deux teintes
+	# viennent des mêmes familles que les modules qu'ils contiennent.
+	var grimoire := String(obj.get("book_type", "grimoire")) == "grimoire"
+	mat.albedo_color = Color(0.28, 0.32, 0.62) if grimoire else Color(0.46, 0.30, 0.17)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material_override = mat
+	scale = Vector3.ONE * (HAND_SCALE if in_hand else HELD_SCALE)
+
+
 ## Assemble l'arme à partir de ses PIÈCES 3D : le manche à l'origine, la tête
 ## greffée à son sommet. Les deux sont teintés par les matériaux choisis au
 ## craft — le modèle lui-même ne porte aucune couleur, sinon tout le système de
@@ -182,22 +239,21 @@ func _build_part_weapon(item: Dictionary, material_choices: Dictionary,
 	for child in get_children():
 		child.queue_free()
 
-	var tint: Dictionary = item.get("sprite_tint", {})
-	var handle_color := _material_color(material_choices, String(tint.get("manche", "bois")))
-	var head_color := _material_color(material_choices, String(tint.get("tete", "minerai")))
 	var length := float(handle.get("longueur", 0.0))
-	# L'arme est tenue par son POINT DE PRISE, pas par le bout du manche : on
-	# descend tout l'assemblage de cette hauteur pour que la main tombe au bon
+	# L'arme est tenue par son POINT DE PRISE, pas par le bout du manche :
+	# l'assemblage est descendu de cette hauteur pour que la main tombe au bon
 	# endroit. Sur une pique (prise à 12 % de la base) le manche dépasse donc
 	# largement derrière la main — ce qui est exactement le geste réel.
 	var grip_offset := float(handle.get("grip_main", 0.3)) * length
-	var built := false
-	if not handle.is_empty():
-		built = _add_part(String(handle["model"]), Vector3(0.0, -grip_offset, 0.0), handle_color) or built
-	if not head.is_empty():
-		# La tête est modélisée à partir de y = 0 : c'est ici qu'elle monte au
-		# sommet du manche (convention de generate_weapon_parts.py).
-		built = _add_part(String(head["model"]), Vector3(0.0, length - grip_offset, 0.0), head_color) or built
+	# ASSEMBLAGE PARTAGÉ avec l'icône d'inventaire (2026-08-02). L'arme qu'on
+	# VOIT dans sa case et celle qu'on TIENT sortent de la même fonction : c'est
+	# la seule façon que l'icône ne puisse pas mentir sur ce qu'on porte.
+	var assembly := WeaponPreview.assemble(item, material_choices)
+	var built := assembly != null
+	if built:
+		add_child(assembly)
+		for node in _mesh_children(assembly):
+			node.cast_shadow = cast_shadow
 	# GEMME SERTIE : à la jonction manche/tête, là où une vraie arme place son
 	# pommeau ou sa garde ornée. C'est aussi le seul point commun à toutes les
 	# armes, quelle que soit la pièce montée — pas besoin d'un point d'ancrage
@@ -253,19 +309,6 @@ static func _gem_material(color: Color) -> StandardMaterial3D:
 	return mat
 
 
-func _add_part(model_path: String, offset: Vector3, color: Color) -> bool:
-	if model_path == "" or not ResourceLoader.exists(model_path):
-		return false
-	var scene: PackedScene = load(model_path)
-	if scene == null:
-		return false
-	var instance := scene.instantiate()
-	add_child(instance)
-	instance.position = offset
-	for node in _mesh_children(instance):
-		node.material_override = PlayerBody.tinted_material(color)
-		node.cast_shadow = cast_shadow
-	return true
 
 
 func _mesh_children(node: Node) -> Array[MeshInstance3D]:

@@ -1,0 +1,12 @@
+{
+  "id": "saignement",
+  "name_key": "status.saignement.name",
+  "duration_ticks": 100,
+  "stacks": true,
+  "tags": [
+    "saignement"
+  ],
+  "periodic": {
+    "degats_des": "1d4"
+  }
+}

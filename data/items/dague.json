@@ -6,8 +6,8 @@
   "hands": 1,
   "functionality": "dague",
   "parts": {
-    "manche": "court",
-    "tete": "lame_courte"
+    "manche": "poignee_dague",
+    "tete": "lame_dague"
   },
   "recipe": {
     "station": "etabli",
@@ -19,7 +19,7 @@
       },
       {
         "category": "minerai",
-        "amount": 2
+        "amount": 1
       }
     ]
   },

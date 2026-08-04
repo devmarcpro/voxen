@@ -1,0 +1,14 @@
+{
+  "id": "infection",
+  "name_key": "status.infection.name",
+  "duration_ticks": 1000,
+  "stacks": false,
+  "tags": [
+    "maladie"
+  ],
+  "modifiers": {
+    "endurance": {
+      "add": -2.0
+    }
+  }
+}

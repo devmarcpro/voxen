@@ -5,7 +5,7 @@
   "leaf_material": "feuilles_buis",
   "height_range": [
     2,
-    3
+    4
   ],
   "trunk_radius": 1,
   "branch_parameters": {
@@ -25,5 +25,13 @@
     1,
     2
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "fork": 0.15,
+    "children": 4,
+    "spread_deg": 35.0,
+    "depth": 2,
+    "roots": 0,
+    "leaf_density": 0.9
+  }
 }

@@ -33,13 +33,29 @@ const SAVE_DIR := "user://saves/monde"  # Monde par défaut (modes directs/bench
 ## Dossier des sondes de sauvegarde — isolé des vrais mondes du joueur.
 const PROBE_SAVE_DIR := "user://saves/_sondes"
 const SAVE_VERSION := 1
+## Plus ancienne version que les migrations savent remonter jusqu'à
+## SAVE_VERSION. En dessous, on REFUSE de charger — on ne remplace pas
+## silencieusement la partie du joueur par un monde neuf.
+const MIN_SUPPORTED_VERSION := 1
 const AUTOSAVE_INTERVAL := 300.0  # 5 min réelles (E.10).
+
+## Raison du dernier échec de chargement, en clé de localisation, pour que
+## l'interface puisse la DIRE. Elle ne le pouvait pas : `load_world_at`
+## renvoyait `false` dans tous les cas de figure et se contentait d'un
+## `push_warning` — invisible en build exporté. Le joueur cliquait sur son
+## monde, rien ne se passait, et aucun message n'expliquait pourquoi.
+var last_load_error := ""
+
+## Chunks illisibles au dernier chargement (constructions perdues). Remonté au
+## joueur par un toast : sans ça, il découvre le trou dans son monde en
+## marchant dedans.
+var lost_chunks := 0
 ## Modes de mesure/test : la persistance est coupée (mesures et mondes de
 ## test jamais pollués par une sauvegarde, ni l'inverse). --join : les
 ## invités ne possèdent pas la sauvegarde du monde (E.10, host seulement).
 const DISABLED_ARGS: Array[String] = [
 	"--bench", "--statique", "--bench-mutation", "--bench-creatures",
-	"--probe", "--probe-subdiv", "--probe-dungeon", "--probe-params",
+	"--probe", "--probe-subdiv", "--probe-dungeon", "--probe-interieur", "--probe-noms", "--probe-params",
 	"--probe-city", "--probe-ore", "--probe-faim", "--probe-equipement", "--probe-mort", "--probe-faune", "--probe-butin", "--probe-mesh", "--probe-invui", "--probe-survie", "--probe-saves", "--test-input", "--test-menu", "--test-ore", "--bench-network-client", "--join",
 	# 2026-07-28 : oublier une sonde ici n'est PAS bénin. `--probe-heure` appelle
 	# prepare_new_world() et, sans cette ligne, la sauvegarde de sortie créait un
@@ -47,7 +63,7 @@ const DISABLED_ARGS: Array[String] = [
 	# réécrivait `dernier.json` — le « continuer » du joueur pointait alors sur le
 	# monde de test au lieu de sa partie. Toute nouvelle sonde qui touche à
 	# SaveManager doit être ajoutée ici.
-	"--probe-heure", "--probe-tour", "--probe-etages",
+	"--probe-heure", "--probe-tour", "--probe-etages", "--probe-assemblage", "--probe-mains", "--probe-arbres", "--probe-refonte-donjon",
 ]
 
 var enabled := true
@@ -214,6 +230,7 @@ func delete_world(dir_path: String) -> bool:
 
 ## « Continuer » : recharge le dernier monde joué (dernier.json). false si aucun.
 func continue_last() -> bool:
+	last_load_error = ""  # Sinon un refus précédent contaminerait ce message.
 	var bytes := _read_bytes(SAVES_ROOT + "/dernier.json")
 	if bytes.is_empty():
 		return false
@@ -274,8 +291,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	# F9 : sauvegarde manuelle (parallèle du F5 de rechargement des données).
 	if not enabled or not world_active:
 		return
-	var key := event as InputEventKey
-	if key != null and key.pressed and not key.echo and key.physical_keycode == KEY_F9:
+	if event.is_action_pressed("save_game"):
 		save_now()
 		EventBus.ui_notification.emit("ui.toast.partie_sauvegardee")
 
@@ -382,6 +398,8 @@ func _gather_state() -> Dictionary:
 		"shops": ShopManager.save_state(),
 		"dungeons": DungeonManager.save_state(),
 		"drops": DropManager.save_state(),
+		"chests": ContainerManager.save_state(),
+		"saplings": SaplingManager.save_state(),
 	}
 	# Filet : si le joueur n'est plus joignable (sauvegarde de sortie après
 	# libération de la scène), on réécrit son DERNIER état connu plutôt que
@@ -428,6 +446,70 @@ func _wait_pending_write() -> void:
 
 # --- Lecture ---
 
+## Pose la raison de l'échec et journalise. Toujours `false`, pour s'écrire
+## en `return _refuse(...)`.
+func _refuse(error_key: String, detail: String) -> bool:
+	last_load_error = error_key
+	push_error("SaveManager : chargement refusé — %s." % detail)
+	return false
+
+
+## Amène `world` (modifié sur place) à SAVE_VERSION, ou refuse.
+##
+## Il n'y a AUCUNE migration à ce jour — SAVE_VERSION vaut encore 1. La chaîne
+## existe quand même parce que le comportement qu'elle remplace était
+## destructeur : toute version != SAVE_VERSION retombait sur « monde neuf »,
+## donc le premier incrément du format aurait effacé sans un mot les parties
+## en cours. Un refus explicite est réversible ; un écrasement silencieux ne
+## l'est pas.
+##
+## Pour ajouter une migration : écrire `_migrate_1_to_2(world)`, l'enregistrer
+## dans MIGRATIONS, incrémenter SAVE_VERSION, laisser MIN_SUPPORTED_VERSION.
+const MIGRATIONS := {}  # version de départ -> nom de méthode.
+
+
+func _bring_to_current_version(world: Dictionary, dir: String) -> bool:
+	var version := int(world.get("version", -1))
+	if version == SAVE_VERSION:
+		return true
+	if version < 0:
+		return _refuse("ui.erreur.save_illisible", "world.json sans numéro de version")
+	if version > SAVE_VERSION:
+		# Cas courant en pratique : le joueur a ouvert le monde avec une
+		# version plus récente du jeu, puis est revenu à l'ancienne.
+		return _refuse("ui.erreur.save_trop_recente",
+				"sauvegarde en version %d, ce jeu lit jusqu'à %d" % [version, SAVE_VERSION])
+	if version < MIN_SUPPORTED_VERSION:
+		return _refuse("ui.erreur.save_trop_ancienne",
+				"sauvegarde en version %d, plus ancienne prise en charge : %d" % [
+						version, MIN_SUPPORTED_VERSION])
+	# Copie de sûreté AVANT toute réécriture : une migration qui échoue à
+	# mi-parcours laisserait sinon une sauvegarde ni ancienne ni nouvelle.
+	_backup_before_migration(dir, version)
+	while version < SAVE_VERSION:
+		if not MIGRATIONS.has(version):
+			return _refuse("ui.erreur.save_trop_ancienne",
+					"aucune migration depuis la version %d" % version)
+		Callable(self, String(MIGRATIONS[version])).call(world)
+		version += 1
+		world["version"] = version
+		print("[SAVE] monde migré en version %d." % version)
+	return true
+
+
+## Duplique world.json en world.v<N>.bak. Best-effort : l'échec de la copie ne
+## doit pas empêcher de jouer, mais il est journalisé.
+func _backup_before_migration(dir: String, version: int) -> void:
+	var backup := "%s/world.v%d.bak" % [dir, version]
+	if FileAccess.file_exists(backup):
+		return  # Déjà migré une fois depuis cette version : ne pas écraser.
+	var err := DirAccess.copy_absolute(
+			ProjectSettings.globalize_path(dir + "/world.json"),
+			ProjectSettings.globalize_path(backup))
+	if err != OK:
+		push_warning("SaveManager : copie de sûreté %s impossible (%s)." % [backup, err])
+
+
 ## Charge le monde du dossier `dir` (world.json + chunks + state) dans les
 ## structures « pendantes » — consommées par WorldManager.initialize_world et
 ## apply_pending_state. Retourne false si le dossier n'a pas de monde valide.
@@ -435,13 +517,19 @@ func load_world_at(dir: String) -> bool:
 	if dir == "":
 		return false
 	save_dir = dir
+	last_load_error = ""
+	lost_chunks = 0
 	var world_bytes := _read_bytes(save_dir + "/world.json")
 	if world_bytes.is_empty():
-		return false  # Aucun monde sauvegardé ici.
-	var world: Variant = JSON.parse_string(world_bytes.get_string_from_utf8())
-	if not (world is Dictionary) or int(world.get("version", -1)) != SAVE_VERSION:
-		push_warning("SaveManager : world.json illisible ou version inconnue — monde neuf.")
-		return false
+		return false  # Aucun monde sauvegardé ici (dossier vide, pas une erreur).
+	var parsed: Variant = JSON.parse_string(world_bytes.get_string_from_utf8())
+	if not (parsed is Dictionary):
+		return _refuse("ui.erreur.save_illisible", "world.json n'est pas un objet JSON")
+	var world: Dictionary = parsed
+	if not world.has("seed"):
+		return _refuse("ui.erreur.save_illisible", "world.json sans graine")
+	if not _bring_to_current_version(world, dir):
+		return false  # `last_load_error` déjà posé par la migration.
 	loaded_seed = int(world["seed"])
 	world_loaded = true
 	active_config = {
@@ -481,6 +569,9 @@ func load_world_at(dir: String) -> bool:
 
 	print("SaveManager : monde « %s » chargé (graine %d, tick %d, %d chunk(s) modifié(s))." % [
 		active_config["name"], loaded_seed, TickManager.tick_index, _pending_edits.size()])
+	if lost_chunks > 0:
+		push_error("SaveManager : %d chunk(s) illisible(s) — constructions perdues." % lost_chunks)
+		EventBus.ui_notification.emit("ui.erreur.chunks_perdus")
 	return true
 
 
@@ -494,11 +585,16 @@ func _load_chunk_file(file_name: String, remap: PackedInt32Array) -> void:
 		return
 	var buf := StreamPeerBuffer.new()
 	buf.data_array = bytes
+	# Un chunk ignoré, ce sont des CONSTRUCTIONS DU JOUEUR qui disparaissent —
+	# pas un détail technique. On les compte pour le prévenir à l'arrivée au
+	# lieu de n'écrire qu'un push_warning invisible en build (2026-08-01).
 	if buf.get_available_bytes() < 6 or buf.get_u16() != SAVE_VERSION:
+		lost_chunks += 1
 		push_warning("SaveManager : chunk %s corrompu ou version inconnue — ignoré." % file_name)
 		return
 	var n_edits := buf.get_u32()
 	if buf.get_available_bytes() < n_edits * 4:
+		lost_chunks += 1
 		push_warning("SaveManager : chunk %s tronqué — ignoré." % file_name)
 		return
 	var chunk_edits := {}
@@ -543,12 +639,14 @@ func _read_bytes(path: String) -> PackedByteArray:
 func apply_pending_state() -> void:
 	if _pending_state.is_empty():
 		return  # Rien à appliquer (monde neuf, ou déjà appliqué).
+	SaplingManager.restore_state(_pending_state.get("saplings", {}))
 	ClaimManager.restore_state(_pending_state.get("claims", {}))
 	VillageManager.restore_state(_pending_state.get("villages", {}))
 	ExplorationManager.restore_state(_pending_state.get("exploration", []))
 	ShopManager.restore_state(_pending_state.get("shops", {}))
 	DungeonManager.restore_state(_pending_state.get("dungeons", {}))
 	DropManager.restore_state(_pending_state.get("drops", []))
+	ContainerManager.restore_state(_pending_state.get("chests", {}))
 	var player := get_node_or_null("/root/Main/Player")
 	var player_state: Variant = _pending_state.get("player")
 	if player != null and player_state is Dictionary:

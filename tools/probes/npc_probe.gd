@@ -37,14 +37,30 @@ func run() -> void:
 	finish(_ok, TAG)
 
 
+## Peuple un village ET VIDE LA FILE DE SPAWN.
+##
+## Depuis le 2026-08-03, `_populate_village` MET EN FILE ses habitants au lieu
+## de les instancier d'un bloc — vingt corps riggés dans le même tick faisaient
+## des pics à 62 ms en jeu. La sonde doit donc laisser la file se vider, sinon
+## elle constate zéro habitant et accuse à tort le peuplement.
+func _populate_and_drain(cell: Vector2i, plan: Dictionary) -> void:
+	CreatureManager.call("_populate_village", cell, plan)
+	# Borne de sûreté : une file qui ne se vide pas est un bug en soi, on ne
+	# veut pas qu'il se transforme en sonde qui tourne sans fin.
+	for i in 200:
+		if (CreatureManager._spawn_queue as Array).is_empty():
+			return
+		CreatureManager.call("_drain_spawn_queue")
+
+
 ## LE VERROU. Un sanglier et un marchand doivent être la même classe.
 func _check_unified_structure() -> void:
-	var boar := CreatureManager.spawn("sanglier", Vector3(0, 200, 0))
+	var boar := CreatureManager.spawn("bandit", Vector3(0, 200, 0))
 	var merchant := CreatureManager.spawn("marchand_ambulant", Vector3(0, 200, 4))
 	if boar == null or merchant == null:
 		_check("les deux créatures apparaissent", false)
 		return
-	_check("sanglier et marchand partagent le MÊME script",
+	_check("bandit et marchand partagent le MÊME script",
 		boar.get_script() == merchant.get_script(),
 		boar.get_script().resource_path.get_file())
 	# Les champs sociaux existent sur les DEUX : c'est ce qui permet au reste du
@@ -54,9 +70,9 @@ func _check_unified_structure() -> void:
 	# par la créature disparaîtrait dès que le joueur s'éloigne — elle est donc
 	# dans `Player.reputation`, retrouvée par `social_key`.
 	for field: String in ["village_cell", "job", "home_building", "social_key", "race_id"]:
-		_check("le sanglier porte aussi le champ « %s »" % field,
+		_check("le bandit porte aussi le champ « %s »" % field,
 			boar.get(field) != null)
-	_check("un sanglier n'est PAS un résident", not boar.call("is_resident"))
+	_check("un bandit n'est PAS un résident", not boar.call("is_resident"))
 	CreatureManager.despawn(boar)
 	CreatureManager.despawn(merchant)
 
@@ -370,7 +386,7 @@ func _check_decimation_is_wired() -> void:
 
 	VillageManager.casualties.clear()
 	CreatureManager.call("_release_village", cell)
-	CreatureManager.call("_populate_village", cell, plan)
+	_populate_and_drain(cell, plan)
 	var before: int = (CreatureManager._populated_villages.get(cell, []) as Array).size()
 	_check("le village se peuple", before > 0, "%d habitant(s)" % before)
 	if before == 0:
@@ -388,12 +404,15 @@ func _check_decimation_is_wired() -> void:
 	# Puis on quitte la région et on revient : c'est le geste qui ressuscitait
 	# tout le monde avant ce système.
 	CreatureManager.call("_release_village", cell)
-	CreatureManager.call("_populate_village", cell, plan)
+	_populate_and_drain(cell, plan)
 	var after: int = (CreatureManager._populated_villages.get(cell, []) as Array).size()
 	_check("le mort NE REVIENT PAS après un aller-retour", after == before - 1,
 		"%d puis %d habitant(s)" % [before, after])
 	var resurrected := false
-	for creature: Node in CreatureManager._populated_villages[cell]:
+	# Boucle NON typée : annoter `: Node` tenterait la conversion À
+	# L'AFFECTATION, donc avant tout garde de validité — c'est le piège qui
+	# faisait planter `_release_village` en boucle dans une vraie partie.
+	for creature in CreatureManager._populated_villages[cell]:
 		if int(creature.roster_index) == victim_index:
 			resurrected = true
 	_check("son rang reste vide", not resurrected)

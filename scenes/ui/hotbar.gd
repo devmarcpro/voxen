@@ -125,7 +125,7 @@ func _refresh() -> void:
 			# Apparence d'OUTIL (sprite manche+tête teintés) si dispo, sinon
 			# repli bicolore tête/manche (2026-07-26).
 			var item: Dictionary = GameData.items.get(obj.get("item_id", ""), {})
-			var tool_tex: Texture2D = ToolSprite.item_icon(item, mats, SLOT_SIZE)
+			var tool_tex: Texture2D = WeaponPreview.item_icon(item, mats, SLOT_SIZE)
 			# Ressource (viande, peau) : pastille colorée d'objet — pas de
 			# sprite dédié, et surtout pas l'apparence d'un bloc.
 			if tool_tex == null and obj.has("color"):

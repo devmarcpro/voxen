@@ -1,0 +1,20 @@
+{
+  "id": "emprise_du_gel",
+  "name_key": "module.emprise_du_gel.name",
+  "module_type": "effet",
+  "mana_cost_base": 10,
+  "power_base": 8,
+  "tags": [
+    "glace",
+    "entrave"
+  ],
+  "params": {
+    "rayon": 3,
+    "ralentissement": 50
+  },
+  "grimoire_domains": [
+    "eau_glace"
+  ],
+  "book_type": "grimoire",
+  "degats_des": "1d4"
+}

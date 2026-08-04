@@ -2,9 +2,23 @@
   "id": "corridor_droit",
   "kind": "connecteur",
   "type": "corridor",
-  "length": 5,
+  "length": 6,
   "doors": [
-    { "position": [0, 0, 0], "direction": "sud" },
-    { "position": [0, 0, 5], "direction": "nord" }
+    {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "direction": "sud"
+    },
+    {
+      "position": [
+        0,
+        0,
+        6
+      ],
+      "direction": "nord"
+    }
   ]
 }

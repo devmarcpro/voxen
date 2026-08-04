@@ -1,0 +1,106 @@
+{
+  "id": "culture_nordique",
+  "name_key": "culture.nordique.name",
+  "name_order": "prenom_nom",
+  "race_affinity": {
+    "nain": 1.0,
+    "humain": 0.6
+  },
+  "prenom_a": [
+    "Bjor",
+    "Sig",
+    "Thor",
+    "Hal",
+    "Ing",
+    "Ulf",
+    "Ragn",
+    "Ast",
+    "Gud",
+    "Ein",
+    "Sven",
+    "Fre",
+    "Hrol",
+    "Gunn"
+  ],
+  "prenom_b": [
+    "n",
+    "ar",
+    "ulf",
+    "rid",
+    "dis",
+    "vald",
+    "bjorn",
+    "hild",
+    "mund",
+    "stein"
+  ],
+  "famille_a": [
+    "Fer",
+    "Roc",
+    "Orage",
+    "Givre",
+    "Ours",
+    "Loup",
+    "Marteau",
+    "Fond",
+    "Rune",
+    "Chêne"
+  ],
+  "famille_b": [
+    "-fils",
+    "-fille",
+    "barbe",
+    "hache",
+    "heaume",
+    "forge",
+    "garde"
+  ],
+  "ville_a": [
+    "Nord",
+    "Frost",
+    "Stein",
+    "Bjarn",
+    "Grim",
+    "Hall",
+    "Kald",
+    "Djup",
+    "Hamar",
+    "Vind"
+  ],
+  "ville_b": [
+    "heim",
+    "gard",
+    "fjord",
+    "borg",
+    "vik",
+    "dal",
+    "hus",
+    "strand"
+  ],
+  "titres": {
+    "monarchie_hereditaire": {
+      "m": "Roi",
+      "f": "Reine"
+    },
+    "republique_elue": {
+      "m": "Diseur de Loi",
+      "f": "Diseuse de Loi"
+    },
+    "theocratie": {
+      "m": "Godi",
+      "f": "Gydja"
+    },
+    "ploutocratie": {
+      "m": "Maître des Coffres",
+      "f": "Maîtresse des Coffres"
+    },
+    "dictature_militaire": {
+      "m": "Jarl de Guerre",
+      "f": "Jarl de Guerre"
+    },
+    "guilde_maitre": {
+      "m": "Grand Maître",
+      "f": "Grande Maîtresse"
+    }
+  }
+}

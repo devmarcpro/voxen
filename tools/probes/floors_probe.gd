@@ -3,8 +3,8 @@ extends Probe
 ##
 ## Couvre les quatre points de la demande :
 ##  1. les salles sont bâties dans la matière démoniaque du nid, plus en pierre ;
-##  2. il existe un orifice de DESCENTE à chaque étage sauf le dernier ;
-##  3. le joueur arrive DOS à l'orifice de remontée ;
+##  2. il existe un ESCALIER de descente à chaque étage sauf le dernier ;
+##  3. le joueur arrive DOS à l'escalier de remontée ;
 ##  4. descente et remontée enchaînent les étages, et la remontée depuis le
 ##     premier fait bien sortir dans l'overworld.
 
@@ -22,11 +22,12 @@ func run() -> void:
 				if maxi(absi(dx), absi(dz)) != radius:
 					continue
 				var c := Vector2i(dx, dz)
-				var centre := POIGenerator.cell_center_world(c)
-				var biome := g.biome_at(centre.x, centre.y)
-				if biome.is_empty():
-					continue
-				if "donjon" in POIGenerator.pois_at_cell(c, WorldManager.world_seed, biome):
+				# Règle AUTORITAIRE (2026-08-02) : `has_dungeon` et non un tirage
+				# de POI refait ici. Ces sondes en portaient chacune leur copie
+				# — biome puis `pois_at_cell` — et le jour où « sol émergé » s'y
+				# est ajouté, elles ont continué à désigner une cellule que le
+				# monde ne bâtit plus : tour absente, échantillons vides.
+				if g.has_dungeon(c):
 					cell = c
 					found = true
 					break
@@ -54,10 +55,14 @@ func run() -> void:
 	ok = ok and WorldManager.active_dimension == &"donjon" and dm._current_depth == 0
 
 	# --- 1. Matière du nid ---
-	var palette_names := DungeonTower.PALETTE
+	# Palette par cellule depuis le 2026-08-02 (pierre taillée tirée de la
+	# cellule) : on la demande à DungeonTower pour CETTE cellule au lieu de lire
+	# une constante qui n'existe plus.
 	var nest_ids := {}
-	for name: String in palette_names:
-		nest_ids[int(GameData.material_runtime_ids.get(name, -1))] = name
+	for rid: int in DungeonTower.palette_for(cell, WorldManager.world_seed):
+		# `material_by_runtime` est un Array[String] indexé par id, PAS un
+		# Dictionary : `Array.get()` ne prend qu'un argument.
+		nest_ids[rid] = String(GameData.material_by_runtime[rid]) if rid >= 0 and rid < GameData.material_by_runtime.size() else "?"
 	var sol_id := WorldManager.block_at_world(Vector3i(3, 0, 3))
 	var pierre_id: int = GameData.material_runtime_ids.get("pierre", -1)
 	var sol_name: String = nest_ids.get(sol_id, "?")
@@ -71,28 +76,37 @@ func run() -> void:
 	var yaw: float = dm._arrival_yaw(up, arrival)
 	# Le vecteur « regard » reconstruit depuis le yaw doit s'éloigner de l'orifice.
 	var look := Vector3(-sin(deg_to_rad(yaw)), 0.0, -cos(deg_to_rad(yaw)))
-	var away := (arrival - up).normalized()
+	# Comparaison HORIZONTALE : `look` est reconstruit depuis un lacet, donc plat
+	# par construction. Garder la composante verticale de `away` faisait chuter
+	# le produit scalaire sans qu'aucune orientation ne soit fausse.
+	var away := Vector3(arrival.x - up.x, 0.0, arrival.z - up.z).normalized()
 	var alignment := look.dot(away)
 	print("[ETAGES] arrivée : yaw=%.1f° alignement avec « dos à l'orifice »=%.2f (attendu ~1)" % [
 		yaw, alignment])
 	ok = ok and alignment > 0.9
 
 	# --- 2 + 4. Descente jusqu'au fond ---
-	var core_id: int = GameData.material_runtime_ids.get(DungeonManager.ORIFICE_CORE, -1)
+	# Les « orifices » (disques plats) ont été remplacés le 2026-08-02 par de
+	# vraies volées d'escalier : on ne cherche plus un bloc de cœur au centre
+	# d'un disque, mais la MARCHE sur laquelle débouche le palier.
+	var core_id: int = GameData.material_runtime_ids.get(DungeonManager.STAIR_TREAD_DOWN, -1)
 	for expected_depth in range(1, total):
 		var key := DungeonManager._floor_key(cell, dm._current_depth)
 		var down := dm._descent_orifice_position(key)
-		# L'orifice de descente doit EXISTER sur cet étage (le dernier n'en a pas).
-		# floori() et non int() : int() tronque vers zéro, donc se trompe d'un bloc
-		# en coordonnées négatives — _carve_orifice utilise bien floor(), et la
-		# première version de cette sonde lisait donc le bloc VOISIN de l'orifice
-		# (d'où un id incohérent d'un étage à l'autre).
+		# L'escalier de descente doit EXISTER sur cet étage (le dernier n'en a
+		# pas). floori() et non int() : int() tronque vers zéro, donc se trompe
+		# d'un bloc en coordonnées négatives — la construction utilise bien
+		# floor(), et la première version de cette sonde lisait donc le bloc
+		# VOISIN (d'où un id incohérent d'un étage à l'autre).
+		# UN BLOC SOUS le palier : `_descent_orifice_position` rend le point où
+		# se tiennent les PIEDS du joueur, pas la marche elle-même. Lire à la
+		# hauteur du palier revenait à lire l'air juste au-dessus de la marche.
 		var core_found := WorldManager.block_at_world(
-			Vector3i(floori(down.x), floori(down.y), floori(down.z)))
+			Vector3i(floori(down.x), floori(down.y) - 1, floori(down.z)))
 		var core_ok := core_found == core_id
 		dm._descend()
 		await wait_frame()
-		print("[ETAGES]   descente → étage %d/%d (orifice en %s, cœur=%d attendu=%d %s)" % [
+		print("[ETAGES]   descente → étage %d/%d (palier en %s, marche=%d attendue=%d %s)" % [
 			dm._current_depth + 1, total, down, core_found, core_id,
 			"OK" if core_ok else "MANQUANT"])
 		ok = ok and dm._current_depth == expected_depth and core_ok

@@ -1,0 +1,11 @@
+{
+  "id": "donjon",
+  "name_key": "dimension.donjon.name",
+  "backend": "DungeonManager",
+  "ambience": {
+    "sunlight": false,
+    "background": "#050508",
+    "ambient": "#2A2438",
+    "ambient_energy": 0.55
+  }
+}

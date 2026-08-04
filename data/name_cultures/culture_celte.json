@@ -1,0 +1,103 @@
+{
+  "id": "culture_celte",
+  "name_key": "culture.celte.name",
+  "name_order": "prenom_nom",
+  "race_affinity": {
+    "elfe": 1.0,
+    "humain": 0.5
+  },
+  "prenom_a": [
+    "Bran",
+    "Cael",
+    "Aed",
+    "Fion",
+    "Mor",
+    "Nia",
+    "Rhi",
+    "Cian",
+    "Eir",
+    "Gwen",
+    "Lugh",
+    "Ail"
+  ],
+  "prenom_b": [
+    "an",
+    "wen",
+    "dan",
+    "gan",
+    "non",
+    "ith",
+    "aine",
+    "och",
+    "ell"
+  ],
+  "famille_a": [
+    "Mac",
+    "O",
+    "Ker",
+    "Dun",
+    "Glen",
+    "Ard",
+    "Cam",
+    "Kil",
+    "Bre",
+    "Lough"
+  ],
+  "famille_b": [
+    "donn",
+    "aghan",
+    "ivan",
+    "more",
+    "beg",
+    "ellan",
+    "ric"
+  ],
+  "ville_a": [
+    "Dun",
+    "Kil",
+    "Inver",
+    "Aber",
+    "Glen",
+    "Tir",
+    "Caer",
+    "Rath",
+    "Loch",
+    "Ard"
+  ],
+  "ville_b": [
+    "more",
+    "nagh",
+    "llen",
+    "idh",
+    "van",
+    "och",
+    "mara",
+    "wyn"
+  ],
+  "titres": {
+    "monarchie_hereditaire": {
+      "m": "Ard-Rí",
+      "f": "Ard-Rígan"
+    },
+    "republique_elue": {
+      "m": "Brehon",
+      "f": "Brehonne"
+    },
+    "theocratie": {
+      "m": "Archidruide",
+      "f": "Archidruidesse"
+    },
+    "ploutocratie": {
+      "m": "Maître des Troupeaux",
+      "f": "Maîtresse des Troupeaux"
+    },
+    "dictature_militaire": {
+      "m": "Chef de Guerre",
+      "f": "Cheffe de Guerre"
+    },
+    "guilde_maitre": {
+      "m": "Grand Maître",
+      "f": "Grande Maîtresse"
+    }
+  }
+}

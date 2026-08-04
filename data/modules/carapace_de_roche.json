@@ -1,0 +1,19 @@
+{
+  "id": "carapace_de_roche",
+  "name_key": "module.carapace_de_roche.name",
+  "module_type": "effet",
+  "mana_cost_base": 11,
+  "power_base": 16,
+  "tags": [
+    "terre",
+    "protection"
+  ],
+  "params": {
+    "duree": 20,
+    "reduction": 30
+  },
+  "grimoire_domains": [
+    "terre"
+  ],
+  "book_type": "grimoire"
+}

@@ -36,17 +36,42 @@ def uid(label):
     return str(uuid.uuid5(UUID_NS, label))
 
 
-# --- MANCHES : (id, longueur px, epaisseur px, commentaire) ---------------
+# --- MANCHES : (id, longueur px, epaisseur px, [pommeau px]) --------------
 # `grip_main` / `grip_offhand` (fractions de la longueur) vivent dans
 # data/weapon_parts.json : ce sont des donnees de GAMEPLAY, pas de geometrie.
+#
+# DEUX FAMILLES, ET LA DISTINCTION EST LE POINT (2026-08-02). Le catalogue
+# confondait POIGNEE et FUT : `moyen` faisait 22 px, ce qui est une hampe de
+# masse mais trois fois la poignee d'une epee. Consequence, l'epee se tenait au
+# tiers d'un manche de 69 cm, avec 48 cm de « manche » entre le poing et la
+# lame — une arme que personne n'a jamais forgee. Et comme la prise decide de
+# l'allonge, la geometrie fausse contaminait le gameplay.
+#
+#   POIGNEES (poignee_*) : la main les couvre presque entierement, un pommeau
+#     les termine. Ce sont celles des armes BLANCHES, ou la lame commence juste
+#     au-dessus du poing.
+#   FUTS (court/moyen/long/tres_long/baton) : on les tient BAS, et la longueur
+#     restante est ce qui donne l'allonge et l'inertie. Ce sont celles des armes
+#     a percussion et d'hast.
+#
+# Il n'y a plus besoin de corriger la prise au niveau de la tete : le manche
+# porte enfin l'information, parce qu'il y a enfin deux sortes de manches.
 HANDLES = {
-    # id            longueur  epaisseur
-    "court":        (12, 3),   # dague, hachette, gourdin
-    "moyen":        (22, 3),   # epee, masse, coutelas
-    "long":         (34, 4),   # epee longue, hache d'armes, marteau
-    # 70 px et non 58 : a 58, un espadon (manche long + lame longue) portait
-    # PLUS LOIN qu'une pique, ce qui vide l'arme d'hast de sa raison d'etre.
-    "tres_long":    (70, 4),   # lance, hallebarde, pique
+    # id                longueur  epaisseur  pommeau
+    "poignee_dague":    (4, 3, 5),    # dague : la main la couvre entierement
+    "poignee_epee":     (6, 3, 5),    # epee, rapiere, epee courte
+    "poignee_longue":   (13, 3, 6),   # espadon : deux mains, gauche au pommeau
+    "court":            (8, 3),    # hachette, gourdin : une hache a main fait 50 cm
+    "moyen":            (13, 3),   # masse, pioche : une masse a une main fait 70 cm
+    "long":             (34, 4),   # hache d'armes, marteau a deux mains (1,40 m)
+    # HAMPE ET PIQUE SONT DEUX PIECES (2026-08-02). Elles n'en faisaient qu'une,
+    # de 2,19 m, ce qui donnait une hallebarde de 2,81 m — une hallebarde fait
+    # 1,80 a 2,20 m, c'est une lance qui fait 2,50. Le fut unique avait ete
+    # pousse a cette longueur pour qu'un espadon ne porte pas plus loin qu'une
+    # pique ; l'espadon etant repasse de 2,02 a 1,59 m avec sa vraie poignee, la
+    # contrainte s'est desserree d'elle-meme et la hampe peut redescendre.
+    "hampe":            (48, 4),   # hallebarde, trident, faux (1,50 m)
+    "hampe_longue":     (64, 4),   # lance, pique (2,00 m)
     "baton":        (46, 4),   # baton, arme d'hast legere
     "arc":          (30, 3),   # corps d'arc (les branches sont dans la tete)
     "arbalete":     (18, 5),   # fut epais
@@ -61,6 +86,7 @@ HANDLES = {
 # Une boite = (x0, y0, z0, x1, y1, z1) en px, y = 0 au sommet du manche.
 HEADS = {
     # Lames : plates, dans le plan XY, epaisseur faible en Z.
+    "lame_dague":    [(-1.5, 0, -0.8, 1.5, 8, 0.8), (-2.5, 0, -1.2, 2.5, 1.5, 1.2)],
     "lame_courte":   [(-2, 0, -1, 2, 12, 1), (-3, 0, -1.5, 3, 2, 1.5)],
     "lame_moyenne":  [(-2.5, 0, -1, 2.5, 24, 1), (-4, 0, -1.5, 4, 2, 1.5)],
     "lame_longue":   [(-3, 0, -1.5, 3, 38, 1.5), (-5, 0, -2, 5, 2.5, 2)],
@@ -214,9 +240,16 @@ def main():
     out = Path(__file__).resolve().parent.parent / "models" / "weapons"
     out.mkdir(parents=True, exist_ok=True)
     count = 0
-    for handle_id, (length, thickness) in HANDLES.items():
+    for handle_id, spec in HANDLES.items():
+        length, thickness = spec[0], spec[1]
         half = thickness / 2.0
         boxes = [(-half, 0, -half, half, length, half)]
+        # POMMEAU, a la base de la poignee et NON sous y = 0 : il doit rester
+        # dans la longueur declaree, sinon la piece deborderait derriere la main
+        # sans que `longueur` — d'ou l'allonge se deduit — en sache rien.
+        if len(spec) > 2 and spec[2]:
+            pommel = spec[2] / 2.0
+            boxes.append((-pommel, 0, -pommel, pommel, 2, pommel))
         name = "manche_" + handle_id
         write_glb(out / (name + ".glb"), boxes)
         write_bbmodel(out / (name + ".bbmodel"), name, boxes)
@@ -228,7 +261,120 @@ def main():
         count += 1
     print("%d pieces ecrites dans %s" % (count, out))
     print("  %d manche(s), %d tete(s)" % (len(HANDLES), len(HEADS)))
-    _sync_data(out.parent.parent / "data" / "weapon_parts.json")
+    root = out.parent.parent
+    _sync_data(root / "data" / "weapon_parts.json")
+    _derive_recipes(root)
+
+
+# --- Materiaux composites -------------------------------------------------
+# Part de BOIS d'une tete dont la boite est majoritairement autre chose que du
+# metal. Un plateau de bouclier est une planche cerclee (umbo et bordure en
+# fer), des branches d'arc sont du bois, un gourdin est un rondin. Sans ce
+# chiffre, la derivation par volume ferait forger un ecu dans 6 lingots.
+HEAD_WOOD_SHARE = {
+    "rondache": 0.9, "ecu": 0.9, "pavois": 0.9,   # planche + umbo de fer
+    "gourdin": 1.0,                                # un rondin
+    "branches_arc": 1.0,                           # bois (et corne)
+}
+
+# Volume, en px3, consomme par UNE unite de matiere premiere. Calibre pour que
+# la masse TOTALE du catalogue soit inchangee (ratio 0,99) : la derivation
+# redistribue les poids selon la taille reelle des pieces, elle ne les inflate
+# pas globalement.
+UNIT_VOLUME_PX3 = 140.0
+
+# Materiaux de REFERENCE, ceux dans lesquels `poids_reference` est exprime.
+# Consequence voulue : une arme forgee en chene et fer tourne exactement a sa
+# `vitesse_base`, et seul un ecart a cette reference la ralentit ou l'accelere.
+REFERENCE_DENSITY = {"bois": 6.0, "minerai": 12.0}   # chene, fer
+
+
+def _volume(boxes):
+    return sum(abs(b[3] - b[0]) * abs(b[4] - b[1]) * abs(b[5] - b[2]) for b in boxes)
+
+
+def _handle_boxes(spec):
+    half = spec[1] / 2.0
+    boxes = [(-half, 0, -half, half, spec[0], half)]
+    if len(spec) > 2 and spec[2]:
+        pommel = spec[2] / 2.0
+        boxes.append((-pommel, 0, -pommel, pommel, 2, pommel))
+    return boxes
+
+
+def _derive_recipes(root):
+    """Recalcule la RECETTE et la MASSE de chaque arme depuis le volume de ses
+    pieces.
+
+    POURQUOI (2026-08-02). Les deux etaient tapees a la main, et ne suivaient
+    plus rien : le metal consomme allait de 28 a 424 px3 par unite selon l'arme
+    — un facteur 15 sans justification —, une masse a une main pesait 2 kg
+    quand un espadon en pesait 2,1, et une hallebarde de 2,80 m etait plus
+    legere qu'une masse. Rien de tout cela ne pouvait se voir en lisant les
+    fiches, et tout redevenait faux au premier ajustement de geometrie.
+
+    Desormais : cout de craft et masse SORTENT du modele. Rallonger une hampe
+    la rend plus lourde et plus chere, du meme geste.
+    """
+    items_dir = root / "data" / "items"
+    fn_dir = root / "data" / "functionalities"
+    if not items_dir.exists():
+        print("  (data/items absent : recettes non derivees)")
+        return
+    changed = 0
+    for item_path in sorted(items_dir.glob("*.json")):
+        item = json.loads(item_path.read_text(encoding="utf-8"))
+        parts = item.get("parts")
+        if not parts or parts.get("manche") not in HANDLES or parts.get("tete") not in HEADS:
+            continue
+        tint = item.get("sprite_tint", {})
+        volumes = {}
+        handle_cat = tint.get("manche", "bois")
+        volumes[handle_cat] = volumes.get(handle_cat, 0.0) + _volume(_handle_boxes(HANDLES[parts["manche"]]))
+        head_volume = _volume(HEADS[parts["tete"]])
+        wood_share = HEAD_WOOD_SHARE.get(parts["tete"], 0.0)
+        head_cat = tint.get("tete", "minerai")
+        if wood_share > 0.0:
+            # Piece composite : la part boisee va au bois, le reste au metal
+            # (umbo, cerclage, ferrures).
+            volumes["bois"] = volumes.get("bois", 0.0) + head_volume * wood_share
+            rest = head_volume * (1.0 - wood_share)
+            if rest > 0.0:
+                volumes["minerai"] = volumes.get("minerai", 0.0) + rest
+        else:
+            volumes[head_cat] = volumes.get(head_cat, 0.0) + head_volume
+
+        inputs = []
+        for category in ("bois", "minerai"):
+            if category not in volumes:
+                continue
+            amount = int(round(volumes[category] / UNIT_VOLUME_PX3))
+            # Une piece plus petite qu'une unite en coute quand meme une : on ne
+            # forge pas une lame avec un demi-lingot.
+            if amount < 1:
+                amount = 1 if volumes[category] > UNIT_VOLUME_PX3 * 0.25 else 0
+            if amount > 0:
+                inputs.append({"category": category, "amount": amount})
+        if not inputs:
+            continue
+        item.setdefault("recipe", {})["inputs"] = inputs
+        item_path.write_text(json.dumps(item, indent=2, ensure_ascii=False) + chr(10),
+                             encoding="utf-8")
+        changed += 1
+
+        # `poids_reference` = la masse de CETTE recette dans les materiaux de
+        # reference. Ce n'est plus un chiffre a l'estime : c'est la meme formule
+        # que la masse d'une instance (ItemFactory), donc les deux ne peuvent
+        # plus diverger.
+        fn_id = item.get("functionality", "")
+        fn_path = fn_dir / ("%s.json" % fn_id)
+        if fn_id and fn_path.exists():
+            fn = json.loads(fn_path.read_text(encoding="utf-8"))
+            fn["poids_reference"] = int(round(sum(
+                i["amount"] * REFERENCE_DENSITY[i["category"]] for i in inputs)))
+            fn_path.write_text(json.dumps(fn, indent=2, ensure_ascii=False) + chr(10),
+                               encoding="utf-8")
+    print("  %d recette(s) et masse(s) derivees du volume des pieces" % changed)
 
 
 def _sync_data(path):
@@ -245,7 +391,8 @@ def _sync_data(path):
         return
     data = json.loads(path.read_text(encoding="utf-8"))
     created = 0
-    for handle_id, (length, _thickness) in HANDLES.items():
+    for handle_id, spec in HANDLES.items():
+        length = spec[0]
         # CREE l'entree si elle manque. Avant, une piece nouvellement ajoutee ici
         # produisait bien ses .glb/.bbmodel mais restait ABSENTE des donnees : le
         # jeu ne la voyait pas, et le generateur annoncait pourtant un succes.

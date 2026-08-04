@@ -127,6 +127,30 @@ func _capacity_of(key: String) -> int:
 	return VillagePopulation.roster(cell, generator.world_seed, plan).size()
 
 
+## Nom d'un village (12.5/E.31), dérivé de sa cellule et de la culture du
+## royaume qui la tient — donc stable, jamais stocké, et cohérent avec les
+## autres localités du même royaume.
+##
+## Les villages n'avaient AUCUN nom : la carte n'affichait qu'une pastille, et
+## le journal parlait de « la cellule (-40, -30) ». Un lieu sans nom ne se
+## raconte pas, et E.31 prévoyait déjà tout ce qu'il fallait.
+func name_of(cell: Vector2i) -> String:
+	var generator := WorldManager.generator
+	if generator == null:
+		return ""
+	var kingdom: Dictionary = generator.kingdom_at_cell(cell)
+	var culture := String(kingdom.get("culture", ""))
+	if culture == "":
+		# Terres sauvages : pas de royaume, donc pas de culture imposée. On
+		# retombe sur la même règle que la population du village, pour que le
+		# nom du lieu et celui de ses habitants sonnent pareil.
+		culture = NameGenerator.culture_for_race("humain",
+				NoiseGenerator.pcg_hash(cell.x, cell.y,
+						generator.world_seed + VillagePopulation.SEED_POPULATION))
+	return NameGenerator.town_name(culture,
+			NoiseGenerator.pcg_hash(cell.x, cell.y, generator.world_seed + 5507))
+
+
 ## Facteur de pacification (E.20). La corruption locale n'étant pas encore
 ## calculée, on retourne 1.0 : un village repeuple donc à sa vitesse nominale.
 ## Le point d'accroche existe pour que le jour où la corruption arrivera, il n'y

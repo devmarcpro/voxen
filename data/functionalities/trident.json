@@ -10,9 +10,13 @@
   "vitesse_base": 1.6,
   "portee": 1.5,
   "type_degats": "percant",
-  "poids_reference": 55,
+  "poids_reference": 42,
   "parts": {
-    "manche": "tres_long",
+    "manche": "hampe",
     "tete": "trident"
-  }
+  },
+  "attaques": [
+    "estoc",
+    "overhead"
+  ]
 }

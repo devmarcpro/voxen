@@ -1,0 +1,14 @@
+{
+  "id": "taille_gypse_taillee",
+  "name_key": "transformation.taille_gypse_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "gypse_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "gypse",
+    "amount": 1
+  }
+}

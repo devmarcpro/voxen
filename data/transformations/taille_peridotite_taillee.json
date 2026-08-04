@@ -1,0 +1,14 @@
+{
+  "id": "taille_peridotite_taillee",
+  "name_key": "transformation.taille_peridotite_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "peridotite_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "peridotite",
+    "amount": 1
+  }
+}

@@ -4,31 +4,70 @@ extends Probe
 ## ($Player -> player, get_tree() -> main.get_tree(), etc.).
 
 
-## Sonde faune headless (F.3/B.5) : vérifie le catalogue chargé, la cohérence
-## de la répartition par biome (aucun ours polaire dans le désert), le fait
-## que les civils ne spawnent jamais en pleine nature, et les profils d'IA
-## (fuite, riposte d'une bête sauvage).
+## Sonde faune headless (F.3/B.5) : catalogue chargé, cohérence de la
+## répartition par biome, composition du pool de spawn, profils d'IA.
+##
+## RÉÉCRITE le 2026-08-02 : la faune ANIMALE a été supprimée (décision auteur,
+## périmètre réduit aux humains le temps que les modèles existent). Trois de
+## ses vérifications portaient sur des espèces disparues, et une quatrième est
+## désormais INVERSÉE :
+##
+##   - « aucun civil dans le pool de spawn » était vrai tant que la nature
+##     n'était peuplée que de bêtes. Les humains errants (villageois, chasseur,
+##     nomade, marchand ambulant) y sont maintenant VOULUS ; ce sont les
+##     métiers sédentaires qui doivent en rester absents.
+##   - le garde-fou « pas d'ours polaire dans le désert » testait des espèces
+##     qui n'existent plus. Même idée, autres sujets : le nomade est un
+##     spécialiste des terres sèches, le chasseur des forêts.
+##   - le profil `fuit` n'est plus déclaré par AUCUNE créature (il n'existait
+##     que chez les herbivores). Le code le gère toujours ; il n'y a
+##     simplement plus rien à tester tant qu'aucune espèce ne le porte.
+const EXPECTED_CREATURES := 18
+
+## Humains attachés à un village : ils viennent de la population de village
+## (3.4/E.25) et ne doivent JAMAIS apparaître seuls en pleine nature.
+const SEDENTARY := ["forgeron", "tavernier", "souverain", "garde_village",
+		"erudit", "maitre_guilde", "pretre_sanctuaire", "fermier"]
+
+## Hostiles retirés du spawn naturel : bandit est le seul ennemi sauvage
+## (décision auteur). Le chef de bande reste vivant comme boss de donjon.
+const NON_SPAWNING_HOSTILES := ["chef_de_bande", "deserteur", "pillard"]
+
+
 func run() -> void:
 	await main.get_tree().process_frame
 	var ok := true
 
-	# 1. Catalogue : F.3 énumère 37 fiches (l'en-tête annonce 34 — écart du GDD).
+	# 1. Catalogue.
 	var by_profile := {}
 	for cid: String in GameData.creatures:
 		var profile := String((GameData.creatures[cid] as Dictionary).get("ai_profile", "?"))
 		by_profile[profile] = int(by_profile.get(profile, 0)) + 1
 	print("[FAUNE] créatures chargées : %d — par profil : %s" % [GameData.creatures.size(), by_profile])
-	ok = ok and GameData.creatures.size() >= 37
+	ok = ok and GameData.creatures.size() == EXPECTED_CREATURES
 
-	# 2. Pool de spawn : uniquement des créatures à biome_tags (pas de civils).
+	# Périmètre humain : plus aucune fiche non humaine ne doit subsister.
+	var non_humans: Array[String] = []
+	for cid: String in GameData.creatures:
+		if String((GameData.creatures[cid] as Dictionary).get("race", "")) != "humain":
+			non_humans.append(cid)
+	print("[FAUNE] créatures non humaines : %s (attendu aucune)" % [non_humans])
+	ok = ok and non_humans.is_empty()
+
+	# 2. Composition du pool de spawn naturel.
 	var pool: Array[String] = CreatureManager._spawn_pool
-	var civils_in_pool: Array[String] = []
+	var intruders: Array[String] = []
 	for cid in pool:
-		if String((GameData.creatures[cid] as Dictionary).get("ai_profile", "")) == "civil":
-			civils_in_pool.append(cid)
-	print("[FAUNE] pool de spawn : %d créatures, civils dedans=%s (attendu aucun)" % [
-			pool.size(), civils_in_pool])
-	ok = ok and pool.size() > 0 and civils_in_pool.is_empty()
+		if cid in SEDENTARY or cid in NON_SPAWNING_HOSTILES:
+			intruders.append(cid)
+	var hostiles_in_pool: Array[String] = []
+	for cid in pool:
+		if String((GameData.creatures[cid] as Dictionary).get("ai_profile", "")) == "hostile":
+			hostiles_in_pool.append(cid)
+	print("[FAUNE] pool de spawn : %d entrée(s) -> %s" % [pool.size(), pool])
+	print("[FAUNE] intrus (sédentaires ou hostiles retirés) : %s (attendu aucun)" % [intruders])
+	print("[FAUNE] hostiles du pool : %s (attendu [\"bandit\"] seul)" % [hostiles_in_pool])
+	ok = ok and pool.size() > 0 and intruders.is_empty() and hostiles_in_pool == ["bandit"]
 
 	# 3. Cohérence par biome : on échantillonne le monde et on vérifie que
 	# chaque créature tirée déclare bien un tag du biome de l'endroit.
@@ -69,53 +108,51 @@ func run() -> void:
 		names.sort()
 		print("[FAUNE]   %-24s %s" % [bid, ", ".join(names)])
 
-	# 4. Garde-fou explicite : les espèces polaires ne doivent JAMAIS être
-	# candidates dans un biome chaud, et inversement.
-	var polar_in_hot := 0
-	var desert_in_polar := 0
-	for i in 200:
-		for probe: Array in [["desert_aride", ["ours_polaire", "loup_blanc", "morse", "renne"]],
-				["calotte_glaciaire", ["scorpion", "chameau_sauvage", "crocodile"]]]:
-			var biome_id: String = probe[0]
-			var forbidden: Array = probe[1]
-			var b: Dictionary = GameData.biomes.get(biome_id, {})
-			if b.is_empty():
-				continue
-			for cid: String in CreatureManager._candidates_for_tags(b.get("tags", [])):
-				if cid in forbidden:
-					if biome_id == "desert_aride":
-						polar_in_hot += 1
-					else:
-						desert_in_polar += 1
-	print("[FAUNE] espèces polaires candidates en désert=%d, espèces chaudes en calotte=%d (attendu 0/0)" % [
-			polar_in_hot, desert_in_polar])
-	ok = ok and polar_in_hot == 0 and desert_in_polar == 0
+	# 4. Garde-fou explicite : une espèce spécialisée ne doit JAMAIS être
+	# candidate hors de son domaine. Le nomade appartient aux terres sèches,
+	# le chasseur aux forêts — l'un ne doit pas remplacer l'autre.
+	var misplaced := 0
+	for probe: Array in [["foret_temperee", ["nomade"]], ["desert_aride", ["chasseur"]]]:
+		var biome_id: String = probe[0]
+		var forbidden: Array = probe[1]
+		var b: Dictionary = GameData.biomes.get(biome_id, {})
+		if b.is_empty():
+			print("[FAUNE]   biome « %s » introuvable — garde-fou non évalué." % biome_id)
+			ok = false
+			continue
+		# `_candidates_for_tags` filtre aussi sur l'heure : on interroge donc
+		# les DEUX moments, sans quoi une espèce diurne passerait le test la
+		# nuit simplement parce qu'elle n'est candidate à aucune heure.
+		for cid: String in CreatureManager._candidates_for_tags(b.get("tags", [])):
+			if cid in forbidden:
+				misplaced += 1
+				print("[FAUNE]   HORS DOMAINE : %s candidat en %s" % [cid, biome_id])
+	print("[FAUNE] espèces hors de leur domaine : %d (attendu 0)" % misplaced)
+	ok = ok and misplaced == 0
 
-	# 5. Profils d'IA : une bête craintive fuit et n'est jamais hostile ; une
-	# bête sauvage est neutre AVANT d'être frappée, hostile APRÈS (F.3).
+	# 5. Profils d'IA : un hostile l'est d'emblée ; une « bête sauvage » est
+	# neutre AVANT d'être frappée et hostile APRÈS (F.3) ; un civil ne l'est
+	# jamais spontanément.
+	#
+	# Le profil `fuit` n'est plus testé : aucune créature ne le déclare depuis
+	# la suppression des herbivores. Le code le gère toujours — c'est le
+	# CONTENU qui manque, pas la mécanique.
 	CreatureManager.creature_root = Node3D.new()
 	main.add_child(CreatureManager.creature_root)
-	var cerf := CreatureManager.spawn("cerf", Vector3(0, 40, 0))
-	var ours := CreatureManager.spawn("ours_brun", Vector3(10, 40, 0))
-	var cerf_ok: bool = cerf != null and cerf.is_skittish() and not cerf.is_hostile()
-	var ours_avant: bool = ours != null and not ours.is_hostile()
-	if ours != null:
-		ours.provoke()
-	var ours_apres: bool = ours != null and ours.is_hostile()
-	print("[FAUNE] cerf : fuit=%s hostile=%s (attendu true/false)" % [
-			cerf != null and cerf.is_skittish(), cerf != null and cerf.is_hostile()])
-	print("[FAUNE] ours brun : hostile avant provocation=%s après=%s (attendu false/true)" % [
-			not ours_avant, ours_apres])
-	ok = ok and cerf_ok and ours_avant and ours_apres
-
-	# 6. Fuite effective : le cerf doit S'ÉLOIGNER du joueur sur quelques ticks.
-	var player_pos := Vector3(3, 40, 0)
-	var dist_avant: float = cerf.logical_position.distance_to(player_pos)
-	for i in 30:
-		cerf.tick_step(player_pos, player)
-	var dist_apres: float = cerf.logical_position.distance_to(player_pos)
-	print("[FAUNE] fuite du cerf : distance %.2f → %.2f (doit augmenter)" % [dist_avant, dist_apres])
-	ok = ok and dist_apres > dist_avant
+	var bandit := CreatureManager.spawn("bandit", Vector3(0, 40, 0))
+	var braconnier := CreatureManager.spawn("braconnier", Vector3(10, 40, 0))
+	var villageois := CreatureManager.spawn("villageois", Vector3(20, 40, 0))
+	var bandit_ok: bool = bandit != null and bandit.is_hostile()
+	var brac_avant: bool = braconnier != null and not braconnier.is_hostile()
+	if braconnier != null:
+		braconnier.provoke()
+	var brac_apres: bool = braconnier != null and braconnier.is_hostile()
+	var civil_ok: bool = villageois != null and not villageois.is_hostile()
+	print("[FAUNE] bandit : hostile d'emblée=%s (attendu true)" % bandit_ok)
+	print("[FAUNE] braconnier : hostile avant provocation=%s après=%s (attendu false/true)" % [
+			not brac_avant, brac_apres])
+	print("[FAUNE] villageois : hostile=%s (attendu false)" % [not civil_ok])
+	ok = ok and bandit_ok and brac_avant and brac_apres and civil_ok
 
 	print("[FAUNE] RÉSULTAT : %s" % ("OK" if ok else "ÉCHEC"))
 	main.get_tree().quit(0 if ok else 1)

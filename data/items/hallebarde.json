@@ -6,7 +6,7 @@
   "hands": 2,
   "functionality": "hallebarde",
   "parts": {
-    "manche": "tres_long",
+    "manche": "hampe",
     "tete": "hallebarde"
   },
   "recipe": {
@@ -15,11 +15,11 @@
     "inputs": [
       {
         "category": "bois",
-        "amount": 1
+        "amount": 5
       },
       {
         "category": "minerai",
-        "amount": 4
+        "amount": 3
       }
     ]
   },

@@ -52,7 +52,9 @@ func join(address: String, port: int = DEFAULT_PORT) -> bool:
 	multiplayer.multiplayer_peer = peer
 	is_host = false
 	is_client = true
-	multiplayer.connected_to_server.connect(func() -> void: connected_to_host.emit())
+	multiplayer.connected_to_server.connect(func() -> void:
+		connected_to_host.emit()
+		_request_world())
 	multiplayer.connection_failed.connect(func() -> void: connection_failed_signal.emit())
 	print("[NET] Connexion à %s:%d..." % [address, port])
 	return true
@@ -61,6 +63,70 @@ func join(address: String, port: int = DEFAULT_PORT) -> bool:
 func _on_peer_connected(id: int) -> void:
 	print("[NET] Pair connecté : %d" % id)
 	peer_joined.emit(id)
+	# On n'envoie RIEN ici. L'hôte apprend la connexion dès qu'ENet l'établit,
+	# mais le client n'a pas encore fini de la sienne : un message poussé à cet
+	# instant se perd, et le client reste sur son propre monde sans que rien ne
+	# le signale. C'est le client qui RÉCLAME, quand il est prêt (`_request_world`).
+
+
+## Le client réclame le monde de l'hôte dès qu'il est connecté.
+func _request_world() -> void:
+	rpc_request_world.rpc_id(1)
+
+
+## Réclamation, côté hôte. `any_peer` : c'est un client qui appelle.
+@rpc("any_peer", "reliable")
+func rpc_request_world() -> void:
+	if not is_host:
+		return
+	var asker := multiplayer.get_remote_sender_id()
+	rpc_world_handshake.rpc_id(asker, WorldManager.world_seed,
+			SaveManager.active_config.get("params", {}))
+	rpc_clock.rpc_id(asker, TickManager.tick_index)
+
+
+## Le monde de l'hôte, transmis à un client qui arrive.
+##
+## `call_local` serait une erreur ici : l'hôte adopterait son propre monde et
+## paierait une reconstruction complète à chaque connexion.
+@rpc("authority", "reliable")
+func rpc_world_handshake(seed_value: int, params: Dictionary) -> void:
+	print("[NET] Monde de l'hôte reçu : graine %d." % seed_value)
+	WorldManager.adopt_world(seed_value, params)
+
+
+## HORLOGE DE L'HÔTE (E.1 : « ordre d'un tick déterministe, host-autoritaire »).
+##
+## Chaque camp faisait avancer son propre `TickManager` : l'heure du jour, la
+## faim, la pousse des arbres et tous les minuteurs dérivaient l'un de l'autre
+## dès la première seconde. Il pouvait faire nuit chez l'un et jour chez
+## l'autre, dans le même monde.
+##
+## Le client ne cesse pas de tourner pour autant — il continue à ticker seul
+## entre deux messages, sinon le jeu saccaderait au rythme du réseau. Il se
+## RECALE simplement sur l'hôte quand celui-ci parle.
+@rpc("authority", "unreliable")
+func rpc_clock(tick_index: int) -> void:
+	TickManager.tick_index = tick_index
+
+
+## Cadence de recalage de l'horloge, en secondes réelles. Une par seconde
+## suffit : le tick dure 0,1 s, donc la dérive entre deux messages reste sous
+## le dixième de seconde, invisible.
+const CLOCK_SYNC_PERIOD := 1.0
+
+var _clock_timer := 0.0
+
+
+func _process(delta: float) -> void:
+	if not is_host:
+		return
+	_clock_timer += delta
+	if _clock_timer < CLOCK_SYNC_PERIOD:
+		return
+	_clock_timer = 0.0
+	if multiplayer.get_peers().size() > 0:
+		rpc_clock.rpc(TickManager.tick_index)
 
 
 func _on_peer_disconnected(id: int) -> void:

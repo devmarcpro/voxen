@@ -1,0 +1,97 @@
+{
+  "id": "culture_sino",
+  "name_key": "culture.sino.name",
+  "name_order": "nom_prenom",
+  "race_affinity": {
+    "humain": 1.0
+  },
+  "prenom_a": [
+    "Li",
+    "Wang",
+    "Zh",
+    "Xi",
+    "Mei",
+    "Jian",
+    "Hu",
+    "Chen",
+    "Ming",
+    "Yu",
+    "Qi",
+    "Shu"
+  ],
+  "prenom_b": [
+    "ang",
+    "ei",
+    "ong",
+    "an",
+    "ing",
+    "ao",
+    "un",
+    "ua",
+    "in"
+  ],
+  "famille_a": [
+    "Li",
+    "Wang",
+    "Zhang",
+    "Chen",
+    "Liu",
+    "Yang",
+    "Huang",
+    "Zhao",
+    "Wu",
+    "Xu"
+  ],
+  "famille_b": [
+    ""
+  ],
+  "ville_a": [
+    "Bei",
+    "Nan",
+    "Shang",
+    "Hang",
+    "Chang",
+    "Guang",
+    "Xi",
+    "Tai",
+    "Jin",
+    "Lin"
+  ],
+  "ville_b": [
+    "jing",
+    "hai",
+    "zhou",
+    "yang",
+    "an",
+    "sha",
+    "du",
+    "shan",
+    "he"
+  ],
+  "titres": {
+    "monarchie_hereditaire": {
+      "m": "Empereur",
+      "f": "Impératrice"
+    },
+    "republique_elue": {
+      "m": "Premier Ministre",
+      "f": "Première Ministre"
+    },
+    "theocratie": {
+      "m": "Grand Prêtre",
+      "f": "Grande Prêtresse"
+    },
+    "ploutocratie": {
+      "m": "Négociant en Chef",
+      "f": "Négociante en Chef"
+    },
+    "dictature_militaire": {
+      "m": "Généralissime",
+      "f": "Généralissime"
+    },
+    "guilde_maitre": {
+      "m": "Grand Maître",
+      "f": "Grande Maîtresse"
+    }
+  }
+}

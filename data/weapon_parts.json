@@ -1,30 +1,24 @@
 {
   "_comment": "Pieces d'arme assemblees au craft : un MANCHE + une TETE. Les modeles 3D sont generes par tools/generate_weapon_parts.py (.glb pour le jeu, .bbmodel pour retoucher dans Blockbench). AUCUNE couleur ici : la teinte vient des materiaux choisis au craft.",
-  "_prises": "grip_main et grip_offhand sont des FRACTIONS de la longueur du manche, mesurees depuis sa base. C'est ce qui donne des positions de main differentes selon le manche : sur une dague les deux mains seraient collees, sur une pique la main avant part a 1,5 m devant le corps. Rien n'est anime — la posture se deduit de la piece tenue. grip_offhand null = arme a une main.",
+  "_prises": "grip_main et grip_offhand sont des FRACTIONS de la longueur du manche, mesurees depuis sa base. DEUX FAMILLES DE MANCHES depuis le 2026-08-02 : une POIGNEE (poignee_*) se tient haut, la main la couvre presque entierement et le pommeau reste derriere le poing ; un FUT (court/moyen/long/tres_long/baton) se tient bas, et la longueur restante est ce qui donne l'allonge. Le SIGNE de l'ecart porte un sens : grip_offhand > grip_main projette la main avant devant (arme d'hast), grip_offhand < grip_main la pose au pommeau (espadon). grip_offhand null = arme a une main. Rien n'est anime : la posture se deduit de la piece tenue.",
   "manches": {
     "court": {
       "model": "res://models/weapons/manche_court.glb",
-      "longueur": 0.375,
-      "grip_main": 0.45,
+      "longueur": 0.25,
+      "grip_main": 0.35,
       "grip_offhand": null
     },
     "moyen": {
       "model": "res://models/weapons/manche_moyen.glb",
-      "longueur": 0.6875,
+      "longueur": 0.4062,
       "grip_main": 0.3,
-      "grip_offhand": 0.62
+      "grip_offhand": null
     },
     "long": {
       "model": "res://models/weapons/manche_long.glb",
       "longueur": 1.0625,
       "grip_main": 0.22,
       "grip_offhand": 0.55
-    },
-    "tres_long": {
-      "model": "res://models/weapons/manche_tres_long.glb",
-      "longueur": 2.1875,
-      "grip_main": 0.12,
-      "grip_offhand": 0.38
     },
     "baton": {
       "model": "res://models/weapons/manche_baton.glb",
@@ -49,6 +43,36 @@
       "grip_offhand": null,
       "model": "res://models/weapons/manche_poignee.glb",
       "longueur": 0.125
+    },
+    "poignee_dague": {
+      "grip_main": 0.5,
+      "grip_offhand": null,
+      "model": "res://models/weapons/manche_poignee_dague.glb",
+      "longueur": 0.125
+    },
+    "poignee_epee": {
+      "grip_main": 0.55,
+      "grip_offhand": null,
+      "model": "res://models/weapons/manche_poignee_epee.glb",
+      "longueur": 0.1875
+    },
+    "poignee_longue": {
+      "grip_main": 0.62,
+      "grip_offhand": 0.1,
+      "model": "res://models/weapons/manche_poignee_longue.glb",
+      "longueur": 0.4062
+    },
+    "hampe": {
+      "grip_main": 0.2,
+      "grip_offhand": 0.55,
+      "model": "res://models/weapons/manche_hampe.glb",
+      "longueur": 1.5
+    },
+    "hampe_longue": {
+      "grip_main": 0.1,
+      "grip_offhand": 0.35,
+      "model": "res://models/weapons/manche_hampe_longue.glb",
+      "longueur": 2.0
     }
   },
   "_tetes": "portee_tete = ce que la tete ajoute a l'allonge, en blocs, au-dela du sommet du manche. L'allonge finale d'une arme est longueur_manche + portee_tete : elle se DEDUIT des pieces, elle n'est plus ecrite a la main dans la fonctionnalite.",
@@ -140,6 +164,10 @@
     "pavois": {
       "model": "res://models/weapons/tete_pavois.glb",
       "portee_tete": 0.5312
+    },
+    "lame_dague": {
+      "model": "res://models/weapons/tete_lame_dague.glb",
+      "portee_tete": 0.25
     }
   }
 }

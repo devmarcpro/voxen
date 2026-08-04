@@ -1,0 +1,38 @@
+{
+  "id": "peridotite_taillee",
+  "name_key": "material.peridotite_taillee.name",
+  "category": "construction",
+  "stats": {
+    "durete": 33,
+    "densite": 21,
+    "valeur_base": 10,
+    "conductivite_mana": 25,
+    "flammabilite": 0,
+    "isolation": 12,
+    "conductivite_electrique": 18,
+    "flottabilite": 1,
+    "luminosite": 0,
+    "fertilite": 0,
+    "transparence": 0,
+    "elasticite": 2,
+    "friction": 50
+  },
+  "tags": [
+    "pierre_taillee"
+  ],
+  "color": "#6E7763",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 7218,
+    "amplitude": 0.05,
+    "scale": 3
+  },
+  "texture_style": "bricks",
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "none"
+  }
+}

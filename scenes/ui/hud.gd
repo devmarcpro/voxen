@@ -72,7 +72,7 @@ func _build() -> void:
 
 	_block("systeme", "ui.hud.bloc_systeme", ["fps", "chunks", "meshing"])
 	_block("lieu", "ui.hud.bloc_lieu",
-		["position", "biome", "royaume", "lois", "temperature", "fertilite", "cellule", "grille"])
+		["position", "biome", "royaume", "localite", "lois", "temperature", "fertilite", "cellule", "grille"])
 	_block("cible", "ui.hud.bloc_cible", ["materiau", "outil", "creature"])
 	_block("modules", "ui.hud.bloc_modules", ["module_j", "module_k", "module_l"])
 
@@ -119,16 +119,68 @@ func _build_help() -> void:
 	box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_help.add_child(box)
-	for index in 5:
-		var key := "ui.hud.controles%d" % (index + 1)
-		var line := UITheme.dim(tr(key))
-		line.set_meta("key", key)
+	for index in HELP_LINES.size():
+		var line := UITheme.dim(_help_line(index))
+		line.set_meta("help_line", index)
 		box.add_child(line)
-	var hint := UITheme.dim(tr("ui.hud.aide_bascule"))
+	var hint := UITheme.dim(_toggle_hint())
 	hint.add_theme_color_override("font_color", UITheme.TEXT_ACCENT)
-	hint.set_meta("key", "ui.hud.aide_bascule")
+	hint.set_meta("help_hint", true)
 	box.add_child(hint)
 	add_child(_help)
+	# Une remappe doit se voir immédiatement : sans ceci, l'aide continuerait
+	# d'annoncer l'ancienne touche jusqu'au prochain changement de langue.
+	InputManager.bindings_changed.connect(_rebuild_help)
+
+
+## Aide contextuelle : chaque ligne est une liste de GROUPES, et chaque groupe
+## est soit une liste d'actions (leurs touches accolées : « ZQSD »), soit une
+## clé de localisation seule pour ce que l'InputMap ne couvre pas (la souris).
+##
+## Les touches ne sont plus ÉCRITES dans les fichiers de langue. Elles
+## l'étaient — « ZQSD : marcher · Espace : sauter · F : vol/marche » en dur
+## dans fr.csv, en.csv, ja.csv et zh_Hans.csv — donc toute réaffectation
+## rendait l'aide fausse dans quatre langues à la fois, silencieusement.
+const HELP_LINES: Array = [
+	[["move_forward", "move_left", "move_back", "move_right"], ["jump"], ["toggle_fly"], ["sprint"], ["sneak"]],
+	["ui.hud.souris"],
+	["ui.hud.hotbar", ["cycle_grid"]],
+	[["module_1", "module_2", "module_3"], ["toggle_claim"], ["cycle_claim_role"], ["world_map"], ["inventory"]],
+	[["equip"], ["sleep"], ["interact"]],
+	[["stall_stock"], ["save_game"], ["reload_data"], ["cheat_menu"]],
+]
+
+
+## Une ligne d'aide : « ZQSD : marcher · Espace : sauter · … ».
+func _help_line(index: int) -> String:
+	var parts: Array[String] = []
+	for group: Variant in HELP_LINES[index]:
+		if group is String:
+			parts.append(tr(group))  # Bloc figé (souris, hotbar 1-9).
+			continue
+		var actions := group as Array
+		# Le libellé est celui de la PREMIÈRE action du groupe : « avancer »
+		# nomme l'ensemble ZQSD, « module_1 » l'ensemble J/K/L.
+		parts.append("%s : %s" % [
+				InputManager.keys_label(actions),
+				tr(InputManager.label_key(String(actions[0])))])
+	return " · ".join(parts)
+
+
+func _toggle_hint() -> String:
+	return tr("ui.hud.aide_bascule").format({"touche": InputManager.key_label("debug_hud")})
+
+
+## Repose les textes de l'aide (remappe ou changement de langue).
+func _rebuild_help() -> void:
+	if _help == null:
+		return
+	for child in (_help.get_child(0) as Node).get_children():
+		var label := child as Label
+		if label.has_meta("help_line"):
+			label.text = _help_line(int(label.get_meta("help_line")))
+		elif label.has_meta("help_hint"):
+			label.text = _toggle_hint()
 
 
 ## Le toast (montée de niveau, créature tuée) est CENTRÉ et séparé du reste :
@@ -154,8 +206,7 @@ func _rebuild_labels() -> void:
 			elif child is HBoxContainer and child.get_child(0).has_meta("key"):
 				var key_label: Label = child.get_child(0)
 				key_label.text = tr(String(key_label.get_meta("key")))
-	for child in (_help.get_child(0) as Node).get_children():
-		(child as Label).text = tr(String(child.get_meta("key")))
+	_rebuild_help()
 	_refresh()
 
 
@@ -163,7 +214,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
 		return
-	if key.physical_keycode == KEY_F3:
+	if event.is_action_pressed("debug_hud"):
 		_help.visible = not _help.visible
 		_blocks["systeme"].visible = _help.visible
 		get_viewport().set_input_as_handled()
@@ -245,6 +296,13 @@ func _refresh() -> void:
 			_put("royaume", "%s · %s" % [String(kingdom["name"]),
 				tr("gouvernance." + String(kingdom["government_type"]))])
 			_put("lois", _laws_summary(kingdom))
+		# NOM DE LA LOCALITÉ (12.5/E.31, 2026-08-02). Les villages n'avaient
+		# aucun nom : on ne pouvait désigner un lieu que par ses coordonnées.
+		# La ligne DISPARAÎT hors d'un village (`_put` masque une valeur vide),
+		# elle n'occupe donc pas le HUD en pleine nature.
+		var here: Vector2i = _player.current_cell()
+		var has_village := WorldManager.generator != null 				and not (WorldManager.generator.city_at_cell(here) as Dictionary).is_empty()
+		_put("localite", VillageManager.name_of(here) if has_village else "")
 		var cell: Vector2i = _player.current_cell()
 		var status := tr("ui.hud.cellule_libre")
 		if ClaimManager.is_claimed(cell):
@@ -297,13 +355,23 @@ func _refresh_target() -> void:
 			int(creature_info["health"]), int(creature_info["health_max"]), hint])
 
 
+## Les trois touches de lancement montrent désormais les ASSEMBLAGES des trois
+## premiers slots de compétence de l'ARME TENUE (5.1), et non plus un trio de
+## modules figé. Changer d'arme change donc ce que font J/K/L — c'est la
+## conséquence directe du rattachement des assemblages au type d'arme, et le HUD
+## doit le dire, sinon le joueur lance un sort qu'il n'attendait pas.
 func _refresh_modules() -> void:
-	for index in _player.MODULE_LOADOUT.size():
-		var module: Dictionary = GameData.modules[_player.MODULE_LOADOUT[index]]
-		_put(["module_j", "module_k", "module_l"][index],
-			tr("ui.hud.module_valeur").format({
-				"nom": tr(module["name_key"]),
-				"cout": str(int(module["mana_cost_base"]))}))
+	var keys := ["module_j", "module_k", "module_l"]
+	var skill_id := String(_player.weapon_skill_id())
+	for index in keys.size():
+		var modules: Array = [] if skill_id.is_empty() else _player.assembly_at(skill_id, index)
+		if modules.is_empty():
+			_put(keys[index], "—")
+			continue
+		var compiled: Dictionary = SpellAssembly.compile(modules, _player.known_modules)
+		_put(keys[index], tr("ui.hud.module_valeur").format({
+			"nom": SpellAssembly.describe(compiled),
+			"cout": str(int(_player.assembly_cost(skill_id, index)))}))
 
 
 ## Résumé des lois locales. UNE LOI QU'ON DÉCOUVRE PAR LA SANCTION N'EST PAS UNE

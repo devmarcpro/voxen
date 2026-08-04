@@ -1,0 +1,19 @@
+{
+  "id": "bouclier_arcane",
+  "name_key": "module.bouclier_arcane.name",
+  "module_type": "effet",
+  "mana_cost_base": 10,
+  "power_base": 15,
+  "tags": [
+    "arcane",
+    "protection"
+  ],
+  "params": {
+    "duree": 15,
+    "absorption": 25
+  },
+  "grimoire_domains": [
+    "arcane"
+  ],
+  "book_type": "grimoire"
+}

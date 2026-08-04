@@ -17,14 +17,35 @@ extends Probe
 func run() -> void:
 	await wait_seconds(0.5)
 	var g := WorldManager.generator
-	# Cellule de donjon connue (identique à celle trouvée par --probe-dungeon).
-	var cell := Vector2i(-40, -30)
+	# Cellule de donjon CHERCHÉE, et non plus codée en dur (2026-08-02). La
+	# valeur figée (-40, -30) désignait une cellule que le monde ne bâtit plus
+	# depuis que le placement exige un sol émergé : elle est sous le niveau de
+	# la mer. La sonde mesurait donc la portée d'une tour inexistante.
+	var cell := Vector2i(0, 0)
+	var trouve := false
+	for radius in range(0, 60):
+		for dx in range(-radius, radius + 1):
+			for dz in range(-radius, radius + 1):
+				if absi(dx) != radius and absi(dz) != radius:
+					continue
+				if g.has_dungeon(Vector2i(dx, dz)):
+					cell = Vector2i(dx, dz)
+					trouve = true
+					break
+			if trouve:
+				break
+		if trouve:
+			break
+	if not trouve:
+		print("[TOUR] aucune cellule de donjon trouvée — sonde inexploitable.")
+		main.get_tree().quit(1)
+		return
 	var centre := POIGenerator.cell_center_world(cell)
 	var col := Vector2i(floori(float(centre.x) / 16.0), floori(float(centre.y) / 16.0))
 
 	var ground := int(floor(g.height_at(centre.x, centre.y)))
 	var tower_top := g.tower_top_for_column(col)
-	var expected_top := ground + int(DungeonTower.DOME_HEIGHT + DungeonTower.SPIKE_HEIGHT)
+	var expected_top := ground + DungeonTower.MAX_HEIGHT
 
 	# 1. Le sommet annoncé par le nouveau helper.
 	print("[TOUR] cellule=%s colonne=%s sol=%d" % [cell, col, ground])

@@ -1,0 +1,48 @@
+{
+  "id": "salle_grande",
+  "kind": "salle",
+  "size_category": "grande",
+  "size": [
+    19,
+    12,
+    19
+  ],
+  "doors": [
+    {
+      "position": [
+        9,
+        0,
+        0
+      ],
+      "direction": "sud"
+    },
+    {
+      "position": [
+        9,
+        0,
+        18
+      ],
+      "direction": "nord"
+    },
+    {
+      "position": [
+        18,
+        0,
+        9
+      ],
+      "direction": "est"
+    },
+    {
+      "position": [
+        0,
+        0,
+        9
+      ],
+      "direction": "ouest"
+    }
+  ],
+  "special_tags": [
+    "boss_room_eligible",
+    "treasure_eligible"
+  ]
+}

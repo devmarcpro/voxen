@@ -1,0 +1,20 @@
+{
+  "id": "nappe_de_flammes",
+  "name_key": "module.nappe_de_flammes.name",
+  "module_type": "effet",
+  "mana_cost_base": 12,
+  "power_base": 10,
+  "tags": [
+    "feu",
+    "zone"
+  ],
+  "params": {
+    "rayon": 4,
+    "duree": 6
+  },
+  "grimoire_domains": [
+    "feu"
+  ],
+  "book_type": "grimoire",
+  "degats_des": "1d8"
+}

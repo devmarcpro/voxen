@@ -380,106 +380,79 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 			var by := block_index >> 8
 			var block_base := Vector3(bx, by, bz)
 			var pad_center := (bx + 1) * SX + (bz + 1) * SZ + (by + 1) * SY
-			for d in 3:
+			# Quads de la sous-grille, MIS EN CACHE (2026-08-03). La boucle qui
+			# suivait ici rescannait 3 directions x 9 coupes x 64 cellules = 1 728
+			# lectures par bloc subdivise, en GDScript. Or les sous-grilles sont
+			# PARTAGEES : une foret entiere n'emploie qu'une poignee de cylindres
+			# distincts, et on remaillait le meme cylindre des milliers de fois.
+			# Mesure : la passe subdiv pesait 9,4 ms/chunk sur un monde boise.
+			#
+			# On ne cache que la GEOMETRIE, qui ne depend que de la grille. Ce qui
+			# depend du bloc — sa position, son eclairage, et le masquage des deux
+			# faces bordieres par un voisin plein — reste calcule ici.
+			var quads := _grid_quads(grid)
+			var q := 0
+			var sub_level := float(LightField.level_at(light, Vector3i(bx, by, bz))) \
+					/ float(LightField.MAX_LEVEL)
+			var sub_color := Color(sub_level, sub_level, sub_level, 1.0)
+			while q < quads.size():
+				var d := quads[q]
+				var cut := quads[q + 1]
+				var i := quads[q + 2]
+				var j := quads[q + 3]
+				var w := quads[q + 4]
+				var h := quads[q + 5]
+				var c := quads[q + 6]
+				q += 7
+				# Bord contre un bloc voisin plein : faces cachees.
+				if cut == -1 and pad[pad_center - strides[d]] != 0:
+					continue
+				if cut == 7 and pad[pad_center + strides[d]] != 0:
+					continue
 				var u := (d + 1) % 3
 				var v := (d + 2) % 3
-				var gd := grid_strides[d]
-				var gu := grid_strides[u]
-				var gv := grid_strides[v]
-				var pad_stride := strides[d]
-				for cut in range(-1, 8):
-					# Bord contre un bloc voisin plein : faces cachées.
-					if cut == -1 and pad[pad_center - pad_stride] != 0:
-						continue
-					if cut == 7 and pad[pad_center + pad_stride] != 0:
-						continue
-					var visible := false
-					var n := 0
-					for j in 8:
-						for i in 8:
-							var a := grid[cut * gd + i * gu + j * gv] if cut >= 0 else 0
-							var b := grid[(cut + 1) * gd + i * gu + j * gv] if cut <= 6 else 0
-							var value := 0
-							if a != 0 and b == 0:
-								value = a
-							elif b != 0 and a == 0:
-								value = -b
-							sub_mask[n] = value
-							if value != 0:
-								visible = true
-							n += 1
-					if not visible:
-						continue
-					# Fusion gloutonne (identique à la passe bloc, T = 8).
-					for j in 8:
-						var i := 0
-						while i < 8:
-							var c := sub_mask[j * 8 + i]
-							if c == 0:
-								i += 1
-								continue
-							var w := 1
-							while i + w < 8 and sub_mask[j * 8 + i + w] == c:
-								w += 1
-							var h := 1
-							var extendable := true
-							while j + h < 8 and extendable:
-								for k in w:
-									if sub_mask[(j + h) * 8 + i + k] != c:
-										extendable = false
-										break
-								if extendable:
-									h += 1
-							if vc + 4 > vertices.size():
-								var new_size := maxi(vertices.size() * 2, 1024)
-								vertices.resize(new_size)
-								normals.resize(new_size)
-								uvs.resize(new_size)
-								colors.resize(new_size)
-							if ic + 6 > indices.size():
-								indices.resize(maxi(indices.size() * 2, 1536))
-							var normal := Vector3.ZERO
-							normal[d] = 1.0 if c > 0 else -1.0
-							var origin := block_base
-							origin[d] += (cut + 1) * SubdivGrid.CELL_UNIT
-							origin[u] += i * SubdivGrid.CELL_UNIT
-							origin[v] += j * SubdivGrid.CELL_UNIT
-							var du := Vector3.ZERO
-							du[u] = w * SubdivGrid.CELL_UNIT
-							var dv := Vector3.ZERO
-							dv[v] = h * SubdivGrid.CELL_UNIT
-							if du.cross(dv).dot(normal) > 0.0:
-								var tmp := du
-								du = dv
-								dv = tmp
-							vertices[vc] = origin
-							vertices[vc + 1] = origin + du
-							vertices[vc + 2] = origin + du + dv
-							vertices[vc + 3] = origin + dv
-							var uv := Vector2(float(absi(c)), 0.0)
-							# Lumière du BLOC hôte (G.3) : une sous-grille est
-							# contenue dans un bloc, elle prend son éclairage.
-							# Sans cette écriture, les sommets garderaient la
-							# couleur par défaut (noir) et toute sculpture
-							# apparaîtrait dans le noir absolu.
-							var sub_level := float(LightField.level_at(light, Vector3i(bx, by, bz))) 									/ float(LightField.MAX_LEVEL)
-							var sub_color := Color(sub_level, sub_level, sub_level, 1.0)
-							for k in 4:
-								normals[vc + k] = normal
-								uvs[vc + k] = uv
-								colors[vc + k] = sub_color
-							indices[ic] = vc
-							indices[ic + 1] = vc + 1
-							indices[ic + 2] = vc + 2
-							indices[ic + 3] = vc
-							indices[ic + 4] = vc + 2
-							indices[ic + 5] = vc + 3
-							vc += 4
-							ic += 6
-							for jj in h:
-								for kk in w:
-									sub_mask[(j + jj) * 8 + i + kk] = 0
-							i += w
+				if vc + 4 > vertices.size():
+					var new_size := maxi(vertices.size() * 2, 1024)
+					vertices.resize(new_size)
+					normals.resize(new_size)
+					uvs.resize(new_size)
+					colors.resize(new_size)
+				if ic + 6 > indices.size():
+					indices.resize(maxi(indices.size() * 2, 1536))
+				var normal := Vector3.ZERO
+				normal[d] = 1.0 if c > 0 else -1.0
+				var origin := block_base
+				origin[d] += (cut + 1) * SubdivGrid.CELL_UNIT
+				origin[u] += i * SubdivGrid.CELL_UNIT
+				origin[v] += j * SubdivGrid.CELL_UNIT
+				var du := Vector3.ZERO
+				du[u] = w * SubdivGrid.CELL_UNIT
+				var dv := Vector3.ZERO
+				dv[v] = h * SubdivGrid.CELL_UNIT
+				if du.cross(dv).dot(normal) > 0.0:
+					var tmp := du
+					du = dv
+					dv = tmp
+				vertices[vc] = origin
+				vertices[vc + 1] = origin + du
+				vertices[vc + 2] = origin + du + dv
+				vertices[vc + 3] = origin + dv
+				var uv := Vector2(float(absi(c)), 0.0)
+				for k in 4:
+					normals[vc + k] = normal
+					uvs[vc + k] = uv
+					# Lumiere du BLOC hote (G.3) : une sous-grille est contenue dans
+					# un bloc, elle prend son eclairage. Sans cette ecriture les
+					# sommets garderaient le noir par defaut.
+					colors[vc + k] = sub_color
+				indices[ic] = vc
+				indices[ic + 1] = vc + 1
+				indices[ic + 2] = vc + 2
+				indices[ic + 3] = vc
+				indices[ic + 4] = vc + 2
+				indices[ic + 5] = vc + 3
+				vc += 4
+				ic += 6
 
 	if profiling:
 		phase_us["subdiv"] += Time.get_ticks_usec() - t_phase
@@ -552,3 +525,107 @@ static func _apply_shell_edits(pad: PackedInt32Array, cpos: Vector3i, edits: Dic
 			if id == 0:
 				air = true
 	return air
+
+
+## Cache des quads d'une sous-grille, partage par tous les chunks du monde.
+## Cle : le hachage de la grille elle-meme (512 entiers, hache en C++), ce qui
+## rend deux cylindres identiques interchangeables sans avoir a les etiqueter en
+## amont — le mailleur ne sait rien de qui a produit la grille, et n'a pas a le
+## savoir.
+##
+## Chaque quad occupe 7 entiers : d, cut, i, j, w, h, c. `cut` vaut -1..7 ;
+## les valeurs -1 et 7 sont les faces BORDIERES, que l'appelant masque quand le
+## bloc voisin est plein. C'est la seule part dependante du contexte, et c'est
+## pour ca qu'elle reste dehors.
+const MAX_CACHED_GRIDS := 16384
+
+static var _grid_quad_cache := {}
+
+static func _grid_quads(grid: PackedInt32Array) -> PackedInt32Array:
+	#  global, pas  : PackedInt32Array n'expose pas de
+	# methode hash, mais l'utilitaire global hache bien la valeur du tableau.
+	var key := hash(grid)
+	if _grid_quad_cache.has(key):
+		return _grid_quad_cache[key]
+
+	var quads := PackedInt32Array()
+	var mask := PackedInt32Array()
+	mask.resize(64)
+	var grid_strides := [1, SubdivGrid.SIZE * SubdivGrid.SIZE, SubdivGrid.SIZE]
+	for d in 3:
+		var u := (d + 1) % 3
+		var v := (d + 2) % 3
+		var gd: int = grid_strides[d]
+		var gu: int = grid_strides[u]
+		var gv: int = grid_strides[v]
+		for cut in range(-1, 8):
+			var visible := false
+			var n := 0
+			for j in 8:
+				for i in 8:
+					var a := grid[cut * gd + i * gu + j * gv] if cut >= 0 else 0
+					var b := grid[(cut + 1) * gd + i * gu + j * gv] if cut <= 6 else 0
+					var value := 0
+					if a != 0 and b == 0:
+						value = a
+					elif b != 0 and a == 0:
+						value = -b
+					mask[n] = value
+					if value != 0:
+						visible = true
+					n += 1
+			if not visible:
+				continue
+			# Fusion gloutonne (identique a la passe bloc, T = 8).
+			for j in 8:
+				var i := 0
+				while i < 8:
+					var c := mask[j * 8 + i]
+					if c == 0:
+						i += 1
+						continue
+					var w := 1
+					while i + w < 8 and mask[j * 8 + i + w] == c:
+						w += 1
+					var h := 1
+					var extendable := true
+					while j + h < 8 and extendable:
+						for k in w:
+							if mask[(j + h) * 8 + i + k] != c:
+								extendable = false
+								break
+						if extendable:
+							h += 1
+					quads.append_array(PackedInt32Array([d, cut, i, j, w, h, c]))
+					for jj in h:
+						for kk in w:
+							mask[(j + jj) * 8 + i + kk] = 0
+					i += w
+
+	# BORNE. Les grilles d'arbres sont des formes répétées des milliers de fois,
+	# et c'est tout l'intérêt du cache ; un bloc SCULPTÉ par le joueur, lui, est
+	# unique et ne resservira jamais, donc sans plafond le cache grossirait
+	# indéfiniment au fil d'une partie.
+	#
+	# UNE FOIS PLEIN, ON GÈLE — on ne vide pas. Vider était la première version,
+	# et c'était un piège : un flux de grilles uniques (sculpture, ou la sonde
+	# `--probe-subdiv` qui tire des grilles au hasard) faisait déborder puis
+	# purger en boucle, si bien que les formes utiles étaient jetées à chaque
+	# tour. Mesuré, la passe subdiv passait de 19 à 44 ms sur cette sonde. Geler
+	# garde ce qui sert et laisse le reste se calculer sans cache — ce qu'il
+	# aurait fait de toute façon, puisqu'une grille unique n'est jamais relue.
+	# UNE FOIS PLEIN, ON GÈLE — on ne vide pas, et on ne filtre pas non plus.
+	#
+	# Vider était la première version : un flux de grilles uniques faisait
+	# déborder puis purger en boucle, jetant les formes utiles à chaque tour.
+	#
+	# N'admettre qu'à la deuxième rencontre a été essayé ensuite, en pariant que
+	# les grilles de branches étaient uniques et encombraient le cache pour
+	# rien. Écarté faute de gain démontrable : sur cette machine, `--probe-mesh`
+	# rend 13,8 à 24,1 ms/chunk pour un code IDENTIQUE, soit ±35 % de bruit, et
+	# l'écart mesuré entre les deux variantes tombait dedans. On garde donc la
+	# plus simple. Toute comparaison de ce cache demande plusieurs répétitions
+	# avant de vouloir dire quoi que ce soit.
+	if _grid_quad_cache.size() < MAX_CACHED_GRIDS:
+		_grid_quad_cache[key] = quads
+	return quads

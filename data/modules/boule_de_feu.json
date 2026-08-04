@@ -1,0 +1,21 @@
+{
+  "id": "boule_de_feu",
+  "name_key": "module.boule_de_feu.name",
+  "module_type": "effet",
+  "mana_cost_base": 9,
+  "power_base": 14,
+  "tags": [
+    "feu",
+    "projectile"
+  ],
+  "params": {
+    "vitesse": 18,
+    "portee": 28
+  },
+  "grimoire_domains": [
+    "feu",
+    "destruction"
+  ],
+  "book_type": "grimoire",
+  "degats_des": "2d6"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "manuel_de_combat",
+  "name_key": "item.manuel_de_combat.name",
+  "type": "livre",
+  "recipe": {},
+  "stat_weights": {},
+  "effects": [],
+  "tags": [
+    "livre",
+    "manuel_de_combat"
+  ]
+}

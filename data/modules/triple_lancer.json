@@ -1,0 +1,17 @@
+{
+  "id": "triple_lancer",
+  "name_key": "module.triple_lancer.name",
+  "module_type": "modificateur",
+  "mana_cost_base": 9,
+  "power_base": 0,
+  "tags": [
+    "maitrise"
+  ],
+  "params": {
+    "multicast": 3
+  },
+  "grimoire_domains": [
+    "maitrise"
+  ],
+  "book_type": "grimoire"
+}

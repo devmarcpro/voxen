@@ -101,7 +101,7 @@ func _ready() -> void:
 			shield_item.name = "ShieldItem"
 			offhand.add_child(shield_item)
 			shield_item.set("in_hand", true)
-			shield_item.set("source", "bouclier")
+			shield_item.set("source", "main_gauche")
 	else:
 		player_body.queue_free()
 		player_body = null
@@ -216,7 +216,21 @@ func _screenshot(file_name: String) -> void:
 ## Démarre le monde ACTIF (profil SaveManager.active_config) : générateur,
 ## spawn, restauration d'état, puis les branches benchs/sondes du mode direct.
 func _start_world(args: Array) -> void:
+	# GRAINE FORCÉE (`--seed N`), AVANT la création du monde — c'est tout
+	# l'enjeu : posée après, elle ne changeait rien, le monde étant déjà bâti
+	# sur la graine de la sauvegarde. Sert au harnais réseau, qui doit pouvoir
+	# démarrer hôte et client sur des mondes VOLONTAIREMENT différents : sans
+	# ça, la poignée de main ne prouverait rien, les deux valant 1337 par
+	# défaut.
+	var forced_seed := args.find("--seed")
 	WorldManager.initialize_world()
+	if forced_seed >= 0 and forced_seed + 1 < args.size():
+		# `adopt_world` ET PAS une écriture de config : une sauvegarde chargée a
+		# déjà bâti le monde, et `initialize_world` s'arrête net si le générateur
+		# existe. Poser la config ne changeait alors rien — l'hôte restait sur la
+		# graine de sa sauvegarde, et le test de poignée de main comparait deux
+		# fois la même valeur sans s'en apercevoir.
+		WorldManager.adopt_world(int(args[forced_seed + 1]), {})
 
 	# Départ au-dessus de la surface réelle du terrain (E.2), position
 	# optionnelle via `-- --pos X Z` (repérages/captures).
@@ -271,6 +285,10 @@ func _start_world(args: Array) -> void:
 		var dialogue: CanvasLayer = preload("res://scenes/ui/dialogue_panel.gd").new()
 		dialogue.name = "DialoguePanel"
 		add_child(dialogue)
+	if get_node_or_null("ChestPanel") == null:
+		var chest: CanvasLayer = preload("res://scenes/ui/chest_panel.gd").new()
+		chest.name = "ChestPanel"
+		add_child(chest)
 	if get_node_or_null("GameMenu") == null:
 		var game_menu: CanvasLayer = preload("res://scenes/ui/game_menu.gd").new()
 		game_menu.name = "GameMenu"
@@ -328,6 +346,22 @@ func _process(delta: float) -> void:
 		# les bras ensuite, qui visent des cibles en espace MONDE et doivent
 		# partir de la position d'épaule définitive.
 		player_body.solve_legs()
+		# La phase de marche descend du CORPS vers le joueur : c'est elle qui
+		# fait balancer la main libre (voir Player._free_hand_target). Poussée
+		# ici, avant l'IK, pour que la cible calculée soit celle de CETTE frame.
+		$Player.set_body_gait(
+			float(player_body.get("_gait_phase")), float(player_body.get("_gait_amount")))
+		# ENVERGURE DU BRAS GAUCHE : d'où il part et jusqu'où il va. Sans elle le
+		# joueur posait la seconde main sur le manche sans savoir si le bras y
+		# arrivait — sur une arme à long manche il n'y arrivait pas, et la main
+		# restait en l'air à côté de l'arme.
+		$Player.set_left_arm_span(
+			player_body.shoulder_world_position("gauche"),
+			player_body.arm_reach("gauche"))
+		# POSITION RÉELLE de la main droite (frame précédente) : l'arme y est
+		# accrochée, c'est donc de là que part son manche — et pas de la cible
+		# que l'IK n'atteint qu'approximativement.
+		$Player.set_right_hand_actual(player_body.hand_world_position("droite"))
 		var targets: Dictionary = $Player.hand_targets(
 			player_body.HAND_ARC_RADIUS, player_body.OFFHAND_ALONG_WEAPON, delta)
 		for side: String in targets:
@@ -335,12 +369,26 @@ func _process(delta: float) -> void:
 		# N'afficher que les membres réellement utilisés : la main gauche
 		# n'apparaît que si l'arme la mobilise (deux mains). `hand_targets`
 		# la renseigne précisément dans ce cas — une seule source de vérité.
-		player_body.set_local_limbs(targets.has("gauche"))
+		# N'AFFICHER QUE LES MEMBRES UTILES. La main libre a désormais une cible
+		# elle aussi (pour que le bras ne pende pas, collé au buste, sur le corps
+		# vu de l'extérieur) — mais elle ne doit pas pour autant faire surgir un
+		# avant-bras au milieu de l'écran en première personne. On demande donc
+		# au joueur ce que la gauche FAIT, au lieu de déduire de la présence
+		# d'une cible.
+		player_body.set_local_limbs(bool($Player.left_hand_busy()))
 		# La main PORTE l'arme, l'axe de VISÉE l'oriente : héritée de l'os,
 		# elle pointait là où pointait l'avant-bras, donc en travers.
 		var part_scale: float = preload("res://scenes/entities/held_item.gd").PART_SCALE
 		player_body.point_weapon($Player.weapon_direction(), part_scale)
-		player_body.point_shield(-camera.global_basis.z, part_scale)
+		# La main gauche tient soit une PLAQUE, qui doit faire face à la menace,
+		# soit une ARME, qui doit pointer le long de son propre arc. Les deux
+		# géométries n'ont rien à voir : un bouclier orienté comme une lame
+		# présenterait sa tranche, une lame orientée comme une plaque frapperait
+		# de plat.
+		if $Player.offhand_weapon().is_empty():
+			player_body.point_shield(-camera.global_basis.z, part_scale)
+		else:
+			player_body.point_offhand_weapon($Player.offhand_direction(), part_scale)
 
 	# Instrumentation de mesure uniquement — aucune logique de gameplay ici (E.1).
 	if not bench or _bench_done:
@@ -382,7 +430,7 @@ func _mutation_step() -> void:
 		_mutation_count += 1
 
 
-## Spawn 50 sangliers en cercle autour du point de départ (critère G.8 :
+## Spawn 50 bandits en cercle autour du point de départ (critère G.8 :
 ## 50 créatures actives, tick < 8 ms). Portée d'aggro réglée pour que
 ## certaines poursuivent le joueur (chemin coûteux) et d'autres déambulent.
 func _spawn_bench_creatures() -> void:
@@ -393,7 +441,7 @@ func _spawn_bench_creatures() -> void:
 		var x := _start_pos.x + int(cos(angle) * radius)
 		var z := _start_pos.y + int(sin(angle) * radius)
 		var h := g.height_at(x, z)
-		CreatureManager.spawn("sanglier", Vector3(x, h + 0.5, z))
+		CreatureManager.spawn("bandit", Vector3(x, h + 0.5, z))
 	print("[BENCH] %d créatures spawnées." % CreatureManager.creatures.size())
 
 

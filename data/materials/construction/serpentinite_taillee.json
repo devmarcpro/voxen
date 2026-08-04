@@ -1,0 +1,38 @@
+{
+  "id": "serpentinite_taillee",
+  "name_key": "material.serpentinite_taillee.name",
+  "category": "construction",
+  "stats": {
+    "durete": 17,
+    "densite": 14,
+    "valeur_base": 11,
+    "conductivite_mana": 22,
+    "flammabilite": 0,
+    "isolation": 35,
+    "conductivite_electrique": 8,
+    "flottabilite": 2,
+    "luminosite": 2,
+    "fertilite": 0,
+    "transparence": 8,
+    "elasticite": 5,
+    "friction": 50
+  },
+  "tags": [
+    "pierre_taillee"
+  ],
+  "color": "#718673",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 7224,
+    "amplitude": 0.05,
+    "scale": 3
+  },
+  "texture_style": "bricks",
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "none"
+  }
+}

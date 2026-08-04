@@ -1,0 +1,22 @@
+{
+  "id": "carreau",
+  "name_key": "munition.carreau.name",
+  "color": "#6E6E74",
+  "valeur_base": 3,
+  "densite": 2,
+  "par_fabrication": 8,
+  "recipe": {
+    "station": "etabli",
+    "skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 1
+      },
+      {
+        "category": "minerai",
+        "amount": 2
+      }
+    ]
+  }
+}

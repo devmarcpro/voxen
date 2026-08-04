@@ -6,7 +6,7 @@
   "hands": 2,
   "functionality": "espadon",
   "parts": {
-    "manche": "long",
+    "manche": "poignee_longue",
     "tete": "lame_longue"
   },
   "recipe": {
@@ -19,7 +19,7 @@
       },
       {
         "category": "minerai",
-        "amount": 5
+        "amount": 6
       }
     ]
   },

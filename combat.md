@@ -1,3 +1,14 @@
+> ⚠️ **CE FICHIER N'EST PAS UNE SPÉCIFICATION.** C'est le transcript brut de la
+> conversation d'exploration qui a mené au combat directionnel (il se termine
+> d'ailleurs sur une question restée sans réponse). Il est conservé pour la
+> trace du raisonnement — notamment le piège du *staircase* voxel et
+> l'obligation d'auto-step, qui restent pertinents.
+>
+> **La spécification qui fait autorité est GDD.md § E.3.1** (et §5.1, amendée).
+> Ne rien implémenter à partir d'ici sans vérifier là-bas.
+
+---
+
  Faisabilité d'un système de combat à la mount and blade dans mon jeu ? Donc arme qui tape selon la direction
 
 Techniquement et en termes de game design, c'est totalement faisable et c'est même une excellente idée. Le système de combat à la Mount & Blade (ou Mordhau / Chivalry) s'intègre parfaitement avec ta nouvelle orientation RPG / Aventurier nomade. Cela remplace le clic frénétique des jeux voxel classiques par un gameplay basé sur le timing, la distance (spacing) et la gestion de l'endurance.

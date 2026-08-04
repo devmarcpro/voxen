@@ -74,15 +74,46 @@ func _ready() -> void:
 	general.add_child(_list)
 
 	var forge := ScrollContainer.new()
-	forge.name = "Armes"
+	forge.name = "Atelier"
 	tabs.add_child(forge)
 	_weapon_list = VBoxContainer.new()
 	_weapon_list.custom_minimum_size = Vector2(1140, 0)
 	forge.add_child(_weapon_list)
 
+	# TOUT LE CONTENU DU JEU, UN ONGLET PAR FAMILLE (2026-08-03, demande de
+	# l'auteur : « absolument tout dans le jeu doit être accessible dans le menu
+	# de triche »).
+	#
+	# Le menu couvrait le temps, les jauges, la téléportation, les modules et un
+	# atelier d'armes. Restaient hors d'atteinte : les 278 matériaux un par un
+	# (seul « tous » existait), les armures et consommables, les 4 plats, les 2
+	# munitions, les 38 essences d'arbre, les 6 plantes, les 72 transformations,
+	# les 14 statuts, les 6 races, les 6 classes, et les 53 compétences prises
+	# individuellement — c'est-à-dire l'essentiel du contenu.
+	_materials_list = _add_tab(tabs, "Matériaux")
+	_objects_list = _add_tab(tabs, "Objets")
+	_world_list = _add_tab(tabs, "Monde")
+	_character_list = _add_tab(tabs, "Personnage")
+
 	_build_menu()
 	_build_weapon_tab()
+	_build_materials_tab()
+	_build_objects_tab()
+	_build_world_tab()
+	_build_character_tab()
 	visible = false
+
+
+## Onglet défilable prêt à recevoir des rangées. Toutes les familles de contenu
+## passent par ici : c'est ce qui garantit qu'elles se ressemblent.
+func _add_tab(tabs: TabContainer, tab_name: String) -> VBoxContainer:
+	var scroll := ScrollContainer.new()
+	scroll.name = tab_name
+	tabs.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.custom_minimum_size = Vector2(1140, 0)
+	scroll.add_child(list)
+	return list
 
 
 ## Onglet GÉNÉRAL — panneau de contrôle, refondu le 2026-08-01.
@@ -118,6 +149,7 @@ func _build_menu() -> void:
 	_build_teleport_rows()
 	_build_item_rows()
 	_build_creature_rows()
+	_build_module_rows()
 	_build_creative_rows()
 
 
@@ -312,6 +344,198 @@ func _build_item_rows() -> void:
 	_list.add_child(row)
 
 
+# --- Modules, livres et assemblages (GDD 5.1) -------------------------------
+#
+# POURQUOI CETTE SECTION EXISTE. Un module ne s'obtient QUE par la lecture d'un
+# livre, et un livre ne se trouve QU'EN DONJON : tester un assemblage demandait
+# donc de descendre plusieurs étages, de trouver une cache, de réussir un jet de
+# Lecture, et de recommencer pour chaque module manquant. C'est intenable pour
+# régler l'équilibrage d'un système dont tout l'intérêt est la combinatoire.
+
+## Difficulté des livres fabriqués ici. Trois crans qui couvrent la plage utile :
+## un livre trivial (lisible sans compétence), un livre moyen, et un livre que
+## seul un lecteur chevronné ouvre — c'est-à-dire les trois cas que le jet A.7
+## doit distinguer.
+const CHEAT_BOOK_POWERS := {"facile": 0.0, "moyen": 0.5, "redoutable": 1.0}
+
+
+func _build_module_rows() -> void:
+	_add_section("Modules — tout apprendre, oublier, monter en niveau")
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP)
+	row.add_child(_compact("Tout apprendre", func() -> void:
+		for module_id: String in GameData.modules:
+			if not _player.known_modules.has(module_id):
+				_player.known_modules[module_id] = 0
+		_set_status("%d module(s) connus." % (_player.known_modules as Dictionary).size())))
+	row.add_child(_compact("Tout oublier", func() -> void:
+		_player.known_modules.clear()
+		# Les assemblages partent avec : garder un slot qui référence un module
+		# oublié afficherait un sort que le joueur ne peut plus ni lancer ni
+		# reconstituer.
+		_player.assemblies.clear()
+		_set_status("Modules et assemblages effacés.")))
+	row.add_child(_compact("+10 niveaux", func() -> void:
+		for module_id: String in (_player.known_modules as Dictionary).keys():
+			_player.known_modules[module_id] = int(_player.known_modules[module_id]) + 10
+		_set_status("+10 niveaux sur %d module(s)." % (_player.known_modules as Dictionary).size())))
+	row.add_child(_compact("Mana infinie", func() -> void:
+		_player.mana.current = _player.mana.maximum
+		_set_status("Mana au maximum (%d)." % int(_player.mana.maximum))))
+	_list.add_child(row)
+
+	# GRILLE COMPLÈTE. Le libellé porte le RÔLE et le coût : c'est ce qui permet
+	# de composer un assemblage sans quitter le menu pour aller lire les fiches.
+	# Un clic apprend le module, ou le monte d'un niveau s'il est déjà connu.
+	var grid := GridContainer.new()
+	grid.columns = 4
+	var ids: Array = GameData.modules.keys()
+	ids.sort()
+	for module_id: String in ids:
+		var module: Dictionary = GameData.modules[module_id]
+		# `: String` explicite : `Dictionary.get` rend un Variant, dont
+		# l'inférence est traitée comme une erreur dans ce projet.
+		var role: String = {"effet": "E", "modificateur": "M", "declencheur": "D"}.get(
+				String(module.get("module_type", "effet")), "?")
+		var label := "[%s] %s · %d" % [role, tr(String(module.get("name_key", module_id))),
+				int(module.get("mana_cost_base", 0))]
+		grid.add_child(_compact(label, _learn_module.bind(module_id)))
+	_list.add_child(grid)
+
+	_add_section("Livres — grimoires et manuels de combat")
+	var books := HBoxContainer.new()
+	books.add_theme_constant_override("separation", UITheme.GAP)
+	for kind: String in ["grimoire", "manuel"]:
+		for tier: String in ["facile", "moyen", "redoutable"]:
+			books.add_child(_compact("%s %s" % [
+					"Grimoire" if kind == "grimoire" else "Manuel", tier],
+					_give_book.bind(kind, float(CHEAT_BOOK_POWERS[tier]))))
+	_list.add_child(books)
+
+	var books2 := HBoxContainer.new()
+	books2.add_theme_constant_override("separation", UITheme.GAP)
+	books2.add_child(_compact("Lire tout", _read_all_books))
+	books2.add_child(_compact("Lecture niv. 50", func() -> void:
+		while _player.skills.level("lecture") < 50:
+			_player.skills.gain_xp("lecture", 20000.0)
+		_set_status("Lecture au niveau %d." % _player.skills.level("lecture"))))
+	books2.add_child(_compact("Lecture niv. 0", func() -> void:
+		# Remettre la compétence à zéro n'est pas prévu par PlayerSkills (la
+		# progression ne redescend jamais) : on réécrit l'entrée directement,
+		# ce qui est précisément le privilège d'un menu de triche.
+		if (_player.skills.skills as Dictionary).has("lecture"):
+			_player.skills.skills["lecture"]["level"] = 0
+			_player.skills.skills["lecture"]["xp"] = 0.0
+		_set_status("Lecture remise à zéro — les échecs redeviennent probables.")))
+	books2.add_child(_compact("Vider les livres", func() -> void:
+		var removed := 0
+		for obj: Dictionary in (_player.inventory.objects as Array).duplicate():
+			if BookFactory.is_book(obj):
+				_player.inventory.remove_object_units(obj, int(obj.get("count", 1)))
+				removed += 1
+		_set_status("%d livre(s) retiré(s)." % removed)))
+	_list.add_child(books2)
+
+	_add_section("Assemblages — slots et sorts tout faits")
+	var asm := HBoxContainer.new()
+	asm.add_theme_constant_override("separation", UITheme.GAP)
+	asm.add_child(_compact("Slots max (arme tenue)", func() -> void:
+		var skill_id: String = String(_player.weapon_skill_id())
+		if skill_id.is_empty():
+			_set_status("Aucune arme équipée : les slots dépendent de sa compétence.")
+			return
+		# 125 = le niveau où les deux formules du GDD 5.1 plafonnent
+		# (`2 + N/20` à 6 et `2 + N/25` à 5).
+		while _player.skills.level(skill_id) < 125:
+			_player.skills.gain_xp(skill_id, 200000.0)
+		_set_status("%s niveau %d → %d slots de %d modules." % [
+				skill_id, _player.skills.level(skill_id),
+				_player.assembly_slot_count(skill_id), _player.assembly_module_count(skill_id)])))
+	asm.add_child(_compact("Sorts d'exemple", _fill_example_assemblies))
+	asm.add_child(_compact("Vider les assemblages", func() -> void:
+		_player.assemblies.clear()
+		_set_status("Assemblages effacés.")))
+	_list.add_child(asm)
+
+
+func _learn_module(module_id: String) -> void:
+	var known: Dictionary = _player.known_modules
+	if known.has(module_id):
+		known[module_id] = int(known[module_id]) + 1
+		_set_status("%s : niveau %d." % [
+				tr(String((GameData.modules[module_id] as Dictionary)["name_key"])),
+				int(known[module_id])])
+	else:
+		known[module_id] = 0
+		_set_status("%s appris." % tr(String(
+				(GameData.modules[module_id] as Dictionary)["name_key"])))
+
+
+func _give_book(book_type: String, power: float) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var book: Dictionary = BookFactory.create(book_type, power, rng)
+	if book.is_empty():
+		_set_status("Aucun module de ce type au catalogue.")
+		return
+	_player.inventory.add_object(book)
+	_set_status("%s (difficulté %d, %d module(s), domaine « %s »)." % [
+			tr(String(book["name_key"])), int(book["difficulty"]),
+			(book["modules"] as Array).size(), String(book["domain"])])
+
+
+## Lit TOUS les livres portés, et rapporte le bilan. C'est le seul moyen de
+## voir la distribution réussite/échec du jet A.7 sans passer une soirée à
+## ouvrir des grimoires un par un.
+func _read_all_books() -> void:
+	var reussites := 0
+	var echecs := 0
+	var gagnes := 0
+	for obj: Dictionary in (_player.inventory.objects as Array).duplicate():
+		if not BookFactory.is_book(obj):
+			continue
+		var result: Dictionary = _player.read_book(obj)
+		if bool(result.get("reussite", false)):
+			reussites += 1
+			gagnes += (result.get("modules", []) as Array).size()
+		else:
+			echecs += 1
+	if reussites + echecs == 0:
+		_set_status("Aucun livre dans l'inventaire.")
+		return
+	_set_status("%d réussite(s), %d échec(s) — %d module(s) obtenus." % [
+			reussites, echecs, gagnes])
+
+
+## Range trois assemblages qui EXERCENT chacun une mécanique différente : la
+## volée, le déclencheur récursif, et la modification d'un effet. Ils servent à
+## voir le système marcher sans avoir à le composer soi-même — et à vérifier
+## d'un coup d'œil que l'ordre des slots change bien le résultat.
+func _fill_example_assemblies() -> void:
+	var skill_id: String = String(_player.weapon_skill_id())
+	if skill_id.is_empty():
+		_set_status("Aucune arme équipée : un assemblage appartient à un type d'arme.")
+		return
+	var exemples := [
+		["triple_lancer", "boule_de_feu", "boule_de_feu", "boule_de_feu"],
+		["boule_de_feu", "declencheur_impact", "double_lancer", "eclat_de_glace", "eclat_de_glace"],
+		["portee_accrue", "guidage", "arc_electrique"],
+		["carapace_de_roche"],
+	]
+	for liste: Array in exemples:
+		for module_id: String in liste:
+			if not (_player.known_modules as Dictionary).has(module_id):
+				_player.known_modules[module_id] = 0
+	var posed := 0
+	for index in exemples.size():
+		if index >= _player.assembly_slot_count(skill_id):
+			break
+		if _player.set_assembly(skill_id, index, exemples[index]):
+			posed += 1
+	_set_status("%d sort(s) rangé(s) sur « %s » (slots de %d modules)." % [
+			posed, skill_id, _player.assembly_module_count(skill_id)])
+
+
 # --- Créatures --------------------------------------------------------------
 
 func _build_creature_rows() -> void:
@@ -440,10 +664,16 @@ func _add_forge_section(title_text: String) -> void:
 	_weapon_list.add_child(label)
 
 
+## Ce que la forge du menu de triche sait produire.
+##
+## LES OUTILS AUSSI, pas seulement les armes (2026-08-03). Le filtre ne gardait
+## que `type == "arme"` : les foreuses, qui sont des outils, restaient
+## introuvables autrement qu'en les craftant pour de vrai, ce qui est justement
+## ce qu'un menu de triche existe pour éviter.
 func _weapon_ids() -> Array:
 	var ids: Array = []
 	for item_id: String in GameData.items:
-		if String((GameData.items[item_id] as Dictionary).get("type", "")) == "arme":
+		if String((GameData.items[item_id] as Dictionary).get("type", "")) in ["arme", "outil"]:
 			ids.append(item_id)
 	ids.sort()
 	return ids
@@ -604,7 +834,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
 		return
-	if key.physical_keycode == KEY_F1:
+	if event.is_action_pressed("cheat_menu"):
 		if is_open:
 			_close()
 		else:
@@ -820,7 +1050,7 @@ func _build_creative_rows() -> void:
 				_give_item(item_id)
 				_set_status("+ %s" % tr(item["name_key"])))
 		# Apparence d'OUTIL (sprite teinté) plutôt qu'un cube couleur.
-		var tool_tex: Texture2D = ToolSprite.item_icon(item,
+		var tool_tex: Texture2D = WeaponPreview.item_icon(item,
 			{"bois": "chene", "minerai": "fer"}, CREATIVE_CELL - 6)
 		if tool_tex != null:
 			cell.icon = tool_tex
@@ -888,3 +1118,398 @@ func _give_item(item_id: String) -> void:
 			return
 		choices[input["category"]] = mat_id
 	_player.inventory.add_object(ItemFactory.craft(item_id, choices, 1.0))
+
+# ============================================================================
+# TOUT LE CONTENU — un onglet par famille (2026-08-03)
+# ============================================================================
+#
+# RÈGLE DE CONSTRUCTION : jamais une liste écrite à la main. Chaque grille est
+# bâtie en parcourant le registre de GameData correspondant, donc ajouter un
+# matériau, une essence ou un statut au jeu le rend triche-able sans toucher à
+# ce fichier. Une liste recopiée aurait divergé dès le contenu suivant.
+
+var _materials_list: VBoxContainer
+var _objects_list: VBoxContainer
+var _world_list: VBoxContainer
+var _character_list: VBoxContainer
+
+## Colonnes des grilles de contenu : six tiennent dans la largeur de l'onglet
+## au format de bouton compact utilisé partout ailleurs.
+const CONTENT_COLUMNS := 6
+
+## Durée d'un statut posé depuis le menu : assez long pour l'observer, assez
+## court pour ne pas rester collé au personnage toute la partie.
+const CHEAT_STATUS_TICKS := 600
+
+## Quantité créditée par un clic sur une ressource (plat, munition, viande).
+const RESOURCE_GIVE_AMOUNT := 10
+
+
+## Titre de section dans un onglet donné — `_add_section` n'écrit que dans
+## l'onglet Général.
+func _section_in(list: VBoxContainer, title_text: String) -> void:
+	var label := Label.new()
+	label.text = title_text
+	label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
+	list.add_child(label)
+
+
+## Grille de boutons : un par id, libellé traduit, action liée à l'id.
+func _content_grid(list: VBoxContainer, ids: Array, label_of: Callable, action: Callable) -> void:
+	var grid := GridContainer.new()
+	grid.columns = CONTENT_COLUMNS
+	for id: String in ids:
+		grid.add_child(_compact(String(label_of.call(id)), action.bind(id)))
+	list.add_child(grid)
+
+
+## Ids d'un registre, TRIÉS. L'ordre d'un Dictionary est celui de l'insertion,
+## donc celui du système de fichiers : impraticable pour chercher une entrée
+## parmi deux cent soixante-dix-huit.
+func _sorted_ids(registry: Dictionary) -> Array:
+	var ids: Array = registry.keys()
+	ids.sort()
+	return ids
+
+
+## Libellé traduit d'une entrée de registre, avec repli sur son id — une entrée
+## sans clé de locale doit rester cliquable, pas disparaître.
+func _label_of(registry: Dictionary, id: String) -> String:
+	var entry: Dictionary = registry.get(id, {})
+	return tr(String(entry.get("name_key", id)))
+
+
+# --- Onglet MATÉRIAUX -------------------------------------------------------
+
+## Les 278 matériaux, RANGÉS PAR CATÉGORIE. En une seule grille alphabétique,
+## trouver « granit » parmi 278 boutons demanderait de tout lire ; par
+## catégorie, on sait déjà dans quelle section chercher.
+func _build_materials_tab() -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP)
+	row.add_child(_compact("Tout donner", _give_all_materials))
+	row.add_child(_compact("Vider matériaux", func() -> void:
+		_player.inventory.material_stacks.clear()
+		_player.inventory.material_fractions.clear()
+		_set_status("Matériaux retirés de l'inventaire.")))
+	_materials_list.add_child(row)
+
+	var by_category := {}
+	for material_id: String in GameData.materials:
+		var category := String((GameData.materials[material_id] as Dictionary).get("category", "?"))
+		if not by_category.has(category):
+			by_category[category] = []
+		(by_category[category] as Array).append(material_id)
+
+	var categories: Array = by_category.keys()
+	categories.sort()
+	for category: String in categories:
+		var ids: Array = by_category[category]
+		ids.sort()
+		_section_in(_materials_list, "%s (%d) — clic = +%d" % [
+				category.capitalize(), ids.size(), MATERIAL_GIVE_AMOUNT])
+		_content_grid(_materials_list, ids,
+			func(id: String) -> String: return _label_of(GameData.materials, id),
+			_give_material)
+
+
+func _give_material(material_id: String) -> void:
+	_player.inventory.add_material(material_id, MATERIAL_GIVE_AMOUNT)
+	_set_status("+%d %s." % [MATERIAL_GIVE_AMOUNT, _label_of(GameData.materials, material_id)])
+
+
+# --- Onglet OBJETS ----------------------------------------------------------
+
+## Tout ce qui s'obtient en inventaire : objets fabriqués (TOUTES catégories,
+## pas seulement les armes), plats, munitions et autres ressources.
+##
+## Les objets sont forgés avec les réglages de l'onglet ATELIER (bois, minerai,
+## gemme, qualité) : dupliquer ici des sélecteurs de matériaux aurait fait deux
+## états à tenir synchronisés pour le même geste.
+func _build_objects_tab() -> void:
+	var by_type := {}
+	for item_id: String in GameData.items:
+		var item_type := String((GameData.items[item_id] as Dictionary).get("type", "?"))
+		if not by_type.has(item_type):
+			by_type[item_type] = []
+		(by_type[item_type] as Array).append(item_id)
+
+	var types: Array = by_type.keys()
+	types.sort()
+	for item_type: String in types:
+		var ids: Array = by_type[item_type]
+		ids.sort()
+		_section_in(_objects_list, "%s (%d) — forgé aux réglages de l'Atelier" % [
+				item_type.capitalize(), ids.size()])
+		_content_grid(_objects_list, ids,
+			func(id: String) -> String: return _label_of(GameData.items, id),
+			_forge_any_item)
+
+	# PLATS, MUNITIONS ET RESSOURCES. Ils ne se forgent pas : ce sont des
+	# instances de ressource empilables, sans choix de matériaux.
+	var resource_ids := _sorted_ids(GameData.resources)
+	_section_in(_objects_list, "Ressources, plats et munitions (%d) — clic = +%d" % [
+			resource_ids.size(), RESOURCE_GIVE_AMOUNT])
+	_content_grid(_objects_list, resource_ids,
+		func(id: String) -> String: return _label_of(GameData.resources, id),
+		_give_resource)
+
+
+func _give_resource(resource_id: String) -> void:
+	var instance := ItemFactory.resource_instance(resource_id, RESOURCE_GIVE_AMOUNT)
+	if instance.is_empty():
+		return
+	_player.inventory.add_object(instance)
+	_set_status("+%d %s." % [RESOURCE_GIVE_AMOUNT, _label_of(GameData.resources, resource_id)])
+
+
+## Forge un objet quelconque aux réglages courants de l'atelier.
+func _forge_any_item(item_id: String) -> void:
+	var item: Dictionary = GameData.items.get(item_id, {})
+	if item.is_empty():
+		return
+	# Chaque catégorie de la recette reçoit le choix courant de l'atelier ; une
+	# catégorie qu'il ne propose pas (cuir, tissu…) prend le premier matériau
+	# venu, sans quoi une cuirasse serait infabricable depuis ce menu.
+	var choices := {}
+	for input: Dictionary in (item.get("recipe", {}) as Dictionary).get("inputs", []):
+		var category := String(input["category"])
+		if category == "bois":
+			choices[category] = _forge_wood
+		elif category == "minerai":
+			choices[category] = _forge_ore
+		else:
+			var pool := _materials_of(category)
+			if not pool.is_empty():
+				choices[category] = String(pool[0])
+	if _forge_gem != "":
+		choices["cristal"] = _forge_gem
+	var instance := ItemFactory.craft(item_id, choices, _forge_quality)
+	if instance.is_empty():
+		_set_status("« %s » : aucun matériau disponible pour sa recette." % item_id)
+		return
+	_player.inventory.add_object(instance)
+	_set_status("%s forgé (qualité %.1f)." % [_label_of(GameData.items, item_id), _forge_quality])
+
+
+# --- Onglet MONDE -----------------------------------------------------------
+
+## Ce qui se pose ou se déclenche dans le monde : essences d'arbre, plantes,
+## transformations d'atelier, navigation de dimension.
+func _build_world_tab() -> void:
+	_section_in(_world_list, "Arbres (%d) — clic = planter devant soi" % GameData.trees.size())
+	_content_grid(_world_list, _sorted_ids(GameData.trees),
+		func(id: String) -> String: return _label_of(GameData.trees, id),
+		_plant_tree)
+
+	_section_in(_world_list, "Plantes (%d) — clic = planter devant soi" % GameData.plants.size())
+	_content_grid(_world_list, _sorted_ids(GameData.plants),
+		func(id: String) -> String: return _label_of(GameData.plants, id),
+		_plant_plant)
+
+	# TRANSFORMATIONS : elles ne se déclenchent qu'à la bonne station, avec les
+	# bons intrants et la bonne compétence. Ici on saute tout ça et on crédite la
+	# sortie — c'est la seule façon d'obtenir de l'acier ou du verre sans monter
+	# la chaîne de production complète, et c'est le propre d'un menu de triche.
+	_section_in(_world_list, "Transformations (%d) — clic = crédite la sortie" % GameData.transformations.size())
+	_content_grid(_world_list, _sorted_ids(GameData.transformations),
+		func(id: String) -> String: return _label_of(GameData.transformations, id),
+		_apply_transformation)
+
+	# DIMENSIONS : la grille est bâtie depuis le REGISTRE, comme tout le reste.
+	# Une dimension ajoutée en données devient accessible ici sans une ligne de
+	# code — c'était tout l'objet de la généralisation.
+	_section_in(_world_list, "Dimensions (%d) — clic = y entrer" % GameData.dimensions.size())
+	_content_grid(_world_list, _sorted_ids(GameData.dimensions),
+		func(id: String) -> String: return _label_of(GameData.dimensions, id),
+		_enter_dimension)
+
+	_section_in(_world_list, "Donjon — navigation d'étage")
+	var dims := HBoxContainer.new()
+	dims.add_theme_constant_override("separation", UITheme.GAP)
+	dims.add_child(_compact("Entrer en donjon", _enter_nearest_dungeon))
+	dims.add_child(_compact("Sortir", func() -> void:
+		# `DimensionManager.leave` couvre TOUTES les dimensions ; celle du
+		# donjon passe par son backend, qui a son propre chemin de sortie.
+		if DimensionManager.active == &"donjon":
+			DungeonManager.leave()
+		else:
+			DimensionManager.leave()
+		_set_status("Retour à l'overworld.")))
+	dims.add_child(_compact("Descendre", func() -> void:
+		DungeonManager.descend()
+		_set_status("Étage inférieur.")))
+	dims.add_child(_compact("Monter", func() -> void:
+		DungeonManager.ascend()
+		_set_status("Étage supérieur.")))
+	_world_list.add_child(dims)
+
+
+## Entre dans une dimension quelconque. Le donjon garde sa porte dédiée juste
+## en dessous : il lui faut une CELLULE, alors que les dimensions génériques se
+## construisent d'elles-mêmes.
+func _enter_dimension(dimension_id: String) -> void:
+	if dimension_id == "donjon":
+		_enter_nearest_dungeon()
+		return
+	var here: Vector3 = _player.get_position_for_ai()
+	if DimensionManager.enter(StringName(dimension_id), here, Vector3.ZERO):
+		_set_status("Entré dans « %s »." % _label_of(GameData.dimensions, dimension_id))
+	else:
+		_set_status("Impossible d'entrer dans « %s »." % dimension_id)
+
+
+func _apply_transformation(transformation_id: String) -> void:
+	var recipe: Dictionary = GameData.transformations.get(transformation_id, {})
+	var output: Dictionary = recipe.get("output", {})
+	var material_id := String(output.get("material", ""))
+	if material_id == "" or not GameData.materials.has(material_id):
+		_set_status("« %s » : matériau de sortie inconnu." % transformation_id)
+		return
+	var amount := int(output.get("amount", 1)) * 10
+	_player.inventory.add_material(material_id, amount)
+	_set_status("+%d %s." % [amount, _label_of(GameData.materials, material_id)])
+
+
+func _enter_nearest_dungeon() -> void:
+	var here: Vector3 = _player.get_position_for_ai()
+	var cell := ClaimManager.cell_of_block(int(here.x), int(here.z))
+	# Même recherche en anneaux que la téléportation de POI : on ne veut pas d'un
+	# second parcours qui divergerait du premier.
+	for radius in range(0, MAX_RING):
+		for dz in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				if maxi(absi(dx), absi(dz)) != radius:
+					continue
+				var candidate := cell + Vector2i(dx, dz)
+				if DungeonManager.is_dungeon_cell(candidate):
+					DungeonManager.enter_from_map(candidate)
+					_set_status("Entrée dans le donjon de la cellule %s." % str(candidate))
+					return
+	_set_status("Aucun donjon trouvé alentour.")
+
+
+## Plante une essence devant le joueur, blocs ET sous-grilles de détail — comme
+## le générateur de monde la planterait.
+func _plant_tree(species_id: String) -> void:
+	var species: Dictionary = GameData.trees.get(species_id, {})
+	if species.is_empty():
+		return
+	var spot := _spot_ahead()
+	var tree := TreeGenerator.generate(spot, WorldManager.world_seed + TickManager.tick_index, species)
+	var blocks: Dictionary = tree["blocks"]
+	for pos: Vector3i in blocks:
+		WorldManager.set_block(pos, blocks[pos])
+	var subdivs: Dictionary = tree["trunk_subdivs"]
+	for pos: Vector3i in subdivs:
+		WorldManager.set_subdiv_grid(pos, subdivs[pos], blocks[pos])
+	_set_status("%s planté (%d blocs)." % [_label_of(GameData.trees, species_id), blocks.size()])
+
+
+## Plante une culture devant le joueur. Une plante tient dans UN bloc (c'est ce
+## qui rend son indivisibilité gratuite) : sa sous-grille est le végétal, et sa
+## grille de racines occupe le bloc du dessous quand l'espèce en a.
+func _plant_plant(plant_id: String) -> void:
+	var species: Dictionary = GameData.plants.get(plant_id, {})
+	if species.is_empty():
+		return
+	var spot := _spot_ahead()
+	var plant := PlantGenerator.generate(spot, WorldManager.world_seed + TickManager.tick_index,
+			species, PLANT_MATURE_STAGE)
+	var grid: PackedInt32Array = plant.get("grid", PackedInt32Array())
+	if grid.is_empty():
+		_set_status("« %s » n'a rien produit." % plant_id)
+		return
+	WorldManager.set_subdiv_grid(spot, grid, SubdivGrid.dominant_id(grid))
+	var roots: PackedInt32Array = plant.get("root_grid", PackedInt32Array())
+	if not roots.is_empty():
+		WorldManager.set_subdiv_grid(spot + Vector3i(0, -1, 0), roots,
+				SubdivGrid.dominant_id(roots))
+	_set_status("%s planté." % _label_of(GameData.plants, plant_id))
+
+
+## Stade de croissance des plantes posées ici : la plante est toujours donnée
+## MATURE, c'est celle qu'on veut voir et récolter en test.
+const PLANT_MATURE_STAGE := 3
+
+
+## Case de sol libre devant le joueur — le sol RÉEL (blocs), pas la hauteur
+## procédurale : en grotte, en donjon ou sur du terrain modifié, les deux
+## diffèrent, et la même règle vaut déjà pour le spawn de créature.
+func _spot_ahead() -> Vector3i:
+	var fly_camera := get_node_or_null("../FlyCamera") as Node3D
+	if fly_camera == null:
+		return Vector3i.ZERO
+	var forward := -fly_camera.global_basis.z
+	forward.y = 0.0
+	if forward.length_squared() < 0.001:
+		forward = Vector3.FORWARD
+	var spot := fly_camera.global_position + forward.normalized() * SPAWN_AHEAD
+	var x := int(floor(spot.x))
+	var z := int(floor(spot.z))
+	var y := int(floor(fly_camera.global_position.y))
+	for i in 64:
+		if WorldManager.block_at_world(Vector3i(x, y - 1, z)) != 0:
+			break
+		y -= 1
+	return Vector3i(x, y, z)
+
+
+# --- Onglet PERSONNAGE ------------------------------------------------------
+
+## Ce qui définit le personnage : race, classe, compétences une par une,
+## statuts. Le menu ne savait que « tout maximiser » ou « tout remettre à
+## zéro » sur les compétences, ce qui ne permet de tester aucun palier précis.
+func _build_character_tab() -> void:
+	_section_in(_character_list, "Races (%d) — clic = recrée le personnage" % GameData.races.size())
+	_content_grid(_character_list, _sorted_ids(GameData.races),
+		func(id: String) -> String: return _label_of(GameData.races, id),
+		func(id: String) -> void: _recreate_character(id, String(_player.class_id)))
+
+	_section_in(_character_list, "Classes (%d) — clic = recrée le personnage" % GameData.classes.size())
+	_content_grid(_character_list, _sorted_ids(GameData.classes),
+		func(id: String) -> String: return _label_of(GameData.classes, id),
+		func(id: String) -> void: _recreate_character(String(_player.race_id), id))
+
+	_section_in(_character_list, "Statuts (%d) — clic = appliquer, re-clic = retirer" % GameData.status_effects.size())
+	_content_grid(_character_list, _sorted_ids(GameData.status_effects),
+		func(id: String) -> String: return _label_of(GameData.status_effects, id),
+		_toggle_status)
+
+	_section_in(_character_list, "Compétences (%d) — clic = +5 niveaux" % GameData.skills.size())
+	_content_grid(_character_list, _sorted_ids(GameData.skills),
+		func(id: String) -> String: return _label_of(GameData.skills, id),
+		_bump_skill)
+
+
+func _toggle_status(status_id: String) -> void:
+	if _player.statuses.has(status_id):
+		_player.statuses.remove(status_id)
+		_set_status("Statut « %s » retiré." % _label_of(GameData.status_effects, status_id))
+		return
+	_player.statuses.apply(status_id, CHEAT_STATUS_TICKS, 1.0)
+	_set_status("%s appliqué (%d ticks)." % [
+			_label_of(GameData.status_effects, status_id), CHEAT_STATUS_TICKS])
+
+
+func _bump_skill(skill_id: String) -> void:
+	var skill: Dictionary = _player.skills.skills.get(skill_id, {})
+	if skill.is_empty():
+		return
+	skill["level"] = int(skill["level"]) + 5
+	_set_status("%s : niveau %d." % [_label_of(GameData.skills, skill_id), int(skill["level"])])
+
+
+## Recrée le personnage avec une race et une classe données.
+##
+## `apply_character` est LE chemin officiel — bonus de race, bonus de classe,
+## compétences de départ, potentiels planchers. Écrire `race_id` à la main
+## donnerait une race sans aucun de ses effets, c'est-à-dire une étiquette.
+func _recreate_character(race_id: String, class_id: String) -> void:
+	var allocated := {}
+	for stat_id: String in _player.stats:
+		allocated[stat_id] = int(_player.stats[stat_id])
+	_player.apply_character({"race": race_id, "class": class_id, "stats": allocated})
+	_set_status("Personnage recréé : %s / %s." % [
+			_label_of(GameData.races, race_id), _label_of(GameData.classes, class_id)])

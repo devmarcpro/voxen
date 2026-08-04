@@ -26,15 +26,15 @@
   "vegetation": [
     {
       "id": "saule",
-      "density": 0.012
+      "density": 0.00336
     },
     {
       "id": "peuplier",
-      "density": 0.012
+      "density": 0.00336
     },
     {
       "id": "aulne",
-      "density": 0.012
+      "density": 0.00336
     }
   ],
   "village_palette": {

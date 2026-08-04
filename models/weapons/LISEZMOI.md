@@ -41,21 +41,83 @@ latéral déporterait l'arme dans la main.
 
 ---
 
-## Les 7 manches existants
+## Les 12 manches : POIGNÉES d'un côté, FÛTS de l'autre
 
-| id | longueur | armes qui l'utilisent |
+Le catalogue confondait les deux jusqu'au 2026-08-02 : `moyen` faisait 69 cm,
+ce qui est une hampe de masse mais **trois fois la poignée d'une épée**.
+L'épée se tenait donc au tiers d'un manche, avec 48 cm de bois nu entre le
+poing et la lame — et comme la prise décide de l'allonge, cette géométrie
+fausse contaminait le gameplay.
+
+**Poignées** — la main les couvre, un pommeau les termine, la lame commence
+juste au-dessus du poing.
+
+| id | longueur | armes |
 |---|---|---|
-| `court` | 12 px · 0,375 | dague, hachette, gourdin, épée courte |
-| `moyen` | 22 px · 0,688 | épée, masse, masse à ailettes, rapière, pioche de combat |
-| `long` | 34 px · 1,062 | hache d'armes, espadon, hache double, marteau de guerre |
-| `tres_long` | 70 px · 2,188 | lance, hallebarde, trident, faux de guerre |
-| `baton` | 46 px · 1,438 | bâton de canalisation, bâton ferré |
+| `poignee_dague` | 4 px · 0,125 | dague |
+| `poignee_epee` | 6 px · 0,188 | épée, épée courte, rapière |
+| `poignee_longue` | 13 px · 0,406 | espadon (main gauche au pommeau) |
+
+**Fûts** — on les tient bas, et la longueur restante fait l'allonge et
+l'inertie.
+
+| id | longueur | armes |
+|---|---|---|
+| `court` | 8 px · 0,250 | hachette, gourdin |
+| `moyen` | 13 px · 0,406 | masse, masse à ailettes, pioche de combat |
+| `long` | 34 px · 1,062 | hache d'armes, hache double, marteau de guerre |
+| `hampe` | 48 px · 1,500 | hallebarde, trident, faux de guerre |
+| `hampe_longue` | 64 px · 2,000 | lance |
+| `baton` | 46 px · 1,438 | bâton ferré, bâton de canalisation |
 | `arc` | 30 px · 0,938 | arc |
 | `arbalete` | 18 px · 0,562 | arbalète |
+| `poignee` | 4 px · 0,125 | écu, rondache, pavois |
 
-Épaisseurs actuelles : 3 à 5 px. Rien ne t'oblige à un simple cylindre —
-renflements, garde, pommeau, enroulement de cuir sont les bienvenus, tant que
-la pièce reste dans `y = 0 → longueur`.
+**Hampe et pique sont deux pièces** : une hallebarde fait 1,80 à 2,20 m, une
+lance 2,50. Elles n'en faisaient qu'une, poussée à 2,19 m pour qu'un espadon ne
+porte pas plus loin qu'une pique ; l'espadon étant repassé de 2,02 à 1,59 m
+avec sa vraie poignée, la contrainte s'est desserrée d'elle-même.
+
+Épaisseurs : 3 à 5 px, plus un pommeau optionnel (3ᵉ valeur de `HANDLES`).
+Rien n'oblige à un simple cylindre — renflements, garde, enroulement de cuir
+sont les bienvenus, tant que la pièce reste dans `y = 0 → longueur`.
+
+---
+
+## Recette et masse : DÉRIVÉES du volume des pièces
+
+Elles étaient tapées à la main et ne suivaient plus rien : le métal consommé
+allait de 28 à 424 px³ par unité selon l'arme — un facteur 15 sans
+justification —, une masse à une main pesait 2 kg quand un espadon en pesait
+2,1, et une hallebarde de 2,80 m était plus légère qu'une masse.
+
+`tools/generate_weapon_parts.py` les recalcule désormais depuis le volume réel
+des boîtes :
+
+- **recette** : une unité de matière = `UNIT_VOLUME_PX3` (140 px³) ;
+- **`poids_reference`** = masse de cette recette **en chêne et fer**.
+
+Conséquence à connaître : une arme forgée dans ses matériaux de référence
+tourne **exactement à sa `vitesse_base`**, et seul un écart à cette référence
+la ralentit ou l'accélère. `poids_reference` n'est plus un chiffre à l'estime.
+
+`HEAD_WOOD_SHARE` déclare les têtes qui ne sont pas métalliques : un plateau de
+bouclier est une planche cerclée de fer, un gourdin un rondin, des branches
+d'arc du bois. Sans ce chiffre, la dérivation ferait forger un écu dans six
+lingots.
+
+**Ne modifie donc plus les `inputs` d'une recette ni `poids_reference` à la
+main** : le générateur les réécrit. Change la géométrie, ou `UNIT_VOLUME_PX3`.
+
+---
+
+## Longueurs de référence
+
+`--probe-combat` vérifie que chaque arme tombe dans la fourchette de son
+équivalent historique (table `REAL_LENGTHS` de la sonde). Au 2026-08-02, les 21
+armes y sont : dague 0,38 · épée 0,94 · rapière 1,12 · espadon 1,59 ·
+hachette 0,59 · masse 0,69 · hache d'armes 1,41 · bâton 1,72 · trident 1,94 ·
+hallebarde 2,12 · lance 2,31 m.
 
 ---
 

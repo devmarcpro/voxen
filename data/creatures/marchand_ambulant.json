@@ -50,7 +50,13 @@
   },
   "niveau_combat": 5,
   "world_gen": {
-    "biome_tags": []
+    "biome_tags": [
+      "tempere",
+      "plaine",
+      "prairie",
+      "mediterraneen"
+    ],
+    "activite": "jour"
   },
   "tags": [
     "civil",

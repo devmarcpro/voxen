@@ -1,0 +1,14 @@
+{
+  "id": "taille_gres_taillee",
+  "name_key": "transformation.taille_gres_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "gres_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "gres",
+    "amount": 1
+  }
+}

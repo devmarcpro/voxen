@@ -1,0 +1,14 @@
+{
+  "id": "taille_marbre_taillee",
+  "name_key": "transformation.taille_marbre_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "marbre_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "marbre",
+    "amount": 1
+  }
+}

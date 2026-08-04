@@ -1,0 +1,103 @@
+{
+  "id": "culture_nipponne",
+  "name_key": "culture.nipponne.name",
+  "name_order": "nom_prenom",
+  "race_affinity": {
+    "humain": 1.0
+  },
+  "prenom_a": [
+    "Aki",
+    "Hiro",
+    "Take",
+    "Kazu",
+    "Yumi",
+    "Sato",
+    "Nao",
+    "Rin",
+    "Haru",
+    "Ken",
+    "Mika",
+    "Sora"
+  ],
+  "prenom_b": [
+    "ra",
+    "shi",
+    "ko",
+    "to",
+    "mi",
+    "na",
+    "ya",
+    "ki",
+    "sa"
+  ],
+  "famille_a": [
+    "Yama",
+    "Kawa",
+    "Taka",
+    "Fuji",
+    "Ishi",
+    "Mori",
+    "Naka",
+    "Kuro",
+    "Shiro",
+    "Matsu"
+  ],
+  "famille_b": [
+    "moto",
+    "da",
+    "hashi",
+    "gawa",
+    "yama",
+    "zaki",
+    "no",
+    "bara"
+  ],
+  "ville_a": [
+    "Kyo",
+    "Osa",
+    "Nara",
+    "Sen",
+    "Kana",
+    "Hako",
+    "Miya",
+    "Toku",
+    "Aki",
+    "Shira"
+  ],
+  "ville_b": [
+    "to",
+    "ka",
+    "dai",
+    "gawa",
+    "zawa",
+    "shima",
+    "yama",
+    "mura"
+  ],
+  "titres": {
+    "monarchie_hereditaire": {
+      "m": "Tennô",
+      "f": "Tennô"
+    },
+    "republique_elue": {
+      "m": "Premier Ministre",
+      "f": "Première Ministre"
+    },
+    "theocratie": {
+      "m": "Grand Prêtre",
+      "f": "Grande Prêtresse"
+    },
+    "ploutocratie": {
+      "m": "Marchand Suprême",
+      "f": "Marchande Suprême"
+    },
+    "dictature_militaire": {
+      "m": "Shôgun",
+      "f": "Shôgun"
+    },
+    "guilde_maitre": {
+      "m": "Grand Maître",
+      "f": "Grande Maîtresse"
+    }
+  }
+}

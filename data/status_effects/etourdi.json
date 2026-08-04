@@ -1,0 +1,14 @@
+{
+  "id": "etourdi",
+  "name_key": "status.etourdi.name",
+  "duration_ticks": 50,
+  "stacks": false,
+  "tags": [
+    "controle"
+  ],
+  "modifiers": {
+    "vitesse_deplacement": {
+      "mult": 0.5
+    }
+  }
+}

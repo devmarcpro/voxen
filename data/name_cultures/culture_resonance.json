@@ -1,0 +1,101 @@
+{
+  "id": "culture_resonance",
+  "name_key": "culture.resonance.name",
+  "name_order": "prenom_nom",
+  "race_affinity": {
+    "echomorphe": 1.0
+  },
+  "prenom_a": [
+    "Ka-ka",
+    "Ti",
+    "Vor-vor",
+    "Sss",
+    "Kli",
+    "Dro-dro",
+    "Mmm",
+    "Zik",
+    "Ha-ha",
+    "Tok",
+    "Wrr",
+    "Nn"
+  ],
+  "prenom_b": [
+    "-ka",
+    "-ti",
+    "-tik",
+    "-sss",
+    "-orr",
+    "-nn",
+    "-klik",
+    "-wrr",
+    "-oh"
+  ],
+  "famille_a": [
+    "Écho",
+    "Ressac",
+    "Battement",
+    "Grelot",
+    "Fracas",
+    "Murmure",
+    "Cliquetis",
+    "Bourdon",
+    "Silence",
+    "Rumeur"
+  ],
+  "famille_b": [
+    "-Répété",
+    "-Brisé",
+    "-Double",
+    "-Creux",
+    "-Sourd",
+    "-Renvoyé"
+  ],
+  "ville_a": [
+    "Kli",
+    "Vor",
+    "Tok",
+    "Sss",
+    "Dro",
+    "Hurl",
+    "Grr",
+    "Tin",
+    "Bram",
+    "Ech"
+  ],
+  "ville_b": [
+    "-klik",
+    "-vor",
+    "-tok",
+    "-sss",
+    "-drone",
+    "-écho",
+    "-tinn",
+    "-rumm"
+  ],
+  "titres": {
+    "monarchie_hereditaire": {
+      "m": "Premier Écho",
+      "f": "Premier Écho"
+    },
+    "republique_elue": {
+      "m": "Chœur",
+      "f": "Chœur"
+    },
+    "theocratie": {
+      "m": "Porte-Silence",
+      "f": "Porte-Silence"
+    },
+    "ploutocratie": {
+      "m": "Compteur",
+      "f": "Compteuse"
+    },
+    "dictature_militaire": {
+      "m": "Tambour de Guerre",
+      "f": "Tambour de Guerre"
+    },
+    "guilde_maitre": {
+      "m": "Grand Maître",
+      "f": "Grande Maîtresse"
+    }
+  }
+}

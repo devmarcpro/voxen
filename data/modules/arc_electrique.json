@@ -1,0 +1,20 @@
+{
+  "id": "arc_electrique",
+  "name_key": "module.arc_electrique.name",
+  "module_type": "effet",
+  "mana_cost_base": 8,
+  "power_base": 13,
+  "tags": [
+    "foudre",
+    "projectile"
+  ],
+  "params": {
+    "vitesse": 40,
+    "portee": 22
+  },
+  "grimoire_domains": [
+    "foudre"
+  ],
+  "book_type": "grimoire",
+  "degats_des": "2d6"
+}

@@ -2,12 +2,47 @@
   "id": "salle_moyenne",
   "kind": "salle",
   "size_category": "moyenne",
-  "size": [11, 6, 11],
-  "doors": [
-    { "position": [5, 0, 0], "direction": "sud" },
-    { "position": [5, 0, 10], "direction": "nord" },
-    { "position": [10, 0, 5], "direction": "est" },
-    { "position": [0, 0, 5], "direction": "ouest" }
+  "size": [
+    15,
+    9,
+    15
   ],
-  "special_tags": ["boss_room_eligible", "treasure_eligible"]
+  "doors": [
+    {
+      "position": [
+        7,
+        0,
+        0
+      ],
+      "direction": "sud"
+    },
+    {
+      "position": [
+        7,
+        0,
+        14
+      ],
+      "direction": "nord"
+    },
+    {
+      "position": [
+        14,
+        0,
+        7
+      ],
+      "direction": "est"
+    },
+    {
+      "position": [
+        0,
+        0,
+        7
+      ],
+      "direction": "ouest"
+    }
+  ],
+  "special_tags": [
+    "boss_room_eligible",
+    "treasure_eligible"
+  ]
 }

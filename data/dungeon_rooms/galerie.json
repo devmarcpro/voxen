@@ -1,0 +1,47 @@
+{
+  "id": "galerie",
+  "kind": "salle",
+  "size_category": "moyenne",
+  "size": [
+    21,
+    8,
+    11
+  ],
+  "doors": [
+    {
+      "position": [
+        10,
+        0,
+        0
+      ],
+      "direction": "sud"
+    },
+    {
+      "position": [
+        10,
+        0,
+        10
+      ],
+      "direction": "nord"
+    },
+    {
+      "position": [
+        20,
+        0,
+        5
+      ],
+      "direction": "est"
+    },
+    {
+      "position": [
+        0,
+        0,
+        5
+      ],
+      "direction": "ouest"
+    }
+  ],
+  "special_tags": [
+    "treasure_eligible"
+  ]
+}

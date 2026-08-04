@@ -1,0 +1,42 @@
+{
+  "id": "foreuse_pro",
+  "name_key": "item.foreuse_pro.name",
+  "type": "outil",
+  "equip_slot": "arme",
+  "hands": 2,
+  "functionality": "foreuse_pro",
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 3
+      },
+      {
+        "category": "minerai",
+        "amount": 11
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.85,
+      "bois": 0.15
+    }
+  },
+  "effects": [],
+  "tags": [
+    "outil",
+    "recolte",
+    "foreuse"
+  ],
+  "sprites": {
+    "manche": "res://assets/tools/pioche_manche.png",
+    "tete": "res://assets/tools/pioche_tete.png"
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "id": "culture_arabo",
+  "name_key": "culture.arabo.name",
+  "name_order": "prenom_nom",
+  "race_affinity": {
+    "humain": 1.0
+  },
+  "prenom_a": [
+    "Yas",
+    "Kar",
+    "Nas",
+    "Tar",
+    "Zah",
+    "Am",
+    "Far",
+    "Idr",
+    "Sal",
+    "Rash",
+    "Lay",
+    "Hass"
+  ],
+  "prenom_b": [
+    "ir",
+    "im",
+    "an",
+    "ida",
+    "ira",
+    "oun",
+    "al",
+    "issa",
+    "ib"
+  ],
+  "famille_a": [
+    "Ben",
+    "Ibn",
+    "El",
+    "Al",
+    "Aït",
+    "Ould",
+    "Bou",
+    "Abd"
+  ],
+  "famille_b": [
+    "-Khalid",
+    "-Rachid",
+    "-Amir",
+    "-Tarek",
+    "-Nasr",
+    "-Sahel",
+    "-Mansour",
+    "-Zayd"
+  ],
+  "ville_a": [
+    "Mar",
+    "Sidi",
+    "Aïn",
+    "Bab",
+    "Ksar",
+    "Dar",
+    "Tam",
+    "Agh",
+    "Zag",
+    "Rif"
+  ],
+  "ville_b": [
+    "rakech",
+    "zouar",
+    "tania",
+    "salam",
+    "adir",
+    "ouda",
+    "mane",
+    "ora"
+  ],
+  "titres": {
+    "monarchie_hereditaire": {
+      "m": "Sultan",
+      "f": "Sultane"
+    },
+    "republique_elue": {
+      "m": "Grand Vizir",
+      "f": "Grande Vizir"
+    },
+    "theocratie": {
+      "m": "Imam",
+      "f": "Imama"
+    },
+    "ploutocratie": {
+      "m": "Maître des Caravanes",
+      "f": "Maîtresse des Caravanes"
+    },
+    "dictature_militaire": {
+      "m": "Émir de Guerre",
+      "f": "Émira de Guerre"
+    },
+    "guilde_maitre": {
+      "m": "Grand Maître",
+      "f": "Grande Maîtresse"
+    }
+  }
+}

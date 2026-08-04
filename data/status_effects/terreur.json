@@ -1,0 +1,10 @@
+{
+  "id": "terreur",
+  "name_key": "status.terreur.name",
+  "duration_ticks": 100,
+  "stacks": false,
+  "tags": [
+    "controle",
+    "mental"
+  ]
+}

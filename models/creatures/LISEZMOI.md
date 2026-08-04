@@ -32,6 +32,132 @@ renseigné mais introuvable produit un avertissement clair au démarrage.
 
 ---
 
+# Gabarits de CORPS non humanoides — 27 mobs prets a ajuster
+
+> Generes le 2026-08-02. **Deux fichiers par espece** issus des memes tables,
+> comme l'humanoide, plus un manifeste commun :
+>
+> | Fichier | Role |
+> |---|---|
+> | `<espece>.bbmodel` | **projet Blockbench, a ouvrir pour editer** |
+> | `<espece>.glb` | consomme par Godot (devient un `Skeleton3D`) |
+> | `rigs.json` | **genere, ne pas editer** — famille, calques de couleur, zones de coup |
+>
+> - Regenerer : `python tools/generate_creature_rigs.py`
+> - Valider en jeu : `godot --headless --path . -- --probe-rigs-animaux`
+>
+> Ce sont des **mannequins cubiques sans texture** : les rigs sont corrects et
+> complets, l'art reste a faire. La couleur vient d'une peau procedurale a
+> quatre calques (dos / ventre / pattes / detail), pas d'un atlas.
+
+## L'essentiel : le code ne connait AUCUNE espece
+
+`scenes/entities/creature_body.gd` decouvre ce qu'un squelette sait faire en
+lisant le **nom de ses os**, et compose les comportements qu'il y trouve.
+Ajouter un mob — six pattes, trois paires d'ailes, huit tentacules — ne demande
+donc **pas une ligne de code**.
+
+| Convention de nommage | Ce que le pilote en fait |
+|---|---|
+| `cuisse_<sfx>` → `mollet_<sfx>` → `pied_<sfx>` (ou `serre_`, `tarse_`) | **patte** : chaine IK de 2 os, ancree sur les blocs, integree a l'allure |
+| `aile_<sfx>` → `avantaile_<sfx>` → `plume_<sfx>` (2 derniers facultatifs) | **aile** : battement avec retard vers l'extremite |
+| `<base>_1`, `<base>_2`, … (chacun parent du suivant) | **chaine souple** : onde propagee |
+| `nageoire_*`, `pince_*`, `oreille_*` isoles | **ballant** : oscillation lente |
+| *aucune patte* | le corps **flotte** au lieu de marcher |
+
+Rien n'est code par espece, pas meme l'allure : le **cote** vient du signe de X
+de la hanche au repos, le **rang** de sa profondeur Z. Deux paires donnent le
+trot diagonal, quatre l'alternance en tetrapode d'une araignee, huit l'onde
+d'un mille-pattes — sans qu'aucune de ces demarches ait ete decrite.
+
+De meme, l'axe d'une onde vient de l'**orientation au repos** de la chaine :
+horizontale → lacet (serpent), verticale → balancement radial (tentacule).
+
+`colonne_1`/`colonne_2` est donc une chaine souple, et c'est voulu : la colonne
+d'un marcheur ondule legerement, ce qui donne le roulis du corps pendant la
+marche gratuitement.
+
+## Contraintes qui restent vraies pour tous
+
+- **Chaine IK = 2 os exactement** (solveur analytique `TwoBoneIK`), os pointant
+  vers **−Y au repos** : les pattes sont dessinees **verticales**, jamais pliees.
+- **Un maillage par os**, poids 1.0 : condition du demembrement (echelle de l'os
+  a zero). Un cube a cheval sur deux os s'etirerait au lieu de disparaitre.
+- **Pivots aux articulations**, jamais au centre du cube.
+- **Bas du modele a y = 0**, face vers **−Z**, hauteur ≤ 2,0, 1 unite = 32 px.
+- `attach_tete` present (selle, sacoche, trophee) ; `attach_dos` quand il a un sens.
+
+Le generateur **refuse d'ecrire** un rig qui viole l'une de ces regles.
+
+## Le catalogue
+
+| Famille | Especes | Squelette | Ce qui l'anime |
+|---|---|---|---|
+| `quadrupede` | chat, loup, ours, cerf, sanglier, cheval, rat, lezard, crocodile | colonne 3 os + 4 pattes IK + queue | trot diagonal, IK de sol, roulis, queue |
+| `bipede` | raptor, autruche | colonne horizontale + 2 pattes IK + cou et queue souples | marche, cou saccade, queue contrepoids |
+| `serpentin` | serpent, ver | 6-10 segments `corps_*` | onde de lacet du nez a la queue |
+| `nageur` | poisson, requin, raie | segments `corps_*` + caudale, dorsale, pectorales | onde + nageoires (ondulantes chez la raie) |
+| `volant` | aigle, chauve_souris | corps + 2 ailes (3 os) + 2 pattes IK | battement, pattes repliees en vol, IK au pose |
+| `arthropode` | araignee (8), scarabee (6), crabe (8 + pinces) | thorax/abdomen + N pattes IK | alternance tetrapode, antennes, pinces |
+| `insecte_volant` | abeille | 6 pattes IK + 2 paires d'ailes | marche et battement simultanes |
+| `segmente` | mille_pattes | 8 segments, une paire de pattes chacun | onde du corps ET onde des pattes |
+| `tentaculaire` | pieuvre | cloche + 8 bras souples | flottaison + bras qui ondulent |
+| `flottant` | meduse, spectre | cloche + tentacules | flottaison, respiration, roulis |
+| `draconique` | dragon | 4 pattes IK + 2 ailes + cou et queue souples | la composition de tout le reste |
+
+Dimensions (H × L × largeur, en blocs) : voir la sortie du generateur, qui les
+imprime a chaque execution.
+
+## Ajouter un mob
+
+Une ligne dans `SPECIES` (`tools/generate_creature_rigs.py`) : dupliquer la plus
+proche, changer trois nombres. Ni geometrie a dessiner, ni code a ecrire.
+
+```python
+"lynx": ("quadrupede", quadruped, dict(
+    leg=12, bh=8, bw=8, bl=20, neck=3, head=7, muzzle=3, ear=3,
+    tail_n=2, tail_len=6, tail_th=2, head_rise=2)),
+```
+
+Puis `python tools/generate_creature_rigs.py`, et une ligne dans la fiche de
+creature :
+
+```json
+"model": "res://models/creatures/lynx.glb"
+```
+
+**Les zones de coup suivent toutes seules** : elles sont CALCULEES sur la
+geometrie par le generateur et publiees dans `rigs.json`. Une boite saisie a la
+main cesserait d'etre vraie a la premiere retouche de proportion, et il y a
+vingt-sept modeles. `data/hitbox_templates.json` ne sert plus qu'aux especes
+sans modele dedie.
+
+## Ce qui les anime
+
+`scenes/entities/creature_body.gd` (`CreatureBody`). Il tient le meme role que
+`PlayerBody` pour le joueur et **expose les memes methodes**
+(`update_as_entity`, `set_combat_pose`) : `creature.gd` appelle l'un ou l'autre
+sans savoir lequel il tient. Il partage le solveur `TwoBoneIK`, le cache de
+materiaux, le culling d'IK a 15 m et le principe du **cycle pilote par la
+distance parcourue** — une creature qui ralentit ralentit ses pas.
+
+**Aucune animation n'est lue depuis le `.glb`** : les modeles n'en contiennent
+aucune, volontairement. Vingt-sept especes, un seul systeme, zero fichier
+d'animation a maintenir.
+
+## Checklist avant de livrer un rig
+
+- [ ] Projet en **Generic Model** (le squelette s'exporte)
+- [ ] Bas du modele a **y = 0**, face vers **−Z**, hauteur ≤ 2,0
+- [ ] Chaines de pattes a **2 os exactement**, dessinees **verticales**
+- [ ] Nommage conforme au tableau ci-dessus (c'est lui qui declenche l'animation)
+- [ ] `attach_tete` present
+- [ ] **Un maillage par os**, aucun cube a cheval, poids a 1.0
+- [ ] **Aucune piste de scale** dans les animations
+- [ ] `--probe-rigs-animaux` passe
+
+---
+
 # Gabarit HUMANOÏDE — spécification complète
 
 > **Le gabarit existe déjà** (généré le 2026-07-28), en **deux fichiers issus

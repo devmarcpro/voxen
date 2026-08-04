@@ -1,0 +1,18 @@
+{
+  "id": "declencheur_impact",
+  "name_key": "module.declencheur_impact.name",
+  "module_type": "declencheur",
+  "mana_cost_base": 6,
+  "power_base": 0,
+  "tags": [
+    "maitrise",
+    "declencheur"
+  ],
+  "params": {
+    "trigger": "impact"
+  },
+  "grimoire_domains": [
+    "maitrise"
+  ],
+  "book_type": "grimoire"
+}

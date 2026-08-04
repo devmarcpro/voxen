@@ -10,5 +10,11 @@
   "vitesse_base": 2.5,
   "portee": 1.5,
   "type_degats": "contondant",
-  "poids_reference": 1
+  "poids_reference": 1,
+  "attaques": [
+    "estoc",
+    "taille_gauche",
+    "taille_droite",
+    "overhead"
+  ]
 }

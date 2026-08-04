@@ -84,17 +84,37 @@ static func derive(functionality: Dictionary, instance: Dictionary) -> Dictionar
 	var handle: Dictionary = GameData.weapon_parts["manches"].get(String(parts.get("manche", "")), {})
 	var head: Dictionary = GameData.weapon_parts["tetes"].get(String(parts.get("tete", "")), {})
 	var handle_length := float(handle.get("longueur", 0.0))
+	# LE MANCHE DÉCIDE DE LA PRISE, et il en est enfin capable (2026-08-02) :
+	# le catalogue distingue désormais les POIGNÉES (armes blanches, main haute,
+	# pommeau derrière le poing) des FÛTS (percussion et hast, main basse). Tant
+	# qu'un même `moyen` de 69 cm servait à l'épée comme à la masse, aucune
+	# valeur ne pouvait convenir aux deux et il fallait corriger au niveau de la
+	# tête — rustine supprimée avec la cause.
 	var grip_main := float(handle.get("grip_main", 0.3))
 	var grip_offhand: Variant = handle.get("grip_offhand")
 	# Écart entre les deux mains LE LONG du manche, en blocs. 0 = arme à une
 	# main : la seconde main ne sera pas placée du tout.
+	#
+	# LE SIGNE PORTE UN SENS, et il est NÉGATIF pour toute arme blanche à deux
+	# mains (corrigé le 2026-08-02). La seconde main se posait toujours DEVANT
+	# la première : juste pour une arme d'hast, où la main avant devance la main
+	# arrière — faux pour un espadon, dont la gauche tient le POMMEAU, donc
+	# derrière la droite. Toutes les armes à deux mains se tenaient comme des
+	# piques.
 	var hand_separation := 0.0
 	if grip_offhand != null and int(functionality.get("hands", 1)) >= 2:
-		hand_separation = maxf(0.0, (float(grip_offhand) - grip_main) * handle_length)
+		hand_separation = (float(grip_offhand) - grip_main) * handle_length
 	# Allonge : longueur du manche + ce que la tête ajoute, moins la portion de
 	# manche située DERRIÈRE la main (on ne frappe pas avec le pommeau).
 	var derived_reach := handle_length * (1.0 - grip_main) + float(head.get("portee_tete", 0.0))
 	var reach := derived_reach if derived_reach > 0.01 else float(functionality.get("portee", 1.5))
+	# DÉBUT DE LA PARTIE VULNÉRANTE, mesuré depuis la main : c'est la jonction
+	# manche/tête, donc exactement l'endroit où le modèle 3D cesse d'être un
+	# bâton. En deçà on frappe avec le manche. −1 = arme sans pièces (naturelle,
+	# mains nues) : le test de portée retombe alors sur des fractions.
+	var head_start := -1.0
+	if derived_reach > 0.01:
+		head_start = handle_length * (1.0 - grip_main)
 
 	# INERTIE (2026-07-28). La main ne se téléporte pas sur sa cible : elle y est
 	# tirée par un ressort amorti, et la MASSE de l'arme décide de la mollesse
@@ -112,6 +132,8 @@ static func derive(functionality: Dictionary, instance: Dictionary) -> Dictionar
 		"inertia_damping": 2.0 * damping_ratio * sqrt(stiffness),
 		"handle_length": handle_length,
 		"hand_separation": hand_separation,
+		"grip_main": grip_main,
+		"head_start": head_start,
 		"speed": speed,
 		"weight": weight,
 		"cycle_ms": cycle_ms,
@@ -127,33 +149,135 @@ static func derive(functionality: Dictionary, instance: Dictionary) -> Dictionar
 		"dice": String(functionality.get("degats_des", "1d4")),
 		"skill": String(functionality.get("combat_skill", "mains_nues")),
 		"hands": int(functionality.get("hands", 1)),
+		# RÉPERTOIRE D'ATTAQUES (2026-08-02) : les directions que cette arme sait
+		# porter. Vide = toutes. C'est ce qui donne à chaque arme une identité de
+		# jeu et pas seulement des chiffres.
+		"directions": _directions(functionality),
+		# ARME DE TIR (2026-08-02) : la VITESSE INITIALE du projectile marque
+		# l'arme comme distance. Une seule donnée décide du comportement, plutôt
+		# qu'une liste d'identifiants en dur dans le code — ajouter une fronde
+		# ne demandera pas d'y toucher.
+		"vitesse_projectile": float(functionality.get("vitesse_projectile", 0.0)),
+		"tension_ms": float(functionality.get("tension_ms", 900.0)),
+		"portee_tir": float(functionality.get("portee_tir", 0.0)),
+		"munition": String(functionality.get("munition", "")),
 	}
+
+
+## Cette arme tire-t-elle ? Un seul test, partout : sans lui chaque appelant
+## réinventerait « est-ce un arc » avec une règle légèrement différente.
+static func is_ranged(stats: Dictionary) -> bool:
+	return float(stats.get("vitesse_projectile", 0.0)) > 0.0
+
+
+## Directions déclarées par la fiche, converties en valeurs d'énumération.
+static func _directions(functionality: Dictionary) -> Array:
+	var out: Array = []
+	for name: Variant in functionality.get("attaques", []):
+		out.append(MeleeAttack.direction_from_name(String(name)))
+	return out
 
 
 # --- Piliers Mount & Blade : sweet spot et bonus de vitesse --------------
 
-## En deçà de cette fraction de l'allonge, on frappe avec le MANCHE : le coup
-## GLISSE et ne fait rien. C'est ce qui punit d'être trop près avec une arme
-## longue, et donc ce qui donne aux armes courtes leur raison d'être — entrer
-## dans la garde. Sans ça l'allonge n'aurait que des avantages.
+## Fractions de repli, utilisées UNIQUEMENT pour une arme sans pièces (mains
+## nues, morsure) dont on ne connaît pas la géométrie. Pour toutes les autres,
+## c'est le modèle qui décide (voir `sweet_spot_factor`).
 const SWEET_MIN := 0.30
-## À partir d'ici, dégâts pleins. Entre les deux, montée progressive.
 const SWEET_FULL := 0.62
+## Part de la TÊTE sur laquelle les dégâts montent encore. La base d'une lame
+## (le fort) coupe mal : elle sert à parer, pas à trancher. Ce n'est donc pas
+## une frontière nette au millimètre près, mais elle vit désormais À L'INTÉRIEUR
+## de la tête au lieu d'être une fraction arbitraire de l'allonge.
+const HEAD_RAMP := 0.25
 
 
-## Multiplicateur de « sweet spot » : 0 près de la garde, 1 sur la portion
-## tranchante. `distance` = distance de l'impact au point de prise.
-static func sweet_spot_factor(distance: float, reach: float) -> float:
+## CRUSHTHROUGH (2026-08-02) : une arme contondante lourde à deux mains, abattue
+## de haut, TRAVERSE un blocage.
+##
+## POURQUOI CETTE MÉCANIQUE EXISTE, et pourquoi elle n'est pas un détail. Sans
+## elle, un adversaire qui pare correctement est imprenable : le seul levier
+## restant est l'endurance, et le duel se fige en attente. Dans Mount & Blade
+## c'est ce qui donne aux masses et aux marteaux leur raison d'être face aux
+## lames, et ce qui punit le blocage systématique.
+##
+## Les trois conditions sont celles de M&B, et chacune ferme un abus : DEUX
+## MAINS (une masse à une main n'a pas l'inertie), CONTONDANT (une lame dévie
+## sur une garde, elle ne l'écrase pas), COUP HAUT (c'est le poids qui tombe qui
+## traverse, pas un revers). Le seuil de masse fait le tri final : au catalogue
+## actuel, seul le marteau de guerre passe — et c'est exactement ce qu'on veut,
+## une arme spécialisée dans l'ouverture des gardes.
+const CRUSHTHROUGH_MIN_WEIGHT := 90.0
+## Ce qui passe quand même : traverser une garde n'est pas frapper à découvert.
+const CRUSHTHROUGH_DAMAGE := 0.6
+
+
+static func crushes_through(stats: Dictionary, direction: int) -> bool:
+	if direction != MeleeAttack.Direction.OVERHEAD:
+		return false
+	if String(stats.get("damage_type", "")) != "contondant":
+		return false
+	if int(stats.get("hands", 1)) < 2:
+		return false
+	return float(stats.get("weight", 0.0)) >= CRUSHTHROUGH_MIN_WEIGHT
+
+
+## Part de l'allonge qui BLESSE sur une arme naturelle (croc, griffe, poing).
+## Il n'y a pas de manche à quoi se caler : on retient le dernier tiers du
+## membre, ce qui exclut l'épaule et la base de la patte.
+const NATURAL_HEAD_SHARE := 0.35
+
+
+## Portion VULNÉRANTE d'une arme, mesurée depuis la PRISE (le corps) et non
+## depuis la main : `x` = talon du fer, `y` = pointe.
+##
+## UN SEUL ENDROIT POUR LES DEUX CAMPS (2026-08-02, demande de l'auteur : « une
+## attaque ne fait des dégâts que quand la tête de l'arme touche, des deux
+## côtés »). Le joueur et les créatures calculaient cette portée séparément, et
+## divergeaient déjà : l'arme d'un PNJ est DESSINÉE à `PART_SCALE` (1,15) mais
+## sa hitbox ne l'était pas — son fer visible dépassait sa zone de frappe de
+## 15 %. Une seule fonction, deux appelants, plus de divergence possible.
+##
+## `arm` est le rayon du bras (l'arme est dessinée à partir de la MAIN, pas du
+## corps), `draw_scale` l'échelle d'affichage des pièces.
+static func head_span(stats: Dictionary, arm: float, draw_scale: float) -> Vector2:
+	var reach := float(stats.get("reach", 1.5))
+	var head_start := float(stats.get("head_start", -1.0))
+	if head_start < 0.0 or head_start >= reach:
+		# Arme naturelle : aucun modèle à quoi se caler, aucune échelle
+		# d'affichage à appliquer — le membre EST l'arme.
+		return Vector2(arm + reach * NATURAL_HEAD_SHARE, arm + reach)
+	return Vector2(arm + head_start * draw_scale, arm + reach * draw_scale)
+
+
+## Multiplicateur de « sweet spot » : 0 sur le manche, 1 sur la portion
+## vulnérante. `distance` = distance de l'impact au point de prise ;
+## `head_start` = distance main → jonction manche/tête (−1 si inconnue).
+##
+## CALÉ SUR LE MODÈLE (2026-08-02). C'était une fraction fixe de l'allonge
+## (30 % / 62 %), ce qui ne pouvait coïncider avec la géométrie que par hasard :
+## une hallebarde infligeait ses dégâts pleins à 1,50 m alors que son fer
+## commence à 1,93 m — on tuait avec le manche. Une épée, à l'inverse, glissait
+## sur les 30 premiers centimètres de sa lame. Désormais la frontière EST la
+## jonction manche/tête, celle qu'on voit à l'écran.
+static func sweet_spot_factor(distance: float, reach: float, head_start: float = -1.0) -> float:
 	if reach <= 0.001:
 		return 1.0
-	var ratio := distance / reach
-	if ratio >= SWEET_FULL:
-		return 1.0
-	if ratio <= SWEET_MIN:
-		return 0.0
+	if head_start < 0.0:
+		# Arme sans pièces : rien à quoi se caler, on garde les fractions.
+		var ratio := distance / reach
+		if ratio >= SWEET_FULL:
+			return 1.0
+		if ratio <= SWEET_MIN:
+			return 0.0
+		var f := (ratio - SWEET_MIN) / (SWEET_FULL - SWEET_MIN)
+		return f * f * (3.0 - 2.0 * f)
+	if distance <= head_start:
+		return 0.0                  # c'est le manche : ça glisse
+	var head_length := maxf(reach - head_start, 0.001)
+	var t := clampf((distance - head_start) / (head_length * HEAD_RAMP), 0.0, 1.0)
 	# Interpolation douce (smoothstep) plutôt que linéaire : la frontière entre
 	# « ça glisse » et « ça coupe » ne doit pas être un mur d'un millimètre.
-	var t := (ratio - SWEET_MIN) / (SWEET_FULL - SWEET_MIN)
 	return t * t * (3.0 - 2.0 * t)
 
 

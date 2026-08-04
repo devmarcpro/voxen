@@ -43,11 +43,13 @@ func run() -> void:
 				break
 		if idx < 0:
 			continue
-		for entry: Dictionary in player.all_entries():
-			if entry.get("kind", "") == "object" and entry["object"] == player.inventory.objects[idx]:
-				player.bind_hotbar(player.active_hotbar * player.HOTBAR_SLOTS + player.selected_slot, entry)
-				break
-		player._try_equip()
+		# ÉQUIPEMENT DIRECT (2026-08-02). La sonde passait par la hotbar : elle
+		# liait la pièce à l'emplacement sélectionné puis équipait « ce qui est
+		# en main ». Depuis que l'emplacement 1 est celui du COMBAT — il suit
+		# l'arme équipée et refuse toute liaison —, ce détour n'équipait plus
+		# rien. Il testait de toute façon la plomberie d'inventaire, pas
+		# l'équipement : on appelle donc l'API que l'interface utilise.
+		player.call("equip_instance", player.inventory.objects[idx])
 	var total_after: int = player.inventory.objects.size() + player.equipment.slots.size()
 	var conserved := total_after == with_armor
 	print("[EQUIP] objets : départ=%d +5 armures=%d après équipement inv=%d + portés=%d = %d (attendu %d)" % [

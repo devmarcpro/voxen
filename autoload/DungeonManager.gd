@@ -17,24 +17,42 @@ extends Node
 ##   ont été supprimées. Le donjon est déjà matérialisé par sa termitière, qui
 ##   se voit de loin — la nappe grise n'ajoutait rien et masquait le décor.
 ##
-## GÉNÉRATION : l'étage (DungeonGenerator, graphe de salles à l'origine) est
-## construit en blocs dans les chunks de la dimension au moment de l'entrée,
-## sous l'écran de chargement, puis meshé d'un coup (ChunkMesher avec
-## générateur NULL = monde vide, la coquille vient des chunks voisins).
-## Le vide autour des salles est de l'air — ambiance de fosse assumée.
-## Les salles sont bâties dans la MÊME matière démoniaque marbrée que la
-## termitière visible depuis l'overworld (2026-07-28) — plus la pierre grise.
+## GÉNÉRATION : l'étage est un LABYRINTHE de 64×64 blocs (un quart de l'aire
+## d'une cellule — DungeonGenerator, réécrit le 2026-08-02), construit en blocs
+## dans les chunks de la dimension au moment de l'entrée, sous l'écran de
+## chargement, puis meshé d'un coup (ChunkMesher avec générateur NULL = monde
+## vide, la coquille vient des chunks voisins). Le volume est écrit ENTIER,
+## murs compris : tout ce qui n'est pas écrit reste de l'air, et un labyrinthe
+## aux murs vides se survolerait.
+## Il est bâti dans la MÊME pierre taillée que la tour de la cellule
+## (2026-08-02) : granit, ardoise, marbre… selon le tirage de la cellule.
 ##
 ## ÉTAGES (E.29, 2026-07-28) : un donjon compte 2, 4 ou 6 étages selon le danger
 ## de sa cellule. Chaque étage a son propre plan (graine = cellule + profondeur)
-## et son propre diff de blocs. On change d'étage par des ORIFICES — pas des
-## escaliers : des ouvertures organiques franchies en marchant dessus.
-##   - remontée (os pâle) : salle d'entrée ; ramène à l'étage du dessus, ou
-##     dehors depuis le premier ;
-##   - descente (veines rouges) : salle la plus éloignée de l'entrée, ce que le
-##     joueur doit CHERCHER ; absente au dernier étage.
-## À chaque arrivée, le joueur est déposé DOS à l'orifice de remontée.
-## Le boss n'existe QU'AU DERNIER ÉTAGE : lui seul déclenche le nettoyage.
+## et son propre diff de blocs. On change d'étage par des ESCALIERS-
+## TÉLÉPORTEURS (« l'escalier tp », 2026-08-02) : trois marches aux rampes
+## LUMINEUSES, dont le sommet déclenche le changement d'étage.
+##   - remontée (marches d'os pâle) : à l'arrivée ; ramène à l'étage du dessus,
+##     ou dehors depuis le premier ;
+##   - descente (marches de scorie ardente) : dans la case la plus éloignée AU
+##     SENS DU LABYRINTHE, ce que le joueur doit CHERCHER ; absente au dernier
+##     étage.
+## À chaque arrivée, le joueur est déposé à CÔTÉ de l'escalier de remontée et
+## dos à lui — posé dessus, il repartirait aussitôt d'où il vient.
+## Le boss n'existe QU'AU DERNIER ÉTAGE et lui seul déclenche le nettoyage. Le
+## COFFRE (F.6) est POSÉ dans sa salle à la construction de l'étage : un vrai
+## coffre, identique à celui que le joueur fabrique.
+##
+## FORME (2026-08-02) : couloirs de 3 blocs de large tressés en labyrinthe, et
+## salles rectangulaires obtenues en abattant les murs intérieurs d'un bloc de
+## cases. Les cavités organiques au bruit (`DungeonCavern`) ont été retirées
+## avec la matière démoniaque : une architecture de pierre taillée est taillée,
+## pas creusée.
+##
+## BUTIN (2026-08-02) : des caches au sol dans les salles, plus le coffre du
+## boss. Déterministe par (cellule, profondeur, graine) et posé UNE SEULE FOIS
+## par étage (`_looted_floors`, persisté) — un étage est reconstruit à chaque
+## visite, un tirage par visite l'aurait rendu farmable à l'infini.
 ##
 ## PERSISTANCE (E.10/3.5 « les changements suivent la sauvegarde
 ## différentielle standard ») : les blocs minés/posés DANS un donjon sont un
@@ -65,12 +83,34 @@ const FLOORS_BY_DANGER: Array[int] = [2, 4, 6]
 ## le point d'arrivée et l'orifice de remontée (4,2 blocs) : sinon le joueur
 ## repartirait aussitôt d'où il vient, en boucle.
 const ORIFICE_RADIUS := 1.6
-## Matériaux des orifices — ils ne sont pas des escaliers mais des ouvertures
-## organiques dans la chair du nid (demande explicite : « style roguelite, pas
-## juste des escaliers classiques »).
-const ORIFICE_DOWN_RING := "scorie_ardente"   # veines rouges : on descend vers le cœur.
-const ORIFICE_UP_RING := "os_calcine"         # os pâle : on remonte vers la sortie.
-const ORIFICE_CORE := "chair_noire"
+## ESCALIERS-TÉLÉPORTEURS (2026-08-02, « l'escalier tp »).
+##
+## Ils remplacent d'abord les « orifices » — deux disques plats posés dans le
+## sol, franchis par simple proximité — puis les volées de six marches creusées
+## dans la masse, que le labyrinthe n'a pas la place d'accueillir (couloirs de
+## trois blocs, étage à un seul niveau). Ce qui reste, et qui était le vrai
+## besoin : que la GÉOMÉTRIE annonce l'escalier. Trois marches y suffisent, et
+## le franchissement est une téléportation depuis le sommet.
+## Matière des marches. Elle DISTINGUE les deux volées d'un coup d'œil : on
+## doit savoir si l'on monte vers la sortie ou si l'on s'enfonce, sans avoir à
+## s'engager dedans.
+const STAIR_TREAD_UP := "os_calcine"     # os pâle : on remonte vers la sortie.
+const STAIR_TREAD_DOWN := "chair_noire"  # chair sombre : on descend vers le cœur.
+
+## Matière des RAMPES, et seule source de lumière de l'escalier. La scorie
+## ardente porte `luminosite` 40 (soit 6/15 une fois convertie par
+## `GameData.emission_by_runtime`), propagée par le champ de lumière (G.3).
+##
+## POURQUOI LA RAMPE ET PAS LA MARCHE. Les marches ont d'abord été faites en
+## scorie et en os calciné — mais `os_calcine` a une luminosité de ZÉRO :
+## l'escalier de remontée ne s'allumait pas du tout. Le réflexe aurait été de
+## prendre un matériau lumineux pâle à la place, sauf que les seuls disponibles
+## sont des GEMMES (opale, quartz, diamant), et les blocs d'un donjon se minent
+## — la volée serait devenue une mine à cristaux gratuite. Séparer la marche
+## (thématique, inerte) de la rampe (lumineuse) résout les deux : les deux
+## escaliers brillent, aucun ne se farme, et ils restent distincts.
+## Trouvé par --probe-interieur, qui exigeait une émission non nulle.
+const STAIR_GLOW := "scorie_ardente"
 var _player: Node
 var _in_dungeon := false
 var _current_dungeon_cell := Vector2i.ZERO
@@ -121,6 +161,10 @@ var _must_leave := false
 func _ready() -> void:
 	EventBus.creature_killed.connect(_on_creature_killed)
 	TickManager.tick_world.connect(_on_tick)
+	# LE DONJON N'EST PLUS UN CAS DU MOTEUR, c'est un backend de dimension. Il
+	# garde sa construction — étages, escaliers, boss — mais WorldManager ne le
+	# connaît plus : il passe par DimensionManager, qui aiguille ici.
+	DimensionManager.register_backend(&"donjon", self)
 	_dungeon_root = Node3D.new()
 	add_child(_dungeon_root)
 	_dungeon_env = Environment.new()
@@ -274,8 +318,15 @@ func _install_floor(cell: Vector2i, depth: int) -> void:
 	# Pieds sur le sommet du sol de la salle, + hauteur des yeux (convention
 	# fly_camera.gd : feet_y = sommet du bloc). Le joueur arrive DOS à l'orifice
 	# de remontée : il doit chercher la descente (demande explicite).
-	_player.teleport_to(Vector3(center.x, center.y + 2.9, center.z),
-		_arrival_yaw(orifice, center))
+	# Résolution PARESSEUSE du joueur, comme dans `_process` et `enter_from_map`.
+	# Ce point d'entrée-ci s'en passait et supposait que `_process` avait déjà
+	# tourné : appelé avant (sonde, entrée scriptée), il plantait sur un `_player`
+	# nul — « Nonexistent function 'teleport_to' in base 'Nil' ».
+	if _player == null:
+		_player = get_node_or_null("/root/Main/Player")
+	if _player != null:
+		_player.teleport_to(Vector3(center.x, center.y + 2.9, center.z),
+			_arrival_yaw(orifice, center))
 	print("[DONJON] cellule %s — étage %d/%d%s." % [
 		cell, depth + 1, _floor_count(cell),
 		" (fond : boss présent)" if depth == _floor_count(cell) - 1 else ""])
@@ -306,6 +357,22 @@ func _check_transitions(pos: Vector3) -> void:
 ## Descend d'un étage. Les créatures de l'étage quitté sont retirées : chaque
 ## étage a sa propre population, et un monstre laissé derrière continuerait de
 ## vivre dans une dimension que plus personne n'occupe.
+## Enveloppes PUBLIQUES de la navigation d'étage (2026-08-03). Descendre,
+## monter et sortir n'existaient qu'en privé, appelés par les escaliers et le
+## compte à rebours d'entrée ; le menu de triche, qui doit pouvoir atteindre
+## n'importe quel étage, n'avait aucun moyen légitime de les déclencher.
+func descend() -> void:
+	_descend()
+
+
+func ascend() -> void:
+	_ascend()
+
+
+func leave() -> void:
+	_exit_dungeon()
+
+
 func _descend() -> void:
 	CreatureManager.despawn_dimension(&"donjon")
 	_install_floor(_current_dungeon_cell, _current_depth + 1)
@@ -422,7 +489,14 @@ func _ensure_floor_data(cell: Vector2i, depth: int = 0) -> void:
 	# donjon, G.1) : deux étages d'un même donjon ont des plans DIFFÉRENTS, mais
 	# chacun reste identique d'une visite à l'autre.
 	var seed_value := NoiseGenerator.pcg_hash(cell.x, cell.y, WorldManager.world_seed + 77441 + depth * 1013)
-	_floors[key] = DungeonGenerator.generate_floor(seed_value)
+	# Le nombre de salles monte avec la profondeur (2026-08-02) : les premiers
+	# étages restent lisibles, le fond du nid devient un labyrinthe.
+	# `has_deeper` : il n'y a pas d'escalier de descente au dernier étage, et
+	# c'est le GÉNÉRATEUR qui doit le savoir — sinon il place un escalier que
+	# le creusement devra ensuite retirer, avec le risque classique que les deux
+	# ne soient pas d'accord sur son existence.
+	_floors[key] = DungeonGenerator.generate_floor(
+			seed_value, depth, depth < _floor_count(cell) - 1)
 
 
 ## Construit chunks + meshes + boss de la dimension pour `cell` (sous l'écran
@@ -431,26 +505,29 @@ func _build_dimension(cell: Vector2i, depth: int = 0) -> void:
 	_free_dimension()
 	var key := _floor_key(cell, depth)
 	var floor_data: Dictionary = _floors[key]
-	# Matière du nid : la MÊME palette démoniaque que la termitière visible
-	# depuis l'overworld (2026-07-28, demande explicite). Les salles étaient
-	# jusqu'ici en pierre grise, sans rapport visuel avec la structure qu'on
-	# vient de traverser pour entrer.
-	var palette := _nest_palette_ids()
+	# Maçonnerie : la MÊME pierre taillée que la tour de la cellule (2026-08-02).
+	# Chaque donjon a sa roche (granit, ardoise, marbre…), tirée de la cellule :
+	# les étages doivent être bâtis dans la pierre de la tour qu'on vient de
+	# traverser pour entrer, sinon l'intérieur n'a aucun rapport avec l'extérieur.
+	var palette := _nest_palette_ids(cell)
 	var seed_value := NoiseGenerator.pcg_hash(cell.x, cell.y, WorldManager.world_seed + 77441 + depth * 1013)
 
-	for room: Dictionary in floor_data["rooms"]:
-		_carve_room(room["origin"], room["size"], room["doors"], palette, seed_value)
-	for corridor: Dictionary in floor_data["corridors"]:
-		_carve_corridor(corridor["origin"], corridor["dir"], corridor["length"], palette, seed_value)
+	_carve_maze(floor_data, palette, seed_value)
 
-	# Orifice de REMONTÉE, dans la salle d'entrée : ramène à l'étage précédent,
-	# ou dehors depuis le premier. Décalé du point d'arrivée du joueur, sinon il
-	# repartirait aussitôt (voir ORIFICE_RADIUS).
-	_carve_orifice(_ascent_orifice_position(), ORIFICE_UP_RING)
-	# Orifice de DESCENTE, dans la salle la plus éloignée de l'entrée — c'est ce
-	# que le joueur doit CHERCHER. Absent au dernier étage : c'est le fond.
-	if depth < _floor_count(cell) - 1:
-		_carve_orifice(_descent_orifice_position(key), ORIFICE_DOWN_RING)
+	_floor_seed = seed_value
+
+	# ESCALIERS-TÉLÉPORTEURS. Ce ne sont plus des volées de marches creusées
+	# dans la masse : un labyrinthe à un seul niveau n'a pas la place de faire
+	# monter six marches, et l'auteur a demandé que « l'escalier tp ». Chacun
+	# est une petite estrade de marches au milieu de sa case, franchie en
+	# montant dessus. La matière les distingue au premier regard : os pâle pour
+	# remonter vers la sortie, scorie ardente pour s'enfoncer.
+	_ascent_landing = _carve_stair_pad(
+			floor_data["up_stair"], STAIR_TREAD_UP, false, palette, seed_value)
+	_descent_landing = Vector3(1 << 24, 0, 0)  # Hors d'atteinte tant qu'il n'existe pas.
+	var down: Vector3i = floor_data["down_stair"]
+	if down.y >= 0:
+		_descent_landing = _carve_stair_pad(down, STAIR_TREAD_DOWN, true, palette, seed_value)
 
 	# Diff persistant du joueur (blocs minés/posés lors de visites passées).
 	var cell_edits: Dictionary = _dungeon_edits.get(key, {})
@@ -471,9 +548,144 @@ func _build_dimension(cell: Vector2i, depth: int = 0) -> void:
 	if depth == _floor_count(cell) - 1:
 		var boss_room: Dictionary = floor_data["rooms"][floor_data["boss_room_index"]]
 		var boss_center: Vector3i = (boss_room["origin"] as Vector3i) + (boss_room["size"] as Vector3i) / 2
-		var boss := CreatureManager.spawn("sanglier", Vector3(boss_center.x + 0.5, boss_center.y + 1.0, boss_center.z + 0.5))
+		# « chef_de_bande » et non plus « sanglier » (2026-08-02, faune animale
+		# supprimée). Choix heureux : ce chef ne spawne PLUS en pleine nature
+		# depuis que bandit est le seul ennemi sauvage, donc le rencontrer est
+		# désormais propre aux donjons — un boss qu'on ne croise nulle part
+		# ailleurs, ce que le sanglier n'était pas.
+		var boss := CreatureManager.spawn("chef_de_bande", Vector3(boss_center.x + 0.5, boss_center.y + 1.0, boss_center.z + 0.5))
 		if boss != null:
 			boss.set_meta("dungeon_boss_cell", cell)
+			boss.set_meta("dungeon_boss_depth", depth)
+
+	_place_boss_chest(cell, depth, floor_data, palette, seed_value)
+	_populate_floor(floor_data, depth, seed_value)
+	_place_floor_loot(key, depth, floor_data, seed_value)
+
+
+## COFFRE DU BOSS : un VRAI COFFRE POSÉ (2026-08-03, demande de l'auteur),
+## identique à celui que le joueur fabrique. C'était jusqu'ici une « cache au
+## sol » de DropManager avec un marqueur plus gros — donc un objet qui n'existait
+## qu'en tant que butin, impossible à distinguer d'un tas par terre, et sans
+## rapport avec le coffre du catalogue.
+##
+## Le contenu est posé D'AUTORITÉ (`ContainerManager.fill`) et non par la pose de
+## bloc : le bloc est écrit directement dans les chunks de la dimension, sans
+## passer par `EventBus.block_placed`.
+func _place_boss_chest(cell: Vector2i, depth: int, floor_data: Dictionary,
+		palette: PackedInt32Array, seed_value: int) -> void:
+	if depth != _floor_count(cell) - 1:
+		return   # Le coffre est la récompense du FOND, comme le boss.
+	var key := _floor_key(cell, depth)
+	if _looted_floors.has(key):
+		return   # Étage déjà pillé : pas de coffre qui repousse.
+	var rooms: Array = floor_data["rooms"]
+	if rooms.is_empty():
+		return
+	var room: Dictionary = rooms[int(floor_data.get("boss_room_index", 0))]
+	var origin: Vector3i = room["origin"]
+	var size: Vector3i = room["size"]
+	# Adossé à un coin de la salle et non au centre : le centre est occupé par
+	# le boss, et un coffre sous ses pieds serait invisible pendant le combat.
+	var pos := Vector3i(origin.x + 1, 1, origin.z + 1)
+	var chest_id: int = GameData.material_runtime_ids.get("coffre", 0)
+	if chest_id == 0:
+		return
+	_set_dungeon_block(pos, chest_id)
+	var content := DungeonLoot.boss_chest(depth, seed_value)
+	ContainerManager.fill(pos, "coffre", content.get("objects", []), int(content.get("gold", 0)))
+
+
+## Tous les types d'ennemis du catalogue, triés. Lu une fois : le tri est
+## indispensable au déterminisme (l'ordre d'itération d'un Dictionary Godot suit
+## l'insertion, donc l'ordre de lecture des fichiers).
+##
+## Le critère est le PROFIL D'IA et non un tag : `hostile` attaque à vue,
+## `bete_sauvage` riposte une fois blessée (creature.gd). Les deux ont leur
+## place dans un donjon — le GDD 3.5 cite explicitement l'ermite, qui est une
+## bête sauvage — et prendre le tag aurait laissé passer les civils.
+static var _enemy_pool := PackedStringArray()
+
+
+func _enemy_types() -> PackedStringArray:
+	if not _enemy_pool.is_empty():
+		return _enemy_pool
+	var ids: Array[String] = []
+	for id: String in GameData.creatures:
+		var profile := String((GameData.creatures[id] as Dictionary).get("ai_profile", ""))
+		if profile == "hostile" or profile == "bete_sauvage":
+			ids.append(id)
+	ids.sort()
+	_enemy_pool = PackedStringArray(ids)
+	return _enemy_pool
+
+
+## Peuple l'étage. TOUS LES TYPES sont représentés (demande explicite du
+## 2026-08-02) : on distribue d'abord un exemplaire de chaque, puis on complète
+## au hasard jusqu'au quota. Sans ce premier passage, un tirage purement
+## aléatoire laisse statistiquement les types rares absents de la plupart des
+## étages, et « tous les types d'ennemis dans le donjon » n'est pas tenu.
+##
+## Le quota monte avec la profondeur (E.29 : la difficulté croît en descendant).
+##
+## SIMPLIFICATION ASSUMÉE, la même que pour le boss : les ennemis renaissent à
+## chaque entrée tant que le donjon n'est pas nettoyé. Le GDD 3.5 veut un
+## peuplement FIXE qui se vide à mesure ; le tenir demanderait de persister
+## chaque mort, ce que la sauvegarde ne fait pas encore pour les créatures.
+func _populate_floor(floor_data: Dictionary, depth: int, seed_value: int) -> void:
+	var types := _enemy_types()
+	if types.is_empty():
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value ^ 0x5EED
+
+	# Emplacements candidats : blocs praticables ATTEINGNABLES depuis l'arrivée,
+	# à distance de l'escalier de remontée — un ennemi collé au point
+	# d'apparition attaque avant que le joueur ait vu l'étage.
+	var reachable := DungeonGenerator.reachable_blocks(floor_data)
+	var up: Vector3i = floor_data["up_stair"]
+	var spots: Array[Vector2i] = []
+	for pos: Vector2i in reachable:
+		var dx := pos.x - up.x
+		var dz := pos.y - up.z
+		if dx * dx + dz * dz >= 100:  # au moins 10 blocs de l'escalier d'arrivée
+			spots.append(pos)
+	if spots.is_empty():
+		return
+	spots.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return a.x * 4096 + a.y < b.x * 4096 + b.y)  # Ordre stable avant tirage.
+
+	var quota := mini(types.size() + depth * 3, 24)
+	for index in quota:
+		# Premier tour : un de chaque type. Ensuite : au hasard.
+		var type_id: String = types[index] if index < types.size() else types[rng.randi() % types.size()]
+		var spot: Vector2i = spots[rng.randi() % spots.size()]
+		CreatureManager.spawn(type_id, Vector3(spot.x + 0.5, 1.0, spot.y + 0.5))
+
+
+## Étages déjà pillés : Vector3i (cellule.x, cellule.y, profondeur) -> true.
+##
+## Un étage est RECONSTRUIT à chaque visite (seuls les blocs modifiés sont
+## persistés, pas le plan). Sans cette mémoire, le butin au sol réapparaîtrait
+## à chaque entrée et le donjon deviendrait une machine à or : sortir, rentrer,
+## re-ramasser. Persisté avec le reste de l'état du donjon.
+var _looted_floors := {}
+
+
+## Disperse les caches au sol de l'étage, une seule fois par étage et par
+## partie. Les positions et le contenu sont déterministes (DungeonLoot) : un
+## joueur qui ressort et rentre retrouve exactement ce qu'il a laissé, tant
+## qu'il n'a rien ramassé.
+func _place_floor_loot(key: Vector3i, depth: int, floor_data: Dictionary, seed_value: int) -> void:
+	if _looted_floors.has(key):
+		return
+	_looted_floors[key] = true
+	for entry: Dictionary in DungeonLoot.floor_caches(floor_data, depth, seed_value):
+		# Le sol du labyrinthe est PLAT (y=0 plein, on marche en y=1) : plus de
+		# correction de relief à appliquer, contrairement aux anciennes cavités
+		# organiques dont le sol ondulait et enterrait les caches.
+		var pos: Vector3 = entry["position"]
+		DropManager.drop(Vector3(pos.x, 1.0, pos.z), entry["objects"], int(entry["gold"]))
 
 
 func _free_dimension() -> void:
@@ -492,22 +704,16 @@ func _set_dungeon_block(pos: Vector3i, id: int) -> void:
 	data.set_block_by_index((pos.x & 15) | ((pos.z & 15) << 4) | ((pos.y & 15) << 8), id)
 
 
-## Ids runtime de la palette démoniaque (DungeonTower.PALETTE), résolus une
-## seule fois. Le générateur de monde a le sien pour la termitière ; le donjon
-## garde le sien parce qu'il doit fonctionner même sans monde overworld actif
-## (dimension séparée) — jamais un accès à un membre privé du générateur.
-var _palette_cache := PackedInt32Array()
+## Ids runtime de la pierre taillée de CETTE cellule. Passe par DungeonTower,
+## qui porte le cache : la tour de l'overworld et les étages doivent tirer la
+## même roche pour la même cellule, et deux caches séparés finiraient par
+## diverger au premier changement de règle de tirage.
+func _nest_palette_ids(cell: Vector2i) -> PackedInt32Array:
+	return DungeonTower.palette_for(cell, WorldManager.world_seed)
 
 
-func _nest_palette_ids() -> PackedInt32Array:
-	if _palette_cache.is_empty():
-		for id: String in DungeonTower.PALETTE:
-			_palette_cache.append(int(GameData.material_runtime_ids.get(id, 0)))
-	return _palette_cache
-
-
-## Matière du nid en (wx,wy,wz) : marbrures de la palette démoniaque, comme la
-## termitière de l'overworld. `palette` vide (données manquantes) → repli sur la
+## Maçonnerie de l'étage en (wx,wy,wz) : appareillage de la palette, comme la
+## tour de l'overworld. `palette` vide (données manquantes) → repli sur la
 ## pierre, pour ne jamais produire un donjon en air.
 func _nest_material(pos: Vector3i, palette: PackedInt32Array, seed_value: int) -> int:
 	if palette.is_empty():
@@ -515,44 +721,108 @@ func _nest_material(pos: Vector3i, palette: PackedInt32Array, seed_value: int) -
 	return DungeonTower.interior_material(pos.x, pos.y, pos.z, seed_value, palette)
 
 
-## Sol/murs/plafond pleins, portes ouvertes (air) sur 3 blocs de hauteur.
-## La matière est celle du NID (palette démoniaque marbrée), plus la pierre grise
-## d'origine — les salles font désormais visuellement partie de la termitière.
-func _carve_room(origin: Vector3i, size: Vector3i, doors: Array, palette: PackedInt32Array, seed_value: int) -> void:
-	var door_cols := {}  # "x_z" -> true, colonnes où percer la porte.
-	for door: Dictionary in doors:
-		door_cols["%d_%d" % [int(door["position"][0]), int(door["position"][2])]] = true
-	for x in size.x:
-		for z in size.z:
-			var is_wall := x == 0 or x == size.x - 1 or z == 0 or z == size.z - 1
-			var is_door_col: bool = is_wall and door_cols.has("%d_%d" % [x, z])
-			for y in range(0, size.y + 1):
-				var pos := origin + Vector3i(x, y, z)
-				var solid := false
-				if y == 0 or y == size.y:
-					solid = true  # Sol/plafond.
-				elif is_wall and not (is_door_col and y <= 3):
-					solid = true  # Mur (sauf porte, ouverte jusqu'à 3 blocs de haut).
+## Creuse l'étage ENTIER depuis la grille du labyrinthe (2026-08-02).
+##
+## Remplace les quatre fonctions précédentes (`_carve_room`, `_carve_corridor`,
+## `_carve_door_throat`, `_carve_stairs`), qui sculptaient des cavités
+## organiques reliées par des boyaux. Une architecture de pierre taillée n'a
+## pas de cavités organiques, et un labyrinthe n'a pas de portes à percer : la
+## grille dit pour chaque bloc s'il est praticable, et il n'y a rien à
+## réconcilier entre deux représentations.
+##
+## Le volume est écrit EN ENTIER, pierre comprise. C'est indispensable : tout ce
+## qui n'est pas écrit reste de l'air dans la dimension, et un labyrinthe dont
+## les murs seraient du vide se survolerait d'un bout à l'autre.
+func _carve_maze(floor_data: Dictionary, palette: PackedInt32Array, seed_value: int) -> void:
+	var open: PackedByteArray = floor_data["open"]
+	var span: int = floor_data["span"]
+	var ceiling := DungeonGenerator.CEILING
+	for z in span:
+		for x in span:
+			var walkable := open[z * span + x] == 1
+			for y in range(0, ceiling + 1):
+				var pos := Vector3i(x, y, z)
+				# Praticable : sol en y=0, plafond en y=CEILING, air entre les
+				# deux. Sinon : pierre pleine sur toute la hauteur.
+				var solid := true
+				if walkable and y > 0 and y < ceiling:
+					solid = false
 				_set_dungeon_block(pos, _nest_material(pos, palette, seed_value) if solid else 0)
 
+	# TORCHES MURALES. Sans elles, l'étage est noir dès qu'on s'éloigne des deux
+	# escaliers — seule source de lumière du donjon — et un labyrinthe qu'on ne
+	# voit pas ne se parcourt pas, il se subit. Un bloc de scorie ardente
+	# (luminosité 40, propagée par le champ de lumière G.3) est SERTI DANS LE MUR
+	# à hauteur d'épaule, aux intersections de la grille : c'est régulier sans
+	# être aligné sur le monde, et ça donne un repère de progression.
+	var glow: int = GameData.material_runtime_ids.get(STAIR_GLOW, 0)
+	if glow != 0:
+		var pitch := DungeonGenerator.PITCH
+		for z in span:
+			for x in span:
+				if open[z * span + x] == 0:
+					continue
+				# Une torche par case sur deux, dans les deux axes.
+				if (x / pitch) % 2 != 0 or (z / pitch) % 2 != 0:
+					continue
+				if x % pitch != DungeonGenerator.CORRIDOR / 2 or z % pitch != DungeonGenerator.CORRIDOR / 2:
+					continue
+				# Sertie dans le premier mur voisin trouvé : une torche flottant
+				# au milieu d'un couloir barrerait le passage.
+				for step: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var wx := x + step.x
+					var wz := z + step.y
+					if wx < 0 or wx >= span or wz < 0 or wz >= span:
+						continue
+					if open[wz * span + wx] == 1:
+						continue
+					_set_dungeon_block(Vector3i(wx, 3, wz), glow)
+					break
 
-## Corridor 3 blocs de large × 5 de haut, creusé en ligne droite depuis
-## `origin` sur `length` blocs dans la direction `dir`.
-func _carve_corridor(origin: Vector3i, dir: String, length: int, palette: PackedInt32Array, seed_value: int) -> void:
-	var d: Vector3i = DungeonGenerator.DIRS[dir]
-	var perp := Vector3i(1, 0, 0) if d.x == 0 else Vector3i(0, 0, 1)
-	for i in length:
-		var center := origin + d * i
-		for p: int in [-1, 0, 1]:
-			var col := center + perp * p
-			for y in range(0, 5):
-				var pos := col + Vector3i(0, y, 0)
-				var solid := false
-				if y == 0 or y == 4:
-					solid = true  # Sol/plafond.
-				elif p != 0:
-					solid = true  # Mur latéral.
-				_set_dungeon_block(pos, _nest_material(pos, palette, seed_value) if solid else 0)
+
+## Escalier-TÉLÉPORTEUR : une volée de trois marches au milieu d'une case, dont
+## le sommet (ou le fond) déclenche le changement d'étage. Renvoie ce point.
+##
+## POURQUOI SI COURT. La version précédente creusait une volée de six marches
+## dans la masse, ce qui supposait de la place autour. Un labyrinthe n'en a
+## pas : les couloirs font trois blocs de large et l'étage est un seul niveau.
+## Trois marches suffisent à ce que la géométrie ANNONCE l'escalier — c'est tout
+## ce qu'on lui demande, puisque le franchissement est une téléportation
+## (« l'escalier tp », demande explicite du 2026-08-02).
+##
+## Les rampes de scorie ardente sont la seule source de lumière de l'étage : la
+## marche elle-même ne peut pas l'être (voir STAIR_GLOW — `os_calcine` a une
+## luminosité nulle, et les seuls matériaux clairs lumineux sont des gemmes,
+## qui feraient de l'escalier une mine à cristaux gratuite).
+func _carve_stair_pad(base: Vector3i, tread_material: String, going_down: bool,
+		palette: PackedInt32Array, seed_value: int) -> Vector3:
+	var tread: int = GameData.material_runtime_ids.get(tread_material, 0)
+	var rail: int = GameData.material_runtime_ids.get(STAIR_GLOW, tread)
+	var steps := 3
+	var step_dy := -1 if going_down else 1
+	for i in steps:
+		var y := (0 if going_down else 1) + step_dy * i
+		for p in range(-1, 2):
+			var col := Vector3i(base.x + p, y, base.z + i - 1)
+			_set_dungeon_block(col, tread)
+			# Dégage la hauteur d'homme au-dessus de chaque marche, sans quoi
+			# une volée montante se cognerait au plafond de l'étage.
+			for dy in range(1, 4):
+				_set_dungeon_block(Vector3i(col.x, y + dy, col.z), 0)
+		# Descente : il faut aussi creuser SOUS la volée, sinon les marches
+		# s'enfoncent dans la pierre pleine du sol et l'escalier est un relief
+		# décoratif dans lequel on ne peut pas entrer.
+		if going_down:
+			for p in range(-1, 2):
+				for dy in range(1, 4):
+					_set_dungeon_block(Vector3i(base.x + p, y + dy, base.z + i - 1), 0)
+	# Rampes lumineuses de part et d'autre de la volée.
+	for i in steps:
+		var y := (0 if going_down else 1) + step_dy * i
+		for side: int in [-2, 2]:
+			_set_dungeon_block(Vector3i(base.x + side, y + 1, base.z + i - 1), rail)
+	var top_y := (0 if going_down else 1) + step_dy * (steps - 1)
+	return Vector3(base.x + 0.5, float(top_y) + 1.0, base.z + float(steps - 2) + 0.5)
 
 
 ## (Re)meshe un chunk de la dimension : générateur NULL (monde vide), la
@@ -641,11 +911,16 @@ func is_dungeon_cell(cell: Vector2i) -> bool:
 func _is_donjon_cell(cell: Vector2i) -> bool:
 	if _cleaned_cells.has(cell):
 		return false
-	var center := POIGenerator.cell_center_world(cell)
-	var biome: Dictionary = WorldManager.generator.biome_at(center.x, center.y)
-	if biome.is_empty():
+	if WorldManager.generator == null:
 		return false
-	return "donjon" in POIGenerator.pois_at_cell(cell, WorldManager.world_seed, biome)
+	# DÉLÈGUE au générateur (2026-08-02) au lieu de refaire le tirage de POI.
+	# Cette fonction en portait sa propre copie : biome → `pois_at_cell`. Tant
+	# que la règle tenait au seul biome, les deux versions tombaient d'accord.
+	# En ajoutant « sol émergé » côté générateur, elles ont divergé — la tour
+	# n'était plus bâtie mais la cellule restait annoncée comme donjon, ce qui
+	# donnait un donjon invisible et un périmètre d'entrée dans le vide.
+	# Une règle, un endroit.
+	return WorldManager.generator.has_dungeon(cell)
 
 
 func _distance_to_cell(pos: Vector3, cell: Vector2i) -> float:
@@ -659,50 +934,46 @@ func _distance_to_cell(pos: Vector3, cell: Vector2i) -> float:
 
 ## Centre (dimension) de la salle d'entrée — position d'arrivée du joueur.
 ## L'entrée est TOUJOURS à l'origine (DungeonGenerator, rooms[0]).
+## Point d'arrivée dans la salle d'entrée. Sa hauteur SUIT LE RELIEF du sol
+## depuis le 2026-08-02 : les salles ne sont plus à fond plat, et un y figé à 0
+## faisait apparaître le joueur enterré jusqu'aux yeux dans les zones hautes.
 func _entrance_center() -> Vector3:
-	var entree_size: Array = GameData.dungeon_rooms.get("entree", {}).get("size", [7, 5, 7])
-	return Vector3(float(entree_size[0]) * 0.5, 0.0, float(entree_size[2]) * 0.5)
+	# Le plan porte désormais son propre point d'apparition (2026-08-02) : dans
+	# un labyrinthe, il n'y a plus de « salle d'entrée » dont on pourrait
+	# déduire le centre depuis un prefab, et la position dépend du tirage.
+	var key := _floor_key(_current_dungeon_cell, _current_depth)
+	var floor_data: Dictionary = _floors.get(key, {})
+	var spawn: Vector3i = floor_data.get("spawn", Vector3i(DungeonGenerator.SPAN / 2, 0, DungeonGenerator.SPAN / 2))
+	# On dépose le joueur À CÔTÉ de l'escalier de remontée et non dessus : posé
+	# sur le palier, il repartirait à l'étage précédent dans la seconde.
+	return Vector3(float(spawn.x) + 2.5, 1.0, float(spawn.z) + 0.5)
 
 
-# --- Orifices d'étage (2026-07-28) ---
+# --- Escaliers d'étage (2026-08-02, remplacent les « orifices » plats) ---
 #
-# Ce ne sont PAS des escaliers : ce sont des ouvertures dans la chair du nid, à
-# la façon d'un roguelite (demande explicite). On les FRANCHIT en marchant
-# dessus — même mécanique de proximité que l'ancien marqueur de sortie en or,
-# qu'ils remplacent tous les deux.
+# Deux volées par étage : une qui MONTE dans la salle d'entrée (retour), une
+# qui DESCEND dans la salle la plus éloignée (progression, absente au fond).
+# Le changement d'étage se déclenche sur le PALIER, au bout de la volée — pas
+# sur une plaque au sol qu'aucune géométrie n'annonçait.
+## Paliers des deux escaliers de l'étage COURANT, posés par `_build_dimension`.
+## Ils ne sont plus calculables à l'avance : leur position dépend du relief du
+## sol et de la longueur de la volée, donc de la construction elle-même.
+var _ascent_landing := Vector3.ZERO
+var _descent_landing := Vector3.ZERO
+## Graine de l'étage courant — nécessaire hors construction pour interroger le
+## relief du sol (point d'arrivée du joueur).
+var _floor_seed := 0
 
-## Ouverture de REMONTÉE : toujours au même coin de la salle d'entrée, qui est
-## identique à chaque étage. Le joueur y arrive DOS TOURNÉ (voir _arrival_yaw).
+
 func _ascent_orifice_position() -> Vector3:
-	return Vector3(1.5, 0.0, 1.5)
+	return _ascent_landing
 
 
 ## Ouverture de DESCENTE : au centre de la salle la plus éloignée de l'entrée
 ## (`boss_room_index` = résultat du BFS de profondeur). C'est elle que le joueur
 ## doit trouver pour s'enfoncer.
-func _descent_orifice_position(key: Vector3i) -> Vector3:
-	var floor_data: Dictionary = _floors.get(key, {})
-	var rooms: Array = floor_data.get("rooms", [])
-	if rooms.is_empty():
-		return Vector3(5.5, 0.0, 5.5)
-	var room: Dictionary = rooms[int(floor_data.get("boss_room_index", 0))]
-	var origin: Vector3i = room["origin"]
-	var size: Vector3i = room["size"]
-	return Vector3(origin.x + size.x * 0.5, float(origin.y), origin.z + size.z * 0.5)
-
-
-## Pose une ouverture : disque de 3×3 dans le SOL, cœur d'une autre matière.
-## Purement visuel — le franchissement est déclenché par la proximité.
-func _carve_orifice(pos: Vector3, ring_material: String) -> void:
-	var ring: int = GameData.material_runtime_ids.get(ring_material, 0)
-	var core: int = GameData.material_runtime_ids.get(ORIFICE_CORE, ring)
-	if ring == 0:
-		return
-	var base := Vector3i(int(floor(pos.x)), int(pos.y), int(floor(pos.z)))
-	for dx: int in [-1, 0, 1]:
-		for dz: int in [-1, 0, 1]:
-			var is_core := dx == 0 and dz == 0
-			_set_dungeon_block(base + Vector3i(dx, 0, dz), core if is_core else ring)
+func _descent_orifice_position(_key: Vector3i) -> Vector3:
+	return _descent_landing
 
 
 ## Orientation à l'arrivée sur un étage : le joueur regarde À L'OPPOSÉ de
@@ -710,9 +981,17 @@ func _carve_orifice(pos: Vector3, ring_material: String) -> void:
 ## sortie »). Un Node3D regarde le long de son -Z, d'où le atan2 sur les
 ## composantes négatées.
 func _arrival_yaw(from_orifice: Vector3, to_player: Vector3) -> float:
-	var dir := (to_player - from_orifice).normalized()
+	# PROJECTION HORIZONTALE OBLIGATOIRE (corrigé le 2026-08-02). Un lacet est
+	# un angle dans le plan ; normaliser le vecteur en 3D laissait la composante
+	# verticale absorber une part de sa longueur, et l'orientation obtenue
+	# n'était que partiellement « dos à l'escalier ». Invisible tant que le
+	# palier et le point d'arrivée étaient à la même altitude — ce qui a cessé
+	# d'être vrai avec les escaliers-téléporteurs, dont le palier est surélevé.
+	var dir := to_player - from_orifice
+	dir.y = 0.0
 	if dir.length_squared() < 0.001:
 		return 0.0
+	dir = dir.normalized()
 	return rad_to_deg(atan2(-dir.x, -dir.z))
 
 
@@ -728,7 +1007,20 @@ func _on_creature_killed(_killer: Variant, victim: Node) -> void:
 		return
 	var cell: Vector2i = victim.get_meta("dungeon_boss_cell")
 	_cleanup_pending[cell] = TickManager.tick_index + CLEANUP_DELAY_TICKS
-	print("[DONJON] boss vaincu, cellule %s — nettoyage dans %d ticks (1,5 jour in-game)." % [cell, CLEANUP_DELAY_TICKS])
+
+	# LE COFFRE N'EST PLUS LÂCHÉ ICI (2026-08-03). Il est POSÉ dans la salle du
+	# boss à la construction de l'étage (`_place_boss_chest`) : c'est un vrai
+	# coffre, identique à celui que le joueur fabrique, et non plus une cache au
+	# sol déguisée par un marqueur plus gros. Le garder ici aurait produit DEUX
+	# récompenses pour un seul boss.
+	#
+	# Conséquence voulue : le coffre se voit AVANT le combat, au fond de la
+	# salle. C'est une promesse lisible plutôt qu'une surprise — et le joueur
+	# peut choisir de le vider en fuyant s'il ne se sent pas de tuer le boss.
+	var depth := int(victim.get_meta("dungeon_boss_depth", _current_depth))
+	EventBus.ui_notification.emit("ui.toast.coffre_boss")
+	print("[DONJON] boss vaincu, cellule %s (étage %d). Nettoyage dans %d ticks." % [
+		cell, depth + 1, CLEANUP_DELAY_TICKS])
 
 
 func _on_tick(tick_index: int) -> void:
@@ -774,13 +1066,22 @@ func save_state() -> Dictionary:
 				blocks_out[str(index)] = GameData.material_by_runtime[rid] if rid < GameData.material_by_runtime.size() else "air"
 			chunks_out["%d,%d,%d" % [ck.x, ck.y, ck.z]] = blocks_out
 		edits_out["%d,%d,%d" % [key.x, key.y, key.z]] = chunks_out
-	return {"cleaned": cleaned, "pending": pending, "edits": edits_out}
+	# Étages déjà pillés (2026-08-02) : sans eux, recharger une partie ferait
+	# réapparaître tout le butin au sol du donjon.
+	var looted := []
+	for key: Vector3i in _looted_floors:
+		looted.append([key.x, key.y, key.z])
+	return {"cleaned": cleaned, "pending": pending, "edits": edits_out, "looted": looted}
 
 
 func restore_state(data: Dictionary) -> void:
 	_cleaned_cells.clear()
 	_cleanup_pending.clear()
 	_dungeon_edits.clear()
+	_looted_floors.clear()
+	for entry: Variant in data.get("looted", []):
+		if entry is Array and (entry as Array).size() == 3:
+			_looted_floors[Vector3i(int(entry[0]), int(entry[1]), int(entry[2]))] = true
 	for entry: Variant in data.get("cleaned", []):
 		if entry is Array and (entry as Array).size() == 2:
 			_cleaned_cells[Vector2i(int(entry[0]), int(entry[1]))] = true

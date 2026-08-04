@@ -1,0 +1,818 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "ver",
+  "model_identifier": "ver",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "mesh_corps_1",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -3.6,
+        0.0,
+        -15.0
+      ],
+      "to": [
+        3.6,
+        7.2,
+        -10.0
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        0.0,
+        3.6,
+        -15.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "34913093-9e79-525f-9d60-337dc5c86cbc"
+    },
+    {
+      "name": "mesh_corps_2",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -3.42,
+        0.18000000000000016,
+        -10.0
+      ],
+      "to": [
+        3.42,
+        7.02,
+        -5.0
+      ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        0.0,
+        3.6,
+        -10.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "25a578ba-9120-57ee-ba3f-25ea383d5b62"
+    },
+    {
+      "name": "mesh_corps_3",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -3.24,
+        0.3599999999999999,
+        -5.0
+      ],
+      "to": [
+        3.24,
+        6.84,
+        0.0
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        0.0,
+        3.6,
+        -5.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "3baabb42-3dc8-58cc-b1b8-a4ddbc1a97e6"
+    },
+    {
+      "name": "mesh_corps_4",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -3.06,
+        0.54,
+        0.0
+      ],
+      "to": [
+        3.06,
+        6.66,
+        5.0
+      ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        0.0,
+        3.6,
+        0.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "af69f7b8-eeac-5f1c-a503-82c59f1daa04"
+    },
+    {
+      "name": "mesh_corps_5",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -2.8800000000000003,
+        0.7199999999999998,
+        5.0
+      ],
+      "to": [
+        2.8800000000000003,
+        6.48,
+        10.0
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        0.0,
+        3.6,
+        5.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "9e882669-647e-5cd7-bc94-449bf25500c2"
+    },
+    {
+      "name": "mesh_corps_6",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -2.7,
+        0.8999999999999999,
+        10.0
+      ],
+      "to": [
+        2.7,
+        6.300000000000001,
+        15.0
+      ],
+      "autouv": 0,
+      "color": 3,
+      "origin": [
+        0.0,
+        3.6,
+        10.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "39a9e855-5172-50b8-845e-5b2438bfb2ae"
+    },
+    {
+      "name": "mesh_tete",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -2.0,
+        1.8,
+        -19.0
+      ],
+      "to": [
+        2.0,
+        5.800000000000001,
+        -15.0
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        0.0,
+        3.6,
+        -15.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "120c3d79-2ddf-50b9-bdc0-418c1440d85d"
+    },
+    {
+      "name": "mesh_museau",
+      "box_uv": false,
+      "rescale": false,
+      "locked": false,
+      "from": [
+        -1.04,
+        2.2,
+        -20.6
+      ],
+      "to": [
+        1.04,
+        3.8000000000000003,
+        -18.0
+      ],
+      "autouv": 0,
+      "color": 1,
+      "origin": [
+        0.0,
+        3.6,
+        -15.0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "1648516c-2b32-55c3-ae55-b2db0df0983b"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "racine",
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "color": 0,
+      "uuid": "92ba1093-568d-518f-ac8c-522c7eb0a29d",
+      "export": true,
+      "mirror_uv": false,
+      "isOpen": true,
+      "visibility": true,
+      "autouv": 0,
+      "children": [
+        {
+          "name": "corps_1",
+          "origin": [
+            0.0,
+            3.6,
+            -15.0
+          ],
+          "color": 0,
+          "uuid": "7cf2e203-539b-5f19-8162-ab171f0a2642",
+          "export": true,
+          "mirror_uv": false,
+          "isOpen": true,
+          "visibility": true,
+          "autouv": 0,
+          "children": [
+            "34913093-9e79-525f-9d60-337dc5c86cbc",
+            {
+              "name": "corps_2",
+              "origin": [
+                0.0,
+                3.6,
+                -10.0
+              ],
+              "color": 0,
+              "uuid": "f6da2cfa-729a-5dff-8d37-9e642b9f5db5",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "visibility": true,
+              "autouv": 0,
+              "children": [
+                "25a578ba-9120-57ee-ba3f-25ea383d5b62",
+                {
+                  "name": "corps_3",
+                  "origin": [
+                    0.0,
+                    3.6,
+                    -5.0
+                  ],
+                  "color": 0,
+                  "uuid": "bec6a9e5-b2d8-50db-9c72-500fe29ce108",
+                  "export": true,
+                  "mirror_uv": false,
+                  "isOpen": true,
+                  "visibility": true,
+                  "autouv": 0,
+                  "children": [
+                    "3baabb42-3dc8-58cc-b1b8-a4ddbc1a97e6",
+                    {
+                      "name": "corps_4",
+                      "origin": [
+                        0.0,
+                        3.6,
+                        0.0
+                      ],
+                      "color": 0,
+                      "uuid": "8346bc92-af12-5cc4-b889-bc5173874646",
+                      "export": true,
+                      "mirror_uv": false,
+                      "isOpen": true,
+                      "visibility": true,
+                      "autouv": 0,
+                      "children": [
+                        "af69f7b8-eeac-5f1c-a503-82c59f1daa04",
+                        {
+                          "name": "corps_5",
+                          "origin": [
+                            0.0,
+                            3.6,
+                            5.0
+                          ],
+                          "color": 0,
+                          "uuid": "8fac9563-18f7-5359-bb81-cca6a085d794",
+                          "export": true,
+                          "mirror_uv": false,
+                          "isOpen": true,
+                          "visibility": true,
+                          "autouv": 0,
+                          "children": [
+                            "9e882669-647e-5cd7-bc94-449bf25500c2",
+                            {
+                              "name": "corps_6",
+                              "origin": [
+                                0.0,
+                                3.6,
+                                10.0
+                              ],
+                              "color": 0,
+                              "uuid": "47a4c886-b850-5672-8c00-91bc05795cb8",
+                              "export": true,
+                              "mirror_uv": false,
+                              "isOpen": true,
+                              "visibility": true,
+                              "autouv": 0,
+                              "children": [
+                                "39a9e855-5172-50b8-845e-5b2438bfb2ae"
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "tete",
+              "origin": [
+                0.0,
+                3.6,
+                -15.0
+              ],
+              "color": 0,
+              "uuid": "19272762-2633-5898-a69c-ca0ad188fe2c",
+              "export": true,
+              "mirror_uv": false,
+              "isOpen": true,
+              "visibility": true,
+              "autouv": 0,
+              "children": [
+                "120c3d79-2ddf-50b9-bdc0-418c1440d85d",
+                "1648516c-2b32-55c3-ae55-b2db0df0983b",
+                {
+                  "name": "attach_tete",
+                  "origin": [
+                    0.0,
+                    5.800000000000001,
+                    -17.0
+                  ],
+                  "color": 0,
+                  "uuid": "3683b21b-3273-5dc3-968b-1cb32b4d617e",
+                  "export": true,
+                  "mirror_uv": false,
+                  "isOpen": true,
+                  "visibility": true,
+                  "autouv": 0,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "textures": []
+}

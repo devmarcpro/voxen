@@ -37,6 +37,35 @@ const TERMINAL_VELOCITY := 78.0
 ## terrain, lui, ne change PAS : pas de lissage en sous-voxels (le greedy
 ## meshing de chunk_mesher.gd et l'éparsité de chunk_data.gd sont préservés) —
 ## c'est le contrôleur qui s'adapte, pas la géométrie du monde.
+## --- JEU DE JAMBES DE COMBAT (2026-08-02) ---
+##
+## POURQUOI CES CONSTANTES EXISTENT, ET POURQUOI ELLES NE S'APPLIQUENT PAS
+## TOUT LE TEMPS. Le déplacement de ce fichier est aux valeurs EXACTES de
+## Minecraft, sur demande explicite (2026-07-21) : vitesse identique dans les
+## quatre directions, appliquée instantanément, sans inertie. C'est parfait
+## pour construire, et c'est incompatible avec un duel.
+##
+## Le combat de Mount & Blade tient pour moitié au jeu de jambes, et le jeu de
+## jambes n'existe QUE par l'asymétrie : reculer doit coûter, se désengager doit
+## prendre un instant. Quand avancer, reculer et se déplacer de côté vont à la
+## même vitesse et démarrent au quart de tour, l'espacement n'a plus de valeur
+## tactique — on entre et on sort de portée gratuitement, et toute la lecture de
+## distance s'effondre.
+##
+## Le compromis retenu : ces règles ne s'appliquent QU'EN POSTURE DE COMBAT
+## (garde levée ou coup engagé — voir `combat_stance`). Hors combat, le
+## déplacement reste au millième la marche de Minecraft, demande d'origine
+## intacte. Lever sa garde devient donc un ENGAGEMENT du corps entier, pas
+## seulement des bras : on gagne une défense et on perd sa mobilité. C'est un
+## choix qui se fait et se défait à volonté, ce qui en fait une décision de
+## joueur plutôt qu'une taxe permanente.
+const BACKPEDAL_FACTOR := 0.58   # reculer, garde haute : nettement plus lent
+const STRAFE_FACTOR := 0.78      # tourner autour de l'adversaire : un peu plus lent
+## Rapidité d'établissement de la vitesse voulue, en fractions par seconde.
+## Donne au corps une inertie COURTE : assez pour qu'un changement de direction
+## se sente et se lise chez l'adversaire, trop brève pour qu'on se sente patiner.
+const FOOTWORK_ACCEL := 14.0
+
 const PLAYER_RADIUS := 0.35
 const PLAYER_HEIGHT := 2.0
 ## Hauteur maximale franchie sans sauter. 1.0 = exactement une marche d'un
@@ -58,6 +87,25 @@ var _pitch := 0.0
 var _vertical_velocity := 0.0
 var _grounded := false
 var _jump_requested := false
+## Secousse d'impact ACTUELLEMENT ajoutée à `rotation` (tangage, lacet, roulis).
+## Mémorisée pour être défalquée partout où l'on relit `rotation` comme si
+## c'était la visée : lecture de la souris et diffusion réseau. C'est le prix à
+## payer pour que la secousse reste une surcouche et ne contamine jamais l'état
+## de visée — voir ImpactFeedback.camera_shake().
+var _applied_shake := Vector3.ZERO
+## Facteur de vitesse dû aux STATUTS (F.4 : ralentissement, gel, hâte). POUSSÉ
+## par Player à chaque frame, exactement comme la posture ci-dessous : la caméra
+## porte le mouvement mais ne connaît ni les statuts ni le résolveur E.4, et il
+## n'y a aucune raison de lui apprendre.
+var status_speed := 1.0
+## Posture de combat : garde levée ou coup engagé. Poussée par Player à chaque
+## frame — la caméra ne connaît ni arme ni endurance, et n'a pas à les
+## connaître : elle ne reçoit qu'un booléen de posture.
+var combat_stance := false
+## Vitesse horizontale courante (blocs/s), pour l'inertie en posture de combat.
+## Hors combat elle est TOUJOURS égale à la vitesse voulue : la marche reste
+## instantanée, exactement comme dans Minecraft.
+var _walk_velocity := Vector3.ZERO
 ## Réplication réseau (E.11 : non-fiable, 10-20 Hz) — purement visuel/réseau,
 ## jamais de logique de jeu ici (E.1).
 const NETWORK_SYNC_INTERVAL := 1.0 / 15.0
@@ -75,67 +123,46 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key != null and key.pressed and key.physical_keycode == KEY_ESCAPE:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	if key != null and key.pressed and not key.echo and key.physical_keycode == KEY_F:
+	if event.is_action_pressed("toggle_fly"):
 		flying = not flying
 		if flying:
 			_vertical_velocity = 0.0
-	if key != null and key.pressed and not key.echo and key.physical_keycode == KEY_SPACE and not flying:
+	if event.is_action_pressed("jump") and not flying:
 		_jump_requested = true  # Consommé au prochain _process si au sol.
 	var motion := event as InputEventMouseMotion
 	if motion != null and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		# Repart de la rotation courante (elle peut avoir été posée par main.gd).
-		_yaw = rotation.y - motion.relative.x * SENSITIVITY
-		_pitch = clampf(rotation.x - motion.relative.y * SENSITIVITY, -1.5, 1.5)
-		rotation = Vector3(_pitch, _yaw, 0.0)
+		# Repart de la rotation courante (elle peut avoir été posée par main.gd),
+		# DÉFALQUÉE de la secousse d'impact : celle-ci est une surcouche
+		# décorative, pas un mouvement de visée. Sans cette soustraction, chaque
+		# mouvement de souris pendant une secousse en absorberait une bribe dans
+		# `_yaw`/`_pitch`, et la caméra ne reviendrait jamais à son point de
+		# départ — le joueur verrait sa visée dériver un peu à chaque coup porté.
+		var aim := rotation - _applied_shake
+		_yaw = aim.y - motion.relative.x * SENSITIVITY
+		_pitch = clampf(aim.x - motion.relative.y * SENSITIVITY, -1.5, 1.5)
+		rotation = Vector3(_pitch, _yaw, 0.0) + _applied_shake
 
 
-## --- Voyage rapide GRADUEL (carte, 2026-07-26) : téléporte progressivement
-## vers la cible pendant que le TEMPS DE JEU s'écoule (ticks réellement simulés
-## → mana régénère, faim, etc.). Accéléré (quelques secondes réelles), on reste
-## sur la carte. `total_ticks` = coût de temps du trajet (fourni par le joueur).
-const TRAVEL_MAX_SECONDS := 6.0     # durée réelle max de l'animation de voyage.
-const TRAVEL_MIN_TICKS_PER_SEC := 1000.0
-var _travel_active := false
-var _travel_from := Vector2.ZERO
-var _travel_target := Vector2.ZERO
-var _travel_total := 0
-var _travel_done := 0
-var _travel_rate := 0.0
-func travel_to(wx: int, wz: int, total_ticks: int) -> void:
-	_travel_from = Vector2(position.x, position.z)
-	_travel_target = Vector2(float(wx), float(wz))
-	_travel_total = maxi(total_ticks, 1)
-	_travel_done = 0
-	_travel_rate = maxf(TRAVEL_MIN_TICKS_PER_SEC, float(_travel_total) / TRAVEL_MAX_SECONDS)
-	_travel_active = true
-
-
+## --- Voyage rapide : plus d'animation (2026-08-03) ---
+##
+## Il a existé ici un voyage GRADUEL : le joueur glissait vers sa destination
+## pendant six secondes réelles pendant que `push_ticks` simulait le temps du
+## trajet, à mille ticks par seconde. C'est retiré. La téléportation est
+## instantanée (`Player.fast_travel_to_world`) et le coût en temps de jeu est
+## PASSÉ, pas joué (`TickManager.skip_ticks`).
+##
+## Ce que l'animation coûtait, et qui ne se voyait qu'en jeu : chaque village
+## survolé était peuplé puis relâché, chaque créature de la trajectoire simulée,
+## et tous les chunks du chemin streamés — pour une traversée que personne ne
+## regardait, puisque la carte reste ouverte pendant le voyage.
+##
+## `is_traveling()` est conservé : la carte du monde l'interroge pour griser ses
+## commandes. Il répond désormais toujours faux, un voyage ne durant plus.
 func is_traveling() -> bool:
-	return _travel_active
-
-
-func _process_travel(delta: float) -> void:
-	var k := mini(int(ceil(_travel_rate * delta)), _travel_total - _travel_done)
-	if k > 0:
-		TickManager.push_ticks(k)  # simule vraiment le temps (mana/faim/IA…).
-		_travel_done += k
-	var frac := float(_travel_done) / float(_travel_total)
-	var xz := _travel_from.lerp(_travel_target, frac)
-	var h := 24.0
-	if WorldManager.generator != null:
-		h = float(WorldManager.generator.height_at(int(xz.x), int(xz.y)))
-	position = Vector3(xz.x + 0.5, h + 2.9, xz.y + 0.5)
-	_vertical_velocity = 0.0
-	_grounded = true
-	if _travel_done >= _travel_total:
-		_travel_active = false
+	return false
 
 
 func _process(delta: float) -> void:
-	if _travel_active:
-		_process_travel(delta)
-		WorldManager.update_center(global_position)
-		return
 	if bench:
 		# Vol automatique rectiligne horizontal, altitude asservie au relief
 		# (suit les montagnes/vallées — traversée continue de nouveaux chunks).
@@ -151,6 +178,7 @@ func _process(delta: float) -> void:
 		else:
 			_process_walk(delta)
 	WorldManager.update_center(global_position)
+	_apply_impact_shake()
 
 	# Attend une connexion ÉTABLIE (pas seulement "active") : sinon l'appel
 	# RPC échoue en boucle pendant la poignée de main ENet.
@@ -161,25 +189,83 @@ func _process(delta: float) -> void:
 			# Position de l'oeil + REGARD : sans le lacet et le tangage, on ne
 			# voit pas ou l'autre joueur vise, ce qui rend un combat
 			# directionnel illisible.
-			NetworkManager.rpc_broadcast_pose.rpc(global_position, rotation.y, rotation.x)
+			# La secousse d'impact est retirée : elle est propre à CE client
+			# (et désactivable dans les réglages). La diffuser ferait tressauter
+			# notre avatar chez les autres pour une raison qu'ils ne voient pas.
+			NetworkManager.rpc_broadcast_pose.rpc(global_position,
+				rotation.y - _applied_shake.y, rotation.x - _applied_shake.x)
+
+
+
+## Vitesse horizontale voulue (blocs/s) à partir des touches enfoncées.
+##
+## HORS POSTURE DE COMBAT, cette fonction est l'identité : elle rend exactement
+## `direction.normalized() * speed`, la marche Minecraft d'origine, sans
+## pondération ni inertie. C'est délibéré et c'est la première chose à vérifier
+## si le déplacement change de sensation hors duel — la demande de 2026-07-21
+## tient toujours.
+##
+## EN POSTURE DE COMBAT, deux règles s'ajoutent :
+##
+##   1. LA PONDÉRATION DIRECTIONNELLE. Le geste est décomposé dans le repère du
+##      REGARD (ce qu'on a devant soi, ce qu'on a sur les côtés) et non dans
+##      celui du monde : c'est l'adversaire qu'on regarde, donc c'est par rapport
+##      à lui que reculer doit coûter. Reculer en diagonale coûte à proportion de
+##      sa part de recul — il n'y a pas de biais d'angle à exploiter.
+##   2. L'INERTIE. La vitesse s'établit en une fraction de seconde au lieu
+##      d'apparaître d'un coup. C'est ce qui rend un désengagement LISIBLE :
+##      l'adversaire voit le corps partir en arrière avant qu'il soit hors de
+##      portée, et peut décider de punir. Sans elle, on se téléporte hors
+##      d'allonge à la frame près et aucune lecture n'est possible.
+func _footwork_velocity(direction: Vector3, forward: Vector3, right: Vector3,
+		speed: float, delta: float) -> Vector3:
+	var wish := direction.normalized() if direction != Vector3.ZERO else Vector3.ZERO
+	if not combat_stance:
+		# Marche Minecraft : la vitesse voulue EST la vitesse, immédiatement.
+		_walk_velocity = wish * speed
+		return _walk_velocity
+	if wish != Vector3.ZERO:
+		# `forward` pointe vers l'ARRIÈRE (c'est +Z de la base, et `move_forward`
+		# le soustrait) : l'avant du joueur est donc son opposé.
+		var ahead := -forward
+		var along := wish.dot(ahead)
+		var lateral := wish.dot(right)
+		if along < 0.0:
+			along *= BACKPEDAL_FACTOR
+		wish = ahead * along + right * (lateral * STRAFE_FACTOR)
+	_walk_velocity = _walk_velocity.move_toward(
+		wish * speed, FOOTWORK_ACCEL * speed * delta)
+	return _walk_velocity
+
+
+## Remplace la secousse d'impact de la frame précédente par celle de cette
+## frame. Le REMPLACEMENT (et non l'addition) est ce qui garantit le retour
+## exact à zéro quand la secousse s'éteint : on retire toujours précisément ce
+## qu'on avait ajouté, sans accumulation d'erreur au fil des coups.
+func _apply_impact_shake() -> void:
+	var shake := ImpactFeedback.camera_shake()
+	if shake == _applied_shake:
+		return
+	rotation = rotation - _applied_shake + shake
+	_applied_shake = shake
 
 
 func _process_flight(delta: float) -> void:
 	var direction := Vector3.ZERO
-	if Input.is_physical_key_pressed(KEY_W):
+	if Input.is_action_pressed("move_forward"):
 		direction -= Vector3(global_basis.z.x, 0, global_basis.z.z).normalized()
-	if Input.is_physical_key_pressed(KEY_S):
+	if Input.is_action_pressed("move_back"):
 		direction += Vector3(global_basis.z.x, 0, global_basis.z.z).normalized()
-	if Input.is_physical_key_pressed(KEY_A):
+	if Input.is_action_pressed("move_left"):
 		direction -= global_basis.x
-	if Input.is_physical_key_pressed(KEY_D):
+	if Input.is_action_pressed("move_right"):
 		direction += global_basis.x
-	if Input.is_physical_key_pressed(KEY_SPACE):
+	if Input.is_action_pressed("jump"):
 		direction += Vector3.UP
-	if Input.is_physical_key_pressed(KEY_C):
+	if Input.is_action_pressed("descend"):
 		direction += Vector3.DOWN
 	if direction != Vector3.ZERO:
-		var speed := BOOST_SPEED if Input.is_physical_key_pressed(KEY_SHIFT) else SPEED
+		var speed := BOOST_SPEED if Input.is_action_pressed("sneak") else SPEED
 		position += direction.normalized() * speed * delta
 
 
@@ -338,25 +424,35 @@ func _process_walk(delta: float) -> void:
 	var forward := Vector3(global_basis.z.x, 0, global_basis.z.z).normalized()
 	var right := Vector3(global_basis.x.x, 0, global_basis.x.z).normalized()
 	var direction := Vector3.ZERO
-	if Input.is_physical_key_pressed(KEY_W):
+	if Input.is_action_pressed("move_forward"):
 		direction -= forward
-	if Input.is_physical_key_pressed(KEY_S):
+	if Input.is_action_pressed("move_back"):
 		direction += forward
-	if Input.is_physical_key_pressed(KEY_A):
+	if Input.is_action_pressed("move_left"):
 		direction -= right
-	if Input.is_physical_key_pressed(KEY_D):
+	if Input.is_action_pressed("move_right"):
 		direction += right
 	# Vitesse façon Minecraft : Shift = sneak (lent + anti-chute au bord),
 	# Ctrl = sprint, sinon marche. (Shift n'est plus « courir » : MC réserve
 	# Shift au sneak — le sprint vit sur Ctrl comme dans MC.)
-	var sneaking := Input.is_physical_key_pressed(KEY_SHIFT)
+	var sneaking := Input.is_action_pressed("sneak")
 	var speed := WALK_SPEED
 	if sneaking:
 		speed = SNEAK_SPEED
-	elif Input.is_physical_key_pressed(KEY_CTRL):
+	elif Input.is_action_pressed("sprint"):
 		speed = SPRINT_SPEED
-	if direction != Vector3.ZERO and WorldManager.generator != null:
-		var move := direction.normalized() * speed * delta
+	# STATUTS (F.4, 2026-08-03) : ralentissement, gel, hâte. La caméra ne connaît
+	# pas les statuts et n'a pas à les connaître — elle demande un facteur au
+	# joueur, qui le tient du résolveur E.4. Un gel donne 0 et immobilise
+	# réellement, ce qu'aucun autre chemin ne permettait d'exprimer.
+	speed *= status_speed
+	# JEU DE JAMBES : hors posture de combat, ceci rend exactement
+	# `direction.normalized() * speed` — la marche Minecraft d'origine, au
+	# millième. En posture de combat, le recul et le pas de côté sont pondérés et
+	# la vitesse s'établit avec une brève inertie.
+	var velocity := _footwork_velocity(direction, forward, right, speed, delta)
+	if velocity.length_squared() > 0.000001 and WorldManager.generator != null:
+		var move := velocity * delta
 		var feet_y := position.y - EYE_HEIGHT
 		# Franchissement automatique seulement AU SOL et hors sneak : en l'air
 		# il transformerait le saut en escalade, et le sneak est le mode
@@ -386,8 +482,8 @@ func _process_walk(delta: float) -> void:
 				feet_y = stepped
 				position.y = stepped + EYE_HEIGHT
 				_vertical_velocity = 0.0
-	elif direction != Vector3.ZERO:
-		position += direction.normalized() * speed * delta
+	elif velocity.length_squared() > 0.000001:
+		position += velocity * delta
 
 	if WorldManager.generator == null:
 		return

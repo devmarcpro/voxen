@@ -10,9 +10,14 @@
   "vitesse_base": 0.9,
   "portee": 1.5,
   "type_degats": "contondant",
-  "poids_reference": 110,
+  "poids_reference": 108,
   "parts": {
     "manche": "long",
     "tete": "marteau"
-  }
+  },
+  "attaques": [
+    "taille_gauche",
+    "taille_droite",
+    "overhead"
+  ]
 }

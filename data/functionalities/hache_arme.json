@@ -10,9 +10,14 @@
   "vitesse_base": 1.4,
   "portee": 1.5,
   "type_degats": "tranchant",
-  "poids_reference": 70,
+  "poids_reference": 60,
   "parts": {
     "manche": "long",
     "tete": "hache"
-  }
+  },
+  "attaques": [
+    "taille_gauche",
+    "taille_droite",
+    "overhead"
+  ]
 }

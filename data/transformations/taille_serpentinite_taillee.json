@@ -1,0 +1,14 @@
+{
+  "id": "taille_serpentinite_taillee",
+  "name_key": "transformation.taille_serpentinite_taillee.name",
+  "station": "tailleur",
+  "skill": "minage",
+  "output": {
+    "material": "serpentinite_taillee",
+    "amount": 1
+  },
+  "input": {
+    "material": "serpentinite",
+    "amount": 1
+  }
+}

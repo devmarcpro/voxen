@@ -51,9 +51,17 @@ func run() -> void:
 	ok = ok and stone_ok
 
 	# 4. Malus de stats sous 25 de faim (A.9 : -10 %).
+	# LE RÉSOLVEUR D'ABORD, LA LECTURE ENSUITE (corrigé le 2026-08-03, même
+	# défaut que --probe-survie). Une jauge ne devient un modificateur que dans
+	# `_refresh_state_modifiers`, appelé AU TICK (E.4). En lisant la stat juste
+	# après avoir écrit `hunger`, la sonde relisait deux fois le modificateur de
+	# la jauge PRÉCÉDENTE et trouvait donc toujours la même valeur — l'échec ne
+	# venait pas du jeu, qui applique bien le malus.
 	player.hunger = 80.0
+	player._refresh_state_modifiers()
 	var full_force: int = player.effective_stat("force")
 	player.hunger = 10.0
+	player._refresh_state_modifiers()
 	var starved_force: int = player.effective_stat("force")
 	var malus_ok: bool = starved_force == int(floor(int(player.stats["force"]) * 0.9)) and starved_force < full_force
 	print("[FAIM] Force : rassasié=%d affamé=%d (attendu -10%%)" % [full_force, starved_force])

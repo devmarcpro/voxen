@@ -164,11 +164,18 @@ static func identity(capital: Dictionary, world_seed: int,
 	# n'importe pas sa population, il naît de son territoire.
 	var center := POIGenerator.cell_center_world(cell)
 	var biome: Dictionary = generator.biome_at(center.x, center.y)
+	var race := _dominant_race(biome, hash_value)
+	# CULTURE (12.5/B.11) — axe INDÉPENDANT de la race : deux royaumes humains
+	# voisins peuvent sonner latin et sino. C'est elle qui donnera leur nom aux
+	# villes du royaume et aux PNJ qui y naissent, d'où sa place ici, dans
+	# l'identité : elle se décide une fois, avec le royaume, et ne bouge plus.
+	var culture := NameGenerator.culture_for_race(race, hash_value)
 	return {
 		"id": id_of(cell),
 		"name": WorldNamer.land_name(world_seed + cell.x * 7919 + cell.y * 104729),
 		"government_type": government,
-		"race": _dominant_race(biome, hash_value),
+		"race": race,
+		"culture": culture,
 		"capital": cell,
 		"size": String(capital["size"]),
 		"radius": int(capital["radius"]),
@@ -211,7 +218,39 @@ static func _dominant_race(biome: Dictionary, hash_value: int) -> String:
 
 ## Coût d'entrée dans une cellule. Retourne -1 si elle est infranchissable :
 ## l'eau et la haute montagne bornent un royaume aussi sûrement qu'un traité.
+## Enveloppe PUBLIQUE de `_entry_cost` — pour les sondes, qui doivent pouvoir
+## chronométrer la brique élémentaire du calcul de territoire. Même convention
+## que `NoiseGenerator.pcg_hash` : on expose, on ne duplique pas.
+static func entry_cost(cell: Vector2i, generator: NoiseGenerator) -> float:
+	return _entry_cost(cell, generator)
+
+
+## Coûts d'entrée déjà calculés. `_entry_cost` est une fonction PURE de la
+## cellule — deux échantillons de bruit et rien d'autre — et le Dijkstra de
+## `territory_of` l'appelle une fois depuis CHACUN des quatre voisins de chaque
+## cellule atteinte. Mesuré : 148 cellules atteintes coûtaient 15,5 ms, dont
+## 86 % dans ces appels redondants.
+##
+## Mémoïser ne change aucun résultat, seulement le nombre de fois qu'on le
+## calcule — la génération reste déterministe au bloc près.
+static var _entry_cache := {}
+const ENTRY_CACHE_LIMIT := 65536
+
+
 static func _entry_cost(cell: Vector2i, generator: NoiseGenerator) -> float:
+	if _entry_cache.has(cell):
+		return _entry_cache[cell]
+	var cost := _compute_entry_cost(cell, generator)
+	# Plafond simple : au-delà, on vide. Un joueur qui traverse le monde finirait
+	# sinon par garder en mémoire le coût de chaque cellule visitée, et les
+	# cellules lointaines ne resserviront pas.
+	if _entry_cache.size() >= ENTRY_CACHE_LIMIT:
+		_entry_cache.clear()
+	_entry_cache[cell] = cost
+	return cost
+
+
+static func _compute_entry_cost(cell: Vector2i, generator: NoiseGenerator) -> float:
 	var center := POIGenerator.cell_center_world(cell)
 	var height := generator.height_at(center.x, center.y)
 	if height < generator.water_level + 1:
@@ -361,8 +400,26 @@ static func kingdom_at_cached(cell: Vector2i, world_seed: int,
 	return best
 
 
+## Le secteur est-il déjà calculé ? Sert au PRÉCHAUFFAGE : c'est ce qui permet
+## de payer le coût hors du tick, avant que quiconque en ait besoin.
+static func sector_ready(sector: Vector2i) -> bool:
+	return _sector_cache.has(sector)
+
+
+## Calcule un secteur s'il ne l'est pas déjà. Retourne true si du travail a
+## réellement été fait — l'appelant s'en sert pour n'en faire qu'un par frame.
+static func warm_sector(sector: Vector2i, world_seed: int, generator: NoiseGenerator) -> bool:
+	if _sector_cache.has(sector):
+		return false
+	_capitals_cached(sector, world_seed, generator)
+	return true
+
+
 ## À appeler au chargement d'un monde : deux mondes de graines différentes ne
 ## partagent aucun royaume, et garder le cache les mélangerait.
 static func clear_cache() -> void:
 	_sector_cache.clear()
 	_cell_cache.clear()
+	# Le coût d'entrée dépend du RELIEF, donc de la graine : le garder d'un
+	# monde à l'autre donnerait des frontières calculées sur le mauvais terrain.
+	_entry_cache.clear()

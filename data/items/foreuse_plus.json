@@ -1,0 +1,42 @@
+{
+  "id": "foreuse_plus",
+  "name_key": "item.foreuse_plus.name",
+  "type": "outil",
+  "equip_slot": "arme",
+  "hands": 2,
+  "functionality": "foreuse_plus",
+  "recipe": {
+    "station": "etabli",
+    "craft_skill": "forge",
+    "inputs": [
+      {
+        "category": "bois",
+        "amount": 2
+      },
+      {
+        "category": "minerai",
+        "amount": 7
+      }
+    ]
+  },
+  "stat_weights": {
+    "durete": {
+      "minerai": 0.85,
+      "bois": 0.15
+    }
+  },
+  "effects": [],
+  "tags": [
+    "outil",
+    "recolte",
+    "foreuse"
+  ],
+  "sprites": {
+    "manche": "res://assets/tools/pioche_manche.png",
+    "tete": "res://assets/tools/pioche_tete.png"
+  },
+  "sprite_tint": {
+    "manche": "bois",
+    "tete": "minerai"
+  }
+}

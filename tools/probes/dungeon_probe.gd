@@ -19,9 +19,12 @@ func run() -> void:
 			break
 		for dcz in range(-40, 41):
 			var c := Vector2i(dcx, dcz)
-			var cwc := POIGenerator.cell_center_world(c)
-			var cb: Dictionary = gg.biome_at(cwc.x, cwc.y)
-			if not cb.is_empty() and "donjon" in POIGenerator.pois_at_cell(c, WorldManager.world_seed, cb):
+			# Règle AUTORITAIRE (2026-08-02) : `has_dungeon` et non un tirage
+			# de POI refait ici. Ces sondes en portaient chacune leur copie
+			# — biome puis `pois_at_cell` — et le jour où « sol émergé » s'y
+			# est ajouté, elles ont continué à désigner une cellule que le
+			# monde ne bâtit plus : tour absente, échantillons vides.
+			if gg.has_dungeon(c):
 				donjon_cell = c
 				found = true
 				break
@@ -43,9 +46,18 @@ func run() -> void:
 			centre.x + int(DungeonTower.RADIUS) - 2, centre.y, seed_val)
 	var hors := DungeonTower.height_at(donjon_cell,
 			centre.x + int(DungeonTower.RADIUS) + 8, centre.y, seed_val)
-	print("[DONJONPROBE] silhouette : centre=%.1f bord=%.1f hors emprise=%.1f (dôme décroissant, 0 dehors)" % [
+	print("[DONJONPROBE] silhouette : centre=%.1f bord=%.1f hors emprise=%.1f (fût plein, 0 dehors)" % [
 			hauteur_centre, hauteur_bord, hors])
-	if hauteur_centre <= 20.0 or hauteur_centre <= hauteur_bord or hors != 0.0:
+	# ATTENTION, ce test a changé de sens le 2026-08-02. Il exigeait
+	# `centre > bord` — la signature d'un DÔME, qui décroît vers ses bords.
+	# La structure est désormais une TOUR : hauteur constante sur tout le fût,
+	# et le pourtour est même PLUS HAUT (tourelles et créneaux). Garder
+	# l'ancienne assertion faisait échouer la sonde sur une tour parfaitement
+	# correcte. Ce qui reste vrai, et qui compte vraiment :
+	#   - la masse est haute (c'est un point de repère visible de loin) ;
+	#   - elle s'arrête NET hors de l'emprise, sinon elle mord sur la cellule
+	#     voisine (défaut réellement attrapé ici le 2026-08-02).
+	if hauteur_centre <= 20.0 or hauteur_bord <= 20.0 or hors != 0.0:
 		print("[DONJONPROBE] ÉCHEC : silhouette incorrecte.")
 		main.get_tree().quit(1)
 		return
@@ -70,21 +82,41 @@ func run() -> void:
 			creux += 1
 			continue
 		var nom: String = GameData.material_by_runtime[b]
-		if nom in DungeonTower.PALETTE:
+		# La palette n'est plus une constante depuis le 2026-08-02 : chaque
+		# cellule tire ses pierres taillées. On vérifie donc l'APPARTENANCE À
+		# LA FAMILLE (tag `pierre_taillee`) et non l'égalité à une liste figée.
+		if "pierre_taillee" in (GameData.materials[nom].get("tags", []) as Array):
 			vus[nom] = true
 			pleins += 1
 	print("[DONJONPROBE] échantillon : %d pleins, %d vides — %d matériaux de palette distincts %s" % [
 			pleins, creux, vus.size(), vus.keys()])
-	if vus.size() < 3 or pleins == 0 or creux == 0:
-		print("[DONJONPROBE] ÉCHEC : pas assez de variété, ou aucune cavité (effet alien).")
+	# Seuil abaissé de 3 à 2 : la tour en pierre taillée a une palette de DEUX
+	# roches (maçonnerie + accent des moulures) là où la termitière en avait
+	# cinq. Exiger 3 ferait échouer la sonde sur une tour parfaitement correcte.
+	if vus.size() < 2 or pleins == 0 or creux == 0:
+		print("[DONJONPROBE] ÉCHEC : pas assez de variété, ou aucune cavité (salle/tunnels).")
 		main.get_tree().quit(1)
 		return
 
-	# Incassabilité conservée.
-	var un_bloc: String = vus.keys()[0]
-	var incassable: bool = "incassable" in (GameData.materials[un_bloc].get("tags", []) as Array)
-	print("[DONJONPROBE] %s incassable=%s (attendu true)" % [un_bloc, incassable])
-	if not incassable:
+	# Incassabilité conservée, mais elle a changé de NATURE le 2026-08-02 : elle
+	# ne tient plus à un tag du matériau (la tour est en pierre taillée, un
+	# matériau de construction que le joueur pose lui-même — le rendre
+	# incassable aurait figé toutes ses propres bâtisses) mais à
+	# l'EMPLACEMENT. On vérifie donc les deux faces de la règle : scellé dans
+	# la tour, PAS scellé juste à côté.
+	var dedans := WorldManager.is_sealed_structure(Vector3i(centre.x, ground + 5, centre.y))
+	# Point témoin : le COIN de la cellule, et pas « le centre + rayon + 10 ».
+	# Plein est à cette distance on est déjà dans la cellule VOISINE, à 58 blocs
+	# de son centre — donc à l'intérieur de SA tour si elle en porte une, et le
+	# témoin se déclenchait à juste titre. Le coin (62, 62) est à 87 blocs de son
+	# propre centre et à plus de 90 de chacun des quatre voisins : c'est le seul
+	# endroit d'une cellule garanti hors de toute tour.
+	var demi := ClaimManager.CELL_SIZE / 2 - 2
+	var dehors := WorldManager.is_sealed_structure(
+			Vector3i(centre.x + demi, ground + 5, centre.y + demi))
+	print("[DONJONPROBE] structure scellée : dans la tour=%s, hors emprise=%s (attendu true/false)" % [
+			dedans, dehors])
+	if not dedans or dehors:
 		main.get_tree().quit(1)
 		return
 
@@ -109,10 +141,24 @@ func run() -> void:
 	var feet := camera.global_position - Vector3(0, 1.9, 0)  # EYE_HEIGHT — feet_y = sommet du bloc de sol.
 	var floor_pos := Vector3i(floori(feet.x), floori(feet.y + 0.001) - 1, floori(feet.z))
 	var floor_id := WorldManager.block_at_world(floor_pos)
+	# COMPTE LES BOSS, pas les occupants (corrigé le 2026-08-02). Cette boucle
+	# comptait toute créature de la dimension donjon et l'appelait « boss » —
+	# exact tant que le boss était le seul habitant, faux dès que les étages ont
+	# été peuplés d'ennemis. Le boss se reconnaît à sa méta, posée par
+	# `_build_dimension` : c'est le seul marqueur qui le distingue vraiment.
 	var boss_count := 0
+	var occupants := 0
 	for c in CreatureManager.creatures:
-		if is_instance_valid(c) and c.dimension == &"donjon":
+		if not (is_instance_valid(c) and c.dimension == &"donjon"):
+			continue
+		occupants += 1
+		if c.has_meta("dungeon_boss_cell"):
 			boss_count += 1
+	print("[DONJONPROBE] occupants de l'étage : %d (tous types d'ennemis confondus)" % occupants)
+	if occupants == 0:
+		print("[DONJONPROBE] ÉCHEC : étage désert — le peuplement ne s'est pas fait.")
+		main.get_tree().quit(1)
+		return
 	# Boss ATTENDU ABSENT au premier étage depuis le passage au multi-étage
 	# (2026-07-28) : il n'existe plus qu'au dernier, et lui seul nettoie la
 	# cellule. Le parcours complet des étages est couvert par --probe-etages.

@@ -1,0 +1,20 @@
+{
+  "id": "fulguration",
+  "name_key": "module.fulguration.name",
+  "module_type": "effet",
+  "mana_cost_base": 16,
+  "power_base": 22,
+  "tags": [
+    "foudre",
+    "cible"
+  ],
+  "params": {
+    "portee": 35
+  },
+  "grimoire_domains": [
+    "foudre",
+    "destruction"
+  ],
+  "book_type": "grimoire",
+  "degats_des": "4d6"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "offrande_de_sang",
+  "name_key": "module.offrande_de_sang.name",
+  "module_type": "modificateur",
+  "mana_cost_base": 0,
+  "power_base": 0,
+  "tags": [
+    "corruption"
+  ],
+  "params": {
+    "mods": {
+      "puissance": 12
+    },
+    "cout_vie": 8
+  },
+  "grimoire_domains": [
+    "corruption"
+  ],
+  "book_type": "grimoire"
+}

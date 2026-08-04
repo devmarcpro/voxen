@@ -1,0 +1,14 @@
+{
+  "id": "fab_grand_coffre",
+  "name_key": "transformation.fab_grand_coffre.name",
+  "station": "etabli",
+  "skill": "menuiserie",
+  "input": {
+    "material": "coffre",
+    "amount": 2
+  },
+  "output": {
+    "material": "grand_coffre",
+    "amount": 1
+  }
+}

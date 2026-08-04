@@ -4,8 +4,8 @@
   "wood_material": "peuplier",
   "leaf_material": "feuilles_peuplier",
   "height_range": [
-    9,
-    14
+    16,
+    22
   ],
   "trunk_radius": 1,
   "branch_parameters": {
@@ -20,10 +20,10 @@
       0
     ]
   },
-  "canopy_shape": "conical",
+  "canopy_shape": "columnar",
   "canopy_radius_range": [
-    1,
-    2
+    2,
+    3
   ],
   "special_tags": []
 }

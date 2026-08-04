@@ -183,11 +183,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
 		return
-	if key.physical_keycode == KEY_M and not is_open:
+	if event.is_action_pressed("world_map") and not is_open:
 		_open()
 	elif key.physical_keycode == KEY_ESCAPE and is_open:
 		_close()
-	elif key.physical_keycode == KEY_L and is_open:
+	elif event.is_action_pressed("map_legend") and is_open:
 		_layer_index = (_layer_index + 1) % LAYERS.size()
 		_build_mosaic()
 
@@ -212,19 +212,20 @@ func _process(delta: float) -> void:
 	if not is_open:
 		return
 	_refresh_status()
-	# Touches PHYSIQUES : W/A/S/D correspondent à Z/Q/S/D sur un clavier
-	# AZERTY — le joueur utilise bien ZQSD sans configuration.
+	# Mêmes actions que la marche au sol : le déplacement case par case sur la
+	# carte doit suivre la remappe du joueur, sinon il se retrouve avec deux
+	# jeux de touches de déplacement différents selon l'écran ouvert.
 	_step_cooldown = maxf(0.0, _step_cooldown - delta)
 	if _step_cooldown > 0.0:
 		return
 	var step := Vector2i.ZERO
-	if Input.is_physical_key_pressed(KEY_W):
+	if Input.is_action_pressed("move_forward"):
 		step.y -= 1
-	elif Input.is_physical_key_pressed(KEY_S):
+	elif Input.is_action_pressed("move_back"):
 		step.y += 1
-	elif Input.is_physical_key_pressed(KEY_A):
+	elif Input.is_action_pressed("move_left"):
 		step.x -= 1
-	elif Input.is_physical_key_pressed(KEY_D):
+	elif Input.is_action_pressed("move_right"):
 		step.x += 1
 	if step == Vector2i.ZERO:
 		return

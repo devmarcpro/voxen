@@ -1,0 +1,15 @@
+{
+  "id": "peau_de_pierre",
+  "name_key": "status.peau_de_pierre.name",
+  "duration_ticks": 200,
+  "stacks": false,
+  "tags": [
+    "protection",
+    "terre"
+  ],
+  "modifiers": {
+    "reduction_degats": {
+      "add": 0.3
+    }
+  }
+}

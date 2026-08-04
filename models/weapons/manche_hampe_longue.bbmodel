@@ -1,0 +1,112 @@
+{
+  "meta": {
+    "format_version": "4.5",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "manche_hampe_longue",
+  "model_identifier": "manche_hampe_longue",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "elements": [
+    {
+      "name": "manche_hampe_longue_0",
+      "box_uv": false,
+      "rescale": false,
+      "from": [
+        -2.0,
+        0,
+        -2.0
+      ],
+      "to": [
+        2.0,
+        64,
+        2.0
+      ],
+      "autouv": 0,
+      "color": 0,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": null
+        }
+      },
+      "uuid": "5706e20e-a02b-5c19-83b6-4741b0339a22"
+    }
+  ],
+  "outliner": [
+    {
+      "name": "manche_hampe_longue",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "uuid": "080d3e2f-30e4-5b8f-bc33-448d209b3b0b",
+      "export": true,
+      "isOpen": true,
+      "children": [
+        "5706e20e-a02b-5c19-83b6-4741b0339a22"
+      ]
+    }
+  ],
+  "textures": []
+}
