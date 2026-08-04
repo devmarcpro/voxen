@@ -1,0 +1,26 @@
+{
+  "id": "plateaux_suspendus",
+  "name_key": "biome.plateaux_suspendus.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "surface_material": "herbe_menthe",
+  "sub_material": "roche_nacree",
+  "accent_material": "quartz_rose",
+  "relief": "champignon",
+  "vegetation": [
+    {
+      "id": "champignon_songe",
+      "density": 0.05
+    },
+    {
+      "id": "arbre_lanterne",
+      "density": 0.03
+    }
+  ],
+  "priority": 50,
+  "conditions": {},
+  "subsurface_material": "roche_nacree"
+}

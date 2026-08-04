@@ -1,0 +1,26 @@
+{
+  "id": "cimes_tordues",
+  "name_key": "biome.cimes_tordues.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "surface_material": "herbe_azuree",
+  "sub_material": "roche_songe",
+  "accent_material": "cristal_azur",
+  "relief": "tordu",
+  "vegetation": [
+    {
+      "id": "champignon_songe",
+      "density": 0.03
+    },
+    {
+      "id": "arbre_lanterne",
+      "density": 0.02
+    }
+  ],
+  "priority": 50,
+  "conditions": {},
+  "subsurface_material": "roche_songe"
+}

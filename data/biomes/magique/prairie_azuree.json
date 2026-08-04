@@ -1,0 +1,26 @@
+{
+  "id": "prairie_azuree",
+  "name_key": "biome.prairie_azuree.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "surface_material": "herbe_azuree",
+  "sub_material": "roche_songe",
+  "accent_material": "cristal_azur",
+  "relief": "doux",
+  "vegetation": [
+    {
+      "id": "arbre_lanterne",
+      "density": 0.05
+    },
+    {
+      "id": "arbre_torsade",
+      "density": 0.03
+    }
+  ],
+  "priority": 50,
+  "conditions": {},
+  "subsurface_material": "roche_songe"
+}

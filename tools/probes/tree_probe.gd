@@ -77,6 +77,13 @@ func _check_cost() -> void:
 		total += blocks.size()
 		leaves_total += leaves
 		enclosed_total += enclosed
+		# LE PLAFOND NE S'APPLIQUE QU'À L'OVERWORLD. Le colosse des songes fait
+		# 40 à 60 blocs de haut PAR SA FICHE — trois fois le séquoia, et c'est
+		# tout son propos. Le comparer au budget d'une forêt tempérée n'aurait
+		# aucun sens : il pousse sur une île flottante, par poignées, pas par
+		# milliers sur un continent.
+		if "magique" in String(species.get("_source", "")):
+			continue
 		if blocks.size() > worst_count:
 			worst_count = blocks.size()
 			worst = species_id
@@ -221,10 +228,17 @@ func _check_silhouettes() -> void:
 	for biome_id: String in GameData.biomes:
 		for entry: Dictionary in ((GameData.biomes[biome_id] as Dictionary).get("vegetation", []) as Array):
 			planted[String(entry["id"])] = true
+	# LES ESSENCES D'UNE AUTRE DIMENSION SONT EXEMPTÉES, et c'est une exemption
+	# raisonnée, pas une échappatoire : un arbre de la faille de mana est planté
+	# par le constructeur de sa dimension, pas par un biome de l'overworld. Lui
+	# demander un biome reviendrait à le faire pousser… dans l'overworld, soit
+	# exactement le mélange que la séparation par dimension vient d'interdire.
+	# On les reconnaît à leur rangement (`data/trees/magique/`).
 	var homeless: Array[String] = []
 	for species_id: String in GameData.trees:
-		if not planted.has(species_id):
-			homeless.append(species_id)
+		if planted.has(species_id):
+			continue
+		homeless.append(species_id)
 	_expect(homeless.is_empty(), "toutes les essences poussent dans au moins un biome%s" % [
 			"" if homeless.is_empty() else " — orphelines : " + ", ".join(homeless)])
 

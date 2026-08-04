@@ -30,9 +30,18 @@ static func build(dimension: StringName, declaration: Dictionary, world_seed: in
 	var rng := RandomNumberGenerator.new()
 	rng.seed = world_seed ^ 0x5EED_FA11
 
-	var zones: Array = declaration.get("zones", [])
+	# LES ZONES SONT DES BIOMES (2026-08-04). Elles étaient une liste propre à ce
+	# constructeur ; ce sont maintenant de vraies fiches de biome, déclarées
+	# `dimension: magique`. Un seul mécanisme de végétation pour tout le jeu, et
+	# la sonde qui exige qu'une essence pousse dans un biome redevient valable
+	# pour TOUTES les essences, sans exemption à plaider.
+	var zones: Array[Dictionary] = []
+	for biome_id: String in (declaration.get("biomes", []) as Array):
+		var biome: Dictionary = GameData.biomes.get(biome_id, {})
+		if not biome.is_empty():
+			zones.append(biome)
 	if zones.is_empty():
-		push_warning("RiftBuilder : aucune zone déclarée.")
+		push_warning("RiftBuilder : aucun biome déclaré pour cette dimension.")
 		return Vector3.ZERO
 	var islands: Dictionary = declaration.get("islands", {})
 	var count := int(islands.get("count", 12))
@@ -79,11 +88,14 @@ static func build(dimension: StringName, declaration: Dictionary, world_seed: in
 ## c'est exactement ce que valait la peine de généraliser l'architecture.
 static func _plant_zone(dimension: StringName, center: Vector3i, radius: int,
 		zone: Dictionary, rng: RandomNumberGenerator, seed_value: int) -> void:
-	var species_ids: Array = zone.get("arbres", [])
-	if species_ids.is_empty():
+	# La végétation d'un biome, au format commun : { id, density }.
+	var vegetation: Array = zone.get("vegetation", [])
+	if vegetation.is_empty():
 		return
-	var density := float(zone.get("densite", 0.03))
-	var attempts := int(float(radius * radius) * density) + 1
+	var total_density := 0.0
+	for entry: Dictionary in vegetation:
+		total_density += float(entry.get("density", 0.0))
+	var attempts := int(float(radius * radius) * total_density) + 1
 	for i in attempts:
 		var angle := rng.randf() * TAU
 		var distance := sqrt(rng.randf()) * float(radius - 2)
@@ -92,7 +104,8 @@ static func _plant_zone(dimension: StringName, center: Vector3i, radius: int,
 		var top := _surface_top(dimension, x, center.y + 4, z)
 		if top == -(1 << 30):
 			continue
-		var species_id := String(species_ids[rng.randi() % species_ids.size()])
+		var pick: Dictionary = vegetation[rng.randi() % vegetation.size()]
+		var species_id := String(pick["id"])
 		var species: Dictionary = GameData.trees.get(species_id, {})
 		if species.is_empty():
 			continue
@@ -115,9 +128,9 @@ static func _surface_top(dimension: StringName, x: int, from_y: int, z: int) -> 
 ## morceau arraché plutôt que comme une galette posée sur rien.
 static func _carve_island(dimension: StringName, center: Vector3i, radius: int,
 		thickness: int, zone: Dictionary, rng: RandomNumberGenerator) -> void:
-	var ground: int = GameData.material_runtime_ids.get(String(zone.get("sol", "")), 0)
-	var rock: int = GameData.material_runtime_ids.get(String(zone.get("roche", "")), 0)
-	var accent: int = GameData.material_runtime_ids.get(String(zone.get("accent", "")), 0)
+	var ground: int = GameData.material_runtime_ids.get(String(zone.get("surface_material", "")), 0)
+	var rock: int = GameData.material_runtime_ids.get(String(zone.get("sub_material", "")), 0)
+	var accent: int = GameData.material_runtime_ids.get(String(zone.get("accent_material", "")), 0)
 	if ground == 0 or rock == 0:
 		return
 	var relief := String(zone.get("relief", "doux"))
@@ -220,12 +233,13 @@ static func _populate(dimension: StringName, arrival: Vector3, declaration: Dict
 			creature.dimension = dimension
 
 	# Butin : les cristaux du lieu, qui ne poussent nulle part ailleurs.
-	var zones: Array = declaration.get("zones", [])
+	var biome_ids: Array = declaration.get("biomes", [])
 	for i in rng.randi_range(4, 7):
-		if zones.is_empty():
+		if biome_ids.is_empty():
 			break
-		var zone: Dictionary = zones[rng.randi() % zones.size()]
-		var prize := String(zone.get("accent", ""))
+		var zone: Dictionary = GameData.biomes.get(
+				String(biome_ids[rng.randi() % biome_ids.size()]), {})
+		var prize := String(zone.get("accent_material", ""))
 		if prize == "":
 			continue
 		var angle := rng.randf() * TAU

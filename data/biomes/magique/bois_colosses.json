@@ -1,0 +1,22 @@
+{
+  "id": "bois_colosses",
+  "name_key": "biome.bois_colosses.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "surface_material": "herbe_amethyste",
+  "sub_material": "roche_songe",
+  "accent_material": "quartz_rose",
+  "relief": "doux",
+  "vegetation": [
+    {
+      "id": "arbre_geant_songe",
+      "density": 0.012
+    }
+  ],
+  "priority": 50,
+  "conditions": {},
+  "subsurface_material": "roche_songe"
+}

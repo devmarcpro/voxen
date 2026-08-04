@@ -1,0 +1,26 @@
+{
+  "id": "collines_dragee",
+  "name_key": "biome.collines_dragee.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "surface_material": "herbe_dragee",
+  "sub_material": "roche_nacree",
+  "accent_material": "quartz_rose",
+  "relief": "bulbeux",
+  "vegetation": [
+    {
+      "id": "arbre_torsade",
+      "density": 0.05
+    },
+    {
+      "id": "champignon_songe",
+      "density": 0.04
+    }
+  ],
+  "priority": 50,
+  "conditions": {},
+  "subsurface_material": "roche_nacree"
+}

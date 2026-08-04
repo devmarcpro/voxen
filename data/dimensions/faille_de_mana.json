@@ -33,65 +33,11 @@
     "deserteur",
     "pillard"
   ],
-  "zones": [
-    {
-      "id": "prairie_azuree",
-      "sol": "herbe_azuree",
-      "roche": "roche_songe",
-      "accent": "cristal_azur",
-      "arbres": [
-        "arbre_lanterne",
-        "arbre_torsade"
-      ],
-      "densite": 0.05,
-      "relief": "doux"
-    },
-    {
-      "id": "collines_dragee",
-      "sol": "herbe_dragee",
-      "roche": "roche_nacree",
-      "accent": "quartz_rose",
-      "arbres": [
-        "arbre_torsade",
-        "champignon_songe"
-      ],
-      "densite": 0.06,
-      "relief": "bulbeux"
-    },
-    {
-      "id": "bois_colosses",
-      "sol": "herbe_amethyste",
-      "roche": "roche_songe",
-      "accent": "quartz_rose",
-      "arbres": [
-        "arbre_geant_songe"
-      ],
-      "densite": 0.012,
-      "relief": "doux"
-    },
-    {
-      "id": "plateaux_suspendus",
-      "sol": "herbe_menthe",
-      "roche": "roche_nacree",
-      "accent": "quartz_rose",
-      "arbres": [
-        "champignon_songe",
-        "arbre_lanterne"
-      ],
-      "densite": 0.05,
-      "relief": "champignon"
-    },
-    {
-      "id": "cimes_tordues",
-      "sol": "herbe_azuree",
-      "roche": "roche_songe",
-      "accent": "cristal_azur",
-      "arbres": [
-        "champignon_songe",
-        "arbre_lanterne"
-      ],
-      "densite": 0.03,
-      "relief": "tordu"
-    }
+  "biomes": [
+    "prairie_azuree",
+    "collines_dragee",
+    "bois_colosses",
+    "plateaux_suspendus",
+    "cimes_tordues"
   ]
 }

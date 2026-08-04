@@ -921,7 +921,8 @@ func _load_trees() -> void:
 		if trees.has(tree["id"]):
 			_blocking_error("id d'essence d'arbre dupliqué « %s »" % tree["id"])
 		else:
-			trees[tree["id"]] = tree
+			tree["_source"] = path
+		trees[tree["id"]] = tree
 
 
 ## Plantes non-arborescentes en sous-voxels (2026-07-20, PlantGenerator) :
