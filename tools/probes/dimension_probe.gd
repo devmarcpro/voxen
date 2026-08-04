@@ -173,6 +173,31 @@ func _check_generic_dimension() -> void:
 	_expect(residents > 0, "on y rencontre quelqu'un")
 	_expect(caches > 0, "on y trouve quelque chose à ramasser")
 
+	# CHAQUE DIMENSION N'EMPLOIE QUE SES PROPRES BLOCS (demande de l'auteur,
+	# 2026-08-04 : « sinon on va pas s'en sortir »).
+	#
+	# Les données sont désormais rangées par dimension — `data/materials/magique/`
+	# et `data/trees/magique/` — mais un rangement n'est qu'une intention tant
+	# que rien ne le vérifie. Il suffirait qu'une zone de la faille cite
+	# `pierre` ou qu'une essence de rêve pousse en forêt tempérée pour que la
+	# séparation se défasse, sans que rien ne le signale : le jeu tournerait,
+	# et les deux mondes se mélangeraient bloc par bloc.
+	var magic_mats := {}
+	for material_id: String in GameData.materials:
+		var path := String((GameData.materials[material_id] as Dictionary).get("_source", ""))
+		if "magique" in path:
+			magic_mats[material_id] = true
+	var declared: Array[String] = []
+	for zone: Dictionary in (declaration.get("zones", []) as Array):
+		for key: String in ["sol", "roche", "accent"]:
+			var used := String(zone.get(key, ""))
+			if used != "" and not magic_mats.has(used) and not magic_mats.is_empty():
+				declared.append("%s.%s=%s" % [zone.get("id", "?"), key, used])
+	print("[%s] %d matériau(x) propres à la dimension magique" % [TAG, magic_mats.size()])
+	_expect(declared.is_empty(),
+			"la faille n'emploie que des blocs de sa dimension%s" % [
+					"" if declared.is_empty() else " — intrus : " + ", ".join(declared)])
+
 	# MUTER AUSSI : une dimension où l'on ne peut rien casser n'est qu'un décor.
 	var target := Vector3i.ZERO
 	var found := false

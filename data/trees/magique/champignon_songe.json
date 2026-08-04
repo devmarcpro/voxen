@@ -1,0 +1,40 @@
+{
+  "id": "champignon_songe",
+  "name_key": "tree.champignon_songe.name",
+  "wood_material": "bois_perle",
+  "leaf_material": "chapeau_songe",
+  "height_range": [
+    5,
+    12
+  ],
+  "trunk_radius": 1,
+  "trunk_lean": true,
+  "branch_parameters": {
+    "start_fraction": 1.0,
+    "count_range": [
+      4,
+      6
+    ],
+    "angle_deg": 78,
+    "length_range": [
+      2,
+      3
+    ]
+  },
+  "canopy_shape": "flat",
+  "canopy_radius_range": [
+    4,
+    7
+  ],
+  "architecture": {
+    "droop": 0.05,
+    "curve": 0.3,
+    "fork": 0.94,
+    "spread_deg": 80.0,
+    "leaf_density": 0.97,
+    "children": 5,
+    "roots": 2,
+    "_port": "pied nu et chapeau plat lumineux"
+  },
+  "special_tags": []
+}

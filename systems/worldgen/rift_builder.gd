@@ -30,34 +30,39 @@ static func build(dimension: StringName, declaration: Dictionary, world_seed: in
 	var rng := RandomNumberGenerator.new()
 	rng.seed = world_seed ^ 0x5EED_FA11
 
-	var islands: Dictionary = declaration.get("islands", {})
-	var materials: Dictionary = declaration.get("materials", {})
-	var ground: int = GameData.material_runtime_ids.get(String(materials.get("sol", "amethyste")), 0)
-	var rock: int = GameData.material_runtime_ids.get(String(materials.get("roche", "obsidienne")), 0)
-	var glow: int = GameData.material_runtime_ids.get(String(materials.get("lumiere", "scorie_ardente")), 0)
-	if ground == 0 or rock == 0:
-		push_warning("RiftBuilder : matériaux de faille introuvables.")
+	var zones: Array = declaration.get("zones", [])
+	if zones.is_empty():
+		push_warning("RiftBuilder : aucune zone déclarée.")
 		return Vector3.ZERO
-
+	var islands: Dictionary = declaration.get("islands", {})
 	var count := int(islands.get("count", 12))
-	var radius_range: Array = islands.get("radius", [5, 12])
-	var thickness_range: Array = islands.get("thickness", [3, 7])
-	var spread := float(islands.get("spread", 70))
+	var radius_range: Array = islands.get("radius", [8, 18])
+	var thickness_range: Array = islands.get("thickness", [4, 8])
+	var spread := float(islands.get("spread", 110))
 
 	var arrival := Vector3.ZERO
 	for i in count:
-		# LE PREMIER ÎLOT EST TOUJOURS À L'ORIGINE, et large : c'est là qu'on
-		# arrive, et arriver dans le vide serait une chute immédiate.
+		# CHAQUE ÎLOT APPARTIENT À UNE ZONE, et les zones se succèdent au lieu
+		# d'être tirées au hasard : un monde de rêve doit se lire comme une
+		# suite de pays, pas comme une soupe. On tourne dans la liste, ce qui
+		# garantit que les quatre existent même sur peu d'îlots.
+		var zone: Dictionary = zones[i % zones.size()]
 		var center := ORIGIN
 		var radius := int(radius_range[1])
 		if i > 0:
 			center = ORIGIN + Vector3i(
 					roundi(rng.randf_range(-spread, spread)),
-					roundi(rng.randf_range(-24.0, 24.0)),
+					roundi(rng.randf_range(-30.0, 34.0)),
 					roundi(rng.randf_range(-spread, spread)))
 			radius = rng.randi_range(int(radius_range[0]), int(radius_range[1]))
 		var thickness := rng.randi_range(int(thickness_range[0]), int(thickness_range[1]))
-		_carve_island(dimension, center, radius, thickness, ground, rock, glow, rng)
+		# UN ROCHER-CHAMPIGNON A BESOIN DE HAUTEUR. Son intérêt est le surplomb,
+		# et un chapeau posé sur trois blocs de pied ne surplombe rien : on
+		# triple l'épaisseur pour cette zone-là.
+		if String(zone.get("relief", "")) == "champignon":
+			thickness *= 3
+		_carve_island(dimension, center, radius, thickness, zone, rng)
+		_plant_zone(dimension, center, radius, zone, rng, world_seed + i)
 		if i == 0:
 			arrival = Vector3(center) + Vector3(0.5, thickness + 2.5, 0.5)
 
@@ -66,94 +71,171 @@ static func build(dimension: StringName, declaration: Dictionary, world_seed: in
 	return arrival
 
 
-## CE QU'ON TROUVE DANS LA FAILLE.
+## LA FLORE D'UNE ZONE, plantée sur son îlot.
 ##
-## Un décor n'est pas un lieu. Une dimension où il n'y a rien à rencontrer ni
-## rien à ramasser ne se visite qu'une fois, et le travail d'architecture qui
-## l'a rendue possible ne sert à rien.
-##
-## LE BESTIAIRE EST HUMAIN, et c'est une contrainte de contenu assumée (les
-## espèces animales ont été retirées du périmètre) : il n'y a pas de démons à y
-## mettre. On y met donc ce qui est cohérent avec ce roster — des gens qui sont
-## entrés et n'en sont pas ressortis. Un ermite qui s'y est réfugié, des
-## déserteurs devenus hostiles. C'est une lecture du lieu, pas un pis-aller :
-## une faille où l'on croise les traces de ses prédécesseurs raconte plus
-## qu'une faille pleine de monstres génériques.
-static func _populate(dimension: StringName, arrival: Vector3, declaration: Dictionary,
-		rng: RandomNumberGenerator) -> void:
-	var spawns: Array = declaration.get("habitants", ["ermite", "deserteur", "deserteur"])
-	for entry: String in spawns:
-		if not GameData.creatures.has(entry):
-			continue
-		# Autour du point d'arrivée, jamais dessus : apparaître dans le joueur
-		# le repousserait, et un hostile collé au nez ne laisse aucune chance.
+## On réutilise `TreeGenerator` tel quel : les arbres de rêve sont des fiches
+## d'essence comme les autres, avec des ports poussés à l'absurde. Rien dans le
+## générateur n'a eu besoin de savoir qu'il existait une dimension magique —
+## c'est exactement ce que valait la peine de généraliser l'architecture.
+static func _plant_zone(dimension: StringName, center: Vector3i, radius: int,
+		zone: Dictionary, rng: RandomNumberGenerator, seed_value: int) -> void:
+	var species_ids: Array = zone.get("arbres", [])
+	if species_ids.is_empty():
+		return
+	var density := float(zone.get("densite", 0.03))
+	var attempts := int(float(radius * radius) * density) + 1
+	for i in attempts:
 		var angle := rng.randf() * TAU
-		var distance := rng.randf_range(6.0, 16.0)
-		var spot := arrival + Vector3(cos(angle) * distance, 0.0, sin(angle) * distance)
-		spot.y = _surface_under(dimension, spot)
-		if spot.y == -INF:
-			continue  # Le vide : il n'y a pas d'îlot sous ce point.
-		var creature := CreatureManager.spawn(entry, spot)
-		if creature != null:
-			creature.dimension = dimension
-
-	# BUTIN AU SOL. Les matériaux de la faille ne poussent pas ailleurs : c'est
-	# ce qui donne une raison d'y descendre, au-delà de la curiosité.
-	var materials: Dictionary = declaration.get("materials", {})
-	var prize := String(materials.get("sol", "amethyste"))
-	var caches := rng.randi_range(3, 6)
-	for i in caches:
-		var angle := rng.randf() * TAU
-		var distance := rng.randf_range(8.0, 40.0)
-		var spot := arrival + Vector3(cos(angle) * distance, 0.0, sin(angle) * distance)
-		spot.y = _surface_under(dimension, spot)
-		if spot.y == -INF:
+		var distance := sqrt(rng.randf()) * float(radius - 2)
+		var x := center.x + roundi(cos(angle) * distance)
+		var z := center.z + roundi(sin(angle) * distance)
+		var top := _surface_top(dimension, x, center.y + 4, z)
+		if top == -(1 << 30):
 			continue
-		DropManager.drop_materials(spot + Vector3.UP * 0.5,
-				{prize: rng.randi_range(4, 12)})
+		var species_id := String(species_ids[rng.randi() % species_ids.size()])
+		var species: Dictionary = GameData.trees.get(species_id, {})
+		if species.is_empty():
+			continue
+		var tree := TreeGenerator.generate(Vector3i(x, top, z), seed_value + i, species)
+		var blocks: Dictionary = tree["blocks"]
+		for pos: Vector3i in blocks:
+			DimensionManager.set_block_in(dimension, pos, blocks[pos], false)
 
 
-## Hauteur du dessus de l'îlot sous ce point, ou -INF s'il n'y a que du vide.
-##
-## On sonde vers le BAS depuis le niveau d'arrivée : dans une dimension faite
-## d'îlots flottants, « le sol » n'existe pas comme surface continue, et poser
-## quoi que ce soit à une hauteur fixe le ferait tomber dans le noir.
-static func _surface_under(dimension: StringName, point: Vector3) -> float:
-	var x := roundi(point.x)
-	var z := roundi(point.z)
-	for dy in range(roundi(point.y) + 2, roundi(point.y) - 40, -1):
+## Sommet plein de la colonne (x, z) en partant de `from_y`, ou -INF.
+static func _surface_top(dimension: StringName, x: int, from_y: int, z: int) -> int:
+	for dy in range(from_y, from_y - 30, -1):
 		if DimensionManager.block_at_in(dimension, Vector3i(x, dy, z)) != 0:
-			return float(dy) + 1.0
-	return -INF
+			return dy + 1
+	return -(1 << 30)
 
 
 ## Un îlot : un disque de sol qui s'effile vers le bas en pointe rocheuse, avec
 ## quelques veines lumineuses. La pointe est ce qui le fait lire comme un
 ## morceau arraché plutôt que comme une galette posée sur rien.
 static func _carve_island(dimension: StringName, center: Vector3i, radius: int,
-		thickness: int, ground: int, rock: int, glow: int,
-		rng: RandomNumberGenerator) -> void:
+		thickness: int, zone: Dictionary, rng: RandomNumberGenerator) -> void:
+	var ground: int = GameData.material_runtime_ids.get(String(zone.get("sol", "")), 0)
+	var rock: int = GameData.material_runtime_ids.get(String(zone.get("roche", "")), 0)
+	var accent: int = GameData.material_runtime_ids.get(String(zone.get("accent", "")), 0)
+	if ground == 0 or rock == 0:
+		return
+	var relief := String(zone.get("relief", "doux"))
 	var seed_value := rng.randi()
+
 	for depth in thickness:
-		# Le rayon décroît avec la profondeur : plat dessus, pointu dessous.
-		var level_radius := int(round(radius * (1.0 - float(depth) / float(thickness))))
+		var t := float(depth) / float(maxi(thickness, 1))
+		var level_radius := radius
+		match relief:
+			"bulbeux":
+				# COLLINE EN BULBE : le rayon GONFLE sous la surface avant de se
+				# refermer. Ça donne un îlot en goutte, impossible en géologie
+				# et immédiatement lisible comme un décor de rêve.
+				level_radius = int(round(radius * (1.0 + 0.35 * sin(t * PI)) * (1.0 - t * 0.55)))
+			"champignon":
+				# ROCHER-CHAMPIGNON (croquis de l'auteur) : un CHAPEAU LARGE
+				# posé sur un PIED ÉTROIT, avec un surplomb franc. C'est le
+				# profil de Zhangjiajie, et il est impossible à obtenir en
+				# affinant vers le bas — il faut PINCER juste sous la surface
+				# puis tenir le pied fin sur toute la hauteur.
+				if t < 0.22:
+					level_radius = radius                       # le chapeau
+				else:
+					var pinch := (t - 0.22) / 0.78
+					level_radius = maxi(2, int(round(radius * lerpf(0.9, 0.22, pinch))))
+			"tordu":
+				level_radius = int(round(radius * (1.0 - t * 0.85)))
+			_:
+				level_radius = int(round(radius * (1.0 - t * 0.9)))
 		if depth == 0:
 			level_radius = radius
+		# DÉRIVE LATÉRALE : chaque couche est décalée, si bien que la pointe de
+		# l'îlot part en vrille au lieu de tomber à l'aplomb. C'est ce qui fait
+		# la « montagne tordue » demandée.
+		var lean := Vector3i.ZERO
+		if relief == "tordu":
+			lean = Vector3i(roundi(sin(t * 5.0) * float(radius) * 0.45), 0,
+					roundi(cos(t * 4.0) * float(radius) * 0.45))
 		for dx in range(-level_radius, level_radius + 1):
 			for dz in range(-level_radius, level_radius + 1):
 				if dx * dx + dz * dz > level_radius * level_radius:
 					continue
-				# Bord rongé, sinon l'îlot a un contour de compas.
 				if depth == 0 and _edge_noise(center + Vector3i(dx, 0, dz), seed_value) < 0.18 \
 						and dx * dx + dz * dz > (level_radius - 1) * (level_radius - 1):
 					continue
-				var pos := center + Vector3i(dx, -depth, dz)
+				var pos := center + lean + Vector3i(dx, -depth, dz)
 				var id := ground if depth == 0 else rock
-				# Veines lumineuses dans la roche : la faille n'a pas de soleil,
-				# sans elles on n'y verrait littéralement rien.
-				if depth > 0 and glow != 0 and _edge_noise(pos, seed_value + 7) < 0.06:
-					id = glow
+				# Veines de cristal : la dimension n'a pas de soleil, ce sont
+				# elles qui l'éclairent — et elles remplacent la scorie ardente
+				# du premier jet, écartée pour rester à l'écart de tout ce qui
+				# évoque la lave.
+				if depth > 0 and accent != 0 and _edge_noise(pos, seed_value + 7) < 0.05:
+					id = accent
 				DimensionManager.set_block_in(dimension, pos, id, false)
+
+	# FLÈCHES TORDUES au-dessus des cimes : des aiguilles qui montent en
+	# spirale, sans aucun aplomb. Le relief « tordu » ne serait qu'un cône
+	# penché sans elles.
+	if relief == "tordu":
+		var spires := rng.randi_range(2, 4)
+		for i in spires:
+			var angle := rng.randf() * TAU
+			var base := center + Vector3i(
+					roundi(cos(angle) * float(radius) * 0.4), 1,
+					roundi(sin(angle) * float(radius) * 0.4))
+			var height := rng.randi_range(8, 20)
+			for h in height:
+				var twist := float(h) * 0.55 + angle
+				var sway := float(h) * 0.22
+				var pos := base + Vector3i(roundi(cos(twist) * sway), h,
+						roundi(sin(twist) * sway))
+				var thick := maxi(0, 2 - h / 7)
+				for ox in range(-thick, thick + 1):
+					for oz in range(-thick, thick + 1):
+						DimensionManager.set_block_in(dimension,
+								pos + Vector3i(ox, 0, oz),
+								accent if (h % 5 == 0 and accent != 0) else rock, false)
+
+
+## CE QU'ON RENCONTRE ET CE QU'ON RAMASSE.
+##
+## Le bestiaire est humain — il n'y a pas de créatures de rêve à y mettre. On y
+## pose donc ce qui reste cohérent : des gens entrés qui n'en sont pas
+## ressortis. Ce n'est pas un pis-aller, c'est une lecture du lieu.
+static func _populate(dimension: StringName, arrival: Vector3, declaration: Dictionary,
+		rng: RandomNumberGenerator) -> void:
+	var spawns: Array = declaration.get("habitants", [])
+	for entry: String in spawns:
+		if not GameData.creatures.has(entry):
+			continue
+		var angle := rng.randf() * TAU
+		var distance := rng.randf_range(6.0, 16.0)
+		var spot := arrival + Vector3(cos(angle) * distance, 0.0, sin(angle) * distance)
+		var top := _surface_top(dimension, roundi(spot.x), roundi(arrival.y) + 4, roundi(spot.z))
+		if top == -(1 << 30):
+			continue
+		spot.y = float(top)
+		var creature := CreatureManager.spawn(entry, spot)
+		if creature != null:
+			creature.dimension = dimension
+
+	# Butin : les cristaux du lieu, qui ne poussent nulle part ailleurs.
+	var zones: Array = declaration.get("zones", [])
+	for i in rng.randi_range(4, 7):
+		if zones.is_empty():
+			break
+		var zone: Dictionary = zones[rng.randi() % zones.size()]
+		var prize := String(zone.get("accent", ""))
+		if prize == "":
+			continue
+		var angle := rng.randf() * TAU
+		var distance := rng.randf_range(8.0, 40.0)
+		var spot := arrival + Vector3(cos(angle) * distance, 0.0, sin(angle) * distance)
+		var top := _surface_top(dimension, roundi(spot.x), roundi(arrival.y) + 4, roundi(spot.z))
+		if top == -(1 << 30):
+			continue
+		DropManager.drop_materials(Vector3(spot.x, float(top) + 0.5, spot.z),
+				{prize: rng.randi_range(4, 12)})
 
 
 ## Bruit déterministe [0,1) — même hachage que le feuillage des arbres, pour

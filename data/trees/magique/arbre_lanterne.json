@@ -1,0 +1,39 @@
+{
+  "id": "arbre_lanterne",
+  "name_key": "tree.arbre_lanterne.name",
+  "wood_material": "bois_perle",
+  "leaf_material": "feuillage_lueur",
+  "height_range": [
+    8,
+    14
+  ],
+  "trunk_radius": 1,
+  "branch_parameters": {
+    "start_fraction": 0.92,
+    "count_range": [
+      2,
+      3
+    ],
+    "angle_deg": 20,
+    "length_range": [
+      1,
+      2
+    ]
+  },
+  "canopy_shape": "spherical",
+  "canopy_radius_range": [
+    3,
+    5
+  ],
+  "architecture": {
+    "droop": 0.7,
+    "curve": 0.22,
+    "fork": 0.92,
+    "spread_deg": 24.0,
+    "leaf_density": 0.96,
+    "children": 3,
+    "roots": 2,
+    "_port": "pied grele surmonte d'une bulle lumineuse"
+  },
+  "special_tags": []
+}

@@ -352,6 +352,11 @@ func _load_materials() -> void:
 			mat["texture_style"] = CATEGORY_TEXTURE_STYLES.get(mat["category"], "basic")
 
 		_derive_tags(mat)
+		# CHEMIN D'ORIGINE. Les matériaux sont rangés par DIMENSION depuis le
+		# 2026-08-04 (`data/materials/magique/`, `overworld/`) : sans retenir
+		# d'où vient la fiche, rien ne peut vérifier qu'une dimension n'emploie
+		# que ses propres blocs — et un rangement que rien ne vérifie se défait.
+		mat["_source"] = path
 		materials[id] = mat
 		sorted_ids.append(id)
 

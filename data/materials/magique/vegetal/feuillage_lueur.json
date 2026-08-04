@@ -1,0 +1,38 @@
+{
+  "id": "feuillage_lueur",
+  "name_key": "material.feuillage_lueur.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 3,
+    "densite": 4,
+    "valeur_base": 4,
+    "conductivite_mana": 40,
+    "flammabilite": 20,
+    "isolation": 30,
+    "conductivite_electrique": 10,
+    "flottabilite": 40,
+    "luminosite": 11,
+    "fertilite": 30,
+    "transparence": 0,
+    "elasticite": 40,
+    "friction": 45
+  },
+  "tags": [
+    "magique"
+  ],
+  "color": "#8FE8D2",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 834,
+    "amplitude": 0.12,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "aucun",
+    "biome_tags": []
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "id": "arbre_geant_songe",
+  "name_key": "tree.arbre_geant_songe.name",
+  "wood_material": "bois_geant",
+  "leaf_material": "feuillage_azur",
+  "height_range": [
+    40,
+    60
+  ],
+  "trunk_radius": 3,
+  "branch_parameters": {
+    "start_fraction": 0.55,
+    "count_range": [
+      5,
+      7
+    ],
+    "angle_deg": 44,
+    "length_range": [
+      5,
+      8
+    ]
+  },
+  "canopy_shape": "broad",
+  "canopy_radius_range": [
+    10,
+    14
+  ],
+  "architecture": {
+    "droop": 0.18,
+    "curve": 0.14,
+    "fork": 0.58,
+    "spread_deg": 52.0,
+    "leaf_density": 0.84,
+    "children": 5,
+    "depth": 4,
+    "roots": 10,
+    "_port": "colosse a contreforts, couronne en voute"
+  },
+  "special_tags": []
+}

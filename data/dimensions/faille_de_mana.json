@@ -3,24 +3,24 @@
   "name_key": "dimension.faille_de_mana.name",
   "ambience": {
     "sunlight": false,
-    "background": "#0B0A22",
-    "ambient": "#6E5BC8",
-    "ambient_energy": 0.85,
+    "background": "#2A1E4A",
+    "ambient": "#B08FE8",
+    "ambient_energy": 1.15,
     "fog": true,
-    "fog_color": "#241C4A",
-    "fog_density": 0.012
+    "fog_color": "#6B4FA8",
+    "fog_density": 0.006
   },
   "islands": {
-    "count": 14,
+    "count": 22,
     "radius": [
-      5,
-      12
+      10,
+      22
     ],
     "thickness": [
-      3,
-      7
+      4,
+      9
     ],
-    "spread": 70
+    "spread": 130
   },
   "materials": {
     "sol": "amethyste",
@@ -31,7 +31,67 @@
   "habitants": [
     "ermite",
     "deserteur",
-    "deserteur",
     "pillard"
+  ],
+  "zones": [
+    {
+      "id": "prairie_azuree",
+      "sol": "herbe_azuree",
+      "roche": "roche_songe",
+      "accent": "cristal_azur",
+      "arbres": [
+        "arbre_lanterne",
+        "arbre_torsade"
+      ],
+      "densite": 0.05,
+      "relief": "doux"
+    },
+    {
+      "id": "collines_dragee",
+      "sol": "herbe_dragee",
+      "roche": "roche_nacree",
+      "accent": "quartz_rose",
+      "arbres": [
+        "arbre_torsade",
+        "champignon_songe"
+      ],
+      "densite": 0.06,
+      "relief": "bulbeux"
+    },
+    {
+      "id": "bois_colosses",
+      "sol": "herbe_amethyste",
+      "roche": "roche_songe",
+      "accent": "quartz_rose",
+      "arbres": [
+        "arbre_geant_songe"
+      ],
+      "densite": 0.012,
+      "relief": "doux"
+    },
+    {
+      "id": "plateaux_suspendus",
+      "sol": "herbe_menthe",
+      "roche": "roche_nacree",
+      "accent": "quartz_rose",
+      "arbres": [
+        "champignon_songe",
+        "arbre_lanterne"
+      ],
+      "densite": 0.05,
+      "relief": "champignon"
+    },
+    {
+      "id": "cimes_tordues",
+      "sol": "herbe_azuree",
+      "roche": "roche_songe",
+      "accent": "cristal_azur",
+      "arbres": [
+        "champignon_songe",
+        "arbre_lanterne"
+      ],
+      "densite": 0.03,
+      "relief": "tordu"
+    }
   ]
 }
