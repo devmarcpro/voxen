@@ -247,10 +247,30 @@ func adopt_world(seed_value: int, params: Dictionary) -> void:
 func _process(_delta: float) -> void:
 	if chunk_root == null or generator == null:
 		return
+	_push_season_tint()
 	_upload_ready_meshes()  # Draine toujours les résultats en vol (même cachés).
 	if active_dimension == &"overworld":
 		_launch_tasks()
 		_warm_world_metadata()
+
+
+## TEINTE SAISONNIÈRE, poussée au shader quand elle change.
+##
+## Une comparaison par frame plutôt qu'un abonnement au changement de saison :
+## la teinte se fond sur le dernier quart de chaque saison, donc elle bouge en
+## continu et non par paliers. Écrire l'uniform à chaque frame coûterait un
+## appel de rendu pour rien la plupart du temps.
+var _season_tint := Color.WHITE
+
+
+func _push_season_tint() -> void:
+	if _material == null:
+		return
+	var tint := CalendarManager.foliage_tint()
+	if tint.is_equal_approx(_season_tint):
+		return
+	_season_tint = tint
+	_material.set_shader_parameter("season_tint", Vector3(tint.r, tint.g, tint.b))
 
 
 ## PRÉCHAUFFAGE DES ROYAUMES, hors tick et un secteur par frame.

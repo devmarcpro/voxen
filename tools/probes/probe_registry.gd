@@ -12,6 +12,7 @@ const PROBES := {
 	"--probe":                "res://tools/probes/diagnostic_probe.gd",
 	"--probe-tour":            "res://tools/probes/tower_range_probe.gd",
 	"--probe-heure":           "res://tools/probes/start_hour_probe.gd",
+	"--probe-calendrier":     "res://tools/probes/calendar_probe.gd",
 	"--probe-etages":          "res://tools/probes/floors_probe.gd",
 	"--probe-subdiv":         "res://tools/probes/subdiv_probe.gd",
 	"--probe-save":           "res://tools/probes/save_probe.gd",

@@ -1131,3 +1131,7 @@ material.pousse.name,树苗
 ui.toast.pousse_grandie,树苗长成了大树。
 dimension.donjon.name,地牢
 dimension.faille_de_mana.name,魔力裂隙
+season.printemps.name,春季
+season.ete.name,夏季
+season.automne.name,秋季
+season.hiver.name,冬季

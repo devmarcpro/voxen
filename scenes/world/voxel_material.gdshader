@@ -20,6 +20,12 @@ uniform float world_seed = 0.0;
 uniform int herbe_id = -1;
 uniform int eau_id = -1;
 uniform sampler2D grass_tint_map : filter_linear, repeat_disable;
+
+// TEINTE SAISONNIÈRE DU FEUILLAGE (2026-08-04). Multipliée sur la couleur de
+// palette des blocs de style S_LEAVES, jamais substituée : les 38 essences ont
+// chacune sa couleur propre, et un roux d'automne unique les effacerait toutes.
+// Blanc = été, c'est-à-dire la couleur telle que les données la décrivent.
+uniform vec3 season_tint = vec3(1.0);
 uniform float chunk_size = 16.0;
 uniform float bump_strength = 0.35;
 // Cycle jour/nuit (E.21/G.3) : le terrain est UNSHADED, il ignore donc
@@ -312,6 +318,10 @@ void fragment() {
 	float detail = 1.0 - smoothstep(DETAIL_NEAR, DETAIL_FAR, dist);
 
 	vec3 green = base * texture(grass_tint_map, v_tint_uv).rgb;  // herbe : teinte biome
+	// Le feuillage vire avec la saison. On teinte `base` AVANT toute texture
+	// procédurale, pour que le grain de feuille suive la couleur au lieu de
+	// rester figé sur celle de l'été.
+	if (style == S_LEAVES) base *= season_tint;
 
 	if (detail < 0.02) {
 		ALBEDO = (style == S_GRASS) ? green : base;

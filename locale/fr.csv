@@ -1131,3 +1131,7 @@ material.pousse.name,Pousse
 ui.toast.pousse_grandie,Une pousse est devenue un arbre.
 dimension.donjon.name,Donjon
 dimension.faille_de_mana.name,Faille de mana
+season.printemps.name,Printemps
+season.ete.name,Été
+season.automne.name,Automne
+season.hiver.name,Hiver

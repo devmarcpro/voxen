@@ -1131,3 +1131,7 @@ material.pousse.name,Sapling
 ui.toast.pousse_grandie,A sapling has grown into a tree.
 dimension.donjon.name,Dungeon
 dimension.faille_de_mana.name,Mana Rift
+season.printemps.name,Spring
+season.ete.name,Summer
+season.automne.name,Autumn
+season.hiver.name,Winter

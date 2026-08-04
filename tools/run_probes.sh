@@ -63,7 +63,8 @@ PROBES="--probe-touches
 --probe-dimensions
 --probe-triche
 --probe-village-vie
---probe-royaumes-perf"
+--probe-royaumes-perf
+--probe-calendrier"
 
 while [ $# -gt 0 ]; do
 	case "$1" in

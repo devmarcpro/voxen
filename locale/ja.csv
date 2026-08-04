@@ -1131,3 +1131,7 @@ material.pousse.name,苗木
 ui.toast.pousse_grandie,苗木が木に育ちました。
 dimension.donjon.name,ダンジョン
 dimension.faille_de_mana.name,マナの裂け目
+season.printemps.name,春
+season.ete.name,夏
+season.automne.name,秋
+season.hiver.name,冬
