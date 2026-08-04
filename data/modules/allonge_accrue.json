@@ -1,0 +1,19 @@
+{
+  "id": "allonge_accrue",
+  "name_key": "module.allonge_accrue.name",
+  "module_type": "modificateur",
+  "mana_cost_base": 3,
+  "power_base": 0,
+  "tags": [
+    "maitrise"
+  ],
+  "params": {
+    "mods": {
+      "portee": 2
+    }
+  },
+  "grimoire_domains": [
+    "maitrise"
+  ],
+  "book_type": "manuel"
+}

@@ -83,7 +83,13 @@ const SUBSURFACE_THICKNESS := 3          # Blocs de sous-surface biome sous le b
 ## qu'un arbre peut atteindre depuis sa base — canopée + branches) : doit
 ## rester ≥ à la plus grande combinaison canopy_radius+branch_length des
 ## essences de data/trees/*.json.
-const TREE_MAX_REACH := 7
+##
+## Porté de 7 à 10 le 2026-08-03 : les charpentières portent désormais des
+## rameaux qui repartent de leur dernier tiers, et le pied s'évase en racines.
+## Sous-estimer cette borne ne se voit pas à la génération — ça se voit à
+## l'ABATTAGE, où la recherche inverse ne retrouve plus l'arbre auquel appartient
+## un rameau lointain, et le morceau reste suspendu en l'air.
+const TREE_MAX_REACH := 13
 ## Candidats testés par CELLULE (comme les POI, E.2 : « hash(seed, cell_x,
 ## cell_z) »), pas par bloc individuel — un scan par bloc mesuré au bench
 ## coûtait ~50 % de fps (900 colonnes/chunk-colonne). Une cellule 4×4 donne
@@ -1717,6 +1723,15 @@ func city_at_cell(cell: Vector2i) -> Dictionary:
 	return _city_layout(cell)
 
 
+## Le plan de cette cellule est-il déjà composé ? Sert au PRÉCHAUFFAGE : c'est
+## ce qui permet de le calculer dans une frame plutôt que dans un tick.
+func has_city_layout(cell: Vector2i) -> bool:
+	_city_cache_mutex.lock()
+	var known := _city_cache.has(cell)
+	_city_cache_mutex.unlock()
+	return known
+
+
 ## Royaume possédant cette cellule (14.4/E.27), ou {} en terre sauvage.
 ##
 ## « Hors royaume = aucune loi, aucune douane » : un dictionnaire vide n'est pas
@@ -2183,8 +2198,8 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 	# Survol des arbres (TreeGenerator) : voxels 3D épars, superposés APRÈS
 	# le terrain (une branche/canopée ne remplace jamais un bloc plein sous
 	# elle, seulement l'air — évite qu'un arbre s'incruste dans une colline).
-	# `extra_subdivs` reçoit aussi les troncs arrondis (SUBDIVIDE_TRUNK,
-	# expérimental/réversible, TreeGenerator) ET les cultures (plus bas) —
+	# `extra_subdivs` reçoit aussi les congés de liaison des arbres
+	# (SUBDIVIDE_JOINTS, TreeGenerator) ET les cultures (plus bas) —
 	# un seul dictionnaire fusionné dans `data.subdivs` à la fin.
 	var bx := cpos.x * ChunkData.SIZE
 	var bz := cpos.z * ChunkData.SIZE
@@ -2573,6 +2588,23 @@ func tree_at_base(wx: int, wy: int, wz: int) -> Dictionary:
 	if base.x != wx or base.z != wz or base.y != wy:
 		return {}
 	return _generate_tree_cached(cand)
+
+
+## ARBRE CONTENANT le bloc (wx, wy, wz), ou {} si ce bloc n'appartient à aucun
+## arbre. Requête INVERSE de `tree_at_base` : on ne part plus du pied mais d'un
+## bloc quelconque du feuillage ou du tronc.
+##
+## Elle est bon marché parce que les arbres sont DÉTERMINISTES : on ne cherche
+## pas dans une liste d'entités, on régénère les quelques candidats dont
+## l'empreinte peut couvrir ce bloc (fenêtre TREE_MAX_REACH, la même que celle
+## du streaming) et on teste l'appartenance. Aucun état à tenir, donc rien à
+## sauvegarder ni à synchroniser.
+func tree_containing(wx: int, wy: int, wz: int) -> Dictionary:
+	var pos := Vector3i(wx, wy, wz)
+	for tree: Dictionary in _trees_in_window(wx, wx, wz, wz):
+		if (tree["blocks"] as Dictionary).has(pos):
+			return tree
+	return {}
 
 
 ## Hauteur de la surface à la colonne monde (wx, wz).

@@ -21,11 +21,11 @@
   "vegetation": [
     {
       "id": "palmier",
-      "density": 0.004
+      "density": 0.00112
     },
     {
       "id": "baobab",
-      "density": 0.0015
+      "density": 0.00042
     }
   ],
   "village_palette": {

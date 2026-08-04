@@ -1,0 +1,8 @@
+{
+  "id": "foreuse_pro",
+  "name_key": "functionality.foreuse_pro.name",
+  "kind": "outil",
+  "hands": 2,
+  "tool_category": "pioche",
+  "mining_area": 4
+}

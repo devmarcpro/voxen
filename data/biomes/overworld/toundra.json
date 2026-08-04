@@ -21,11 +21,11 @@
   "vegetation": [
     {
       "id": "meleze",
-      "density": 0.004
+      "density": 0.00112
     },
     {
       "id": "epicea",
-      "density": 0.002
+      "density": 0.00056
     }
   ],
   "village_palette": {

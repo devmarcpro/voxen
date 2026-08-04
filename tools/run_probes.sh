@@ -54,7 +54,16 @@ PROBES="--probe-touches
 --probe-villages
 --probe-pnj
 --probe-royaumes
---probe-combat"
+--probe-combat
+--probe-assemblage
+--probe-mains
+--probe-arbres
+--probe-pousses
+--probe-foreuse
+--probe-dimensions
+--probe-triche
+--probe-village-vie
+--probe-royaumes-perf"
 
 while [ $# -gt 0 ]; do
 	case "$1" in

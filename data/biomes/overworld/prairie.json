@@ -26,11 +26,11 @@
   "vegetation": [
     {
       "id": "chene",
-      "density": 0.0015
+      "density": 0.00042
     },
     {
       "id": "bouleau",
-      "density": 0.0015
+      "density": 0.00042
     }
   ],
   "village_palette": {

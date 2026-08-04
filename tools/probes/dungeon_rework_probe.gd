@@ -14,6 +14,17 @@ extends Probe
 ## voyait.
 
 
+## Assertion tracée. Cette sonde comparait jusqu'ici chaque condition à la main
+## (`ok = ... and ok` plus un print) : un helper évite d'oublier l'un des deux.
+var _ok := true
+
+
+func _expect(condition: bool, message: String) -> void:
+	print("[REFONTE] %s — %s" % ["ok" if condition else "ANOMALIE", message])
+	if not condition:
+		_ok = false
+
+
 func run() -> void:
 	await wait_frame()
 	var gen := WorldManager.generator
@@ -49,6 +60,7 @@ func run() -> void:
 	await wait_seconds(6.0)
 	ok = _check_enemies(donjon) and ok
 	ok = _check_ground_loot() and ok
+	ok = _check_chests(donjon) and ok
 	await _capture_maze(donjon)
 	finish(ok, "REFONTE")
 
@@ -148,6 +160,88 @@ func _check_ground_loot() -> bool:
 		print("[REFONTE]   ANOMALIE : moins de représentations que d'objets — le rendu par objet ne se fait pas.")
 		return false
 	return true
+
+
+## COFFRES (F.6, 2026-08-03). Le coffre de boss est désormais un VRAI coffre
+## posé, identique au coffre craftable — plus une cache au sol déguisée. On
+## vérifie donc qu'il EXISTE comme bloc, qu'il se vide dans l'inventaire, et
+## surtout que le CASSER rend son contenu : c'est la règle qui distingue un
+## rangement d'un piège, et la seule dont l'oubli coûterait trente objets.
+func _check_chests(cell: Vector2i) -> bool:
+	_ok = true
+	_expect(GameData.materials.has("coffre") and GameData.materials.has("grand_coffre"),
+			"les deux coffres de F.6 sont au catalogue")
+	_expect(ContainerManager.is_chest_material("coffre"),
+			"le coffre est reconnu comme conteneur (tag)")
+	_expect(not ContainerManager.is_chest_material("pierre"),
+			"un bloc ordinaire n'est pas un conteneur")
+
+	# Le coffre de boss du DERNIER étage doit exister en tant que bloc.
+	var floors := DungeonManager._floor_count(cell)
+	DungeonManager._enter_dungeon(cell, camera.global_position)
+	while DungeonManager._current_depth < floors - 1:
+		DungeonManager._descend()
+	var trouve := Vector3i(-1, -1, -1)
+	for pos: Vector3i in ContainerManager.chests:
+		trouve = pos
+		break
+	print("[REFONTE] coffres posés dans l'étage du boss : %d (premier en %s)" % [
+			ContainerManager.chests.size(), trouve])
+	_expect(ContainerManager.chests.size() > 0, "le boss a un coffre POSÉ, pas une cache")
+	if trouve.x < 0:
+		return false
+
+	var block := DungeonManager.dimension_block_at(trouve)
+	var nom := _material_name(block)
+	print("[REFONTE] bloc à cet emplacement : « %s »" % nom)
+	_expect(nom == "coffre", "l'emplacement porte bien un bloc coffre")
+
+	# VIDAGE : le contenu part dans l'inventaire.
+	var use := ContainerManager.usage(trouve)
+	var avant: int = (player.inventory.objects as Array).size()
+	var or_recu: int = ContainerManager.take_all(trouve, player.inventory)
+	var apres: int = (player.inventory.objects as Array).size()
+	print("[REFONTE] coffre de boss : %d/%d lignes → %d objet(s) et %d or récupérés" % [
+			use.x, use.y, apres - avant, or_recu])
+	_expect(apres > avant, "vider le coffre transfère son contenu")
+	_expect(or_recu > 0, "le coffre de boss porte de l'or")
+
+	# LE PANNEAU DE COFFRE (2026-08-03). Il remplace le « tout rafler » de la
+	# touche d'interaction, qui suffisait à vider un coffre de boss mais rendait
+	# le coffre inutilisable pour ce à quoi il sert : ranger et reprendre.
+	var panel := main.get_node_or_null("ChestPanel")
+	if panel == null:
+		_expect(false, "le panneau de coffre est instancié dans la scène")
+	else:
+		ContainerManager.fill(trouve, "coffre", [], 0)
+		var ouvert: bool = panel.call("open_at", trouve)
+		_expect(ouvert, "le panneau s'ouvre sur un coffre")
+		# DÉPÔT SÉLECTIF : c'est la fonction qui manquait entièrement.
+		var dague: Dictionary = ItemFactory.craft("dague",
+				{"bois": "chene", "minerai": "fer"}, 1.0)
+		player.inventory.add_object(dague)
+		panel.call("_deposit_object", dague)
+		var dedans: int = ((ContainerManager.contents(trouve)["objects"]) as Array).size()
+		print("[REFONTE] dépôt d'un objet → %d dans le coffre" % dedans)
+		_expect(dedans == 1, "déposer un objet le transfère dans le coffre")
+		panel.call("_take_all")
+		_expect(((ContainerManager.contents(trouve)["objects"]) as Array).is_empty(),
+				"tout prendre vide le coffre")
+		panel.call("_close")
+		_expect(not bool(panel.get("is_open")), "le panneau se referme")
+
+	# CASSER REND LE CONTENU. On remplit puis on casse, et le butin doit
+	# réapparaître au sol.
+	ContainerManager.fill(trouve, "coffre", [ItemFactory.craft("dague",
+			{"bois": "chene", "minerai": "fer"}, 1.0)], 25)
+	var caches_avant: int = DropManager.caches.size()
+	ContainerManager._on_block_destroyed(trouve, 0)
+	var caches_apres: int = DropManager.caches.size()
+	print("[REFONTE] coffre cassé : caches au sol %d → %d" % [caches_avant, caches_apres])
+	_expect(caches_apres > caches_avant,
+			"casser un coffre recrache son contenu au lieu de le détruire")
+	_expect(not ContainerManager.chests.has(trouve), "le coffre cassé disparaît")
+	return _ok
 
 
 ## Le labyrinthe est-il de la bonne taille, connexe, et ses deux escaliers

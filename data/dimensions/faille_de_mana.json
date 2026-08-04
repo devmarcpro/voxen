@@ -1,0 +1,37 @@
+{
+  "id": "faille_de_mana",
+  "name_key": "dimension.faille_de_mana.name",
+  "ambience": {
+    "sunlight": false,
+    "background": "#0B0A22",
+    "ambient": "#6E5BC8",
+    "ambient_energy": 0.85,
+    "fog": true,
+    "fog_color": "#241C4A",
+    "fog_density": 0.012
+  },
+  "islands": {
+    "count": 14,
+    "radius": [
+      5,
+      12
+    ],
+    "thickness": [
+      3,
+      7
+    ],
+    "spread": 70
+  },
+  "materials": {
+    "sol": "amethyste",
+    "roche": "obsidienne",
+    "lumiere": "scorie_ardente"
+  },
+  "builder": "rift",
+  "habitants": [
+    "ermite",
+    "deserteur",
+    "deserteur",
+    "pillard"
+  ]
+}

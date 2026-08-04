@@ -216,7 +216,21 @@ func _screenshot(file_name: String) -> void:
 ## Démarre le monde ACTIF (profil SaveManager.active_config) : générateur,
 ## spawn, restauration d'état, puis les branches benchs/sondes du mode direct.
 func _start_world(args: Array) -> void:
+	# GRAINE FORCÉE (`--seed N`), AVANT la création du monde — c'est tout
+	# l'enjeu : posée après, elle ne changeait rien, le monde étant déjà bâti
+	# sur la graine de la sauvegarde. Sert au harnais réseau, qui doit pouvoir
+	# démarrer hôte et client sur des mondes VOLONTAIREMENT différents : sans
+	# ça, la poignée de main ne prouverait rien, les deux valant 1337 par
+	# défaut.
+	var forced_seed := args.find("--seed")
 	WorldManager.initialize_world()
+	if forced_seed >= 0 and forced_seed + 1 < args.size():
+		# `adopt_world` ET PAS une écriture de config : une sauvegarde chargée a
+		# déjà bâti le monde, et `initialize_world` s'arrête net si le générateur
+		# existe. Poser la config ne changeait alors rien — l'hôte restait sur la
+		# graine de sa sauvegarde, et le test de poignée de main comparait deux
+		# fois la même valeur sans s'en apercevoir.
+		WorldManager.adopt_world(int(args[forced_seed + 1]), {})
 
 	# Départ au-dessus de la surface réelle du terrain (E.2), position
 	# optionnelle via `-- --pos X Z` (repérages/captures).
@@ -271,6 +285,10 @@ func _start_world(args: Array) -> void:
 		var dialogue: CanvasLayer = preload("res://scenes/ui/dialogue_panel.gd").new()
 		dialogue.name = "DialoguePanel"
 		add_child(dialogue)
+	if get_node_or_null("ChestPanel") == null:
+		var chest: CanvasLayer = preload("res://scenes/ui/chest_panel.gd").new()
+		chest.name = "ChestPanel"
+		add_child(chest)
 	if get_node_or_null("GameMenu") == null:
 		var game_menu: CanvasLayer = preload("res://scenes/ui/game_menu.gd").new()
 		game_menu.name = "GameMenu"
@@ -328,6 +346,22 @@ func _process(delta: float) -> void:
 		# les bras ensuite, qui visent des cibles en espace MONDE et doivent
 		# partir de la position d'épaule définitive.
 		player_body.solve_legs()
+		# La phase de marche descend du CORPS vers le joueur : c'est elle qui
+		# fait balancer la main libre (voir Player._free_hand_target). Poussée
+		# ici, avant l'IK, pour que la cible calculée soit celle de CETTE frame.
+		$Player.set_body_gait(
+			float(player_body.get("_gait_phase")), float(player_body.get("_gait_amount")))
+		# ENVERGURE DU BRAS GAUCHE : d'où il part et jusqu'où il va. Sans elle le
+		# joueur posait la seconde main sur le manche sans savoir si le bras y
+		# arrivait — sur une arme à long manche il n'y arrivait pas, et la main
+		# restait en l'air à côté de l'arme.
+		$Player.set_left_arm_span(
+			player_body.shoulder_world_position("gauche"),
+			player_body.arm_reach("gauche"))
+		# POSITION RÉELLE de la main droite (frame précédente) : l'arme y est
+		# accrochée, c'est donc de là que part son manche — et pas de la cible
+		# que l'IK n'atteint qu'approximativement.
+		$Player.set_right_hand_actual(player_body.hand_world_position("droite"))
 		var targets: Dictionary = $Player.hand_targets(
 			player_body.HAND_ARC_RADIUS, player_body.OFFHAND_ALONG_WEAPON, delta)
 		for side: String in targets:
@@ -335,7 +369,13 @@ func _process(delta: float) -> void:
 		# N'afficher que les membres réellement utilisés : la main gauche
 		# n'apparaît que si l'arme la mobilise (deux mains). `hand_targets`
 		# la renseigne précisément dans ce cas — une seule source de vérité.
-		player_body.set_local_limbs(targets.has("gauche"))
+		# N'AFFICHER QUE LES MEMBRES UTILES. La main libre a désormais une cible
+		# elle aussi (pour que le bras ne pende pas, collé au buste, sur le corps
+		# vu de l'extérieur) — mais elle ne doit pas pour autant faire surgir un
+		# avant-bras au milieu de l'écran en première personne. On demande donc
+		# au joueur ce que la gauche FAIT, au lieu de déduire de la présence
+		# d'une cible.
+		player_body.set_local_limbs(bool($Player.left_hand_busy()))
 		# La main PORTE l'arme, l'axe de VISÉE l'oriente : héritée de l'os,
 		# elle pointait là où pointait l'avant-bras, donc en travers.
 		var part_scale: float = preload("res://scenes/entities/held_item.gd").PART_SCALE

@@ -26,19 +26,19 @@
   "vegetation": [
     {
       "id": "sequoia",
-      "density": 0.006
+      "density": 0.00168
     },
     {
       "id": "sapin",
-      "density": 0.012
+      "density": 0.00336
     },
     {
       "id": "hetre",
-      "density": 0.008
+      "density": 0.00224
     },
     {
       "id": "erable",
-      "density": 0.006
+      "density": 0.00168
     }
   ],
   "village_palette": {

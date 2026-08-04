@@ -4,8 +4,8 @@
   "wood_material": "eucalyptus",
   "leaf_material": "feuilles_eucalyptus",
   "height_range": [
-    9,
-    14
+    15,
+    21
   ],
   "trunk_radius": 1,
   "branch_parameters": {
@@ -20,10 +20,10 @@
       4
     ]
   },
-  "canopy_shape": "spherical",
+  "canopy_shape": "oval",
   "canopy_radius_range": [
-    2,
-    3
+    3,
+    4
   ],
   "special_tags": []
 }

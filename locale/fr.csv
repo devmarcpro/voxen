@@ -1101,3 +1101,33 @@ ui.coffre.titre,{coffre} — {utilise}/{capacite}
 ui.coffre.vide,Coffre vide
 ui.toast.coffre_pris,Coffre vidé : {objets} objet(s), {or_} or
 ui.toast.coffre_plein,Coffre plein
+ui.menu.assemblage_armes,Techniques d'arme
+ui.menu.assemblage_sorts,Sorts
+ui.menu.assemblage_niveau,{competence} — niveau {niveau}
+ui.menu.assemblage_reserve_vide,Aucun module de ce type appris.
+ui.module.role.effet,Effet
+ui.module.role.modificateur,Modificateur
+ui.module.role.declencheur,Déclencheur
+module.enchainement_double.name,Enchaînement double
+module.enchainement_triple.name,Enchaînement triple
+module.allonge_accrue.name,Allonge accrue
+module.frappe_vive.name,Frappe vive
+ui.coffre.inventaire,Inventaire
+ui.coffre.contenu,Coffre
+ui.coffre.tout_deposer,Tout déposer
+ui.coffre.tout_prendre,Tout prendre
+ui.coffre.fermer,Fermer
+ui.coffre.or,{or_} or
+ui.coffre.aide,Clic sur une ligne : la déplacer d'un côté à l'autre. Échap ou E pour fermer.
+item.foreuse.name,Foreuse
+functionality.foreuse.name,Foreuse
+item.foreuse_plus.name,Foreuse Plus
+functionality.foreuse_plus.name,Foreuse Plus
+item.foreuse_pro.name,Foreuse Pro
+functionality.foreuse_pro.name,Foreuse Pro
+item.foreuse_max.name,Foreuse Max
+functionality.foreuse_max.name,Foreuse Max
+material.pousse.name,Pousse
+ui.toast.pousse_grandie,Une pousse est devenue un arbre.
+dimension.donjon.name,Donjon
+dimension.faille_de_mana.name,Faille de mana

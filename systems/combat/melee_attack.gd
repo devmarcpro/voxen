@@ -275,12 +275,24 @@ static func tip_position(direction_id: int, u: float, origin: Vector3, basis: Ba
 	return point_along(direction_id, u, origin, basis, reach, (1.0 - THRUST_START) * reach)
 
 
-## Retrait de l'estoc au début du geste : la pointe part à 35 % du rayon et file
-## jusqu'à 100 %. C'est le BRAS qui se déplie, donc toute l'arme avance de la
-## même quantité — d'où une translation, et d'où le fait que le retrait soit un
-## paramètre plutôt qu'une fraction du rayon de chaque point. Sans ça, un point
-## proche de la main reculerait moins que la pointe et l'arme s'allongerait.
-const THRUST_START := 0.35
+## Retrait de l'estoc au début du geste : la pointe part à cette fraction du
+## rayon et file jusqu'à 100 %. C'est le BRAS qui se déplie, donc toute l'arme
+## avance de la même quantité — d'où une translation, et d'où le fait que le
+## retrait soit un paramètre plutôt qu'une fraction du rayon de chaque point.
+## Sans ça, un point proche de la main reculerait moins que la pointe et l'arme
+## s'allongerait.
+##
+## 0,35 → 0,15 (2026-08-03, demande de l'auteur : « que l'arme se recule plus »).
+## L'armement était trop court pour se lire : la pointe reculait d'un tiers de
+## l'allonge, ce qui, sur une épée, fait à peine un demi-mètre en un dixième de
+## seconde. L'estoc est le coup le plus difficile à télégraphier — il n'a pas
+## d'arc latéral, seulement une profondeur — donc c'est justement lui qui a le
+## plus besoin d'un retrait ample.
+##
+## LE PLANCHER NE DESCEND PAS PLUS BAS. Le même paramètre place la MAIN, à
+## `THRUST_START × rayon_de_main` devant la prise : sous ~0,12, la main passerait
+## DERRIÈRE la prise, donc derrière le buste, et le bras se retournerait.
+const THRUST_START := 0.15
 
 
 ## Position d'un point situé à `distance` de l'ORIGINE DE L'ARC (la prise), pour

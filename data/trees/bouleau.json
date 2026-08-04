@@ -3,15 +3,27 @@
   "name_key": "tree.bouleau.name",
   "wood_material": "bouleau",
   "leaf_material": "feuilles_bouleau",
-  "height_range": [5, 8],
+  "height_range": [
+    12,
+    16
+  ],
   "trunk_radius": 1,
   "branch_parameters": {
     "start_fraction": 0.6,
-    "count_range": [3, 4],
+    "count_range": [
+      3,
+      4
+    ],
     "angle_deg": 50,
-    "length_range": [1, 3]
+    "length_range": [
+      1,
+      3
+    ]
   },
-  "canopy_shape": "spherical",
-  "canopy_radius_range": [1, 2],
+  "canopy_shape": "oval",
+  "canopy_radius_range": [
+    2,
+    3
+  ],
   "special_tags": []
 }

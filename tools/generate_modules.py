@@ -102,12 +102,29 @@ MODULES = [
      "Contre-riposte", "Counter-riposte", "返し技", "反击"),
 
     # --- MAÎTRISE : les modificateurs et déclencheurs, cœur de l'assemblage ---
-    ("double_lancer", "modificateur", ["maitrise"], "manuel", 4, 0, "0",
+    # ÉQUILIBRAGE DES DEUX ZONES (2026-08-03). Depuis que le menu combat sépare
+    # techniques d'arme et sorts en deux assemblages ÉTANCHES, chaque côté doit
+    # disposer des trois rôles. Le multi-cast était uniquement côté manuel : les
+    # sorts perdaient la mécanique signature de Noita. Il passe donc en grimoire
+    # (« lancer » = incantation) et reçoit un pendant martial.
+    ("double_lancer", "modificateur", ["maitrise"], "grimoire", 4, 0, "0",
      ["maitrise"], {"multicast": 2},
      "Double lancer", "Double cast", "二重詠唱", "双重施放"),
-    ("triple_lancer", "modificateur", ["maitrise"], "manuel", 9, 0, "0",
+    ("triple_lancer", "modificateur", ["maitrise"], "grimoire", 9, 0, "0",
      ["maitrise"], {"multicast": 3},
      "Triple lancer", "Triple cast", "三重詠唱", "三重施放"),
+    ("enchainement_double", "modificateur", ["maitrise"], "manuel", 5, 0, "0",
+     ["maitrise"], {"multicast": 2},
+     "Enchaînement double", "Double strike", "二連撃", "双连击"),
+    ("enchainement_triple", "modificateur", ["maitrise"], "manuel", 10, 0, "0",
+     ["maitrise"], {"multicast": 3},
+     "Enchaînement triple", "Triple strike", "三連撃", "三连击"),
+    ("allonge_accrue", "modificateur", ["maitrise"], "manuel", 3, 0, "0",
+     ["maitrise"], {"mods": {"portee": 2}},
+     "Allonge accrue", "Extended reach", "間合い延長", "延展距离"),
+    ("frappe_vive", "modificateur", ["maitrise"], "manuel", 3, 0, "0",
+     ["maitrise"], {"mods": {"vitesse": 20}},
+     "Frappe vive", "Swift strike", "速撃", "疾击"),
     ("portee_accrue", "modificateur", ["maitrise", "espace"], "grimoire", 3, 0, "0",
      ["maitrise"], {"mods": {"portee": 12}},
      "Portée accrue", "Extended range", "射程延長", "射程延展"),

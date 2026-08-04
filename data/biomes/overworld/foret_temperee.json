@@ -26,51 +26,51 @@
   "vegetation": [
     {
       "id": "chene",
-      "density": 0.0125
+      "density": 0.0035
     },
     {
       "id": "sapin",
-      "density": 0.0075
+      "density": 0.0021
     },
     {
       "id": "bouleau",
-      "density": 0.00625
+      "density": 0.00175
     },
     {
       "id": "sequoia",
-      "density": 0.00125
+      "density": 0.00035
     },
     {
       "id": "hetre",
-      "density": 0.0075
+      "density": 0.0021
     },
     {
       "id": "erable",
-      "density": 0.005
+      "density": 0.0014
     },
     {
       "id": "frene",
-      "density": 0.00375
+      "density": 0.00105
     },
     {
       "id": "tilleul",
-      "density": 0.00375
+      "density": 0.00105
     },
     {
       "id": "charme",
-      "density": 0.00375
+      "density": 0.00105
     },
     {
       "id": "chataignier",
-      "density": 0.00375
+      "density": 0.00105
     },
     {
       "id": "buis",
-      "density": 0.0025
+      "density": 0.0007
     },
     {
       "id": "noisetier",
-      "density": 0.0025
+      "density": 0.0007
     }
   ],
   "village_palette": {

@@ -456,95 +456,182 @@ func _build_combat() -> Control:
 	return box
 
 
-## Reconstruit l'éditeur d'assemblage. UNE LISTE DÉROULANTE PAR SLOT DE MODULE,
-## lues de gauche à droite : c'est littéralement le modèle de données (une liste
-## ORDONNÉE d'ids), donc rien ne peut diverger entre ce qu'on voit et ce qui
-## sera lancé. Le glisser-déposer serait plus joli et cacherait l'ordre, qui est
-## précisément ce que le joueur doit manipuler.
+## Reconstruit l'ÉDITEUR D'ASSEMBLAGE (2026-08-03, réécrit).
+##
+## DEUX ZONES INDÉPENDANTES, sur demande de l'auteur : techniques d'ARME à
+## gauche, SORTS à droite. Chacune a sa réserve de modules et ses propres slots,
+## et un module ne peut aller que du bon côté. C'est un écart assumé avec le
+## GDD 5.1 (« n'importe quel module dans n'importe quel slot ») ; la règle vit
+## dans le modèle (Player.set_assembly), pas ici.
+##
+## DES CASES ET DU GLISSER-DÉPOSER, et non plus des listes déroulantes. Dans ce
+## système l'ORDRE décide de tout : un modificateur avant ou après un effet donne
+## deux sorts différents. Une liste déroulante DIT l'ordre mais ne permet pas de
+## le CHANGER — il fallait vider et recomposer pour déplacer un module d'un cran.
 func _refresh_assembly() -> void:
 	if _assembly_box == null:
 		return
 	for child in _assembly_box.get_children():
 		child.queue_free()
 
-	var skill_id := String(_player.weapon_skill_id())
-	if skill_id.is_empty():
-		_assembly_box.add_child(UITheme.dim(tr("ui.menu.assemblage_sans_arme")))
-		return
 	var known: Dictionary = _player.known_modules
 	if known.is_empty():
 		_assembly_box.add_child(UITheme.dim(tr("ui.menu.assemblage_aucun_module")))
 		return
 
-	# Modules connus, triés par nom affiché : la liste doit être cherchable à
-	# l'œil, pas dans l'ordre d'apprentissage.
-	var choices: Array[String] = []
-	for module_id: String in known:
-		if GameData.modules.has(module_id):
-			choices.append(module_id)
-	choices.sort_custom(func(a: String, b: String) -> bool:
-		return tr(String((GameData.modules[a] as Dictionary)["name_key"])) 				< tr(String((GameData.modules[b] as Dictionary)["name_key"])))
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_assembly_box.add_child(columns)
 
-	var slot_count: int = _player.assembly_slot_count(skill_id)
-	var module_count: int = _player.assembly_module_count(skill_id)
+	var weapon_family := String(_player.weapon_skill_id())
+	columns.add_child(_build_assembly_column(
+			weapon_family, tr("ui.menu.assemblage_armes"),
+			tr("ui.menu.assemblage_sans_arme")))
+	columns.add_child(_build_assembly_column(
+			String(_player.SPELL_FAMILY), tr("ui.menu.assemblage_sorts"), ""))
+
+
+## Une colonne : titre, réserve des modules du bon type, puis les slots.
+func _build_assembly_column(family: String, title: String, empty_hint: String) -> Control:
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", UITheme.GAP)
+
+	var header := Label.new()
+	header.text = title
+	header.add_theme_color_override("font_color", UITheme.TEXT_ACCENT)
+	column.add_child(header)
+
+	if family.is_empty():
+		# Côté ARMES sans arme équipée : les slots dérivent de la compétence de
+		# l'arme, il n'y a donc rien à afficher tant qu'on n'en porte pas.
+		column.add_child(UITheme.dim(empty_hint))
+		return column
+
+	var wanted := String(_player.family_book_type(family))
+	var skill_id := String(_player.family_skill(family))
+	column.add_child(UITheme.dim(tr("ui.menu.assemblage_niveau").format({
+		"competence": tr("skill.%s.name" % skill_id),
+		"niveau": str(_player.skills.level(skill_id))})))
+
+	# --- Réserve : les modules APPRIS du bon type, triés par nom ---
+	var pool: Array[String] = []
+	for module_id: String in (_player.known_modules as Dictionary):
+		var module: Dictionary = GameData.modules.get(module_id, {})
+		if module.is_empty() or String(module.get("book_type", "grimoire")) != wanted:
+			continue
+		pool.append(module_id)
+	pool.sort_custom(func(a: String, b: String) -> bool:
+		return tr(String((GameData.modules[a] as Dictionary)["name_key"])) \
+				< tr(String((GameData.modules[b] as Dictionary)["name_key"])))
+
+	var reserve := GridContainer.new()
+	reserve.columns = 2
+	reserve.add_theme_constant_override("h_separation", UITheme.GAP)
+	reserve.add_theme_constant_override("v_separation", UITheme.GAP)
+	if pool.is_empty():
+		column.add_child(UITheme.dim(tr("ui.menu.assemblage_reserve_vide")))
+	else:
+		for module_id in pool:
+			var cell := ModuleSlot.new()
+			cell.kind = "reserve"
+			cell.family = family
+			cell.module_id = module_id
+			reserve.add_child(cell)
+		column.add_child(reserve)
+
+	column.add_child(UITheme.rule())
+
+	# --- Slots d'assemblage ---
+	var slot_count: int = _player.assembly_slot_count(family)
+	var module_count: int = _player.assembly_module_count(family)
 	for slot in slot_count:
-		var current: Array = _player.assembly_at(skill_id, slot)
-		var frame := VBoxContainer.new()
-		frame.add_theme_constant_override("separation", 2)
-
-		var header := Label.new()
-		header.text = tr("ui.menu.assemblage_slot").format({"n": str(slot + 1)})
-		frame.add_child(header)
-
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 4)
+		var current: Array = _player.assembly_at(family, slot)
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", UITheme.GAP)
+		var index_label := Label.new()
+		index_label.text = str(slot + 1)
+		index_label.custom_minimum_size.x = 16
+		line.add_child(index_label)
 		for position in module_count:
-			var option := OptionButton.new()
-			option.add_item(tr("ui.module.vide"), -1)
-			for index in choices.size():
-				var module_id: String = choices[index]
-				option.add_item(tr(String((GameData.modules[module_id] as Dictionary)["name_key"])), index)
-			option.selected = 0
-			if position < current.size():
-				var pos := choices.find(String(current[position]))
-				option.selected = pos + 1 if pos >= 0 else 0
-			option.item_selected.connect(
-					_on_assembly_changed.bind(skill_id, slot, position, choices))
-			row.add_child(option)
-		frame.add_child(row)
+			var cell := ModuleSlot.new()
+			cell.kind = "assemblage"
+			cell.family = family
+			cell.slot = slot
+			cell.position_index = position
+			cell.module_id = String(current[position]) if position < current.size() else ""
+			cell.dropped.connect(_on_module_dropped)
+			cell.cleared.connect(_on_module_cleared)
+			line.add_child(cell)
+		column.add_child(line)
 
-		# RETOUR IMMÉDIAT : description compilée + coût réel. Sans lui on
-		# n'assemble pas un sort, on tâtonne — et l'ordre, qui est tout le sujet,
-		# ne se voit qu'une fois lancé.
-		var compiled: Dictionary = SpellAssembly.compile(current, known)
+		var compiled: Dictionary = SpellAssembly.compile(current, _player.known_modules)
 		var summary := UITheme.dim("%s   —   %s" % [
 				SpellAssembly.describe(compiled),
 				tr("ui.menu.assemblage_cout").format({
-					"cout": str(int(_player.assembly_cost(skill_id, slot)))})])
+					"cout": str(int(_player.assembly_cost(family, slot)))})])
 		summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		frame.add_child(summary)
-		_assembly_box.add_child(frame)
+		column.add_child(summary)
+	return column
 
 
-## Une liste déroulante a changé : on relit TOUTE la rangée et on range
-## l'assemblage complet. Reconstruire depuis l'écran plutôt que de muter une
-## case garantit que le modèle est toujours exactement ce qui est affiché.
-func _on_assembly_changed(selected: int, skill_id: String, slot: int,
-		position: int, choices: Array) -> void:
-	var current: Array = (_player.assembly_at(skill_id, slot) as Array).duplicate()
-	var module_count: int = _player.assembly_module_count(skill_id)
-	while current.size() < module_count:
-		current.append("")
-	current[position] = "" if selected <= 0 else choices[selected - 1]
-	# Les trous sont RETIRÉS et non conservés : un assemblage est une suite, pas
-	# une grille à cases vides — laisser un trou au milieu ferait croire à un
-	# emplacement réservé alors que l'interpréteur ne lit que la suite.
-	var clean: Array[String] = []
-	for id: Variant in current:
-		if String(id) != "":
-			clean.append(String(id))
-	_player.set_assembly(skill_id, slot, clean)
+## Un module a été déposé. On recompose l'assemblage CIBLE en entier, et on
+## retire la source si elle venait d'un autre slot — c'est ce qui fait qu'un
+## glissement DÉPLACE au lieu de dupliquer.
+func _on_module_dropped(payload: Dictionary, target: ModuleSlot) -> void:
+	var module_id := String(payload.get("module", ""))
+	if module_id.is_empty():
+		return
+	var from_slot: bool = String(payload.get("kind", "")) == "assemblage"
+	var src_family := String(payload.get("family", ""))
+	var src_slot := int(payload.get("slot", -1))
+	var src_position := int(payload.get("position", -1))
+
+	# ÉCHANGE plutôt qu'écrasement quand les deux cases sont occupées et de la
+	# même famille : c'est le geste attendu quand on réordonne, et il évite de
+	# perdre le module qui se trouvait là.
+	var displaced := target.module_id
+	var cible: Array = (_player.assembly_at(target.family, target.slot) as Array).duplicate()
+	while cible.size() <= target.position_index:
+		cible.append("")
+	cible[target.position_index] = module_id
+
+	if from_slot and src_family == target.family and src_slot == target.slot:
+		# Même slot : simple permutation interne.
+		while cible.size() <= src_position:
+			cible.append("")
+		cible[src_position] = displaced
+		_player.set_assembly(target.family, target.slot, _compact_ids(cible))
+	else:
+		_player.set_assembly(target.family, target.slot, _compact_ids(cible))
+		if from_slot:
+			# Venu d'un AUTRE slot : on l'en retire, sinon le module existerait
+			# à deux endroits pour un seul glissement.
+			var source: Array = (_player.assembly_at(src_family, src_slot) as Array).duplicate()
+			if src_position >= 0 and src_position < source.size():
+				source[src_position] = displaced
+			_player.set_assembly(src_family, src_slot, _compact_ids(source))
 	_refresh_assembly()
+
+
+func _on_module_cleared(target: ModuleSlot) -> void:
+	var current: Array = (_player.assembly_at(target.family, target.slot) as Array).duplicate()
+	if target.position_index >= 0 and target.position_index < current.size():
+		current.remove_at(target.position_index)
+	_player.set_assembly(target.family, target.slot, _compact_ids(current))
+	_refresh_assembly()
+
+
+## Retire les trous. Un assemblage est une SUITE, pas une grille à cases vides :
+## laisser un trou au milieu ferait croire à un emplacement réservé alors que
+## l'interpréteur ne lit que la suite.
+func _compact_ids(ids: Array) -> Array:
+	var out: Array[String] = []
+	for id: Variant in ids:
+		if String(id) != "":
+			out.append(String(id))
+	return out
 
 
 func _refresh_combat() -> void:

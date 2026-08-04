@@ -134,7 +134,34 @@ func despawn_dimension(dim: StringName) -> void:
 
 func despawn(creature: Node) -> void:
 	creatures.erase(creature)
+	# ON SORT AUSSI L'HABITANT DE SON VILLAGE. Sans ça, `_populated_villages`
+	# gardait une référence vers un nœud libéré dès qu'un villageois mourait ou
+	# était retiré, et le passage suivant sur cette liste plantait — c'est la
+	# cause racine des « Trying to assign invalid previously freed instance »
+	# vus en boucle dans une vraie partie.
+	var cell: Vector2i = creature.village_cell
+	if _populated_villages.has(cell):
+		(_populated_villages[cell] as Array).erase(creature)
 	creature.queue_free()
+
+
+## LA FILE SE VIDE DANS UNE FRAME, PAS DANS UN TICK (2026-08-04).
+##
+## Faire naître une créature coûte 12 à 25 ms : le corps riggé instancie son
+## modèle, y peint sa peau et fait entrer dix-huit maillages dans l'arbre de
+## scène. C'était le DERNIER poste au-dessus du budget de tick, après l'IA, les
+## royaumes et les plans de ville — et contrairement à eux, il ne se laisse pas
+## réduire : on a mesuré chacune de ses briques, aucune ne domine, le coût est
+## réparti sur tout le montage d'un corps.
+##
+## Alors on ne le réduit pas, on le DÉPLACE. Une créature qui apparaît une
+## frame plus tard, personne ne le voit ; un tick qui double son budget, si.
+## C'est le même remède que pour les deux autres postes, et pour la même
+## raison : le tick est un budget de simulation, pas un budget de construction.
+func _process(_delta: float) -> void:
+	if creature_root == null or WorldManager.generator == null:
+		return
+	_drain_spawn_queue()
 
 
 func _on_tick(_tick_index: int) -> void:
@@ -165,6 +192,8 @@ func _on_tick(_tick_index: int) -> void:
 			# sans rien toucher.
 			_resolve_creature_attack(creature, player, event.get("hit", {}))
 
+	_phase_us["ia"] = Time.get_ticks_usec() - start
+	var mark := Time.get_ticks_usec()
 	for creature in dead:
 		_note_resident_death(creature)
 		EventBus.creature_killed.emit(null, creature)
@@ -174,19 +203,50 @@ func _on_tick(_tick_index: int) -> void:
 	# Couper le spawn naturel (menu de triche, sondes de combat) ne doit pas
 	# vider les villages — ce sont deux phénomènes distincts, l'un est la faune
 	# qui rôde, l'autre des gens qui habitent là.
+	_phase_us["morts"] = Time.get_ticks_usec() - mark
+	mark = Time.get_ticks_usec()
 	if creature_root != null and active_dim == &"overworld":
 		_village_population_tick(player_pos)
 
 	# Spawn naturel : overworld uniquement (un donjon ne repop pas, 3.5).
+	_phase_us["villages"] = Time.get_ticks_usec() - mark
+	mark = Time.get_ticks_usec()
 	if natural_spawn_enabled and creature_root != null and active_dim == &"overworld":
 		_natural_spawn_tick(player_pos)
-		# Puis au plus UNE créature en attente : c'est ce qui borne le coût
-		# d'un tick au prix d'un seul modèle instancié.
-		_drain_spawn_queue()
+	_phase_us["spawn"] = Time.get_ticks_usec() - mark
 
 	last_tick_us = Time.get_ticks_usec() - start
 	_sum_tick_us += last_tick_us
 	_tick_samples += 1
+	_warn_if_slow()
+
+
+## DÉTAIL D'UN TICK LENT. TickManager sait dire « la phase entités a coûté
+## 104 ms » ; il ne sait pas dire LAQUELLE des quatre choses que fait ce
+## gestionnaire l'a coûté, et sans ça on cherche à l'aveugle — c'est ce qui est
+## arrivé, deux fois, sur les pics relevés en jeu.
+##
+## Le détail ne s'imprime QUE sur un tick au-dessus du budget, et au plus une
+## fois par seconde : une trace par tick coûterait plus cher que ce qu'elle
+## mesure.
+const SLOW_TICK_US := 16000
+const SLOW_WARN_COOLDOWN_MS := 1000
+
+var _phase_us := {"ia": 0, "morts": 0, "villages": 0, "spawn": 0}
+var _last_slow_warn_ms := 0
+
+
+func _warn_if_slow() -> void:
+	if last_tick_us < SLOW_TICK_US:
+		return
+	var now := Time.get_ticks_msec()
+	if now - _last_slow_warn_ms < SLOW_WARN_COOLDOWN_MS:
+		return
+	_last_slow_warn_ms = now
+	push_warning("[CRÉATURES %.1f ms] IA %.1f (%d créatures) | morts %.1f | villages %.1f | spawn %.1f" % [
+			last_tick_us / 1000.0, _phase_us["ia"] / 1000.0, creatures.size(),
+			_phase_us["morts"] / 1000.0, _phase_us["villages"] / 1000.0,
+			_phase_us["spawn"] / 1000.0])
 
 
 ## Une créature hostile attaque le joueur (E.3) — l'inverse (joueur attaque
@@ -444,10 +504,40 @@ func _drain_spawn_queue() -> void:
 	while not _spawn_queue.is_empty() and produced < SPAWNS_PER_TICK:
 		var entry: Dictionary = _spawn_queue.pop_front()
 		if creatures.size() >= MAX_ACTIVE:
-			_spawn_queue.clear()   # Plafond atteint : la file entière est caduque.
+			# PLAFOND ATTEINT. Les spawns sauvages en file sont caducs — ils
+			# visaient une position autour d'un joueur qui a bougé depuis. Les
+			# HABITANTS, eux, sont attendus à un domicile fixe : les jeter
+			# laisserait leur village marqué comme peuplé avec une liste vide,
+			# donc définitivement désert jusqu'à ce que le joueur s'en éloigne.
+			# On les garde en file, ils sortiront quand une place se libère, et
+			# `_release_village` les purge si le joueur s'en va.
+			var pending: Array[Dictionary] = [entry] if entry.has("resident_cell") else []
+			for queued: Dictionary in _spawn_queue:
+				if queued.has("resident_cell"):
+					pending.append(queued)
+			_spawn_queue = pending
 			return
-		spawn(String(entry["id"]), entry["position"])
+		var creature := spawn(String(entry["id"]), entry["position"])
 		produced += 1
+		if creature == null or not entry.has("resident_cell"):
+			continue
+		var cell: Vector2i = entry["resident_cell"]
+		if not _populated_villages.has(cell):
+			# Le joueur s'est éloigné entre la mise en file et la sortie : cet
+			# habitant n'a plus de village où vivre.
+			despawn(creature)
+			continue
+		creature.village_cell = cell
+		creature.job = String(entry["job"])
+		# La clé vient du RANG dans le roster, qui est déterministe : c'est ce qui
+		# permet de retrouver la relation nouée avec cette personne après être
+		# parti à l'autre bout du monde et revenu.
+		creature.social_key = Reputation.resident_key(cell, int(entry["resident_index"]))
+		creature.roster_index = int(entry["resident_index"])
+		creature.kingdom_id = String(entry["kingdom_id"])
+		creature.home_building = entry["home"]
+		creature.work_place = entry["work"]
+		(_populated_villages[cell] as Array).append(creature)
 
 
 ## Créature du pool compatible avec le biome en (x, z), ou "" si aucune.
@@ -537,8 +627,24 @@ func _village_population_tick(player_pos: Vector3) -> void:
 			var center := POIGenerator.cell_center_world(cell)
 			if player_pos.distance_to(Vector3(center.x, player_pos.y, center.y)) > VILLAGE_POPULATE_DIST:
 				continue
+			# LE PLAN DOIT ÊTRE DÉJÀ COMPOSÉ, pour la même raison que le royaume
+			# juste en dessous : le composer ici coûte une dizaine de
+			# millisecondes, et il y a neuf cellules à examiner. Le préchauffage
+			# de WorldManager s'en charge, dans une frame.
+			if not generator.has_city_layout(cell):
+				continue
 			var plan: Dictionary = generator.city_at_cell(cell)
 			if plan.is_empty():
+				continue
+			# LE ROYAUME DOIT ÊTRE PRÊT. `_populate_village` a besoin de la
+			# culture du royaume pour nommer ses habitants ; si le secteur n'est
+			# pas encore calculé, le demander ici ferait payer au TICK les
+			# dizaines de millisecondes que le préchauffage de WorldManager est
+			# précisément en train de sortir de la boucle.
+			#
+			# On repasse au tick suivant. Un village peuplé une seconde plus tard
+			# ne se voit pas ; un tick à 60 ms, si.
+			if not KingdomGenerator.sector_ready(KingdomGenerator.sector_of(cell)):
 				continue
 			_populate_village(cell, plan)
 			return  # Un seul village par tick.
@@ -563,20 +669,24 @@ func _populate_village(cell: Vector2i, plan: Dictionary) -> void:
 		if creatures.size() >= MAX_ACTIVE:
 			break
 		var home := VillagePopulation.home_position(cell, plan, int(entry["plot"]))
-		var creature := spawn(String(entry["creature_id"]), Vector3(home))
-		if creature == null:
-			continue
-		creature.village_cell = cell
-		creature.job = String(entry["job"])
-		# La clé vient du RANG dans le roster, qui est déterministe : c'est ce
-		# qui permet de retrouver la relation nouée avec cette personne après
-		# être parti à l'autre bout du monde et revenu.
-		creature.social_key = Reputation.resident_key(cell, index)
-		creature.roster_index = index
-		creature.kingdom_id = kingdom_id
-		creature.home_building = Vector3(home)
-		creature.work_place = Vector3(VillagePopulation.work_position(cell, plan))
-		residents.append(creature)
+		# MISE EN FILE, PAS DE SPAWN IMMÉDIAT. Un village peuplait jusqu'à vingt
+		# habitants dans le MÊME tick ; à ~16 ms l'instanciation d'un corps riggé,
+		# ça donnait les pics « [TICK] 62.3 ms — entités 62.2 » relevés en jeu.
+		# Les compagnons de meute passaient déjà par cette file, pas les
+		# villageois : c'est la même solution, pour la même raison.
+		_spawn_queue.append({
+			"id": String(entry["creature_id"]),
+			"position": Vector3(home),
+			"resident_cell": cell,
+			"resident_index": index,
+			"job": String(entry["job"]),
+			"kingdom_id": kingdom_id,
+			"home": Vector3(home),
+			"work": Vector3(VillagePopulation.work_position(cell, plan)),
+		})
+	# LE VILLAGE EST MARQUÉ PEUPLÉ TOUT DE SUITE, avec une liste encore vide :
+	# c'est cette entrée qui empêche le tick suivant de re-mettre en file le même
+	# village. Les habitants s'y ajoutent au fur et à mesure qu'ils sortent.
 	_populated_villages[cell] = residents
 
 
@@ -587,10 +697,24 @@ func _populate_village(cell: Vector2i, plan: Dictionary) -> void:
 ## pas de mémoire persistante. C'est une limite connue et assumée à ce stade —
 ## mieux vaut un village qui se repeuple qu'un village qui ne se peuple jamais.
 func _release_village(cell: Vector2i) -> void:
-	for creature: Node in _populated_villages.get(cell, [] as Array[Node]):
+	# BOUCLE NON TYPÉE, ET C'EST DÉLIBÉRÉ. Annoter `for creature: Node in ...`
+	# fait tenter à GDScript la conversion vers Node À L'AFFECTATION, donc AVANT
+	# que le garde `is_instance_valid` ci-dessous ait la moindre chance de
+	# s'exécuter : sur une instance déjà libérée, l'erreur part à la ligne du
+	# `for`, la fonction s'interrompt, `erase(cell)` n'est jamais atteint, et le
+	# tick suivant rejoue exactement la même erreur. C'est ce qui remplissait la
+	# console de la partie. Le garde ne protège que s'il s'exécute.
+	for creature in _populated_villages.get(cell, []):
 		if creature != null and is_instance_valid(creature):
 			despawn(creature)
 	_populated_villages.erase(cell)
+	# Les habitants encore EN FILE ne doivent pas naître après coup dans un
+	# village qu'on vient de quitter.
+	var kept: Array[Dictionary] = []
+	for entry: Dictionary in _spawn_queue:
+		if not entry.has("resident_cell") or entry["resident_cell"] != cell:
+			kept.append(entry)
+	_spawn_queue = kept
 
 
 ## Inscrit la mort d'un HABITANT au registre des villages. Sans effet sur une

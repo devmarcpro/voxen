@@ -26,19 +26,19 @@
   "vegetation": [
     {
       "id": "epicea",
-      "density": 0.02
+      "density": 0.0056
     },
     {
       "id": "meleze",
-      "density": 0.015
+      "density": 0.0042
     },
     {
       "id": "sapin",
-      "density": 0.012
+      "density": 0.00336
     },
     {
       "id": "bouleau",
-      "density": 0.008
+      "density": 0.00224
     }
   ],
   "village_palette": {

@@ -4,8 +4,8 @@
   "wood_material": "bambou",
   "leaf_material": "feuilles_bambou",
   "height_range": [
-    6,
-    9
+    9,
+    14
   ],
   "trunk_radius": 1,
   "branch_parameters": {
@@ -20,10 +20,21 @@
       0
     ]
   },
-  "canopy_shape": "conical",
+  "canopy_shape": "columnar",
   "canopy_radius_range": [
     1,
     1
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "children": 2,
+    "length_ratio": 0.1,
+    "spread_deg": 18.0,
+    "depth": 1,
+    "whorl_spacing": 3.0,
+    "curve": 0.04,
+    "lean": 0.08,
+    "roots": 0,
+    "leaf_density": 0.5
+  }
 }

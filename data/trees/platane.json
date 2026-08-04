@@ -4,8 +4,8 @@
   "wood_material": "platane",
   "leaf_material": "feuilles_platane",
   "height_range": [
-    8,
-    12
+    15,
+    20
   ],
   "trunk_radius": 2,
   "branch_parameters": {
@@ -20,10 +20,10 @@
       4
     ]
   },
-  "canopy_shape": "spherical",
+  "canopy_shape": "broad",
   "canopy_radius_range": [
-    4,
-    5
+    6,
+    8
   ],
   "special_tags": []
 }

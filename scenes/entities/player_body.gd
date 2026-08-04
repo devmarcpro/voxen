@@ -550,6 +550,47 @@ func solve_arm(side: String, world_target: Vector3) -> void:
 ## La hauteur du sol vient d'une descente de blocs, PAS d'un RayCast3D : le
 ## projet n'a aucun collider, ni sur le terrain ni sur les entités (c'est aussi
 ## ce qui rend cette requête bon marché — quelques lectures de tableau).
+## Position MONDE de la main d'un côté, APRÈS résolution de l'IK. À ne pas
+## confondre avec la cible qu'on lui a donnée : un IK à deux os ne l'atteint que
+## si elle est à portée du bras. Mesurer la cible revient à mesurer son propre
+## calcul — l'écart entre les deux est précisément ce qu'il faut regarder.
+func hand_world_position(side: String) -> Vector3:
+	if _skeleton == null:
+		return Vector3.ZERO
+	var names: Array = ARM_CHAINS.get(side, [])
+	if names.size() < 3:
+		return Vector3.ZERO
+	var index := _skeleton.find_bone(String(names[2]))
+	if index < 0:
+		return Vector3.ZERO
+	return _skeleton.global_transform * _skeleton.get_bone_global_pose(index).origin
+
+
+## Position MONDE de l'ÉPAULE d'un côté — la racine de la chaîne d'IK. C'est
+## depuis ce point, et non depuis la prise de l'arme, que se mesure ce que le
+## bras peut atteindre.
+func shoulder_world_position(side: String) -> Vector3:
+	if _skeleton == null:
+		return Vector3.ZERO
+	var names: Array = ARM_CHAINS.get(side, [])
+	if names.is_empty():
+		return Vector3.ZERO
+	var index := _skeleton.find_bone(String(names[0]))
+	if index < 0:
+		return Vector3.ZERO
+	return _skeleton.global_transform * _skeleton.get_bone_global_pose(index).origin
+
+
+## Allonge maximale d'un bras (somme des deux segments). Au-delà, la main ne
+## peut PAS atteindre sa cible, quoi qu'on lui demande.
+func arm_reach(side: String) -> float:
+	var names: Array = ARM_CHAINS.get(side, [])
+	if names.is_empty() or not _chain_lengths.has(names[0]):
+		return 0.0
+	var chain: Dictionary = _chain_lengths[names[0]]
+	return float(chain["l1"]) + float(chain["l2"])
+
+
 func solve_legs() -> void:
 	if not ik_enabled:
 		return

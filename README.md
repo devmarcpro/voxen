@@ -7,16 +7,104 @@ le 2026-08-02 : la géométrie décide du toucher, plus aucun jet de 1d20).
 
 ---
 
-## État actuel (au 2026-08-02)
+## Essayer le projet
+
+### Ce qu'il faut
+
+- **Godot 4.7** (`gl_compatibility` — le projet cible une Intel UHD 620, il n'y
+  a aucun rendu Forward+). Deux binaires traînent parfois sur une machine de
+  dev : **c'est le 4.7 qui fait foi**, un 4.5 ouvrira le projet avec des erreurs
+  de parse trompeuses.
+- **Python 3** uniquement pour les générateurs de contenu (`tools/*.py`), jamais
+  pour jouer.
+- Rien d'autre : pas de dépendance externe, pas d'extension à compiler.
+
+### Lancer
+
+```bash
+# Depuis la racine du dépôt
+godot --path .                       # le jeu, menu de démarrage
+godot --path . -- --statique         # monde de test direct, sans passer par le menu
+```
+
+**Le `--` est obligatoire** dès qu'on passe un argument au jeu : sans lui, Godot
+mange le drapeau et le jeu attend sagement au menu. C'est un faux diagnostic
+classique — « la sonde est gelée » alors qu'elle n'a jamais démarré.
+
+### Les commandes en jeu
+
+`F3` affiche l'aide complète, **générée depuis les liaisons réelles** (elles sont
+remappables dans les paramètres, donc l'aide ne peut pas mentir). L'essentiel :
+
+| Touche | Action |
+|---|---|
+| ZQSD / WASD | marcher (touches **physiques** : la disposition du clavier est suivie sans réglage) |
+| Espace / F | sauter · basculer vol/marche |
+| Clic gauche maintenu | récolter, sculpter, attaquer |
+| Clic droit | poser un bloc · consommer l'objet en main |
+| E | interagir (coffre, établi, butin au sol, objet posé) |
+| R | changer la finesse de grille (32 / 16 / 8 / 4 px) |
+| 1-9, molette | emplacement de barre · `Ctrl` + molette pour changer de banque |
+| Tab / M / B | inventaire · carte du monde · rôle de la cellule |
+| J K L | modules assemblés |
+| H / N / V | équiper · dormir · revendiquer la cellule |
+| **F1** | **menu de triche** — tout le contenu du jeu y est atteignable |
+| F9 / F5 | sauvegarder · recharger les données à chaud |
+
+### Vérifier que rien n'est cassé
+
+```bash
+tools/run_probes.sh          # 28 sondes assertives, headless, code de sortie 0/1
+tools/run_probes.sh --list   # ce qu'elle contient
+```
+
+Compter environ **quinze minutes** : chaque sonde est un processus Godot complet
+qui charge un monde. Deux échecs sont attendus au 2026-08-04 (`--probe-police`,
+`--probe-corps`), documentés plus bas.
+
+Une sonde seule, quand on travaille sur un système précis :
+
+```bash
+godot --headless --path . -- --probe-arbres
+```
+
+Les sondes de **capture** (`--test-*`) doivent tourner **sans** `--headless` :
+en mode headless le serveur de rendu est un mannequin, `frame_post_draw` ne se
+déclenche jamais, et les images ne sont pas écrites. Elles atterrissent dans
+`debug/`, qui est ignoré par git.
+
+### Pièges connus de l'environnement
+
+- **`debug/` est `.gdignore`** : Godot n'y voit aucun script. Un outil rangé là
+  ne sera jamais chargé — les scripts vont dans `tools/`.
+- **Après avoir modifié une locale (`locale/*.csv`)**, il faut lancer l'éditeur
+  une fois (`godot --headless --path . --editor --quit`) pour régénérer les
+  `.translation` compilés. Sans ça le jeu affiche les clés brutes.
+- **Essais réseau** : un hôte d'une exécution précédente peut rester sur le port
+  et servir l'**ancien** code, avec pour seul symptôme
+  `The rpc node checksum failed`. Tuer les processus Godot avant chaque essai.
+
+---
+
+## État actuel (au 2026-08-04)
 
 Le projet a exécuté l'ordre de construction **D.3 étapes 1 à 8** ainsi que quelques
-extras (boutique passive, menu de triche). **30 000 lignes de GDScript** sur 78 fichiers.
+extras (boutique passive, menu de triche). **49 200 lignes de GDScript** sur 154 fichiers.
+
+**Ce qui a changé depuis le 2026-08-02**, en un paragraphe : les modules et sorts
+sont passés de 4 fiches à un système d'assemblage complet (36 modules, livres, jet
+de lecture, 14 statuts, zones persistantes) ; les arbres ont été refaits deux fois
+et portent maintenant dix silhouettes réelles, des racines et un détail au 8 px ;
+les pousses existent ; les dimensions sont devenues un système générique au lieu
+d'un cas particulier nommé « donjon » ; le menu de triche expose la totalité du
+contenu ; et le budget de tick a été assaini — les pics à 105 ms relevés en jeu ont
+disparu.
 
 **Socle en place :**
 
 | Domaine | État |
 |---|---|
-| Data-driven (`GameData`) | 249 matériaux (blocs) + ressources paramétriques (viandes/peaux, hors palette), 24 biomes, **53 compétences**, 31 fonctionnalités, 34 objets, 43 transformations, 38 arbres, 6 plantes, 6 races, 6 classes, 10 cultures de nommage, 7 salles / 3 connecteurs de donjon, 4 plats, **4 modules sur les 48 de F.2**, 18 créatures (humaines seulement depuis le 2026-08-02). *Comptes vérifiés le 2026-08-02 ; `GameData.load_all()` les imprime au boot — c'est lui qui fait foi, pas cette ligne.* |
+| Data-driven (`GameData`) | **316 matériaux** (blocs) + ressources paramétriques (viandes/peaux/pousses, hors palette), 24 biomes, 53 compétences, 35 fonctionnalités, **40 objets**, **72 transformations**, 38 arbres, 6 plantes, 6 races, 6 classes, 10 cultures de nommage, 7 salles / 3 connecteurs de donjon, 4 plats, **36 modules**, **14 statuts**, **2 dimensions**, 18 créatures (humaines seulement depuis le 2026-08-02). *`GameData.load_all()` imprime ces comptes au boot — c'est lui qui fait foi, pas cette ligne.* |
 | Noms culturels (12.5, E.31, B.11, C.9) | **Fait le 2026-08-02** — le GDD le listait comme « à écrire » (§16). 10 cultures de nommage en données (`data/name_cultures/`), chacune avec ses pools préfixe/suffixe pour prénoms, noms de famille et villes, plus ses titres pour les 6 gouvernances. `NameGenerator` : tirage déterministe, héritage du nom de famille, `name_order` par culture (le sino nomme famille avant prénom), titres genrés. **Culture ≠ race** : un royaume humain peut sonner latin, sino, slave ou nordique ; les trois races originales ont chacune une culture exclusive. Les royaumes reçoivent une culture, leurs villages et habitants en héritent — sonde `--probe-noms` |
 | Localisation (10.1) | **Les quatre locales portent les 981 clés** (mesuré le 2026-08-02) : `fr` / `en` font référence et sont validées clé par clé ; `ja` et `zh_Hans` sont à **978 / 981**, le boot les rapporte à 100 % arrondi. Elles restent déclarées dans `PARTIAL_LOCALES` — le repli sur l'anglais reste donc actif, à retirer une fois les dernières clés traduites. **Police CJK (2026-08-01)** : aucun caractère chinois ou japonais ne s'affichait — le repli de police pointait sur la police intégrée de Godot, latine elle aussi. Les 1327 idéogrammes des traductions sont désormais rastérisés en cellules 12×12 depuis Noto Sans SC (SIL OFL) par `tools/generate_pixel_font.py`, sans embarquer de `.ttf` (+45 Ko). Jeu de glyphes figé sur les traductions du jour, gardé par `--probe-police` |
 | Génération du monde (E.2) | continents/océans, rivières & littoraux, strates, filons, grottes, biomes, arbres, plantes, POI, villes (coques de bâtiments), noms de monde |
@@ -40,10 +128,86 @@ extras (boutique passive, menu de triche). **30 000 lignes de GDScript** sur 78 
 | Donjons (3.5, E.29) | entrée/sortie par dimension, 2/4/6 étages selon le danger. **Intérieur refait le 2026-08-02** : salles **organiques** (empreinte elliptique déformée au bruit, sol en relief, voûte qui se resserre en hauteur, colonnes naturelles — `DungeonCavern`) au lieu de boîtes ; **8 à 18 salles** par étage selon la profondeur, sur 7 gabarits et 3 connecteurs ; **vrais escaliers** en gradins à rampes **lumineuses** (scorie ardente, 6/15) remplaçant les anciens disques plats ; **butin au sol** dispersé dans les salles et **coffre lâché par le boss** du dernier étage — sonde `--probe-interieur` |
 | Boutique (7.1, E.8) | étal de vente passif, clients abstraits |
 | Sauvegarde (E.10) | `SaveManager`, autosave **incrémentale**, écriture atomique ; **nombre de mondes illimité**, liste défilante complète, **suppression** avec confirmation et garde-fous (jamais hors du dossier de sauvegardes, jamais le monde en cours) — sonde `--probe-saves`. **Versionnement (2026-08-01)** : chaîne de migrations, copie de sûreté `world.v<N>.bak` avant migration, et **refus explicite motivé** au lieu de l'ancien « monde neuf » silencieux qui aurait effacé les parties au premier incrément du format ; chunks illisibles comptés et signalés au joueur |
-| Réseau (8, E.11) | squelette host/join + RPC d'édition de blocs. **Étiqueté expérimental dans le menu (2026-08-01)** : seuls les avatars et les blocs transitent — ni créatures, ni heure, ni inventaire, ni combat, et le host ne valide rien |
+| Modules et sorts (5.1, A.5-A.7, C.6) | **Système d'assemblage complet (2026-08-03)**, là où le GDD n'avait que 4 fiches d'exemple. 36 modules en trois rôles (`effet` / `modificateur` / `declencheur`), assemblés à la Noita : un multicast consomme les N effets qui le suivent, un déclencheur porte une charge utile récursive. Coût de mana par A.6, atténué par la conductivité des matériaux ; nombre d'emplacements dérivé des compétences. Les modules ne s'obtiennent **que** par la lecture d'un livre (jet A.7 avec échecs gradués), et les livres qu'en donjon — sondes `--probe-assemblage`, `--probe-modules` |
+| Statuts (F.4) | 14 effets en données, appliqués par un `StatusTracker` qui enregistre ses modificateurs auprès du résolveur E.4 et rend les dégâts périodiques **sans jamais toucher à la santé lui-même** — un statut ne doit pas contourner le stagger ni la mort |
+| Zones et coffres (F.6) | `ZoneManager` : zones d'effet persistantes qui pulsent au tick, bornées et filtrées par dimension. `ContainerManager` : coffres (30) et grands coffres (60), le coffre de boss étant **le même objet** que celui qui se craft ; casser un coffre en répand le contenu au sol |
+| Dimensions (3.5) | **Généralisé le 2026-08-03.** `WorldManager` disait « si ce n'est pas l'overworld, appeler `DungeonManager` » : « pas l'overworld » signifiait donc « donjon », et toute troisième dimension aurait été un cas particulier de plus. Une dimension est maintenant une entrée de registre en données (`data/dimensions/`) plus un stockage voxel générique ; le donjon garde son constructeur mais s'y déclare comme **backend**. Une seconde dimension — la **faille de mana**, îlots d'améthyste dans le vide, habitants et butin — existe **sans une ligne de code qui la nomme**, ce qui est le seul test distinguant une abstraction d'un renommage. L'intérieur des donjons vit en coordonnées **locales**, ce qui referme l'« écart technique temporaire » que le GDD portait depuis le 2026-07-21 — sonde `--probe-dimensions` |
+| Arbres (B.6) | **Refaits deux fois le 2026-08-03.** Dix silhouettes réelles au lieu de quatre (25 essences partageaient la même sphère : chêne, bouleau et érable étaient le même ballon sur un bâton), assignées essence par essence — colonne pour le peuplier, vase pour l'orme, étages pour le cèdre, parasol pour l'acacia. Le détail fin est en **8 px et jamais moins** (règle de grain de l'auteur) : branches effilées avec ramifications, **racines** en contreforts, peau du feuillage érodée sur ses coins exposés. Casser **n'importe quel** bloc abat l'arbre entier, au temps et au butin du **bois** et non du bloc frappé — sondes `--probe-arbres`, `--test-arbres` |
+| Pousses | Un **matériau posable par essence** (38, générés depuis le catalogue). La miniature n'est pas dessinée : l'arbre est généré pour de vrai puis **réduit** dans un bloc, si bien qu'une pousse ressemble à ce qu'elle deviendra. `SaplingManager` porte le seul état que le bloc ne sait pas dire — essence et instant de plantation — et fait grandir une pousse par tick. Abattre un arbre en rend une ou deux — sonde `--probe-pousses` |
+| Foreuses | Quatre outils de minage à large emprise (2×2 à 5×5), de catégorie pioche. Le carré suit le **plan de la face visée** — viser un mur ne creuse pas un puits — et la règle d'irrécoltabilité (A.2) comme le scellement des donjons (3.5) s'appliquent **bloc par bloc** : un bloc hors de portée est sauté, pas emporté — sonde `--probe-foreuse` |
+| Réseau (8, E.11) | **Squelette, et il faut le lire comme tel.** Le projet compte **cinq RPC au total** : quatre pour les mutations de blocs et de sous-grilles, un pour la pose des joueurs. Tout ce qui a été bâti depuis le 2026-07-20 est **solo** — créatures, combat, villages, donjons, dimensions, coffres, butin, sorts, statuts, artisanat. Un client voit le terrain de l'hôte et un repère qui bouge, rien d'autre. **Fondation posée le 2026-08-04** : poignée de main de monde (la graine n'était **jamais** transmise — les deux camps s'en tiraient parce qu'ils valaient 1337 par défaut, une coïncidence et non un protocole) et horloge host-autoritaire (chacun faisait avancer son propre `TickManager` : il pouvait faire nuit chez l'un et jour chez l'autre). Le critère G.8 de latence est mesuré à 112-168 ms contre 100 attendus, mais **ce n'est pas le réseau** : le client tourne à 29 fps en streamant, donc ~69 ms sont de la pure quantification de frame — banc `--bench-network-client` |
 | Commandes (2026-08-01) | `InputManager` : 29 actions déclarées en une table unique, **remappables** depuis les paramètres et persistées ; touches PHYSIQUES (ZQSD/WASD selon la disposition, sans réglage) ; l'aide du HUD est **générée** depuis les liaisons réelles au lieu d'être écrite en dur dans les fichiers de langue — sonde `--probe-touches` |
 | Réglages | `SettingsManager` : un seul `user://settings.cfg` pour langue, distance d'affichage et touches, hors de toute sauvegarde. La **langue est enfin persistée** (elle ne l'était pas — le choix était perdu à chaque lancement) |
-| Interface (E.13) | menu de démarrage, menu de jeu (perso/royaume/carte/monde/inventaire/craft), HUD, menu de triche, écran de remappe des touches |
+| Interface (E.13) | menu de démarrage, menu de jeu (perso/royaume/carte/monde/inventaire/craft), HUD, écran de remappe des touches. **Menu de combat refait (2026-08-03)** : les modules sont des cases qu'on assemble au **glisser-déposer**, l'écran séparé en armes / sorts. **Interface de coffre** en deux colonnes |
+| Menu de triche | **Tout le contenu du jeu y est atteignable (2026-08-03)**, sur 6 onglets et **606 boutons** : les 316 matériaux un par un rangés par catégorie, tous les objets forgés aux réglages de l'atelier, les 42 ressources, les 38 essences et 6 plantes à planter devant soi, les 72 transformations, les dimensions, races, classes, 14 statuts et 53 compétences. **Aucune liste n'est écrite à la main** — chaque grille parcourt son registre `GameData`, donc un contenu ajouté au jeu y devient trichable sans toucher au fichier. Verrouillé par `--probe-triche`, qui échoue le jour où quelqu'un ajoute du contenu sans l'exposer |
+
+
+---
+
+## Performance — état mesuré au 2026-08-04
+
+Les chiffres ci-dessous sont **mesurés**, pas estimés, sur la machine cible
+(Intel UHD 620, `gl_compatibility`). Ils bougent de ±35 % d'une exécution à
+l'autre : toute conclusion tirée d'une mesure unique est suspecte, et ça s'est
+vérifié plusieurs fois.
+
+| Critère (G.8 / E.14) | Cible | Mesuré | Verdict |
+|---|---|---|---|
+| Tick de simulation (E.1) | < 16 ms | **aucun dépassement** en survol de village | ✅ |
+| 50 créatures actives (D.3 étape 6) | < 8 ms | **0,67 ms** de moyenne, 1,62 ms au pire | ✅ |
+| Maillage d'un chunk (D.3 étape 4) | < 4 ms | **8,1 ms** | ❌ |
+| Mutation visible chez l'autre joueur (étape 8) | < 100 ms | **112-168 ms** | ❌, mais voir ci-dessous |
+
+### Le budget de tick, assaini
+
+Une partie réelle crachait des `[TICK] 62 à 105 ms` en boucle en approchant d'un
+village. **Quatre postes distincts**, tous trouvés en instrumentant
+`CreatureManager._on_tick` par sous-étape (IA / morts / villages / spawn) — pas
+en raisonnant, et c'est le point : trois hypothèses plausibles ont été émises
+avant, toutes fausses ou partielles.
+
+- **`Creature._ground_height`** faisait dix `block_at_world` par créature et par
+  tick ; cette lecture retombe sur une requête au générateur quand le chunk
+  n'est pas chargé. **4,6 ms par villageois** — contre 1 ms pour cinquante bêtes
+  sauvages, parce qu'elles, elles sont dans des chunks chargés. Le même code est
+  gratuit ou ruineux selon l'état du streaming. → **83,6 ms d'IA ramenés à 2,6**.
+- **`KingdomGenerator._entry_cost`**, fonction pure appelée quatre fois par
+  cellule par le Dijkstra de territoire : 86 % du coût. Mémoïsée →
+  **42,8 ms ramenés à 10,0**, résultats identiques au bloc près.
+- **Préchauffage hors tick** des plans de ville et des secteurs de royaume, un
+  élément par frame. Le peuplement de village **refuse** désormais de calculer
+  l'un ou l'autre : il repasse au tick suivant. → **56,4 ms ramenés à 2,1**.
+- **La file de spawn est passée du tick à la frame.** Monter un corps riggé coûte
+  12 à 25 ms et **ne se laisse pas réduire** — chaque brique a été chronométrée,
+  aucune ne domine. On ne l'a donc pas réduit, on l'a déplacé.
+
+**La règle qui s'en dégage, et qui vaut pour tout système futur :**
+
+> Le tick est un budget de **simulation**, pas de **construction**.
+> Tout ce qui bâtit — royaume, plan de ville, corps de créature, chunk — se fait
+> dans une frame et se réclame préchauffé.
+
+### Le maillage, seul critère encore rouge
+
+8,1 ms contre 4 attendus, réparti en `greedy` 3,7 ms (45 %), `subdiv` 2,1 ms,
+coquille + intérieur 2,4 ms.
+
+**Ce n'est pas le contenu.** Couper *tout* le détail en sous-voxels des arbres
+fait passer le maillage de 8,28 à 8,15 ms — rien. L'érosion du feuillage coûte
+0,44 ms à elle seule, et le poste `subdiv` vient des blocs **sculptés** de la
+sauvegarde, pas des arbres. Il n'y a donc aucun arbitrage « détail contre
+performance » à faire : le plafond est **l'émission de quads en GDScript**, ce
+que l'annexe E.14 anticipe en prévoyant un passage en GDExtension. C'est une
+décision de projet — écrire le mailleur en natif, ou amender le critère pour ce
+qu'une UHD 620 peut tenir.
+
+### La latence réseau n'est pas un problème réseau
+
+112 à 168 ms mesurés contre 100 attendus, mais le client tourne à **29 fps**
+pendant qu'il streame : un aller-retour ne peut pas descendre sous ~69 ms de
+pure quantification de frame. La latence perçue est bornée par le temps de
+frame, pas par ENet — elle se corrigera en réglant le maillage, pas le code
+réseau.
 
 ---
 
@@ -67,9 +231,9 @@ Ces points sont dans le périmètre MVP (section 15) mais absents ou à l'état 
 
 - ~~**Créatures : les modèles (12.1)**~~ — **résolu** : les 18 fiches humaines pointent toutes sur `humanoide.glb`, et 28 modèles au total sont présents dans [models/creatures/](models/creatures/). Plus de capsules colorées. Pipeline figé le 2026-07-26 : **Blockbench → glTF/`.glb`**. Il reste que **ces modèles ne sont pas versionnés** (tous en `??` dans git) : un `git clean` les perd.
 - **PNJ dans la boucle** — *fait le 2026-08-01* : les villages se peuplent d'habitants dérivés de (cellule, graine), chacun rattaché à un bâtiment, avec un métier parmi les 11 de 8.4 et une routine jour/nuit. Ce sont des `Creature` ordinaires — aucune classe PNJ, conformément à 12.1. Restent le dialogue, la relation qui évolue, le commerce et la persistance des morts (décimation).
-- **Compétences assemblées (5.1, F.2, B.4) — LE trou du MVP, et il est plus grand que cette liste ne le laissait croire.** Le GDD décrit un système Noita/Elin à trois étages : arme → slots de compétences (`2 + N_arme/20`, max 6) → slots de modules (`2 + N_arme/25`, max 5), modules communs à toutes les armes, montant de niveau à l'usage, acquis **uniquement** en lisant des livres. Rien de tout cela n'existe. Ce qui existe : un **loadout de 3 modules codé en dur** dans [player.gd](scenes/entities/player.gd#L26) (`MODULE_ACTIONS`, touches J/K/L), et un `_try_cast_module()` qui force `module_level = 0` faute de livres. Donc : aucune entité « compétence assemblée » (les 53 `data/skills/` sont les compétences d'usage d'A.1, pas celles de 5.1), aucun slot, aucun coût de mana composé (A.6), 4 modules sur 48, aucun livre, aucun `data/reading_failures.json`, et `book_read` **émis nulle part**. Le pilier « combat et magie » du MVP (§15) repose entièrement là-dessus.
+- ~~**Compétences assemblées (5.1, F.2, B.4) — LE trou du MVP**~~ — **comblé le 2026-08-03.** Le GDD décrivait un système Noita/Elin à trois étages ; il existe. **36 modules** en trois rôles (`effet` / `modificateur` / `declencheur`), assemblés dans le menu de combat au **glisser-déposer** ; un multicast consomme les N effets qui le suivent, un déclencheur porte une charge utile récursive. Emplacements dérivés des compétences (`2 + N/20` plafonné à 6 pour les compétences, `2 + N/25` plafonné à 5 pour les modules), coût de mana composé par A.6 atténué par la conductivité des matériaux. Les modules s'obtiennent **uniquement** par lecture d'un livre, avec le jet A.7 et ses échecs gradués ; les livres ne se trouvent qu'en donjon. Le loadout codé en dur a disparu — sondes `--probe-assemblage`, `--probe-modules`. *Restent ouverts :* les **12 modules manquants** sur les 48 de F.2, et le **contenu éditorial** des 8 domaines de grimoire et 4 manuels (C.6), qui n'est pas du code.
 - **Résolveur de modificateurs (E.4)** — *socle posé le 2026-08-02*. [`StatModifiers`](systems/progression/stat_modifiers.gd) applique `(base + Σ add) × Π mult` avec des sources nommées, posables et **retirables** — c'est le retrait qu'aucun code en dur ne savait faire, et la raison d'être d'E.4. Le joueur y fait passer ses malus de faim (A.9) et de fatigue (E.21), qui étaient testés en dur dans `effective_stat` ; la sonde `--probe-modificateurs` vérifie l'algèbre, le retrait, l'idempotence, l'absence de fuite, et surtout la **non-régression** sur les quatre combinaisons faim/fatigue. Restent à brancher, et c'est désormais un travail d'ajout et non de conception : **équipement (A.4.4)**, **statuts (F.4)**, **auras de modules (5.1)**, **humeur des PNJ**. Le résolveur n'est **pas sérialisé**, volontairement : tout ce qu'il porte dérive d'un état qui l'est déjà (voir l'en-tête du fichier).
-- **Statuts (F.4)** — `data/status_effects/` n'existe pas et le mot n'apparaît nulle part dans le code. Les 14 statuts prévus manquent : pas de brûlure/gel/poison appliqués par tags de modules (E.3), et **pas de risque d'infection du cru** (F.5), que A.9.1 suppose pourtant.
+- ~~**Statuts (F.4)**~~ — **faits le 2026-08-03.** Les 14 statuts sont en données (`data/status_effects/`), portés par un `StatusTracker` qui enregistre ses modificateurs auprès du résolveur E.4 sous la source `statut:<id>` et rend les dégâts périodiques **sans jamais toucher à la santé lui-même** — un statut ne doit contourner ni le stagger ni la mort. Appliqués par les modules et par les zones persistantes (`ZoneManager`). *Reste ouvert :* le **risque d'infection du cru** (F.5), que A.9.1 suppose et que rien ne déclenche encore.
 - **Emplacements d'équipement (6.2)** — *partiel* : les 13 emplacements, l'armure et la mitigation A.4.2 fonctionnent. Les **boucliers** (3 modèles, blocage élargi, absorption d'endurance) et les **53 compétences** (une par arme, maîtrises de type de dégâts, Dual Wielding / Bouclier / Deux Mains) existent depuis le 2026-08-01 ; Deux Mains et Bouclier progressent, Dual Wielding attend son système. Restent les **morphologies non-humanoïdes** (`equip_slots` de B.5) et l'usage des slots `arme_1`/`arme_2` par le combat, qui lit encore l'objet en main.
 - **Effets d'équipement passifs (A.4.4)**, **pools de loot (F.7)** et **stats étendues des matériaux (A.4.5)** — non appliqués : anneaux, amulettes, accessoires et dos s'équipent mais ne font encore rien. Le butin de créature se limite à viande + peau ; pas d'objets, d'or, ni la **statue 1:1** de F.3.
 - **Contenu des POI** — camps, sanctuaires et filons majeurs ont été **RETIRÉS** le 2026-08-01 (décision de l'auteur) : ils n'avaient aucun contenu et leurs pastilles menaient à du vide. Il ne reste que **village** et **donjon**. Pour les réintroduire, voir le commentaire de `POIGenerator.POI_TYPES` — l'ordre de la liste est signifiant. Les **villages**, eux, ont été refaits le 2026-08-01 : six archétypes de bâtiment, toitures en pente, fenêtres, planchers, place pavée, champs, et des habitants. Restent l'**intérieur** (aucun mobilier) et la fonction des bâtiments (voir « Différé »).
@@ -137,12 +301,17 @@ Ces points sont dans le périmètre MVP (section 15) mais absents ou à l'état 
 
 - **Tables de sculpture / éditeur (13, E.9)** — la sculpture libre en sous-blocs fonctionne, mais l'éditeur d'objets custom n'existe pas.
 - **Mode tactique (5.0)** — `TickManager.tactical_mode` est correctement implémenté (les ticks cessent de suivre l'horloge, `push_ticks()` les avance à la demande) mais n'est basculé que par le **menu de triche** ([cheat_menu.gd](scenes/ui/cheat_menu.gd#L153)). Un pilier du GDD — *« jouer façon roguelike au tour par tour »* — réduit à un outil de debug : pas de déclencheur de jeu, pas d'UI d'action time, pas d'affichage de fourchette de dégâts au survol (E.3). À noter que le combat directionnel (E.3.1) rend ce mode **plus difficile à concevoir** qu'à l'époque du jet de toucher : une attaque visée à la souris ne se découpe pas naturellement en tours. À retrancher.
-- **Grimoires et manuels (C.6, A.7)** — les 8 domaines et 4 manuels ne sont pas écrits ; `book_read` n'est émis nulle part.
+- **Grimoires et manuels (C.6, A.7)** — le **système** existe depuis le 2026-08-03 (fabrication de livre, jet de lecture A.7, échecs gradués, apprentissage de module) ; c'est le **contenu éditorial** des 8 domaines et 4 manuels qui n'est pas écrit. `BookFactory` tire dans les modules par domaine, donc un livre est fonctionnel mais anonyme.
 - **Tooltips contextuels d'onboarding (E.19)** — absents.
 - **Véhicules (E.24)** — absents (extension future assumée).
-- **Multijoueur (8, E.11)** — le squelette réseau ne synchronise que des positions et des éditions de blocs : pas d'autorité sur les jets de dés, pas de synchronisation d'entités, d'inventaire ni de sauvegarde partagée.
+- **Multijoueur (8, E.11) — le plus gros morceau qui reste au projet.** Inventaire fait le 2026-08-04 : **cinq RPC en tout**, quatre pour les blocs et un pour la pose des joueurs. Tout ce qui a été bâti depuis le 2026-07-20 est solo. **Fondation posée** : poignée de main de monde (la graine n'était jamais transmise) et horloge host-autoritaire. **Ordre de bataille pour la suite**, du plus structurant au moins :
+  1. **Créatures** — un client ne voit personne. C'est le gap le plus visible, et il commande le reste : sans entités répliquées, le combat n'a rien à synchroniser.
+  2. **Combat** — dégâts et morts sont résolus localement chez chacun. L'hôte doit trancher.
+  3. **État du monde partagé** — coffres, butin au sol, villages, pousses.
+  4. **Dimensions** — le routage RPC est overworld-only ; un client qui entre en donjon ne verrait rien de ce que fait l'hôte.
+  5. **Anti-triche** (portée, possession) et **prédiction client**, qui n'ont de sens qu'une fois le reste en place.
 - **Structures et routes (9.2)** — routes en croix générées dans les villes, mais aucun réseau routier inter-cellules.
-- **Audio / musique** — hors périmètre du GDD, rien en place.
+- **Audio / musique** — hors périmètre du GDD, rien en place. Voir « Ce qu'il faut créer ».
 - **Nom du projet et lore (16)** — à écrire.
 
 ### Dette technique / hygiène
@@ -206,6 +375,93 @@ voxel est en `u16` : **65 535 matériaux** possibles, sans réécriture.
 - **`_edits` ne se nettoie jamais** : c'est voulu (il est la vérité des modifications, base du diff E.10), mais il croît avec tout ce que le joueur pose. Poser puis casser un bloc laisse une entrée. Un compactage (oublier les modifications redevenues identiques à la génération) sera nécessaire pour les très longues parties.
 - **Créatures non sauvegardées** : le spawn naturel les régénère, les boss de donjon renaissent tant que le donjon n'est pas nettoyé. Assumé et documenté, mais ça se verra dès que les PNJ auront une identité (12.3).
 
+## Ce qu'il faut créer — contenu artistique et données
+
+Le code lit tout en données : ces manques sont du **contenu**, pas du
+développement. Chacun est cerné et chiffré au 2026-08-04.
+
+### Sprites d'objets — 23 sur 40 manquants
+
+17 objets ont leurs deux sprites (`manche` + `tete`, teintés par matériau au
+runtime via `sprite_tint`). **23 n'en ont aucun** et s'affichent en repli :
+
+> `baton_ferre`, `bottes`, `casque`, `cuirasse`, `ecu`, `epee_courte`,
+> `espadon`, `faux_de_guerre`, `gants`, `gourdin`, `grimoire`, `hache_double`,
+> `hachette`, `hallebarde`, `jambieres`, `manuel_de_combat`, `marteau_guerre`,
+> `masse_ailettes`, `pavois`, `pioche_combat`, `rapiere`, `rondache`, `trident`
+
+Format : PNG dans `assets/weapons/` ou `assets/tools/`, **teinte neutre** (le
+jeu la colore selon le matériau forgé — un sprite déjà coloré donnera un fer
+qui a l'air en bois). Voir `data/items/hache.json` pour le gabarit.
+
+### Modèles .vox — 4 sur 40
+
+Seuls quatre objets portent un `vox_model`. Les foreuses ont été livrées
+**volontairement sans** : un chemin vers un fichier absent fait échouer
+`VoxLoader` au chargement, ce qui s'est déjà produit avec les livres. Le repli
+procédural fonctionne, mais un vrai modèle vaut mieux.
+
+### Créatures — 28 modèles pour 18 fiches
+
+`models/creatures/` contient **28 `.glb`** (loup, ours, sanglier, cerf,
+crocodile, requin, araignée, chauve-souris, serpent, rat, aigle, plus dragon,
+spectre et raptor sans fiche correspondante). Le catalogue, lui, ne compte que
+**18 fiches, toutes humaines** — les 19 espèces animales ont été retirées le
+2026-08-02 faute de rigs. **La condition posée est remplie** : les restaurer
+est redevenu un travail de données (`git show 8788dbd:data/creatures/<id>.json`).
+
+### Audio — rien
+
+Aucun son, aucune musique, aucun bruitage. Hors périmètre du GDD à ce jour :
+c'est un chantier entier à ouvrir, pas un trou à combler.
+
+### Textes de contenu
+
+- **8 domaines de grimoire et 4 manuels de combat (C.6)** — les fiches
+  n'existent pas ; `BookFactory` tire dans les modules par domaine, donc le
+  système marche mais le contenu éditorial est vide.
+- **Nom du projet et lore (§16 du GDD)** — à écrire.
+- **Dialogues** — un seul fichier dans `data/dialogue/`.
+
+---
+
+## Ce qu'il faut équilibrer
+
+Ces valeurs sont des **défauts du GDD appliqués à la lettre**. Le code les
+respecte ; ce sont les chiffres qui demandent du playtest. Distinguer les deux
+est important : ce ne sont pas des bugs.
+
+- **L'armure écrase les dégâts.** Un jeu complet de fer qualité 1.2 donne 5d4 de
+  réduction (moyenne 12,5) contre ~8 de dégâts bruts pour une arme de départ.
+  Mesuré : les dégâts encaissés chutent de **2594 à 192 sur 400 coups**. Les
+  formules A.4.1/A.4.2 sont correctes — c'est leur chiffrage par défaut qui rend
+  un joueur équipé quasi invulnérable.
+- **Coût en mana des assemblages (A.6)** — la conductivité des matériaux peut
+  retrancher jusqu'à 65 % du coût. Jamais joué en conditions réelles : un sort
+  à multicast peut être soit inutilisable, soit gratuit, personne ne le sait.
+- **Jet de lecture des livres (A.7)** — la difficulté des trois crans (facile /
+  moyen / redoutable) n'a été éprouvée qu'au menu de triche.
+- **Temps d'abattage d'un arbre** — proportionnel au **volume de bois**, qui a
+  beaucoup grossi avec les arbres détaillés du 2026-08-03. Un chêne fait
+  maintenant plusieurs centaines de blocs : à vérifier qu'abattre ne prend pas
+  une éternité.
+- **Remise de temps des foreuses** (`DRILL_TIME_DISCOUNT = 0.6`) — un carré coûte
+  60 % du temps de ses blocs pris un par un. Valeur choisie pour que l'outil soit
+  franchement utile sans rendre la progression de récolte inutile ; à confronter
+  au jeu.
+- **Croissance des pousses** (`GROWTH_TICKS = 3000`, ≈ un jour et demi de jeu) —
+  assez long pour que planter une forêt soit un projet, assez court pour en voir
+  le résultat. Jamais joué sur la durée.
+- **Densité des donjons et de leur butin** — 2/4/6 étages selon le danger, avec
+  un coffre de boss au fond. La courbe de récompense n'a jamais été confrontée à
+  la difficulté réelle.
+- **Compétences défensives mortes** : `esquive` et `encaissement` existent mais
+  **aucun `gain_xp` ne les cible** depuis que le jet de défense a disparu avec
+  E.3.1. Ce n'est pas qu'un équilibrage : deux compétences ne progressent
+  jamais, quoi que fasse le joueur.
+
+---
+
 ## Sondes de validation
 
 **Suite agrégée (2026-08-01)** — une seule commande répond à « est-ce que
@@ -217,17 +473,38 @@ tools/run_probes.sh --list       # ce qu'elle contient
 ```
 
 Elle n'enchaîne que les sondes qui rendent un **verdict** (`finish(ok, tag)`).
-Compté le 2026-08-02 : **46 drapeaux au registre, 21 sondes assertives**, et le
-runner en contient **18**. Les seules assertives qui restent dehors sont les
-quatre sondes de **capture** (`--test-ui`, `--test-corps`, `--test-triche`,
-`--test-carte`), exclues volontairement : en headless leurs captures sont
-sautées, donc leur verdict ne vaudrait plus grand-chose.
+Compté le 2026-08-04 : **58 drapeaux au registre** (douze de plus qu'au
+2026-08-02, un par lot livré depuis) ; le runner en enchaîne **29**. Les
+assertives qui restent dehors sont les sondes de **capture** (`--test-ui`,
+`--test-corps`, `--test-triche`, `--test-carte`, `--test-arbres`), exclues
+volontairement : en headless leurs captures sont sautées, donc leur verdict ne
+vaudrait plus grand-chose.
 
-Autrement dit **la couverture du runner est complète** — il n'y a pas de
-sonde assertive oubliée à y rajouter. Le chantier restant est ailleurs et il
-est plus lourd : **~25 sondes n'impriment qu'un rapport** qu'un humain doit
-lire et ne peuvent rien signaler à une CI. Les convertir en verdicts reste
-l'hygiène la plus rentable du projet.
+**La couverture s'était perdue en route, et c'est instructif.** Le 2026-08-02
+elle était annoncée complète ; au 2026-08-04, **neuf sondes assertives livrées
+depuis n'y étaient pas** — arbres, pousses, foreuses, dimensions, triche,
+cycle de vie des villages, perf des royaumes, assemblage, mains. Chacune avait
+été écrite, exécutée une fois, et jamais rebranchée. Une sonde qui ne tourne pas
+ne protège rien : **ajouter la ligne au runner fait partie de la livraison**,
+pas d'un rangement ultérieur. Elles y sont désormais.
+
+Le chantier restant est ailleurs et il est plus lourd : **~25 sondes n'impriment
+qu'un rapport** qu'un humain doit lire et ne peuvent rien signaler à une CI. Les
+convertir en verdicts reste l'hygiène la plus rentable du projet.
+
+**Verdict du runner au 2026-08-04 : 26/28.** Les deux rouges, nommés parce qu'un
+échec tu ne se corrige pas :
+
+- **`--probe-police`** — rouge de longue date, glyphes CJK.
+- **`--probe-corps`** — *« coût d'un spawn : 18,6 ms »* contre 12 attendus.
+  C'est le montage d'un corps riggé, le dernier poste lourd du jeu, et il **ne
+  se laisse pas réduire** : chaque brique a été chronométrée le 2026-08-04
+  (instanciation du `.glb` 0,8 ms, peau 0,4 ms, boîtes de coups 0,03 ms,
+  `PlayerBody.setup` 6 ms) et aucune ne domine. Le tick, lui, ne le paie plus —
+  la file de spawn est passée en frame. **Le seuil de la sonde n'a délibérément
+  pas été relâché** pour la faire passer : il mesure un coût réel, et le faire
+  disparaître du tableau de bord ne le ferait pas disparaître de la machine.
+  Le vrai remède est de partager les maillages du rig entre instances.
 Convertir les autres en sondes assertives est le chantier d'hygiène le plus
 rentable du projet — le coût de leur absence s'est vu le 2026-08-01, où
 `--test-input` plantait depuis la refonte du craft (2026-07-26) sur un champ
@@ -237,6 +514,14 @@ de sortie, donc son crash passait pour du bruit de journal.
 Chaque lot livré porte sa sonde headless, exécutable sans interface :
 
 ```
+godot --headless --path . -- --probe-dimensions   # deux dimensions coexistent ; une SANS code dédié fonctionne
+godot --headless --path . -- --probe-arbres       # dix silhouettes distinctes ; abattre par n'importe quel bloc
+godot --headless --path . -- --probe-pousses      # la miniature ressemble à son essence, et elle pousse
+godot --headless --path . -- --probe-foreuse      # emprise réelle, plan de la face, irrécoltabilité bloc par bloc
+godot --headless --path . -- --probe-triche       # CHAQUE entrée de CHAQUE registre a un bouton
+godot --headless --path . -- --probe-village-vie  # une référence morte ne bloque plus la relâche d'un village
+godot --headless --path . -- --probe-royaumes-perf # aucun tick ne paie la génération d'un royaume
+godot --headless --path . -- --probe-assemblage   # multicast, déclencheurs récursifs, coût de mana A.6
 godot --headless --path . -- --probe-potentiel    # 6.4 : le plancher de race/classe tient au level up
 godot --headless --path . -- --probe-modificateurs # E.4 : algèbre, retrait, non-régression faim/fatigue
 godot --headless --path . -- --probe-touches      # commandes : aucune collision, remappe, persistance

@@ -39,6 +39,18 @@ func on_tick() -> void:
 		current = minf(max_mana(), current + (1.0 + meditation_level * 0.2))
 
 
+## Régénération sur `count` ticks NON SIMULÉS (voyage rapide). Le tirage par
+## intervalle est remplacé par son ESPÉRANCE : sur des milliers de ticks, la
+## moyenne est ce que le joueur observerait de toute façon, et refaire les
+## tirages un par un coûterait le prix qu'on cherche justement à éviter.
+func skip_ticks(count: int) -> void:
+	if count <= 0:
+		return
+	var intervals := float(count + _tick_counter) / float(REGEN_TICK_INTERVAL)
+	_tick_counter = (count + _tick_counter) % REGEN_TICK_INTERVAL
+	current = minf(max_mana(), current + intervals * REGEN_CHANCE * (1.0 + meditation_level * 0.2))
+
+
 ## Dépense du mana ; si insuffisant, retourne le déficit à infliger en
 ## dégâts (déjà multiplié par 2 / skill_factor(N_controle_mana), A.6).
 func spend(cost: float, mana_control_level: int) -> float:

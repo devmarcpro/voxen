@@ -26,15 +26,15 @@
   "vegetation": [
     {
       "id": "acacia",
-      "density": 0.009
+      "density": 0.00252
     },
     {
       "id": "eucalyptus",
-      "density": 0.006
+      "density": 0.00168
     },
     {
       "id": "baobab",
-      "density": 0.002
+      "density": 0.00056
     }
   ],
   "village_palette": {

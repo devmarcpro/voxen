@@ -59,8 +59,8 @@ func _check_projectiles() -> void:
 
 	# 1. UN EFFET À PROJECTILE MET RÉELLEMENT UN PROJECTILE EN VOL.
 	var avant := ProjectileManager.flying_count()
-	p.set_assembly("baton_magique", 0, ["boule_de_feu"])
-	var lance: bool = p.cast_assembly("baton_magique", 0)
+	p.set_assembly(p.SPELL_FAMILY, 0, ["boule_de_feu"])
+	var lance: bool = p.cast_assembly(p.SPELL_FAMILY, 0)
 	await wait_frame()
 	var apres := ProjectileManager.flying_count()
 	print("[%s] lancement=%s — projectiles en vol : %d → %d" % [TAG, lance, avant, apres])
@@ -77,17 +77,17 @@ func _check_projectiles() -> void:
 	# consommer et n'envoie qu'un projectile. La première version de ce test
 	# accusait le code alors que c'était la sonde qui n'avait pas les slots.
 	# Il faut N >= 50 pour quatre modules.
-	while p.skills.level("baton_magique") < 50:
-		p.skills.gain_xp("baton_magique", 20000.0)
-	p.set_assembly("baton_magique", 0,
+	while p.skills.level(p.SPELL_SLOT_SKILL) < 50:
+		p.skills.gain_xp(p.SPELL_SLOT_SKILL, 20000.0)
+	p.set_assembly(p.SPELL_FAMILY, 0,
 			["triple_lancer", "boule_de_feu", "boule_de_feu", "boule_de_feu"])
-	print("[%s] bâton niveau %d → %d slots de %d modules ; assemblage retenu : %s" % [
-			TAG, p.skills.level("baton_magique"),
-			p.assembly_slot_count("baton_magique"), p.assembly_module_count("baton_magique"),
-			p.assembly_at("baton_magique", 0)])
+	print("[%s] sorts niveau %d → %d slots de %d modules ; assemblage retenu : %s" % [
+			TAG, p.skills.level(p.SPELL_SLOT_SKILL),
+			p.assembly_slot_count(p.SPELL_FAMILY), p.assembly_module_count(p.SPELL_FAMILY),
+			p.assembly_at(p.SPELL_FAMILY, 0)])
 	p.mana.current = 999.0
 	p._module_cooldown_ticks = 0
-	p.cast_assembly("baton_magique", 0)
+	p.cast_assembly(p.SPELL_FAMILY, 0)
 	await wait_frame()
 	var volee := ProjectileManager.flying_count()
 	print("[%s] triple lancer → %d projectile(s) en vol" % [TAG, volee])
@@ -98,8 +98,8 @@ func _check_projectiles() -> void:
 	ProjectileManager._clear_all()
 	p.mana.current = 999.0
 	p._module_cooldown_ticks = 0
-	p.set_assembly("baton_magique", 0, ["boule_de_feu"])
-	p.cast_assembly("baton_magique", 0)
+	p.set_assembly(p.SPELL_FAMILY, 0, ["boule_de_feu"])
+	p.cast_assembly(p.SPELL_FAMILY, 0)
 	await wait_seconds(3.0)
 	var reste := ProjectileManager.flying_count()
 	print("[%s] après 3 s de vol libre : %d projectile(s) restant(s)" % [TAG, reste])
@@ -174,8 +174,8 @@ func _check_statuses() -> void:
 	p.assemblies = {}
 	p.mana.current = 999.0
 	p._module_cooldown_ticks = 0
-	p.set_assembly("baton_magique", 0, ["carapace_de_roche"])
-	p.cast_assembly("baton_magique", 0)
+	p.set_assembly(p.SPELL_FAMILY, 0, ["carapace_de_roche"])
+	p.cast_assembly(p.SPELL_FAMILY, 0)
 	_expect(p.statuses.has("peau_de_pierre"),
 			"un module de protection pose réellement son statut")
 	p.statuses.remove("peau_de_pierre")
@@ -192,8 +192,8 @@ func _check_zones() -> void:
 	p.assemblies = {}
 	p.mana.current = 999.0
 	p._module_cooldown_ticks = 0
-	p.set_assembly("baton_magique", 0, ["nappe_de_flammes"])
-	p.cast_assembly("baton_magique", 0)
+	p.set_assembly(p.SPELL_FAMILY, 0, ["nappe_de_flammes"])
+	p.cast_assembly(p.SPELL_FAMILY, 0)
 	print("[%s] nappe de flammes lancée → %d zone(s) active(s)" % [TAG, ZoneManager.zone_count()])
 	_expect(ZoneManager.zone_count() > 0, "un module de zone pose une zone persistante")
 	if ZoneManager.zone_count() == 0:
@@ -269,17 +269,26 @@ func _capture_editor() -> void:
 	# pour montrer un assemblage intéressant.
 	p.skills.gain_xp("epee", 40000.0)
 	p.known_modules = {
+		# Côté SORTS.
 		"boule_de_feu": 3, "eclat_de_glace": 1, "triple_lancer": 0,
-		"portee_accrue": 2, "declencheur_impact": 0, "taillade_large": 5,
+		"portee_accrue": 2, "declencheur_impact": 0, "guidage": 1,
+		# Côté ARMES — les deux zones doivent être peuplées, sinon la capture
+		# ne montre pas la séparation, qui est l'objet de l'écran.
+		"taillade_large": 5, "estoc_perforant": 2, "enchainement_double": 0,
+		"allonge_accrue": 1, "garde_de_fer": 0,
 	}
 	p.assemblies = {}
 	var skill_id := String(p.weapon_skill_id())
 	print("[%s] compétence d'arme équipée : « %s » (niveau %d) → %d slots de %d modules" % [
 			TAG, skill_id, p.skills.level(skill_id),
 			p.assembly_slot_count(skill_id), p.assembly_module_count(skill_id)])
+	while p.skills.level(p.SPELL_SLOT_SKILL) < 60:
+		p.skills.gain_xp(p.SPELL_SLOT_SKILL, 40000.0)
 	if not skill_id.is_empty():
-		p.set_assembly(skill_id, 0, ["triple_lancer", "boule_de_feu", "boule_de_feu", "boule_de_feu"])
-		p.set_assembly(skill_id, 1, ["portee_accrue", "eclat_de_glace", "declencheur_impact", "boule_de_feu"])
+		p.set_assembly(skill_id, 0, ["enchainement_double", "taillade_large", "estoc_perforant"])
+		p.set_assembly(skill_id, 1, ["allonge_accrue", "estoc_perforant"])
+	p.set_assembly(p.SPELL_FAMILY, 0, ["triple_lancer", "boule_de_feu", "boule_de_feu", "boule_de_feu"])
+	p.set_assembly(p.SPELL_FAMILY, 1, ["portee_accrue", "eclat_de_glace", "declencheur_impact", "boule_de_feu"])
 
 	var menu := main.get_node_or_null("GameMenu")
 	if menu == null:
@@ -431,26 +440,61 @@ func _check_slots() -> void:
 ## l'interface — sinon n'importe quel autre chemin (sonde, réseau) la contourne.
 func _check_player_rules() -> void:
 	var p := player
-	p.known_modules = {"boule_de_feu": 0, "portee_accrue": 0}
+	# MODULES DE MANUEL pour la famille « epee » (2026-08-03) : depuis que les
+	# deux zones du menu combat sont étanches, un grimoire ne s'assemble pas
+	# dans une technique d'arme. Le test portait sur `boule_de_feu`, qui est
+	# désormais légitimement refusé — c'était la sonde qui violait la règle.
+	p.known_modules = {"taillade_large": 0, "allonge_accrue": 0}
 	p.assemblies = {}
 
 	# `: bool` explicite : `player` est typé Node, ses méthodes rendent Variant.
-	var pose: bool = p.set_assembly("epee", 0, ["boule_de_feu", "portee_accrue"])
+	var pose: bool = p.set_assembly("epee", 0, ["taillade_large", "allonge_accrue"])
 	_expect(pose, "un assemblage se range dans un slot valide")
 	_expect((p.assembly_at("epee", 0) as Array).size() == 2, "les deux modules connus sont retenus")
 
 	# Module INCONNU : refusé silencieusement, pas rangé.
-	p.set_assembly("epee", 1, ["boule_de_feu", "fulguration"])
+	p.set_assembly("epee", 1, ["taillade_large", "estoc_perforant"])
 	var filtre: Array = p.assembly_at("epee", 1)
 	print("[%s] assemblage avec un module non appris → %s" % [TAG, filtre])
 	_expect(filtre.size() == 1, "un module jamais appris ne peut pas être assemblé")
 
 	# Slot HORS BORNES : refusé (au niveau 0 il n'y a que 2 slots).
-	_expect(not bool(p.set_assembly("epee", 5, ["boule_de_feu"])),
+	_expect(not bool(p.set_assembly("epee", 5, ["taillade_large"])),
 			"un slot au-delà du niveau d'arme est refusé")
 
 	# Profondeur bornée par les slots de module (2 au niveau 0).
-	p.known_modules["eclat_de_glace"] = 0
-	p.set_assembly("epee", 0, ["boule_de_feu", "portee_accrue", "eclat_de_glace"])
+	p.known_modules["estoc_perforant"] = 0
+	p.set_assembly("epee", 0, ["taillade_large", "allonge_accrue", "estoc_perforant"])
 	_expect((p.assembly_at("epee", 0) as Array).size() == 2,
 			"l'assemblage est tronqué au nombre de slots de modules")
+
+	# ÉTANCHÉITÉ DES DEUX ZONES (2026-08-03). C'est la règle que la séparation
+	# de l'écran rend nécessaire : sans elle les deux panneaux ne seraient qu'un
+	# affichage, et rien n'empêcherait une boule de feu dans une technique
+	# d'épée. Écart assumé avec le GDD 5.1, demandé explicitement.
+	p.known_modules["boule_de_feu"] = 0
+	p.set_assembly("epee", 0, ["boule_de_feu"])
+	print("[%s] grimoire dans une technique d'arme → %s" % [TAG, p.assembly_at("epee", 0)])
+	_expect((p.assembly_at("epee", 0) as Array).is_empty(),
+			"un grimoire est refusé dans une technique d'arme")
+	p.set_assembly(p.SPELL_FAMILY, 0, ["taillade_large"])
+	print("[%s] manuel dans un sort → %s" % [TAG, p.assembly_at(p.SPELL_FAMILY, 0)])
+	_expect((p.assembly_at(p.SPELL_FAMILY, 0) as Array).is_empty(),
+			"un manuel est refusé dans un sort")
+	p.set_assembly(p.SPELL_FAMILY, 0, ["boule_de_feu"])
+	_expect(not (p.assembly_at(p.SPELL_FAMILY, 0) as Array).is_empty(),
+			"un grimoire est accepté dans un sort")
+
+	# Chaque zone doit disposer des TROIS rôles, sinon la séparation prive un
+	# côté d'une mécanique entière (le multi-cast a manqué aux sorts une heure).
+	for famille: String in ["manuel", "grimoire"]:
+		var roles := {}
+		for module_id: String in GameData.modules:
+			var module: Dictionary = GameData.modules[module_id]
+			if (module.get("grimoire_domains", []) as Array).is_empty():
+				continue
+			if String(module.get("book_type", "")) != famille:
+				continue
+			roles[String(module.get("module_type", ""))] = true
+		print("[%s] côté « %s » : rôles disponibles %s" % [TAG, famille, roles.keys()])
+		_expect(roles.size() == 3, "le côté « %s » a les trois rôles" % famille)

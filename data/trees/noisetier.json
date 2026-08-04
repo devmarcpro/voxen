@@ -4,8 +4,8 @@
   "wood_material": "noisetier",
   "leaf_material": "feuilles_noisetier",
   "height_range": [
-    2,
-    4
+    3,
+    5
   ],
   "trunk_radius": 1,
   "branch_parameters": {
@@ -23,7 +23,15 @@
   "canopy_shape": "spherical",
   "canopy_radius_range": [
     2,
-    2
+    3
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "fork": 0.08,
+    "children": 4,
+    "spread_deg": 20.0,
+    "length_ratio": 0.92,
+    "depth": 2,
+    "roots": 3
+  }
 }

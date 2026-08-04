@@ -4,8 +4,8 @@
   "wood_material": "cypres",
   "leaf_material": "feuilles_cypres",
   "height_range": [
-    8,
-    13
+    13,
+    19
   ],
   "trunk_radius": 1,
   "branch_parameters": {
@@ -20,7 +20,7 @@
       0
     ]
   },
-  "canopy_shape": "conical",
+  "canopy_shape": "columnar",
   "canopy_radius_range": [
     1,
     2

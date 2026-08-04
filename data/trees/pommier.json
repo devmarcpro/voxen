@@ -4,8 +4,8 @@
   "wood_material": "pommier",
   "leaf_material": "feuilles_pommier",
   "height_range": [
-    3,
-    5
+    4,
+    7
   ],
   "trunk_radius": 1,
   "branch_parameters": {
@@ -22,8 +22,8 @@
   },
   "canopy_shape": "spherical",
   "canopy_radius_range": [
-    2,
-    3
+    3,
+    4
   ],
   "special_tags": []
 }

@@ -1101,3 +1101,33 @@ ui.coffre.titre,{coffre} — {utilise}/{capacite}
 ui.coffre.vide,空箱子
 ui.toast.coffre_pris,已清空箱子：{objets} 件物品，{or_} 金币
 ui.toast.coffre_plein,箱子已满
+ui.menu.assemblage_armes,武器技巧
+ui.menu.assemblage_sorts,法术
+ui.menu.assemblage_niveau,{competence} — 等级 {niveau}
+ui.menu.assemblage_reserve_vide,尚未习得此类模块。
+ui.module.role.effet,效果
+ui.module.role.modificateur,修饰符
+ui.module.role.declencheur,触发器
+module.enchainement_double.name,双连击
+module.enchainement_triple.name,三连击
+module.allonge_accrue.name,延展距离
+module.frappe_vive.name,疾击
+ui.coffre.inventaire,物品栏
+ui.coffre.contenu,箱子
+ui.coffre.tout_deposer,全部存入
+ui.coffre.tout_prendre,全部取出
+ui.coffre.fermer,关闭
+ui.coffre.or,{or_} 金币
+ui.coffre.aide,点击条目即可移动。按 Esc 或 E 关闭。
+item.foreuse.name,钻机
+functionality.foreuse.name,钻机
+item.foreuse_plus.name,钻机 Plus
+functionality.foreuse_plus.name,钻机 Plus
+item.foreuse_pro.name,钻机 Pro
+functionality.foreuse_pro.name,钻机 Pro
+item.foreuse_max.name,钻机 Max
+functionality.foreuse_max.name,钻机 Max
+material.pousse.name,树苗
+ui.toast.pousse_grandie,树苗长成了大树。
+dimension.donjon.name,地牢
+dimension.faille_de_mana.name,魔力裂隙

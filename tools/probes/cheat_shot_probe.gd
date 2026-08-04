@@ -87,13 +87,18 @@ func run() -> void:
 			await wait_seconds(0.4)
 			await screenshot("triche_general_milieu.png")
 			print("[%s] %s" % [TAG, capture_path("triche_general_milieu.png")])
-		# Bascule sur l'onglet Armes pour la seconde capture.
+		# UNE CAPTURE PAR ONGLET, quel qu'en soit le nombre. La sonde n'en
+		# photographiait que deux, en dur ; les quatre onglets de contenu
+		# ajoutés le 2026-08-03 n'auraient été vus par personne, et une grille
+		# qui déborde ou se replie ne se voit que comme ça.
 		var tabs := _find_tabs(menu)
 		if tabs != null:
-			tabs.current_tab = 1
-			await wait_seconds(0.4)
-			await screenshot("triche_armes.png")
-			print("[%s] %s" % [TAG, capture_path("triche_armes.png")])
+			for index in tabs.get_tab_count():
+				tabs.current_tab = index
+				await wait_seconds(0.4)
+				var file_name := "triche_%s.png" % tabs.get_tab_title(index).to_lower().replace(" ", "_")
+				await screenshot(file_name)
+				print("[%s] %s" % [TAG, capture_path(file_name)])
 	else:
 		print("[%s] captures ignorées : mode headless" % TAG)
 	finish(differ and modules_ok, TAG)

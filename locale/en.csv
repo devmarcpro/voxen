@@ -1101,3 +1101,33 @@ ui.coffre.titre,{coffre} — {utilise}/{capacite}
 ui.coffre.vide,Empty chest
 ui.toast.coffre_pris,Chest emptied: {objets} item(s), {or_} gold
 ui.toast.coffre_plein,Chest is full
+ui.menu.assemblage_armes,Weapon techniques
+ui.menu.assemblage_sorts,Spells
+ui.menu.assemblage_niveau,{competence} — level {niveau}
+ui.menu.assemblage_reserve_vide,No module of this kind learned.
+ui.module.role.effet,Effect
+ui.module.role.modificateur,Modifier
+ui.module.role.declencheur,Trigger
+module.enchainement_double.name,Double strike
+module.enchainement_triple.name,Triple strike
+module.allonge_accrue.name,Extended reach
+module.frappe_vive.name,Swift strike
+ui.coffre.inventaire,Inventory
+ui.coffre.contenu,Chest
+ui.coffre.tout_deposer,Deposit all
+ui.coffre.tout_prendre,Take all
+ui.coffre.fermer,Close
+ui.coffre.or,{or_} gold
+ui.coffre.aide,Click a line to move it across. Esc or E to close.
+item.foreuse.name,Drill
+functionality.foreuse.name,Drill
+item.foreuse_plus.name,Drill Plus
+functionality.foreuse_plus.name,Drill Plus
+item.foreuse_pro.name,Drill Pro
+functionality.foreuse_pro.name,Drill Pro
+item.foreuse_max.name,Drill Max
+functionality.foreuse_max.name,Drill Max
+material.pousse.name,Sapling
+ui.toast.pousse_grandie,A sapling has grown into a tree.
+dimension.donjon.name,Dungeon
+dimension.faille_de_mana.name,Mana Rift

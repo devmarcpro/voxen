@@ -63,7 +63,7 @@ const DISABLED_ARGS: Array[String] = [
 	# réécrivait `dernier.json` — le « continuer » du joueur pointait alors sur le
 	# monde de test au lieu de sa partie. Toute nouvelle sonde qui touche à
 	# SaveManager doit être ajoutée ici.
-	"--probe-heure", "--probe-tour", "--probe-etages", "--probe-assemblage", "--probe-refonte-donjon",
+	"--probe-heure", "--probe-tour", "--probe-etages", "--probe-assemblage", "--probe-mains", "--probe-arbres", "--probe-refonte-donjon",
 ]
 
 var enabled := true
@@ -399,6 +399,7 @@ func _gather_state() -> Dictionary:
 		"dungeons": DungeonManager.save_state(),
 		"drops": DropManager.save_state(),
 		"chests": ContainerManager.save_state(),
+		"saplings": SaplingManager.save_state(),
 	}
 	# Filet : si le joueur n'est plus joignable (sauvegarde de sortie après
 	# libération de la scène), on réécrit son DERNIER état connu plutôt que
@@ -638,6 +639,7 @@ func _read_bytes(path: String) -> PackedByteArray:
 func apply_pending_state() -> void:
 	if _pending_state.is_empty():
 		return  # Rien à appliquer (monde neuf, ou déjà appliqué).
+	SaplingManager.restore_state(_pending_state.get("saplings", {}))
 	ClaimManager.restore_state(_pending_state.get("claims", {}))
 	VillageManager.restore_state(_pending_state.get("villages", {}))
 	ExplorationManager.restore_state(_pending_state.get("exploration", []))

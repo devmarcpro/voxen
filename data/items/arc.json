@@ -21,8 +21,7 @@
   },
   "stat_weights": {
     "durete": {
-      "bois": 0.9,
-      "minerai": 0.1
+      "bois": 1.0
     }
   },
   "sprite_tint": {

@@ -298,6 +298,7 @@ func _ready() -> void:
 	_recompute_derived()
 	_camera = get_node("../FlyCamera") as FlyCamera
 	TickManager.tick_entities.connect(_on_tick)
+	TickManager.ticks_skipped.connect(_on_ticks_skipped)
 	_build_ghost.call_deferred()
 
 
@@ -759,11 +760,25 @@ func is_traveling() -> bool:
 	return _camera.has_method("is_traveling") and _camera.is_traveling()
 
 
+## VOYAGE RAPIDE INSTANTANÉ (2026-08-03, demande de l'auteur : « change le tp
+## pour qu'il soit instantané »).
+##
+## Le trajet était une animation de six secondes qui déplaçait réellement le
+## joueur d'un bout à l'autre du monde en simulant chaque tick au passage. Le
+## temps de jeu était donc juste, mais le prix était lourd : streaming de tous
+## les chunks de la trajectoire, IA de chaque créature survolée, et surtout
+## peuplement puis relâche de chaque village traversé — d'où les pics de tick à
+## 62 ms observés en jeu pendant un voyage.
+##
+## LE COÛT EN TEMPS DE JEU RESTE DÛ : on ne l'annule pas, on le PASSE
+## (`skip_ticks`) au lieu de le jouer. Le voyage reste cher en heures de jeu,
+## il ne coûte plus de secondes réelles.
 func fast_travel_to_world(wx: int, wz: int) -> void:
 	var from: Vector3 = _camera.global_position
 	var dist := Vector2(float(wx) - from.x, float(wz) - from.z).length()
 	var ticks := int(round(dist * MAP_TRAVEL_TICKS_PER_BLOCK / maxf(move_speed_mult, 0.1)))
-	_camera.travel_to(wx, wz, ticks)
+	teleport_to_surface(wx, wz)
+	TickManager.skip_ticks(ticks)
 
 
 ## Pose le joueur À LA SURFACE en (wx, wz), instantanément. Utilisé par la
@@ -1406,12 +1421,32 @@ const GRIP_RIGHT := 0.16
 
 ## `offhand` : la prise de la main GAUCHE, symétrique de la droite. Le retour de
 ## main gauche d'un enchaînement part de là, donc son arc — et sa hitbox — aussi.
+## Recentrage de la prise pour une arme à deux mains : fraction du décalage
+## latéral conservée. 0 mettrait l'arme pile devant le nez ; on garde un léger
+## décalage pour que la lame ne masque pas le réticule.
+const TWO_HANDED_GRIP_CENTERING := 0.25
+
+
 func _grip_position(camera_basis: Basis, offhand: bool = false) -> Vector3:
 	var right := camera_basis.x
 	right.y = 0.0
 	if right.length_squared() > 0.000001:
 		right = right.normalized()
 	var lateral := -GRIP_RIGHT if offhand else GRIP_RIGHT
+	# ARME À DEUX MAINS : LA PRISE SE CENTRE (2026-08-03).
+	#
+	# Tenue décalée à droite comme une arme à une main, une arme à deux mains
+	# place son manche HORS D'ATTEINTE du bras gauche : l'épaule gauche est
+	# à ~0,4 m sur le côté opposé, le manche à 0,7 m devant, et le bras ne fait
+	# que 0,69 m. La seconde main glissait alors le long du manche pour rester à
+	# portée, jusqu'à sortir de l'arme par le pommeau — d'où une main
+	# visiblement à côté de l'arme, quoi qu'on corrige en aval.
+	#
+	# Aucune manipulation d'IK ne pouvait réparer ça : le problème n'était pas
+	# où l'on posait la main, mais où l'on tenait l'arme. On ramène donc la
+	# prise vers l'axe du corps, comme on tient réellement un espadon.
+	if not offhand and int(_current_weapon_stats().get("hands", 1)) >= 2:
+		lateral *= TWO_HANDED_GRIP_CENTERING
 	return _camera.global_position - Vector3.UP * GRIP_DOWN + right * lateral
 
 
@@ -1663,13 +1698,27 @@ func hand_targets(hand_radius: float, offhand_offset: float, delta: float) -> Di
 	# `> 0.0`, donc toute arme à deux mains se tenait comme une pique et la main
 	# gauche d'un espadon partait vers la lame.
 	if not is_zero_approx(separation):
-		var axis := (target - grip)
-		if axis.length_squared() > 0.000001:
-			# Borné à la prise : la main gauche peut reculer jusqu'au poing
-			# droit, jamais le traverser pour finir derrière le corps.
-			var along := maxf(hand_radius + separation, hand_radius * 0.25)
+		# LA SECONDE MAIN EST SUR LE MANCHE, POINT.
+		#
+		# Sa définition est simple et n'a jamais varié : elle se tient à
+		# `hand_separation` mètres de la première, LE LONG DE L'ARME. Tout le
+		# reste (distance à la prise, position de la cible de la main droite,
+		# axe prise→main) n'était que des approximations de cette phrase, et
+		# chacune introduisait son propre écart. Mesuré : la main flottait à 10
+		# cm du manche sur une épée, 27 cm sur un marteau.
+		#
+		# Deux ancrages, et ils doivent être COHÉRENTS ENTRE EUX — c'est l'erreur
+		# qui a coûté le plus de temps ici :
+		#   - l'ORIGINE est la main droite RÉELLE, car l'arme y est accrochée
+		#     (l'IK rate sa cible de 9 cm, et l'arme suit l'os, pas la cible) ;
+		#   - la DIRECTION est `_weapon_direction`, celle qui oriente réellement
+		#     le modèle. Mélanger l'une avec l'axe de l'autre remet un décalage.
+		var shaft_from := _right_hand_actual if _has_right_hand_actual else target
+		if _weapon_direction.length_squared() > 0.000001:
+			var wanted := shaft_from + _weapon_direction * separation
 			targets["gauche"] = _integrate_hand_inertia(
-				grip + axis.normalized() * along, delta, stats_for_inertia, "gauche", false)
+				_slide_into_reach(shaft_from, _weapon_direction, wanted), delta,
+				stats_for_inertia, "gauche", false)
 	elif bool(shield_profile()["present"]):
 		# BOUCLIER : la main gauche ne suit pas l'arme, elle porte la plaque
 		# devant le buste. Elle se LÈVE en garde, ce qui rend le blocage visible
@@ -1681,7 +1730,127 @@ func hand_targets(hand_radius: float, offhand_offset: float, delta: float) -> Di
 		targets["gauche"] = _integrate_hand_inertia(
 			_shield_hand_target(grip, camera_basis, hand_radius), delta,
 			stats_for_inertia, "gauche", false)
+	else:
+		# MAIN LIBRE (2026-08-03, demande de l'auteur : « que le bras soit pas
+		# collé au corps »). Aucune arme, aucune plaque : la gauche n'avait
+		# AUCUNE cible et retombait sur la pose de port figée du squelette,
+		# c'est-à-dire un bras plaqué contre le buste, immobile même en courant.
+		#
+		# Elle reçoit maintenant une pose de repos écartée du torse, BALANCÉE
+		# PAR LA MARCHE et en opposition de phase avec la jambe du même côté —
+		# c'est ce que fait un bras humain, et c'est ce qui fait la différence
+		# entre un personnage et un mannequin.
+		targets["gauche"] = _integrate_hand_inertia(
+			_free_hand_target(grip, camera_basis, hand_radius), delta,
+			stats_for_inertia, "gauche", false)
 	return targets
+
+
+## Épaule gauche et allonge du bras gauche, POUSSÉES par le corps à chaque
+## frame. Le joueur calcule des cibles ; seul le corps sait ce que ses bras
+## peuvent atteindre, et il n'y a aucune raison de lui faire deviner.
+var _left_shoulder := Vector3.ZERO
+var _left_reach := 0.0
+## Position RÉELLE de la main droite à la frame précédente. L'arme y est
+## accrochée : c'est de là que part son manche, et non de la cible qu'on avait
+## demandée. L'écart entre les deux n'est pas anecdotique — mesuré à 9 cm, ce
+## qui suffit à décoller la seconde main du manche.
+##
+## Une frame de retard est sans conséquence ici : la main parcourt quelques
+## millimètres par frame, très en deçà de l'erreur qu'on corrige.
+var _right_hand_actual := Vector3.ZERO
+var _has_right_hand_actual := false
+
+
+func set_left_arm_span(shoulder: Vector3, reach: float) -> void:
+	_left_shoulder = shoulder
+	_left_reach = reach
+
+
+func set_right_hand_actual(position: Vector3) -> void:
+	_right_hand_actual = position
+	_has_right_hand_actual = true
+
+
+## Ramène `wanted` sur le segment du manche jusqu'à ce qu'il soit à portée de
+## l'épaule gauche. Retourne `wanted` inchangé s'il l'est déjà.
+##
+## Géométrie : on cherche l'intersection de la DROITE du manche avec la SPHÈRE
+## d'allonge centrée sur l'épaule, et on garde la solution la plus proche de la
+## prise voulue. Sans intersection (manche entièrement hors d'atteinte), on
+## prend le point du manche le plus proche de l'épaule — le mieux disponible.
+func _slide_into_reach(origin: Vector3, direction: Vector3, wanted: Vector3) -> Vector3:
+	if _left_reach <= 0.0:
+		return wanted
+	# Marge : viser exactement l'allonge maximale tend le bras à la corde, ce
+	# qui se lit comme une raideur. On garde un coude légèrement fléchi.
+	var reach := _left_reach * 0.92
+	if _left_shoulder.distance_to(wanted) <= reach:
+		return wanted
+	var to_origin := origin - _left_shoulder
+	var b := 2.0 * to_origin.dot(direction)
+	var c := to_origin.length_squared() - reach * reach
+	var discriminant := b * b - 4.0 * c
+	if discriminant < 0.0:
+		# Le manche ne croise pas la sphère : point le plus proche de l'épaule.
+		var closest := -to_origin.dot(direction)
+		return origin + direction * closest
+	var root := sqrt(discriminant)
+	var t1 := (-b - root) * 0.5
+	var t2 := (-b + root) * 0.5
+	var wanted_t := (wanted - origin).dot(direction)
+	# La solution la plus proche de la prise voulue : sur un espadon la main
+	# recule vers le pommeau, sur une hampe elle avance — le signe se déduit,
+	# il n'a pas à être codé.
+	return origin + direction * (t1 if absf(t1 - wanted_t) < absf(t2 - wanted_t) else t2)
+
+
+## Repos de la MAIN LIBRE, en espace caméra : en bas à gauche, légèrement en
+## avant, avec un balancement de marche.
+##
+## L'amplitude est volontairement PETITE. Ce bras ne raconte rien de tactique —
+## il ne pare pas, ne frappe pas, ne porte rien : s'il attirait l'œil il
+## volerait l'attention que le combat directionnel demande de porter sur l'arme
+## de l'adversaire. Il doit juste cesser d'être un morceau de bois.
+const FREE_HAND_REST := Vector3(-0.34, -0.62, -0.18)
+const FREE_HAND_SWING := 0.16
+
+
+## La main gauche PORTE-T-ELLE quelque chose ? Distinct de « a une cible » :
+## depuis 2026-08-03 elle en a toujours une, y compris au repos. C'est cette
+## question-ci, et pas l'autre, qui décide de l'affichage du bras en première
+## personne.
+func left_hand_busy() -> bool:
+	if _ranged.is_busy() or not offhand_weapon().is_empty():
+		return true
+	if bool(shield_profile()["present"]):
+		return true
+	var stats: Dictionary = _current_weapon_stats()
+	return int(stats.get("hands", 1)) >= 2 or not is_zero_approx(float(stats.get("hand_separation", 0.0)))
+
+
+func _free_hand_target(grip: Vector3, camera_basis: Basis, hand_radius: float) -> Vector3:
+	var right := camera_basis.x
+	var up := camera_basis.y
+	var forward := -camera_basis.z
+	# OPPOSITION DE PHASE : le bras gauche avance quand la jambe gauche recule.
+	# La phase de marche vit sur le CORPS (PlayerBody), qui la calcule depuis la
+	# distance réellement parcourue — la relire ici évite d'en tenir une seconde
+	# qui dériverait.
+	var swing := sin(_body_gait + PI) * FREE_HAND_SWING * _body_gait_amount
+	return grip 			+ right * (FREE_HAND_REST.x * hand_radius) 			+ up * (FREE_HAND_REST.y * hand_radius) 			+ forward * ((FREE_HAND_REST.z + swing) * hand_radius)
+
+
+## Phase et amplitude de marche, POUSSÉES par le corps à chaque frame (comme la
+## posture l'est vers la caméra). Le joueur ne calcule pas la marche — il la
+## reçoit de ce qui l'anime.
+var _body_gait := 0.0
+var _body_gait_amount := 0.0
+
+
+func set_body_gait(phase: float, amount: float) -> void:
+	_body_gait = phase
+	_body_gait_amount = clampf(amount, 0.0, 1.0)
 
 
 ## Décalage de la main au bouclier, en espace caméra : devant, à gauche, à
@@ -2253,8 +2422,26 @@ func _collect_loot(creature: Node) -> void:
 		"portions": str(portions)}))
 
 
+## FAMILLE DE SORTS : clé de `assemblies` pour le côté MAGIE (2026-08-03).
+##
+## Le menu combat sépare l'écran en deux zones INDÉPENDANTES — techniques d'arme
+## à gauche, sorts à droite — sur demande de l'auteur. Chaque zone a ses propres
+## slots, et un module ne peut aller que du bon côté (`book_type`).
+##
+## ÉCART ASSUMÉ AVEC LE GDD 5.1, qui dit que « n'importe quel module peut
+## s'équiper dans n'importe quel type d'arme ». La séparation a été demandée
+## explicitement après lecture de cette contrainte : elle échange la liberté de
+## mélange contre deux panneaux lisibles. Le reste de la règle (slots croissants,
+## coût A.6, ordre significatif) est inchangé.
+const SPELL_FAMILY := "sorts"
+## Compétence dont dérivent les slots de SORTS. `controle_mana` et non un
+## domaine de magie : elle est universelle, là où « magie offensive » exclurait
+## les grimoires de soin ou d'espace.
+const SPELL_SLOT_SKILL := "controle_mana"
+
+
 ## Compétence d'arme correspondant à l'arme tenue en main forte, ou "" si le
-## joueur n'a pas d'arme. C'est la clé de `assemblies`.
+## joueur n'a pas d'arme. C'est la clé de `assemblies` du côté ARMES.
 func weapon_skill_id() -> String:
 	if equipment == null:
 		return ""
@@ -2269,14 +2456,27 @@ func weapon_skill_id() -> String:
 	return String(functionality.get("combat_skill", ""))
 
 
-## Slots de compétence disponibles pour un type d'arme (GDD 5.1 : `2 + N/20`).
-func assembly_slot_count(skill_id: String) -> int:
-	return SpellAssembly.skill_slots(skills.level(skill_id))
+## Compétence dont dérivent les slots d'une FAMILLE. Côté armes c'est la
+## compétence d'arme elle-même ; côté sorts, `controle_mana`.
+func family_skill(family: String) -> String:
+	return SPELL_SLOT_SKILL if family == SPELL_FAMILY else family
+
+
+## Type de livre admis par une famille : un module d'arme ne va pas dans un
+## sort, et réciproquement. C'est la règle que la séparation de l'écran rend
+## nécessaire — sans elle, les deux zones ne seraient qu'un affichage.
+func family_book_type(family: String) -> String:
+	return "grimoire" if family == SPELL_FAMILY else "manuel"
+
+
+## Slots de compétence disponibles pour une famille (GDD 5.1 : `2 + N/20`).
+func assembly_slot_count(family: String) -> int:
+	return SpellAssembly.skill_slots(skills.level(family_skill(family)))
 
 
 ## Slots de modules par compétence (GDD 5.1 : `2 + N/25`).
-func assembly_module_count(skill_id: String) -> int:
-	return SpellAssembly.module_slots(skills.level(skill_id))
+func assembly_module_count(family: String) -> int:
+	return SpellAssembly.module_slots(skills.level(family_skill(family)))
 
 
 ## Assemblage rangé dans le slot `slot` du type d'arme `skill_id` (liste vide si
@@ -2297,9 +2497,16 @@ func set_assembly(skill_id: String, slot: int, module_ids: Array) -> bool:
 	if skill_id.is_empty() or slot < 0 or slot >= assembly_slot_count(skill_id):
 		return false
 	var clean: Array[String] = []
+	var wanted := family_book_type(skill_id)
 	for id: Variant in module_ids:
 		var module_id := String(id)
 		if not known_modules.has(module_id) or not GameData.modules.has(module_id):
+			continue
+		# CHAQUE ZONE SON TYPE (2026-08-03) : un manuel de combat ne s'assemble
+		# que dans une technique d'arme, un grimoire que dans un sort. Le refus
+		# vit ICI et non dans l'interface — sinon n'importe quel autre chemin
+		# (sonde, triche, réseau) le contournerait.
+		if String((GameData.modules[module_id] as Dictionary).get("book_type", "grimoire")) != wanted:
 			continue
 		clean.append(module_id)
 		if clean.size() >= assembly_module_count(skill_id):
@@ -2697,6 +2904,20 @@ func _fire_payload(trigger: Dictionary, depth: int, point: Vector3) -> void:
 
 # --- Récolte (A.2, par ticks) ---
 
+## Temps de jeu écoulé SANS simulation (voyage rapide). On rattrape ce qui
+## évolue linéairement, et rien d'autre.
+##
+## La FAMINE n'inflige délibérément pas ses dégâts ici : elle se contente de
+## consommer les réserves. Appliquer des milliers de ticks de dégâts de faim
+## ferait mourir en arrivant un joueur parti en bonne santé, ce qu'aucune
+## interface ne lui aurait laissé prévoir — un voyage rapide doit coûter des
+## vivres, pas la vie.
+func _on_ticks_skipped(count: int) -> void:
+	hunger = maxf(0.0, hunger - HUNGER_DECAY_PER_TICK * count)
+	fatigue = maxf(0.0, fatigue - FATIGUE_DECAY_PER_TICK * count)
+	mana.skip_ticks(count)
+
+
 func _on_tick(_tick_index: int) -> void:
 	mana.on_tick()
 	# STATUTS (F.4) : le tracker rend les dégâts périodiques, le joueur les
@@ -2777,21 +2998,53 @@ func _on_tick(_tick_index: int) -> void:
 	var block_time := hardness / (tool_hardness * tool_quality * factor)
 
 	if active_res == 32:
-		# --- Arbre : casser la BASE abat l'arbre entier (tronc + branches +
-		# feuilles), temps multiplié par le nombre de blocs de BOIS (demande
-		# explicite) — couper une branche ou une feuille reste un bloc normal.
-		var tree := WorldManager.generator.tree_at_base(_target.x, _target.y, _target.z) if WorldManager.generator != null else {}
+		# --- Arbre : casser N'IMPORTE LEQUEL de ses blocs l'abat en entier
+		# (2026-08-03, demande de l'auteur). C'était réservé à la BASE : couper
+		# une branche ou une feuille ne faisait tomber qu'un cube, et l'arbre
+		# restait suspendu en l'air, ce qui est le défaut classique du bûcheronnage
+		# voxel.
+		#
+		# La requête est INVERSE (`tree_containing`) et ne coûte presque rien : les
+		# arbres sont déterministes, on régénère les quelques candidats dont
+		# l'empreinte peut couvrir ce bloc au lieu de tenir une liste d'entités.
+		var tree := WorldManager.generator.tree_containing(_target.x, _target.y, _target.z) if WorldManager.generator != null else {}
 		if not tree.is_empty():
-			var wood_count: int = (tree["wood_positions"] as Array).size()
-			_required = block_time * wood_count
+			# LE VOLUME, PAS LE NOMBRE DE BLOCS. `wood_positions` liste les blocs
+			# touchés par du bois, brindilles de 1/64 de bloc comprises : depuis
+			# que les branches sont détaillées, un chêne en compte des centaines
+			# et l'abattage aurait demandé vingt fois le temps prévu, pour un
+			# butin vingt fois trop gros.
+			var wood_count := maxi(1, roundi(float(tree.get("wood_volume",
+					(tree["wood_positions"] as Array).size()))))
+			# LE TEMPS ET LE BUTIN SUIVENT LE BOIS, PAS LE BLOC FRAPPÉ. Sans
+			# cette bascule, abattre par une feuille — molle, et souvent le bloc
+			# le plus accessible — coûtait une fraction du temps de la même
+			# coupe au tronc, et créditait des feuilles au lieu de bûches. On
+			# abat un arbre, pas un feuillage : c'est la dureté du bois qui
+			# décide, où qu'on frappe.
+			var species: Dictionary = GameData.trees.get(String(tree.get("species_id", "")), {})
+			var wood_name := String(species.get("wood_material", mat_name))
+			var wood_mat: Dictionary = GameData.materials.get(wood_name, mat)
+			var wood_hardness := float((wood_mat.get("stats", {}) as Dictionary).get("durete", hardness))
+			var wood_skill := String((wood_mat.get("harvest", {}) as Dictionary).get("skill", skill_id))
+			var wood_factor := PlayerSkills.skill_factor(skills.level(wood_skill))
+			var fell_time := wood_hardness / (tool_hardness * tool_quality * wood_factor)
+			_required = fell_time * wood_count
 			_progress += TickManager.TICK_DT
 			if _progress < _required:
 				return
 			_progress = 0.0
 			for pos: Vector3i in (tree["blocks"] as Dictionary):
 				WorldManager.set_block(pos, 0)
-			inventory.add_material(mat_name, wood_count * (1 + floori(skills.level(skill_id) / 10.0)))
-			skills.gain_xp(skill_id, hardness * wood_count)
+			inventory.add_material(wood_name, wood_count * (1 + floori(skills.level(wood_skill) / 10.0)))
+			skills.gain_xp(wood_skill, wood_hardness * wood_count)
+			# POUSSES : abattre un arbre en rend une ou deux de son essence. C'est
+			# la seule source non-triche, et sans elle la sylviculture serait un
+			# système sans porte d'entrée — on pourrait replanter uniquement ce
+			# qu'on n'a pas encore coupé.
+			var sapling := SaplingManager.material_for(String(tree.get("species_id", "")))
+			if GameData.materials.has(sapling):
+				inventory.add_material(sapling, 1 + (1 if randf() < 0.5 else 0))
 			# Cas spécial baobab (tronc creux) : l'eau qu'il contenait se
 			# libère à l'emplacement de la base une fois l'arbre abattu.
 			if "contient_liquide" in (tree["special_tags"] as Array):
@@ -2799,6 +3052,12 @@ func _on_tick(_tick_index: int) -> void:
 				if water_id != 0:
 					WorldManager.set_block(_target, water_id)
 			return
+		# --- Foreuse : un carré de blocs d'un seul coup ---
+		var area := int(tool.get("mining_area", 1))
+		if area > 1:
+			_mine_area(area, tool_hardness, tool_quality)
+			return
+
 		# --- Bloc entier (normal) ---
 		_required = block_time
 		_progress += TickManager.TICK_DT
@@ -3077,6 +3336,96 @@ func _selected_entry() -> Dictionary:
 	return _resolve_binding(binding) if binding != null else {}
 
 
+## FOREUSE : mine un carré de `side` blocs de côté, d'un seul geste.
+##
+## L'ORIENTATION SUIT LA FACE VISÉE. Un carré toujours horizontal creuserait
+## un puits quand on attaque un mur, et une tranchée quand on attaque le sol :
+## la seule règle qui se comporte comme un outil, c'est que le carré soit
+## PERPENDICULAIRE au regard, donc dans le plan de la face touchée.
+##
+## Pour un côté PAIR il n'existe pas de centre exact ; le carré est décalé de
+## `-(side - 1) / 2`, ce qui met le bloc visé au coin bas-gauche en 2×2 et le
+## garde au centre en 3×3 et 5×5. C'est prévisible, ce qui vaut mieux qu'exact.
+func _mine_area(side: int, tool_hardness: float, tool_quality: float) -> void:
+	# Base du plan : les deux axes qui ne sont pas celui de la normale.
+	var normal := _target_normal
+	var axis_u := Vector3i(0, 1, 0)
+	var axis_v := Vector3i(0, 0, 1)
+	if absi(normal.y) == 1:
+		axis_u = Vector3i(1, 0, 0)
+		axis_v = Vector3i(0, 0, 1)
+	elif absi(normal.z) == 1:
+		axis_u = Vector3i(1, 0, 0)
+		axis_v = Vector3i(0, 1, 0)
+
+	var offset := -(side - 1) / 2
+	var targets: Array[Vector3i] = []
+	var total_time := 0.0
+	for du in side:
+		for dv in side:
+			var pos := _target + axis_u * (du + offset) + axis_v * (dv + offset)
+			var id := WorldManager.block_at_world(pos)
+			if id == 0:
+				continue
+			var name: String = GameData.material_by_runtime[id]
+			var block: Dictionary = GameData.materials[name]
+			# Les blocs qu'aucun outil ne perce sont SAUTÉS, pas bloquants : une
+			# foreuse arrêtée net parce qu'un coin du carré touche la paroi d'un
+			# donjon serait inutilisable là où elle sert le plus.
+			if "incassable" in (block.get("tags", []) as Array) \
+					or WorldManager.is_sealed_structure(pos):
+				continue
+			var block_hardness := float(block["stats"]["durete"])
+			# Chaque bloc du carré doit être à la portée de l'outil, avec la même
+			# règle d'irrécoltabilité qu'un coup normal (A.2) : une foreuse ne
+			# doit pas servir à contourner la stratification 3.2.
+			if tool_hardness * tool_quality < block_hardness * 0.5:
+				continue
+			var block_skill := String(block["harvest"]["skill"])
+			var block_factor := PlayerSkills.skill_factor(skills.level(block_skill))
+			total_time += block_hardness / (tool_hardness * tool_quality * block_factor)
+			targets.append(pos)
+
+	if targets.is_empty():
+		_bouncing = true
+		_progress = 0.0
+		return
+
+	# LE TEMPS EST CELUI DES BLOCS, REMISÉ. Offrir le carré gratuitement ferait
+	# de la plus grosse foreuse un outil vingt-cinq fois plus rapide, ce qui
+	# viderait la progression de récolte de son sens ; le faire payer plein tarif
+	# n'apporterait que le confort de ne pas viser. La remise est le compromis :
+	# une foreuse est franchement plus rapide, sans être gratuite.
+	_required = total_time * DRILL_TIME_DISCOUNT
+	_progress += TickManager.TICK_DT
+	if _progress < _required:
+		return
+	_progress = 0.0
+
+	for pos: Vector3i in targets:
+		var id := WorldManager.block_at_world(pos)
+		if id == 0:
+			continue  # Disparu entre la mesure et le coup (fluide, autre joueur).
+		var name: String = GameData.material_by_runtime[id]
+		var block: Dictionary = GameData.materials[name]
+		var subdivided := not WorldManager.subdiv_grid_at(pos).is_empty()
+		var credits := _region_credits(pos, Vector3i.ZERO, SubdivGrid.SIZE) if subdivided else {}
+		if not WorldManager.set_block(pos, 0):
+			continue
+		var block_skill := String(block["harvest"]["skill"])
+		if subdivided:
+			for material_id: String in credits:
+				inventory.add_volume(material_id, credits[material_id])
+		else:
+			inventory.add_material(name, 1 + floori(skills.level(block_skill) / 10.0))
+		skills.gain_xp(block_skill, float(block["stats"]["durete"]))
+
+
+## Remise de temps d'une foreuse : le carré coûte 60 % du temps qu'auraient
+## coûté ses blocs un par un.
+const DRILL_TIME_DISCOUNT := 0.6
+
+
 ## L'outil EN MAIN s'il correspond à la catégorie demandée, sinon vide
 ## (= mains nues).
 func _held_tool_for(tool_category: String) -> Dictionary:
@@ -3135,6 +3484,15 @@ func _try_place() -> void:
 	if runtime_id == 0:
 		return
 	if active_res == 32:
+		# POSER UNE POUSSE, C'EST LA PLANTER. Le bloc seul ne saurait pas dire
+		# quand il a été mis en terre, ni quelle essence il deviendra : c'est le
+		# registre des pousses qui porte cet état, et il doit être prévenu au
+		# moment de la pose, pas après coup par une inspection du monde.
+		var species_id := SaplingManager.species_of(mat_name)
+		if species_id != "":
+			if SaplingManager.plant(_placement_cell(), species_id):
+				inventory.remove_material(mat_name, 1)
+			return
 		if WorldManager.set_block(_placement_cell(), runtime_id):
 			inventory.remove_material(mat_name, 1)
 		return
@@ -3889,19 +4247,16 @@ func _try_interact_block() -> bool:
 	var mat_name: String = GameData.material_by_runtime[block_id]
 	var mat: Dictionary = GameData.materials.get(mat_name, {})
 
-	# COFFRE (F.6) : tout prendre. Placé en tête des blocs interactifs — c'est
-	# le contenant le plus courant, et le geste qu'on répète.
+	# COFFRE (F.6) : OUVRE SON PANNEAU. Il raflait tout d'un coup — juste assez
+	# pour vider le coffre d'un boss, inutilisable pour ce à quoi un coffre sert
+	# vraiment : ranger, reprendre une partie, laisser le reste.
 	if ContainerManager.is_chest(_target):
-		var use := ContainerManager.usage(_target)
-		var chest := ContainerManager.contents(_target)
-		var count: int = (chest["objects"] as Array).size() + (chest["materials"] as Dictionary).size()
-		if count == 0 and int(chest["gold"]) == 0:
-			EventBus.ui_notification.emit("ui.coffre.vide")
+		var panel := get_node_or_null("/root/Main/ChestPanel")
+		if panel != null and bool(panel.call("open_at", _target)):
 			return true
-		var recovered := ContainerManager.take_all(_target, inventory)
-		gold += recovered
-		EventBus.ui_notification.emit(tr("ui.toast.coffre_pris").format({
-			"objets": str(count), "or_": str(recovered)}))
+		# Repli si le panneau manque (sonde headless, scène incomplète) : mieux
+		# vaut vider le coffre que rendre son contenu inatteignable.
+		gold += ContainerManager.take_all(_target, inventory)
 		return true
 
 	# ÉTAL : encaisser la recette (7.1). Il n'est pas de catégorie « station »,

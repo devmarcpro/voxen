@@ -21,15 +21,15 @@
   "vegetation": [
     {
       "id": "olivier",
-      "density": 0.012
+      "density": 0.00336
     },
     {
       "id": "liege",
-      "density": 0.01
+      "density": 0.0028
     },
     {
       "id": "cypres",
-      "density": 0.008
+      "density": 0.00224
     }
   ],
   "village_palette": {

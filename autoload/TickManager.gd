@@ -84,6 +84,32 @@ func push_ticks(count: int) -> void:
 		_run_tick()
 
 
+## Signal émis quand du temps de jeu passe SANS être simulé (voyage rapide).
+## Les systèmes dont l'état évolue linéairement avec le temps — faim, fatigue,
+## régénération de mana — doivent rattraper en forme close ; les autres n'ont
+## rien à faire.
+signal ticks_skipped(count: int)
+
+
+## AVANCE L'HORLOGE SANS SIMULER (2026-08-03, voyage rapide instantané).
+##
+## `push_ticks` simule chaque tick, ce qui est juste pour le coût d'une action
+## en mode tactique — quelques ticks. Le voyage rapide, lui, coûte 6 ticks par
+## bloc : traverser 500 blocs, c'est 3 000 ticks. Les simuler, c'était :
+##   - faire tourner l'IA de toutes les créatures 3 000 fois pour rien ;
+##   - peupler puis relâcher CHAQUE village survolé, d'où les pics de tick
+##     à 62 ms et les erreurs en cascade relevés en jeu ;
+##   - et geler la partie plusieurs secondes.
+##
+## L'heure du jour se recalcule depuis `tick_index` (DayNightManager), donc
+## l'avancer suffit pour elle. Le reste est prévenu par `ticks_skipped`.
+func skip_ticks(count: int) -> void:
+	if count <= 0:
+		return
+	tick_index += count
+	ticks_skipped.emit(count)
+
+
 func _run_tick() -> void:
 	tick_index += 1
 	var t0 := Time.get_ticks_usec()

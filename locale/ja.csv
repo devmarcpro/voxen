@@ -1101,3 +1101,33 @@ ui.coffre.titre,{coffre} — {utilise}/{capacite}
 ui.coffre.vide,空の箱
 ui.toast.coffre_pris,箱を空にした：{objets} 個、{or_} ゴールド
 ui.toast.coffre_plein,箱が一杯だ
+ui.menu.assemblage_armes,武器技
+ui.menu.assemblage_sorts,呪文
+ui.menu.assemblage_niveau,{competence} — レベル {niveau}
+ui.menu.assemblage_reserve_vide,この種のモジュールは未習得。
+ui.module.role.effet,効果
+ui.module.role.modificateur,修正子
+ui.module.role.declencheur,起動子
+module.enchainement_double.name,二連撃
+module.enchainement_triple.name,三連撃
+module.allonge_accrue.name,間合い延長
+module.frappe_vive.name,速撃
+ui.coffre.inventaire,持ち物
+ui.coffre.contenu,箱
+ui.coffre.tout_deposer,すべて預ける
+ui.coffre.tout_prendre,すべて取る
+ui.coffre.fermer,閉じる
+ui.coffre.or,{or_} ゴールド
+ui.coffre.aide,行をクリックで移動。Esc または E で閉じる。
+item.foreuse.name,ドリル
+functionality.foreuse.name,ドリル
+item.foreuse_plus.name,ドリルプラス
+functionality.foreuse_plus.name,ドリルプラス
+item.foreuse_pro.name,ドリルプロ
+functionality.foreuse_pro.name,ドリルプロ
+item.foreuse_max.name,ドリルマックス
+functionality.foreuse_max.name,ドリルマックス
+material.pousse.name,苗木
+ui.toast.pousse_grandie,苗木が木に育ちました。
+dimension.donjon.name,ダンジョン
+dimension.faille_de_mana.name,マナの裂け目

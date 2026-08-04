@@ -51,9 +51,11 @@ var world_seed: int = 1337
 var generator: NoiseGenerator
 ## Nœud de scène sous lequel vivent les MeshInstance3D (fourni par main.tscn).
 var chunk_root: Node3D
-## Dimension active (3.5, 2026-07-21) : &"overworld" ou &"donjon". Hors
-## overworld, les lectures/mutations de blocs sont ROUTÉES vers la dimension
-## de DungeonManager, le terrain overworld est caché et son streaming gelé
+## Dimension active (3.5). Hors overworld, les lectures et mutations de blocs
+## sont ROUTÉES vers DimensionManager — et non plus vers DungeonManager, ce qui
+## revenait à dire que « pas l'overworld » signifiait « donjon » et interdisait
+## toute troisième dimension. Le terrain overworld est caché et son streaming
+## gelé
 ## (les tâches en vol finissent, aucune nouvelle n'est lancée). SIMPLIFICATION
 ## ASSUMÉE : dimensions non supportées en multijoueur pour l'instant (le
 ## routage RPC reste overworld-only).
@@ -205,12 +207,93 @@ func initialize_world() -> void:
 	SaveManager.world_active = true  # Arme autosave/F9/sauvegarde de sortie.
 
 
+## ADOPTE LE MONDE D'UN HÔTE (E.11, 2026-08-04).
+##
+## POURQUOI C'EST LA PREMIÈRE CHOSE À FAIRE EN RÉSEAU. Tout le monde de Voxen
+## dérive de sa GRAINE : relief, biomes, arbres, villages, royaumes, donjons.
+## Deux joueurs de graines différentes ne partagent rien — ils voient chacun un
+## monde cohérent, mais pas le même, et les seules choses qui voyagent (les
+## éditions de blocs) atterrissent dans le décor de l'autre.
+##
+## Jusqu'ici la graine n'était jamais transmise : chaque camp lisait la sienne
+## dans sa propre sauvegarde. Ça n'a fonctionné que parce que les deux valaient
+## 1337 par défaut — une coïncidence, pas un protocole.
+##
+## Adopter une graine reconstruit tout, exactement comme un rechargement de
+## données à chaud : c'est le même chemin, et il est déjà éprouvé.
+func adopt_world(seed_value: int, params: Dictionary) -> void:
+	if generator != null and world_seed == seed_value:
+		return  # Déjà le bon monde : ne rien jeter pour rien.
+	SaveManager.active_config = {
+		"name": String(SaveManager.active_config.get("name", "réseau")),
+		"seed": seed_value,
+		"params": params.duplicate(true),
+	}
+	world_seed = seed_value
+	# Les éditions locales n'ont plus de sens : elles portaient sur un autre
+	# monde. Les garder ferait apparaître des blocs posés là où le terrain n'est
+	# plus le même.
+	_edits.clear()
+	_sub_edits.clear()
+	_reindex_edits()
+	# Les caches dérivés de la graine doivent partir avec elle.
+	KingdomGenerator.clear_cache()
+	if generator == null:
+		initialize_world()
+		return
+	_on_data_reloaded()
+
+
 func _process(_delta: float) -> void:
 	if chunk_root == null or generator == null:
 		return
 	_upload_ready_meshes()  # Draine toujours les résultats en vol (même cachés).
 	if active_dimension == &"overworld":
 		_launch_tasks()
+		_warm_world_metadata()
+
+
+## PRÉCHAUFFAGE DES ROYAUMES, hors tick et un secteur par frame.
+##
+## Générer les royaumes d'un secteur neuf coûtait 43 ms, ramenés à 10 par la
+## mémoïsation du coût d'entrée — c'est mieux, mais c'est encore la majorité
+## d'un budget de tick, et ça tombait EN PLEIN TICK : `_populate_village`
+## demandait le royaume d'un village, et le joueur voyait un `[TICK] 62 ms`.
+##
+## Ici, le calcul se fait dans `_process` — donc dans une frame, pas dans un
+## tick — et par avance : les neuf secteurs autour du joueur sont préparés bien
+## avant qu'un village ne les réclame. Le tick ne paie plus rien.
+##
+## UN SEUL SECTEUR PAR FRAME. Neuf d'un coup rendraient la main après 90 ms, ce
+## qui déplacerait le à-coup au lieu de le supprimer.
+func _warm_world_metadata() -> void:
+	if generator == null:
+		return
+	var player_cell := ClaimManager.cell_of_block(_center.x * ChunkData.SIZE,
+			_center.y * ChunkData.SIZE)
+
+	# LES PLANS DE VILLE D'ABORD, parce que c'est le tick de peuplement qui les
+	# réclame et qu'il les réclame sur les NEUF cellules autour du joueur, à
+	# chaque passage. Une cellule sans ville s'écarte en quelques microsecondes,
+	# mais une cellule qui en a une coûte une dizaine de millisecondes à
+	# composer : mesuré, neuf voisines fraîches faisaient un tick à 56 ms.
+	for dz in range(-1, 2):
+		for dx in range(-1, 2):
+			var cell := player_cell + Vector2i(dx, dz)
+			if not generator.has_city_layout(cell):
+				generator.city_at_cell(cell)
+				return  # Un par frame, et on rend la main.
+
+	var sector := KingdomGenerator.sector_of(player_cell)
+	# Le secteur courant d'abord, ses voisins ensuite : c'est l'ordre dans lequel
+	# le joueur en aura besoin.
+	for radius in 2:
+		for dz in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				if maxi(absi(dx), absi(dz)) != radius:
+					continue
+				if KingdomGenerator.warm_sector(sector + Vector2i(dx, dz), world_seed, generator):
+					return  # Un par frame, et on rend la main.
 
 
 ## Bascule de dimension (3.5) : cache/révèle le monde overworld et prévient
@@ -282,7 +365,7 @@ func block_at_world(pos: Vector3i) -> int:
 	if generator == null:
 		return 0  # Aucun monde actif (menu de démarrage).
 	if active_dimension != &"overworld":
-		return DungeonManager.dimension_block_at(pos)
+		return DimensionManager.block_at(pos)
 	var ck := Vector3i(pos.x >> 4, pos.y >> 4, pos.z >> 4)
 	var index := (pos.x & 15) | ((pos.z & 15) << 4) | ((pos.y & 15) << 8)
 	var chunk_edits: Variant = _edits.get(ck)
@@ -292,6 +375,20 @@ func block_at_world(pos: Vector3i) -> int:
 	if data != null:
 		return data.get_block_by_index(index)
 	return generator.block_at(pos.x, pos.y, pos.z)
+
+
+## Le chunk contenant ce bloc est-il DÉJÀ EN MÉMOIRE ?
+##
+## `block_at_world` répond toujours, mais pas au même prix : chunk chargé, c'est
+## une lecture de tableau ; sinon, c'est une requête au générateur, qui
+## reconstruit la colonne (relief, biome, strates, grottes, rivières). Un
+## appelant qui en fait plusieurs par tick doit pouvoir choisir un autre chemin
+## quand le monde n'est pas là — c'est exactement ce qui coûtait 4,6 ms par
+## villageois et par tick.
+func is_block_loaded(pos: Vector3i) -> bool:
+	if active_dimension != &"overworld":
+		return true  # Une dimension tient tout en mémoire, il n'y a rien à streamer.
+	return _chunks.has(Vector3i(pos.x >> 4, pos.y >> 4, pos.z >> 4))
 
 
 ## LA fonction unique de mutation du monde (D.2), point d'entrée gameplay.
@@ -376,7 +473,7 @@ func _touched_chunks(pos: Vector3i) -> Array[Vector3i]:
 ## SIMULATION (fluides, intégrité, croissance), utiliser set_block_batched().
 func _apply_block(pos: Vector3i, material_id: int) -> bool:
 	if active_dimension != &"overworld":
-		return DungeonManager.dimension_apply_block(pos, material_id)
+		return DimensionManager.apply_block(pos, material_id)
 	var old_id := _write_block_data(pos, material_id)
 	if old_id < 0:
 		return false
@@ -440,7 +537,7 @@ func set_block_batched(pos: Vector3i, material_id: int) -> bool:
 	if generator == null:
 		return false
 	if active_dimension != &"overworld":
-		return DungeonManager.dimension_apply_block(pos, material_id)
+		return DimensionManager.apply_block(pos, material_id)
 	var old_id := _write_block_data(pos, material_id)
 	if old_id < 0:
 		return false
@@ -602,6 +699,66 @@ func rpc_request_sub_region(block_pos: Vector3i, cell_min: Vector3i, cell_size: 
 	if not NetworkManager.is_host:
 		return
 	rpc_apply_sub_region.rpc(block_pos, cell_min, cell_size, material_id)
+
+
+## Pose une sous-grille ENTIÈRE sur un bloc, d'un coup.
+##
+## POURQUOI ELLE MANQUAIT, ET POURQUOI ELLE MANQUAIT VRAIMENT. `set_sub_region`
+## sculpte une région à la fois : reproduire une grille de 512 cellules avec
+## elle demande des dizaines d'appels, dont chacun REMAILLE SON CHUNK
+## SYNCHRONEMENT. Tous les producteurs de géométrie fine — générateur d'arbres,
+## générateur de plantes — bâtissent pourtant leur grille complète d'un bloc, et
+## le générateur de monde l'écrit telle quelle dans le chunk. Faute d'API, tout
+## code hors génération (sonde de capture, menu de triche) devait attraper le
+## `ChunkData` par un chemin privé pour faire la même chose.
+##
+## Retourne false si le bloc est hors du monde ou hors de l'overworld.
+func set_subdiv_grid(block_pos: Vector3i, grid: PackedInt32Array, material_id: int) -> bool:
+	if active_dimension != &"overworld":
+		return false  # Pas de sculpture fine en donjon (simplification 3.5 assumée).
+	if block_pos.y < WORLD_Y_MIN or block_pos.y > WORLD_Y_MAX:
+		return false
+	var ck := Vector3i(block_pos.x >> 4, block_pos.y >> 4, block_pos.z >> 4)
+	var index := (block_pos.x & 15) | ((block_pos.z & 15) << 4) | ((block_pos.y & 15) << 8)
+	var data := _get_chunk_sync(ck)
+	if data == null:
+		return false
+
+	var uniform := SubdivGrid.uniform_value(grid)
+	if not _edits.has(ck):
+		_edits[ck] = {}
+	if not _sub_edits.has(ck):
+		_sub_edits[ck] = {}
+	_note_edit(ck)
+	if uniform.x == 1:
+		# Grille pleine ou vide : c'est un bloc simple, pas une sous-grille.
+		data.set_block_by_index(index, uniform.y)
+		_edits[ck][index] = uniform.y
+		_sub_edits[ck].erase(index)
+	else:
+		var dominant := SubdivGrid.dominant_id(grid)
+		data.set_subdiv(index, grid, dominant)
+		_edits[ck][index] = dominant
+		_sub_edits[ck][index] = grid.duplicate()
+	_dirty_save[ck] = true
+
+	# Une sous-grille peut toucher n'importe laquelle des six faces du bloc :
+	# on remaille les voisins de bordure sans chercher lesquels, il y en a au
+	# plus trois et le test coûterait plus cher que le remaillage évité.
+	var touched: Array[Vector3i] = [ck]
+	for axis: Vector3i in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0),
+			Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+		var neighbour := Vector3i((block_pos.x + axis.x) >> 4, (block_pos.y + axis.y) >> 4,
+				(block_pos.z + axis.z) >> 4)
+		if neighbour != ck and not (neighbour in touched):
+			touched.append(neighbour)
+	for tck: Vector3i in touched:
+		_mark_dirty(tck)
+	_install_epoch += 1
+	for tck: Vector3i in touched:
+		if _meshes.has(tck) or _chunks.has(tck):
+			_remesh_chunk_now(tck, _install_epoch)
+	return true
 
 
 ## Sous-grille d'un bloc (lecture seule) — vide si le bloc n'est pas subdivisé.

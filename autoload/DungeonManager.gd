@@ -161,6 +161,10 @@ var _must_leave := false
 func _ready() -> void:
 	EventBus.creature_killed.connect(_on_creature_killed)
 	TickManager.tick_world.connect(_on_tick)
+	# LE DONJON N'EST PLUS UN CAS DU MOTEUR, c'est un backend de dimension. Il
+	# garde sa construction — étages, escaliers, boss — mais WorldManager ne le
+	# connaît plus : il passe par DimensionManager, qui aiguille ici.
+	DimensionManager.register_backend(&"donjon", self)
 	_dungeon_root = Node3D.new()
 	add_child(_dungeon_root)
 	_dungeon_env = Environment.new()
@@ -353,6 +357,22 @@ func _check_transitions(pos: Vector3) -> void:
 ## Descend d'un étage. Les créatures de l'étage quitté sont retirées : chaque
 ## étage a sa propre population, et un monstre laissé derrière continuerait de
 ## vivre dans une dimension que plus personne n'occupe.
+## Enveloppes PUBLIQUES de la navigation d'étage (2026-08-03). Descendre,
+## monter et sortir n'existaient qu'en privé, appelés par les escaliers et le
+## compte à rebours d'entrée ; le menu de triche, qui doit pouvoir atteindre
+## n'importe quel étage, n'avait aucun moyen légitime de les déclencher.
+func descend() -> void:
+	_descend()
+
+
+func ascend() -> void:
+	_ascend()
+
+
+func leave() -> void:
+	_exit_dungeon()
+
+
 func _descend() -> void:
 	CreatureManager.despawn_dimension(&"donjon")
 	_install_floor(_current_dungeon_cell, _current_depth + 1)

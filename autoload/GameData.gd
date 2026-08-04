@@ -20,6 +20,7 @@ const PATH_ITEMS := "res://data/items"
 const PATH_MODULES := "res://data/modules"
 ## Statuts temporaires (GDD F.4) — brûlure, hâte, peau de pierre…
 const PATH_STATUS_EFFECTS := "res://data/status_effects"
+const PATH_DIMENSIONS := "res://data/dimensions"
 ## Table des effets d'échec de lecture (GDD A.7, extensible en données).
 const PATH_READING_FAILURES := "res://data/reading_failures.json"
 const PATH_CREATURES := "res://data/creatures"
@@ -135,6 +136,10 @@ var modules: Dictionary = {}
 ## des potions (F.9), de la nourriture avariée (F.5) et des échecs de
 ## lecture (A.7) — pas une annexe du système de sorts.
 var status_effects: Dictionary = {}
+## DIMENSIONS (3.5) : registre des mondes autres que l'overworld. Une dimension
+## déclare son ambiance et, si elle en a un, le nœud qui sait la construire.
+## Sans ce registre, « pas l'overworld » voulait dire « donjon ».
+var dimensions: Dictionary = {}
 ## Effets d'échec de lecture, par gravité (« mineur » / « grave ») — GDD A.7.
 ## Chargée sans validation bloquante : un fichier absent dégrade la lecture
 ## ratée en simple perte du livre, ce qui reste jouable.
@@ -258,6 +263,7 @@ func load_all() -> bool:
 	_load_modules()
 	_load_reading_failures()
 	_load_status_effects()
+	_load_dimensions()
 	_load_hitbox_templates()   # avant les créatures : elles valident leur gabarit.
 	_load_armor_type_modifiers()
 	_load_weapon_parts()   # avant les objets : ils referencent des pieces.
@@ -274,6 +280,10 @@ func load_all() -> bool:
 	_load_plats()
 	_load_munitions()
 	_generate_parametric_resources()
+	# APRÈS les essences et les matériaux, AVANT l'index : une pousse emprunte sa
+	# couleur aux feuilles de son essence, et doit recevoir son id runtime avec
+	# les autres matériaux.
+	_generate_sapling_materials()
 	_finalize_material_index()
 	_validate_translation_keys()
 
@@ -493,6 +503,22 @@ func _load_plats() -> void:
 ## l'id de la créature (B.1 : « la couleur d'une variante = couleur de la
 ## source décalée déterministiquement »), puis résolution de collision par
 ## petits pas — la validation d'unicité des couleurs reste vraie.
+func _load_dimensions() -> void:
+	dimensions.clear()
+	for path in _list_json_recursive(PATH_DIMENSIONS):
+		var raw: Variant = _load_json(path)
+		if not (raw is Dictionary):
+			continue
+		var dimension: Dictionary = raw
+		for field in ["id", "name_key"]:
+			if not dimension.has(field):
+				_blocking_error("champ « %s » manquant dans %s" % [field, path])
+		if dimensions.has(dimension.get("id", "")):
+			_blocking_error("id de dimension dupliqué « %s »" % dimension["id"])
+			continue
+		dimensions[String(dimension["id"])] = dimension
+
+
 func _generate_parametric_resources() -> void:
 	for creature_id: String in creatures:
 		var creature: Dictionary = creatures[creature_id]
@@ -513,6 +539,48 @@ func _generate_parametric_resources() -> void:
 				})
 		_add_parametric("peau_de_" + creature_id, "material.peau.name", creature,
 				"#8A6A4F", {})
+
+
+## POUSSES : un matériau POSABLE par essence (B.1, « Pousse de [essence] »).
+##
+## Des ressources n'auraient pas suffi : une ressource ne se pose pas, et une
+## pousse qu'on ne peut pas planter ne sert à rien. Ce sont donc de vrais
+## matériaux, avec un id runtime et une entrée de palette, générés depuis le
+## catalogue d'essences — écrire trente-huit fichiers à la main aurait divergé
+## dès la première essence ajoutée.
+func _generate_sapling_materials() -> void:
+	for species_id: String in trees:
+		var species: Dictionary = trees[species_id]
+		var id := "pousse_" + species_id
+		if materials.has(id):
+			continue  # Un fichier écrit à la main gagne toujours.
+		var leaf: Dictionary = materials.get(String(species.get("leaf_material", "")), {})
+		materials[id] = {
+			"id": id,
+			"name_key": "material.pousse.name",
+			"category": "vegetal",
+			"stats": {
+				# TENDRE ET LÉGÈRE : une pousse s'arrache à la main, et la
+				# transporter par centaines ne doit pas peser un arbre.
+				"durete": 1, "densite": 1, "valeur_base": 4,
+				"conductivite_mana": 3, "flammabilite": 70, "isolation": 10,
+				"conductivite_electrique": 2, "flottabilite": 60, "luminosite": 0,
+				"fertilite": 60, "transparence": 20, "elasticite": 40, "friction": 35,
+			},
+			"tags": ["organique", "vegetal", "pousse"],
+			# COULEUR DÉCALÉE, pas recopiée. Reprendre telle quelle la couleur des
+			# feuilles donnait deux blocs distincts pour une seule entrée de
+			# palette — `--probe-butin` l'a signalé sur les 38 essences d'un
+			# coup. `_variant_color` fait exactement ce décalage déterministe,
+			# et c'est déjà lui qui distingue les viandes et les peaux.
+			"color": _variant_color(String(leaf.get("color", "#4C8B3A")), id),
+			"noise": {"type": "procedural", "seed_offset": 940, "amplitude": 0.05, "scale": 1},
+			"harvest": {"tool_category": "mains_nues", "skill": "herboristerie"},
+			"world_gen": {"mode": "aucun", "biome_tags": []},
+			"parametric": {"source": "tree", "source_id": species_id},
+			"source_name_key": String(species.get("name_key", "")),
+		}
+		_derive_tags(materials[id])
 
 
 ## Crée un matériau paramétrique dérivé de `source`, s'il n'existe pas déjà
@@ -840,7 +908,10 @@ func _load_trees() -> void:
 			_blocking_error("matériau de bois inconnu « %s » pour l'arbre « %s »" % [tree["wood_material"], tree["id"]])
 		if not materials.has(tree["leaf_material"]):
 			_blocking_error("matériau de feuilles inconnu « %s » pour l'arbre « %s »" % [tree["leaf_material"], tree["id"]])
-		if not (tree["canopy_shape"] in ["spherical", "conical", "flat", "weeping"]):
+		# LA LISTE FAIT FOI CÔTÉ GÉNÉRATEUR, pas ici : elle était recopiée à la
+		# main dans ce fichier, si bien qu'ajouter une silhouette au générateur
+		# faisait échouer 25 arbres au boot sans que le générateur soit en cause.
+		if not (tree["canopy_shape"] in TreeGenerator.CANOPY_SHAPES):
 			_blocking_error("canopy_shape invalide « %s » pour l'arbre « %s »" % [tree["canopy_shape"], tree["id"]])
 		if trees.has(tree["id"]):
 			_blocking_error("id d'essence d'arbre dupliqué « %s »" % tree["id"])

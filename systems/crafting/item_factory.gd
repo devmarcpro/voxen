@@ -143,6 +143,11 @@ static func craft(item_id: String, material_choices: Dictionary, quality: float)
 		"name_key": item["name_key"],
 		"functionality": item.get("functionality", ""),
 		"tool_category": functionality.get("tool_category", ""),
+		# EMPRISE DE MINAGE (foreuses, 2026-08-03) : côté du carré miné d'un coup,
+		# 1 pour tout outil normal. Recopiée à plat sur l'instance comme
+		# `tool_category` : le joueur tient une instance, pas une fonctionnalité, et
+		# rouvrir la fiche de fonctionnalité à chaque coup de pioche serait absurde.
+		"mining_area": int(functionality.get("mining_area", 1)),
 		"quality": quality,
 		# Dureté de BASE (avant qualité) — A.2 multiplie durete_outil par
 		# qualite_outil séparément, ne jamais pré-multiplier (double comptage).

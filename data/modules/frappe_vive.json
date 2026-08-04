@@ -1,0 +1,19 @@
+{
+  "id": "frappe_vive",
+  "name_key": "module.frappe_vive.name",
+  "module_type": "modificateur",
+  "mana_cost_base": 3,
+  "power_base": 0,
+  "tags": [
+    "maitrise"
+  ],
+  "params": {
+    "mods": {
+      "vitesse": 20
+    }
+  },
+  "grimoire_domains": [
+    "maitrise"
+  ],
+  "book_type": "manuel"
+}

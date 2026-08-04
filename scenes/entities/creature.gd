@@ -551,22 +551,48 @@ func _build_health_bar() -> void:
 	_health_bar.visible = false
 
 
+## Maillages et matériaux des panneaux, PARTAGÉS entre toutes les créatures.
+##
+## Ils étaient créés à neuf pour chaque créature : trois `StandardMaterial3D`
+## et trois `QuadMesh` par apparition. Mesuré, `_build_visual` coûtait 19,9 ms
+## alors que ses briques connues — instancier le .glb, peindre la peau — n'en
+## faisaient que 1,2 : tout le reste partait dans ces matériaux, chacun forçant
+## la mise en place d'un pipeline de rendu.
+##
+## Or ils sont IDENTIQUES d'une créature à l'autre : mêmes tailles, mêmes
+## couleurs, mêmes réglages. Le cache de peau du corps fait déjà exactement ça
+## pour les dix-huit maillages du modèle — on applique la même règle ici.
+##
+## Le nœud, lui, reste propre à chaque créature : c'est lui qui porte la
+## position et la visibilité.
+static var _quad_mesh_cache := {}
+static var _quad_material_cache := {}
+
+
 func _health_quad(size: Vector2, color: Color, depth: float) -> MeshInstance3D:
-	var quad := QuadMesh.new()
-	quad.size = size
+	var mesh_key := "%.3f|%.3f" % [size.x, size.y]
+	if not _quad_mesh_cache.has(mesh_key):
+		var quad := QuadMesh.new()
+		quad.size = size
+		_quad_mesh_cache[mesh_key] = quad
+
+	var material_key := color.to_html(true)
+	if not _quad_material_cache.has(material_key):
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = color
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		# Panneau publicitaire Y : la barre pivote pour faire face à la caméra
+		# mais reste HORIZONTALE — sans le verrouillage d'axe elle basculerait
+		# avec le tangage du joueur et deviendrait illisible vue d'en haut.
+		mat.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
+		mat.billboard_keep_scale = true
+		_quad_material_cache[material_key] = mat
+
 	var node := MeshInstance3D.new()
-	node.mesh = quad
+	node.mesh = _quad_mesh_cache[mesh_key]
 	node.position.z = depth
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	# Panneau publicitaire Y : la barre pivote pour faire face à la caméra mais
-	# reste HORIZONTALE — sans le verrouillage d'axe elle basculerait avec le
-	# tangage du joueur et deviendrait illisible vue d'en haut.
-	mat.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
-	mat.billboard_keep_scale = true
-	node.material_override = mat
+	node.material_override = _quad_material_cache[material_key]
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return node
 
@@ -1376,15 +1402,53 @@ var _engaged := false
 ## Convention conservée : retourne l'INDICE du bloc de sol + 0.5 (comme
 ## l'ancien height_at()+0.5). Fenêtre bornée (~10 blocs) ; au-delà, retombe
 ## sur la hauteur procédurale (overworld) ou garde sa hauteur (donjon).
+## Dernière hauteur de sol calculée, et la colonne où elle l'a été. Une
+## créature qui déambule avance de quelques centièmes de bloc par tick : elle
+## reste des dizaines de ticks dans la même colonne, et y recalculer sa hauteur
+## à chaque fois est du travail refait à l'identique.
+var _ground_column := Vector2i(1 << 30, 0)
+var _ground_cached := 0.0
+
+
+## Hauteur du sol sous la créature.
+##
+## DEUX CHEMINS, ET C'EST LA RAISON D'ÊTRE DE CETTE FONCTION. Quand le monde
+## est chargé sous les pieds, on sonde les blocs : c'est exact, ça tient compte
+## de ce que le joueur a creusé ou bâti, et ça ne coûte que des lectures de
+## tableau. Quand il ne l'est PAS, chaque sondage devient une requête au
+## générateur qui reconstruit la colonne entière — et il y en avait DIX par
+## créature et par tick.
+##
+## Mesuré : 83,6 ms d'IA pour dix-huit villageois, soit 4,6 ms chacun, contre
+## 1,0 ms pour cinquante bêtes sauvages. La différence n'était pas leur
+## comportement, c'était que les villageois se tiennent là où le joueur vient
+## d'arriver, donc dans des chunks pas encore streamés.
 func _ground_height() -> float:
 	var bx := floori(logical_position.x)
 	var bz := floori(logical_position.z)
+	var column := Vector2i(bx, bz)
+	if column == _ground_column:
+		return _ground_cached
+
+	_ground_column = column
 	var start := floori(logical_position.y)
+	if not WorldManager.is_block_loaded(Vector3i(bx, start, bz)):
+		# UNE seule requête au lieu de dix : la hauteur procédurale suffit là où
+		# personne n'a encore rien pu creuser, puisque le chunk n'existe pas.
+		if dimension == &"overworld" and WorldManager.generator != null:
+			_ground_cached = WorldManager.generator.height_at(bx, bz) + 0.5
+		else:
+			_ground_cached = logical_position.y
+		return _ground_cached
+
 	var water_id: int = GameData.material_runtime_ids.get("eau", -1)
 	for wy in range(start + 1, start - 9, -1):
 		var id := WorldManager.block_at_world(Vector3i(bx, wy, bz))
 		if id != 0 and id != water_id:
-			return float(wy) + 0.5
+			_ground_cached = float(wy) + 0.5
+			return _ground_cached
 	if dimension == &"overworld" and WorldManager.generator != null:
-		return WorldManager.generator.height_at(bx, bz) + 0.5
-	return logical_position.y
+		_ground_cached = WorldManager.generator.height_at(bx, bz) + 0.5
+		return _ground_cached
+	_ground_cached = logical_position.y
+	return _ground_cached

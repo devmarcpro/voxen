@@ -143,53 +143,26 @@ func _unhandled_input(event: InputEvent) -> void:
 		rotation = Vector3(_pitch, _yaw, 0.0) + _applied_shake
 
 
-## --- Voyage rapide GRADUEL (carte, 2026-07-26) : téléporte progressivement
-## vers la cible pendant que le TEMPS DE JEU s'écoule (ticks réellement simulés
-## → mana régénère, faim, etc.). Accéléré (quelques secondes réelles), on reste
-## sur la carte. `total_ticks` = coût de temps du trajet (fourni par le joueur).
-const TRAVEL_MAX_SECONDS := 6.0     # durée réelle max de l'animation de voyage.
-const TRAVEL_MIN_TICKS_PER_SEC := 1000.0
-var _travel_active := false
-var _travel_from := Vector2.ZERO
-var _travel_target := Vector2.ZERO
-var _travel_total := 0
-var _travel_done := 0
-var _travel_rate := 0.0
-func travel_to(wx: int, wz: int, total_ticks: int) -> void:
-	_travel_from = Vector2(position.x, position.z)
-	_travel_target = Vector2(float(wx), float(wz))
-	_travel_total = maxi(total_ticks, 1)
-	_travel_done = 0
-	_travel_rate = maxf(TRAVEL_MIN_TICKS_PER_SEC, float(_travel_total) / TRAVEL_MAX_SECONDS)
-	_travel_active = true
-
-
+## --- Voyage rapide : plus d'animation (2026-08-03) ---
+##
+## Il a existé ici un voyage GRADUEL : le joueur glissait vers sa destination
+## pendant six secondes réelles pendant que `push_ticks` simulait le temps du
+## trajet, à mille ticks par seconde. C'est retiré. La téléportation est
+## instantanée (`Player.fast_travel_to_world`) et le coût en temps de jeu est
+## PASSÉ, pas joué (`TickManager.skip_ticks`).
+##
+## Ce que l'animation coûtait, et qui ne se voyait qu'en jeu : chaque village
+## survolé était peuplé puis relâché, chaque créature de la trajectoire simulée,
+## et tous les chunks du chemin streamés — pour une traversée que personne ne
+## regardait, puisque la carte reste ouverte pendant le voyage.
+##
+## `is_traveling()` est conservé : la carte du monde l'interroge pour griser ses
+## commandes. Il répond désormais toujours faux, un voyage ne durant plus.
 func is_traveling() -> bool:
-	return _travel_active
-
-
-func _process_travel(delta: float) -> void:
-	var k := mini(int(ceil(_travel_rate * delta)), _travel_total - _travel_done)
-	if k > 0:
-		TickManager.push_ticks(k)  # simule vraiment le temps (mana/faim/IA…).
-		_travel_done += k
-	var frac := float(_travel_done) / float(_travel_total)
-	var xz := _travel_from.lerp(_travel_target, frac)
-	var h := 24.0
-	if WorldManager.generator != null:
-		h = float(WorldManager.generator.height_at(int(xz.x), int(xz.y)))
-	position = Vector3(xz.x + 0.5, h + 2.9, xz.y + 0.5)
-	_vertical_velocity = 0.0
-	_grounded = true
-	if _travel_done >= _travel_total:
-		_travel_active = false
+	return false
 
 
 func _process(delta: float) -> void:
-	if _travel_active:
-		_process_travel(delta)
-		WorldManager.update_center(global_position)
-		return
 	if bench:
 		# Vol automatique rectiligne horizontal, altitude asservie au relief
 		# (suit les montagnes/vallées — traversée continue de nouveaux chunks).
