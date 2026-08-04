@@ -68,6 +68,85 @@ var _material: ShaderMaterial
 var _return_stack: Array[Vector3] = []
 
 
+## STREAMING D'UNE DIMENSION (2026-08-04).
+##
+## Une dimension était PRÉ-BÂTIE en entier à l'entrée : le monde était donc
+## borné par ce qu'on acceptait d'attendre au moment d'entrer. C'est ce qui la
+## réduisait à « une case dans le vide » au lieu d'un monde comparable à
+## l'overworld.
+##
+## Le terrain est maintenant interrogeable colonne par colonne
+## (`RiftBuilder.column_at`, pure et déterministe), ce qui permet de générer à
+## la demande autour du joueur — exactement ce que `WorldManager` fait pour
+## l'overworld.
+##
+## UNE COLONNE DE CHUNKS PAR FRAME, et pas davantage : bâtir tout le voisinage
+## d'un coup reproduirait le gel qu'on vient de supprimer, simplement déplacé
+## au premier pas du joueur. C'est la même règle que le préchauffage des
+## royaumes et que la file de spawn — le tick et la frame sont des budgets de
+## simulation, jamais de construction.
+var _streamed := {}          # dimension → { Vector2i(colonne) → true }
+
+
+func _process(_delta: float) -> void:
+	if active == OVERWORLD or _backends.has(active):
+		return
+	_stream_around_player()
+
+
+func _stream_around_player() -> void:
+	var player := get_node_or_null("/root/Main/Player")
+	if player == null or not player.has_method("get_position_for_ai"):
+		return
+	var declaration: Dictionary = GameData.dimensions.get(String(active), {})
+	if declaration.is_empty():
+		return
+	var terrain: Dictionary = declaration.get("terrain", {})
+	var radius := int(terrain.get("rayon_streaming", 6))
+	var here: Vector3 = player.get_position_for_ai()
+	var center := Vector2i(floori(here.x / 16.0), floori(here.z / 16.0))
+	var done: Dictionary = _streamed.get_or_add(active, {})
+
+	# Du plus proche au plus lointain : ce qu'on a sous les pieds d'abord.
+	for ring in radius + 1:
+		for dz in range(-ring, ring + 1):
+			for dx in range(-ring, ring + 1):
+				if maxi(absi(dx), absi(dz)) != ring:
+					continue
+				var column := center + Vector2i(dx, dz)
+				if done.has(column):
+					continue
+				done[column] = true
+				_build_column(declaration, column)
+				return   # UNE par frame, et on rend la main.
+
+
+## Bâtit une colonne de chunks (16×16 blocs, toute la hauteur utile) depuis la
+## fonction pure du constructeur, puis la maille.
+func _build_column(declaration: Dictionary, column: Vector2i) -> void:
+	var terrain: Dictionary = declaration.get("terrain", {})
+	var crust := int(terrain.get("croute", 10))
+	var touched := {}
+	for lx in 16:
+		for lz in 16:
+			var x := column.x * 16 + lx
+			var z := column.y * 16 + lz
+			var col: Dictionary = RiftBuilder.column_at(declaration,
+					WorldManager.world_seed, x, z)
+			if col.is_empty() or int(col["surface"]) == 0:
+				continue
+			var top := int(col["top"])
+			set_block_in(active, Vector3i(x, top, z), int(col["surface"]), false)
+			touched[Vector3i(x >> 4, top >> 4, z >> 4)] = true
+			for depth in range(1, crust + 1):
+				var y := top - depth
+				set_block_in(active, Vector3i(x, y, z), int(col["roche"]), false)
+				touched[Vector3i(x >> 4, y >> 4, z >> 4)] = true
+	for ck: Vector3i in touched:
+		_remesh(active, ck)
+	_set_visible(active)
+
+
 func set_root(root: Node3D) -> void:
 	_root = root
 
@@ -274,6 +353,7 @@ func remesh_all(dimension: StringName) -> void:
 ## pas à survivre à la sortie : les regénérer coûte moins que de les garder en
 ## mémoire, et c'est déjà la règle de l'overworld (G.1).
 func free_dimension(dimension: StringName) -> void:
+	_streamed.erase(dimension)
 	for ck: Vector3i in (_meshes.get(dimension, {}) as Dictionary):
 		(_meshes[dimension][ck] as MeshInstance3D).queue_free()
 	_meshes.erase(dimension)

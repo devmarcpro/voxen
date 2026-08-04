@@ -179,6 +179,26 @@ func _check_generic_dimension() -> void:
 	_expect(residents > 0, "on y rencontre quelqu'un")
 	_expect(caches > 0, "on y trouve quelque chose à ramasser")
 
+	# LE MONDE S'ÉTEND QUAND ON MARCHE.
+	#
+	# La dimension était PRÉ-BÂTIE en entier à l'entrée : elle était donc bornée
+	# par ce qu'on acceptait d'attendre en y entrant — « une case dans le vide »
+	# plutôt qu'un monde. Le terrain est maintenant interrogeable colonne par
+	# colonne, et généré à la demande autour du joueur.
+	#
+	# On le VÉRIFIE en marchant : sans cette assertion, un streaming débranché
+	# ne se verrait qu'en jouant, au moment de tomber du bord du monde.
+	var chunks_before := DimensionManager.chunk_count(rift)
+	var walk: Vector3 = player.get_position_for_ai() + Vector3(90.0, 0.0, 90.0)
+	player.teleport_to(walk)
+	for i in 40:
+		await wait_frame()
+	var chunks_after := DimensionManager.chunk_count(rift)
+	print("[%s] après 90 blocs de marche : %d chunks → %d" % [
+			TAG, chunks_before, chunks_after])
+	_expect(chunks_after > chunks_before,
+			"le monde se génère à la demande au lieu d'être borné")
+
 	# CHAQUE DIMENSION N'EMPLOIE QUE SES PROPRES BLOCS (demande de l'auteur,
 	# 2026-08-04 : « sinon on va pas s'en sortir »).
 	#

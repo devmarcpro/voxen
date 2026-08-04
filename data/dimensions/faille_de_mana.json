@@ -67,6 +67,7 @@
     "base_y": 64,
     "relief": 34,
     "croute": 10,
-    "demi_etendue": 320
+    "demi_etendue": 48,
+    "rayon_streaming": 6
   }
 }

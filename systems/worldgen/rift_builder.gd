@@ -121,6 +121,50 @@ static func build(dimension: StringName, declaration: Dictionary, world_seed: in
 	return landing
 
 
+## LA COLONNE, À LA DEMANDE — c'est la fonction qui rend le streaming possible.
+##
+## Le terrain était bâti d'un bloc à l'entrée : un carré fini, donc une
+## dimension bornée, et un gel proportionnel à sa taille. Une génération
+## STREAMÉE demande l'inverse : pouvoir répondre « que vaut la colonne (x, z) »
+## sans rien avoir construit autour.
+##
+## La fonction est PURE — mêmes coordonnées, même graine, même réponse — ce qui
+## est exactement la propriété qu'exige un monde généré par morceaux depuis
+## plusieurs fils d'exécution.
+##
+## Retourne { "top": int, "surface": int, "roche": int, "accent": int, "zone": Dictionary }.
+static func column_at(declaration: Dictionary, world_seed: int, x: int, z: int) -> Dictionary:
+	var zones := _zones_of(declaration)
+	if zones.is_empty():
+		return {}
+	var layers: Dictionary = declaration.get("noise_layers", {})
+	var terrain: Dictionary = declaration.get("terrain", {})
+	var height_noise := _layer(layers, "relief", world_seed, 0.012, 4)
+	var zone_noise := _layer(layers, "pays", world_seed, 0.006, 1)
+	var warp_noise := _layer(layers, "torsion", world_seed, 0.020, 2)
+	var zi := _zone_at(zone_noise, x, z, zones.size())
+	var zone: Dictionary = zones[zi]
+	var top := _height_at(height_noise, warp_noise, String(zone.get("relief", "doux")),
+			x, z, int(terrain.get("base_y", BASE_Y)), float(terrain.get("relief", RELIEF)))
+	return {
+		"top": top,
+		"surface": int(GameData.material_runtime_ids.get(String(zone.get("surface_material", "")), 0)),
+		"roche": int(GameData.material_runtime_ids.get(String(zone.get("subsurface_material", "")), 0)),
+		"accent": int(GameData.material_runtime_ids.get(String(zone.get("accent_material", "")), 0)),
+		"zone": zone,
+	}
+
+
+## Les biomes d'une dimension, résolus une fois.
+static func _zones_of(declaration: Dictionary) -> Array[Dictionary]:
+	var zones: Array[Dictionary] = []
+	for biome_id: String in (declaration.get("biomes", []) as Array):
+		var biome: Dictionary = GameData.biomes.get(biome_id, {})
+		if not biome.is_empty():
+			zones.append(biome)
+	return zones
+
+
 ## Une couche de bruit déclarée en données. Le repli garde des valeurs saines
 ## si la fiche de dimension n'en décrit pas.
 static func _layer(layers: Dictionary, id: String, world_seed: int,
