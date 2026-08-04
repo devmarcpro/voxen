@@ -27,6 +27,10 @@
     {
       "id": "palmier",
       "density": 0.00336
+    },
+    {
+      "id": "paletuvier",
+      "density": 0.014
     }
   ],
   "village_palette": {

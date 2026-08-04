@@ -30,6 +30,10 @@
     {
       "id": "if",
       "density": 0.00112
+    },
+    {
+      "id": "genevrier",
+      "density": 0.003
     }
   ],
   "village_palette": {

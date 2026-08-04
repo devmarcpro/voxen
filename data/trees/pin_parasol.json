@@ -1,0 +1,39 @@
+{
+  "id": "pin_parasol",
+  "name_key": "tree.pin_parasol.name",
+  "wood_material": "bois_pin_parasol",
+  "leaf_material": "feuilles_pin_parasol",
+  "height_range": [
+    12,
+    17
+  ],
+  "trunk_radius": 1,
+  "branch_parameters": {
+    "start_fraction": 0.72,
+    "count_range": [
+      4,
+      6
+    ],
+    "angle_deg": 58,
+    "length_range": [
+      3,
+      5
+    ]
+  },
+  "canopy_shape": "umbrella",
+  "canopy_radius_range": [
+    5,
+    7
+  ],
+  "architecture": {
+    "droop": 0.3,
+    "curve": 0.18,
+    "fork": 0.72,
+    "spread_deg": 62.0,
+    "leaf_density": 0.88,
+    "children": 4,
+    "foliage": "needle",
+    "_port": "long fut nu puis parasol d'aiguilles"
+  },
+  "special_tags": []
+}

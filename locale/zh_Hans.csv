@@ -1135,3 +1135,17 @@ season.printemps.name,春季
 season.ete.name,夏季
 season.automne.name,秋季
 season.hiver.name,冬季
+tree.paletuvier.name,红树
+tree.arbre_mort.name,枯树
+tree.pin_parasol.name,伞松
+tree.fromager.name,木棉
+tree.genevrier.name,刺柏
+material.bois_paletuvier.name,红树木
+material.feuilles_paletuvier.name,红树叶
+material.bois_mort.name,枯木
+material.bois_pin_parasol.name,伞松木
+material.feuilles_pin_parasol.name,伞松针
+material.bois_fromager.name,木棉木
+material.feuilles_fromager.name,木棉叶
+material.bois_genevrier.name,刺柏木
+material.feuilles_genevrier.name,刺柏叶

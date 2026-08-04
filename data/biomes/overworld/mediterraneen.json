@@ -30,6 +30,10 @@
     {
       "id": "cypres",
       "density": 0.00224
+    },
+    {
+      "id": "pin_parasol",
+      "density": 0.006
     }
   ],
   "village_palette": {

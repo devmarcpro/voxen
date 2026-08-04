@@ -27,12 +27,12 @@
   ],
   "special_tags": [],
   "architecture": {
-    "droop": 0.05,
+    "droop": -0.08,
     "curve": 0.3,
-    "fork": 0.36,
-    "spread_deg": 56.0,
+    "fork": 0.28,
+    "spread_deg": 64.0,
     "leaf_density": 0.9,
     "children": 4,
-    "_port": "noueux, fourche bas, charpentieres tortueuses"
+    "_port": "noueux, fourche tres bas, charpentieres presque horizontales"
   }
 }

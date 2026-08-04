@@ -1135,3 +1135,17 @@ season.printemps.name,春
 season.ete.name,夏
 season.automne.name,秋
 season.hiver.name,冬
+tree.paletuvier.name,マングローブ
+tree.arbre_mort.name,枯れ木
+tree.pin_parasol.name,カサマツ
+tree.fromager.name,カポック
+tree.genevrier.name,ネズ
+material.bois_paletuvier.name,マングローブ材
+material.feuilles_paletuvier.name,マングローブの葉
+material.bois_mort.name,枯れ木材
+material.bois_pin_parasol.name,カサマツ材
+material.feuilles_pin_parasol.name,カサマツの葉
+material.bois_fromager.name,カポック材
+material.feuilles_fromager.name,カポックの葉
+material.bois_genevrier.name,ネズ材
+material.feuilles_genevrier.name,ネズの葉

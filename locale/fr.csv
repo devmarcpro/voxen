@@ -1135,3 +1135,17 @@ season.printemps.name,Printemps
 season.ete.name,Été
 season.automne.name,Automne
 season.hiver.name,Hiver
+tree.paletuvier.name,Palétuvier
+tree.arbre_mort.name,Arbre mort
+tree.pin_parasol.name,Pin parasol
+tree.fromager.name,Fromager
+tree.genevrier.name,Genévrier
+material.bois_paletuvier.name,Bois de palétuvier
+material.feuilles_paletuvier.name,Feuilles de palétuvier
+material.bois_mort.name,Bois mort
+material.bois_pin_parasol.name,Bois de pin parasol
+material.feuilles_pin_parasol.name,Aiguilles de pin parasol
+material.bois_fromager.name,Bois de fromager
+material.feuilles_fromager.name,Feuilles de fromager
+material.bois_genevrier.name,Bois de genévrier
+material.feuilles_genevrier.name,Feuilles de genévrier

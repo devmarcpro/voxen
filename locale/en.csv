@@ -1135,3 +1135,17 @@ season.printemps.name,Spring
 season.ete.name,Summer
 season.automne.name,Autumn
 season.hiver.name,Winter
+tree.paletuvier.name,Mangrove
+tree.arbre_mort.name,Dead tree
+tree.pin_parasol.name,Umbrella pine
+tree.fromager.name,Kapok tree
+tree.genevrier.name,Juniper
+material.bois_paletuvier.name,Mangrove wood
+material.feuilles_paletuvier.name,Mangrove leaves
+material.bois_mort.name,Deadwood
+material.bois_pin_parasol.name,Umbrella pine wood
+material.feuilles_pin_parasol.name,Umbrella pine needles
+material.bois_fromager.name,Kapok wood
+material.feuilles_fromager.name,Kapok leaves
+material.bois_genevrier.name,Juniper wood
+material.feuilles_genevrier.name,Juniper leaves

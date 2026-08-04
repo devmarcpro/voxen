@@ -26,6 +26,10 @@
     {
       "id": "epicea",
       "density": 0.00056
+    },
+    {
+      "id": "genevrier",
+      "density": 0.004
     }
   ],
   "village_palette": {

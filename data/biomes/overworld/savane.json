@@ -35,6 +35,10 @@
     {
       "id": "baobab",
       "density": 0.00084
+    },
+    {
+      "id": "arbre_mort",
+      "density": 0.0015
     }
   ],
   "village_palette": {

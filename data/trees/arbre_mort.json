@@ -1,0 +1,39 @@
+{
+  "id": "arbre_mort",
+  "name_key": "tree.arbre_mort.name",
+  "wood_material": "bois_mort",
+  "leaf_material": "bois_mort",
+  "height_range": [
+    8,
+    14
+  ],
+  "trunk_radius": 1,
+  "branch_parameters": {
+    "start_fraction": 0.4,
+    "count_range": [
+      3,
+      5
+    ],
+    "angle_deg": 50,
+    "length_range": [
+      3,
+      5
+    ]
+  },
+  "canopy_shape": "broad",
+  "canopy_radius_range": [
+    3,
+    5
+  ],
+  "architecture": {
+    "droop": 0.2,
+    "curve": 0.4,
+    "fork": 0.42,
+    "spread_deg": 58.0,
+    "leaf_density": 0.0,
+    "children": 4,
+    "depth": 4,
+    "_port": "squelette nu, ramure fine et tortueuse"
+  },
+  "special_tags": []
+}
