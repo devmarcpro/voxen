@@ -256,14 +256,33 @@ static func cave_tree_species(world_seed: int, x: int, z: int) -> String:
 ##
 ## Le seuil monte avec la profondeur : près de la surface on ne troue presque
 ## rien (sinon le sol serait une passoire), et plus bas les salles s'élargissent.
+## BRUITS MIS EN CACHE. Ils étaient construits À CHAQUE APPEL — donc à chaque
+## bloc pour les cavernes et les minerais : une colonne de 16×16 sur 56 blocs
+## de profondeur allouait quatorze mille objets FastNoiseLite. C'est ce qui
+## faisait ramer la dimension, et ça ne se voyait dans aucun profil de sonde,
+## puisque les sondes vérifiaient que ça MARCHE, pas que c'est rapide.
+static var _noise_cache := {}
+
+
+static func _cached_noise(key: String, world_seed: int, offset: int,
+		frequency: float) -> FastNoiseLite:
+	var full_key := "%s|%d" % [key, world_seed]
+	if _noise_cache.has(full_key):
+		return _noise_cache[full_key]
+	var noise := FastNoiseLite.new()
+	noise.seed = world_seed ^ offset
+	noise.frequency = frequency
+	_noise_cache[full_key] = noise
+	return noise
+
+
 static func is_hollow(declaration: Dictionary, world_seed: int,
 		x: int, y: int, z: int, top: int) -> bool:
 	var spec: Dictionary = (declaration.get("terrain", {}) as Dictionary).get("cavernes", {})
 	if spec.is_empty():
 		return false
-	var noise := FastNoiseLite.new()
-	noise.seed = world_seed ^ int(spec.get("seed_offset", 0))
-	noise.frequency = float(spec.get("frequency", 0.028))
+	var noise := _cached_noise("cavernes", world_seed,
+			int(spec.get("seed_offset", 0)), float(spec.get("frequency", 0.028)))
 	var depth := float(top - y)
 	# Les huit premiers blocs restent pleins : une caverne qui débouche au ras
 	# du sol ferait un trou dans le paysage, pas une grotte.
@@ -272,11 +291,9 @@ static func is_hollow(declaration: Dictionary, world_seed: int,
 
 
 ## Veine de minerai : rare, groupée, et jamais en surface.
-static func is_ore(declaration: Dictionary, world_seed: int, x: int, y: int, z: int) -> bool:
-	var noise := FastNoiseLite.new()
-	noise.seed = world_seed ^ 55501
-	noise.frequency = 0.09
-	return noise.get_noise_3d(float(x), float(y), float(z)) > 0.62
+static func is_ore(_declaration: Dictionary, world_seed: int, x: int, y: int, z: int) -> bool:
+	return _cached_noise("minerai", world_seed, 55501, 0.09).get_noise_3d(
+			float(x), float(y), float(z)) > 0.62
 
 
 ## SPIRALE : altitude de la rampe en (x, z), ou -INF s'il n'y en a pas ici.
@@ -289,9 +306,8 @@ static func spiral_at(declaration: Dictionary, world_seed: int,
 	var spec: Dictionary = (declaration.get("terrain", {}) as Dictionary).get("spirales", {})
 	if spec.is_empty():
 		return -(1 << 30)
-	var picker := FastNoiseLite.new()
-	picker.seed = world_seed ^ int(spec.get("seed_offset", 0))
-	picker.frequency = float(spec.get("frequency", 0.004))
+	var picker := _cached_noise("spirales", world_seed,
+			int(spec.get("seed_offset", 0)), float(spec.get("frequency", 0.004)))
 	# Un centre de spirale par grande poche de bruit.
 	if picker.get_noise_2d(float(x), float(z)) < float(spec.get("seuil", 0.72)):
 		return -(1 << 30)

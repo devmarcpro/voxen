@@ -236,6 +236,27 @@ func _check_generic_dimension() -> void:
 				hung += 1
 	print("[%s] %d point(s) d'accroche d'arbre suspendu sur 961 sondés" % [TAG, hung])
 	_expect(hung > 10, "les cavernes portent des arbres à l'envers")
+
+	# LE COÛT D'UNE COLONNE, chronométré.
+	#
+	# L'auteur a signalé que la dimension ramait énormément. Les sondes
+	# vérifiaient que le terrain EXISTE, jamais qu'il se génère vite : les
+	# cavernes ont fait passer une colonne de 10 à 56 blocs de profondeur, et
+	# les bruits de caverne et de minerai étaient reconstruits À CHAQUE BLOC —
+	# quatorze mille allocations par colonne. Le streaming en fait une par
+	# frame : au-delà du budget d'une frame, ça se voit immédiatement.
+	var samples: Array[float] = []
+	for i in 5:
+		var far := Vector2i(500 + i * 9, -500 - i * 7)
+		var start := Time.get_ticks_usec()
+		DimensionManager.call("_build_column", declaration, far)
+		samples.append(float(Time.get_ticks_usec() - start) / 1000.0)
+	samples.sort()
+	var median := samples[samples.size() / 2]
+	print("[%s] génération d'une colonne : médiane %.1f ms (min %.1f, max %.1f)" % [
+			TAG, median, samples[0], samples[samples.size() - 1]])
+	_expect(median < 50.0,
+			"une colonne se génère sans bloquer la frame (%.1f ms)" % median)
 	_expect(RiftBuilder.cave_tree_species(WorldManager.world_seed, 12, -8)
 			== RiftBuilder.cave_tree_species(WorldManager.world_seed, 12, -8),
 			"le même point redonne la même essence suspendue")
