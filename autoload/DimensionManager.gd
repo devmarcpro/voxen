@@ -185,6 +185,20 @@ func _build_column(declaration: Dictionary, column: Vector2i) -> void:
 				var y := top - depth
 				set_block_in(active, Vector3i(x, y, z), int(col["roche"]), false)
 				touched[Vector3i(x >> 4, y >> 4, z >> 4)] = true
+	# ÎLE SUSPENDUE, s'il y en a une sur cette colonne. Elle est déterministe :
+	# la même colonne redonnera la même île après une éviction, au lieu d'en
+	# inventer une seconde à côté de la première.
+	var island := RiftBuilder.sky_island_at(WorldManager.world_seed, column)
+	if not island.is_empty():
+		var sample: Dictionary = RiftBuilder.column_at(declaration,
+				WorldManager.world_seed, column.x * 16 + 8, column.y * 16 + 8)
+		if not sample.is_empty():
+			var from_island := RiftBuilder.carve_sky_island(active, island,
+					int(sample["top"]), int(sample["surface"]), int(sample["roche"]),
+					int(sample["accent"]), WorldManager.world_seed)
+			for ck: Vector3i in from_island:
+				touched[ck] = true
+
 	for ck: Vector3i in touched:
 		_remesh(active, ck)
 	_set_visible(active)

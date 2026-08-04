@@ -165,6 +165,71 @@ static func _zones_of(declaration: Dictionary) -> Array[Dictionary]:
 	return zones
 
 
+## ÎLES FLOTTANTES AU-DESSUS DU SOL (2026-08-04).
+##
+## L'auteur voulait les deux : un terrain CONTINU sur lequel on marche, ET des
+## îles suspendues. La première version n'avait que les îles — on n'y marchait
+## pas, on tombait ; en la rendant continue, elles ont disparu. Elles reviennent
+## ici à leur vraie place : dans le ciel, au-dessus d'un sol praticable.
+##
+## Elles sont posées par un semis DÉTERMINISTE — une île appartient à sa
+## colonne, calculée depuis les coordonnées et la graine, jamais tirée au
+## hasard. C'est ce qui permet à une colonne évincée puis regénérée de retrouver
+## exactement la même île, au lieu d'en inventer une autre à côté de la
+## première.
+static func sky_island_at(world_seed: int, column: Vector2i) -> Dictionary:
+	# Une colonne de chunks sur ~11 porte une île. Assez rare pour qu'en croiser
+	# une soit un événement, assez fréquent pour qu'on en voie toujours.
+	var h := _column_hash(world_seed, column)
+	if h % 11 != 0:
+		return {}
+	var span := float((h >> 4) % 7) + 5.0                   # rayon 5 à 11
+	return {
+		"centre": Vector3i(column.x * 16 + 8, 0, column.y * 16 + 8),
+		"rayon": int(span),
+		"hauteur": 26 + int((h >> 8) % 34),                 # 26 à 59 au-dessus du sol
+		"epaisseur": 3 + int((h >> 12) % 5),
+	}
+
+
+## Pose une île suspendue : un disque de sol, une pointe rocheuse dessous.
+static func carve_sky_island(dimension: StringName, island: Dictionary,
+		ground_y: int, surface: int, rock: int, accent: int, world_seed: int) -> Dictionary:
+	var touched := {}
+	if island.is_empty() or surface == 0 or rock == 0:
+		return touched
+	var center: Vector3i = island["centre"]
+	var radius := int(island["rayon"])
+	var thickness := int(island["epaisseur"])
+	var top := ground_y + int(island["hauteur"])
+	for depth in thickness:
+		# S'effile vers le bas : c'est la pointe qui fait lire un morceau
+		# arraché plutôt qu'une galette posée sur rien.
+		var level := int(round(float(radius) * (1.0 - float(depth) / float(thickness) * 0.85)))
+		for dx in range(-level, level + 1):
+			for dz in range(-level, level + 1):
+				if dx * dx + dz * dz > level * level:
+					continue
+				var pos := Vector3i(center.x + dx, top - depth, center.z + dz)
+				# Bord rongé, sinon l'île a un contour de compas.
+				if depth == 0 and _edge_noise(pos, world_seed) < 0.16 \
+						and dx * dx + dz * dz > (level - 1) * (level - 1):
+					continue
+				var id := surface if depth == 0 else rock
+				if depth > 0 and accent != 0 and _edge_noise(pos, world_seed + 3) < 0.06:
+					id = accent
+				DimensionManager.set_block_in(dimension, pos, id, false)
+				touched[Vector3i(pos.x >> 4, pos.y >> 4, pos.z >> 4)] = true
+	return touched
+
+
+## Hachage déterministe d'une colonne de chunks.
+static func _column_hash(world_seed: int, column: Vector2i) -> int:
+	var v := (world_seed * 374761393) ^ (column.x * 668265263) ^ (column.y * 2246822519)
+	v = (v ^ (v >> 13)) * 1274126177
+	return absi(v ^ (v >> 16))
+
+
 ## Une couche de bruit déclarée en données. Le repli garde des valeurs saines
 ## si la fiche de dimension n'en décrit pas.
 static func _layer(layers: Dictionary, id: String, world_seed: int,

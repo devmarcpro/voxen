@@ -153,8 +153,14 @@ func _check_generic_dimension() -> void:
 	if can_capture():
 		camera.input_locked = true
 		player.input_locked = true
-		camera.position = Vector3(26.0, 14.0, 26.0)
-		camera.look_at(Vector3(0.0, 0.0, 0.0), Vector3.UP)
+		# CADRAGE RELATIF AU JOUEUR, jamais à l'origine. Le sol de la faille est
+		# passé de y≈0 (îlots) à y≈64 (terrain continu) : une caméra posée en
+		# dur à hauteur d'îlot photographiait le vide sous le monde, et donnait
+		# à croire que la dimension était vide alors que la sonde venait d'y
+		# compter des centaines de blocs.
+		var eye: Vector3 = player.get_position_for_ai()
+		camera.position = eye + Vector3(34.0, 26.0, 34.0)
+		camera.look_at(eye + Vector3(0.0, -6.0, 0.0), Vector3.UP)
 		await wait_seconds(1.2)
 		await screenshot("faille_de_mana.png")
 		print("[%s] capture : faille_de_mana.png" % TAG)
@@ -198,6 +204,29 @@ func _check_generic_dimension() -> void:
 			TAG, chunks_before, chunks_after])
 	_expect(chunks_after > chunks_before,
 			"le monde se génère à la demande au lieu d'être borné")
+
+	# LES ÎLES SUSPENDUES EXISTENT, et elles sont DÉTERMINISTES.
+	#
+	# Le semis est calculé depuis la colonne et la graine, jamais tiré : c'est
+	# ce qui permet à une colonne évincée puis regénérée de retrouver la MÊME
+	# île. Sans ça, revenir sur ses pas ferait pousser une seconde île à côté de
+	# la première — un défaut qu'on ne voit qu'en marchant longtemps.
+	var isles := 0
+	var first := {}
+	for cx in range(-14, 15):
+		for cz in range(-14, 15):
+			var island := RiftBuilder.sky_island_at(WorldManager.world_seed, Vector2i(cx, cz))
+			if not island.is_empty():
+				isles += 1
+				if first.is_empty():
+					first = island
+	print("[%s] %d île(s) suspendue(s) sur 841 colonnes" % [TAG, isles])
+	_expect(isles > 20, "le ciel en porte assez pour qu'on en croise")
+	if not first.is_empty():
+		var again := RiftBuilder.sky_island_at(WorldManager.world_seed,
+				Vector2i((int(first["centre"].x) - 8) / 16, (int(first["centre"].z) - 8) / 16))
+		_expect(str(again) == str(first),
+				"la même colonne redonne exactement la même île")
 
 	# CE QUE LE JOUEUR A BÂTI SURVIT À L'ÉVICTION.
 	#
