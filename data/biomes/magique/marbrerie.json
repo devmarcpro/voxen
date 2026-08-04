@@ -1,0 +1,33 @@
+{
+  "id": "marbrerie",
+  "name_key": "biome.marbrerie.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "priority": 50,
+  "conditions": {},
+  "surface_material": "mousse_lumineuse",
+  "sub_material": "marbre_iris",
+  "subsurface_material": "marbre_iris",
+  "accent_material": "coeur_prisme",
+  "relief": "tordu",
+  "ores": [
+    "coeur_prisme"
+  ],
+  "vegetation": [
+    {
+      "id": "arbre_de_verre",
+      "density": 0.04
+    },
+    {
+      "id": "arbre_creux",
+      "density": 0.02
+    },
+    {
+      "id": "champignon_paroi_geant",
+      "density": 0.02
+    }
+  ]
+}

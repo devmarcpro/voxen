@@ -1,0 +1,38 @@
+{
+  "id": "larme_de_lune",
+  "name_key": "material.larme_de_lune.name",
+  "category": "minerai",
+  "stats": {
+    "durete": 7,
+    "densite": 8,
+    "valeur_base": 44,
+    "conductivite_mana": 45,
+    "flammabilite": 20,
+    "isolation": 30,
+    "conductivite_electrique": 10,
+    "flottabilite": 40,
+    "luminosite": 9,
+    "fertilite": 30,
+    "transparence": 0,
+    "elasticite": 40,
+    "friction": 45
+  },
+  "tags": [
+    "magique"
+  ],
+  "color": "#E8E4FF",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 913,
+    "amplitude": 0.12,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "aucun",
+    "biome_tags": []
+  }
+}

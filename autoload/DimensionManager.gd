@@ -164,6 +164,38 @@ func _evict_far(center: Vector2i, radius: int) -> void:
 	done.erase(Vector2i(ck.x, ck.z))
 
 
+## Suspend un arbre au plafond d'une caverne, s'il y en a un ici.
+##
+## Un plafond, c'est un bloc PLEIN qui a du VIDE dessous — la définition suffit,
+## et elle se lit directement dans ce qu'on vient d'écrire.
+func _hang_cave_trees(declaration: Dictionary, x: int, z: int, top: int, crust: int) -> void:
+	# Semis déterministe : la même colonne redonne le même arbre après une
+	# éviction, comme les îles suspendues.
+	if RiftBuilder.cave_tree_hash(WorldManager.world_seed, x, z) % 23 != 0:
+		return
+	var species_id := RiftBuilder.cave_tree_species(WorldManager.world_seed, x, z)
+	var species: Dictionary = GameData.trees.get(species_id, {})
+	if species.is_empty():
+		return
+	# On cherche un plafond assez bas pour que l'arbre pende dans le vide.
+	for depth in range(14, crust - 6):
+		var ceiling := top - depth
+		if block_at_in(active, Vector3i(x, ceiling, z)) == 0:
+			continue
+		if block_at_in(active, Vector3i(x, ceiling - 1, z)) != 0:
+			continue
+		var tree := TreeGenerator.generate(Vector3i(x, ceiling, z),
+				WorldManager.world_seed + x * 31 + z, species)
+		var blocks: Dictionary = tree["blocks"]
+		for pos: Vector3i in blocks:
+			# LE MIROIR : on retourne autour du point d'accroche.
+			var flipped := Vector3i(pos.x, 2 * ceiling - pos.y, pos.z)
+			if block_at_in(active, flipped) != 0:
+				continue   # Ne perce pas la roche.
+			set_block_in(active, flipped, blocks[pos], false)
+		return
+
+
 ## Bâtit une colonne de chunks (16×16 blocs, toute la hauteur utile) depuis la
 ## fonction pure du constructeur, puis la maille.
 func _build_column(declaration: Dictionary, column: Vector2i) -> void:
@@ -183,8 +215,35 @@ func _build_column(declaration: Dictionary, column: Vector2i) -> void:
 			touched[Vector3i(x >> 4, top >> 4, z >> 4)] = true
 			for depth in range(1, crust + 1):
 				var y := top - depth
-				set_block_in(active, Vector3i(x, y, z), int(col["roche"]), false)
+				# CAVERNES : on ne pose PAS de bloc là où le bruit 3D creuse.
+				# Le sol n'est plus une croûte mais un volume, et c'est ce qui
+				# permet des salles énormes, des surplombs et plusieurs niveaux
+				# — un terrain de surface seule ne peut rien de tout ça.
+				if RiftBuilder.is_hollow(declaration, WorldManager.world_seed, x, y, z, top):
+					continue
+				var id := int(col["roche"])
+				# Minerais de la zone, en veines : la raison de creuser.
+				if RiftBuilder.is_ore(declaration, WorldManager.world_seed, x, y, z):
+					id = int(col["accent"])
+				set_block_in(active, Vector3i(x, y, z), id, false)
 				touched[Vector3i(x >> 4, y >> 4, z >> 4)] = true
+			# ARBRES À L'ENVERS, suspendus aux plafonds de caverne (croquis de
+			# l'auteur). Une salle vide est un décor ; une salle où pendent des
+			# arbres tête en bas est un lieu.
+			#
+			# On ne fait PAS un générateur d'arbre inversé : on prend l'arbre
+			# normal et on MIROITE ses blocs autour de son point d'accroche.
+			# Un générateur en double aurait doublé la maintenance pour un
+			# résultat identique — et il aurait fallu retoucher les 57 essences.
+			_hang_cave_trees(declaration, x, z, top, crust)
+
+			# SPIRALE : une rampe qui monte en tournant depuis le sol. C'est ce
+			# qui rend les niveaux praticables au lieu d'être des étages
+			# empilés qu'on ne peut que survoler.
+			var ramp := RiftBuilder.spiral_at(declaration, WorldManager.world_seed, x, z, top)
+			if ramp != -(1 << 30):
+				set_block_in(active, Vector3i(x, ramp, z), int(col["surface"]), false)
+				touched[Vector3i(x >> 4, ramp >> 4, z >> 4)] = true
 	# ÎLE SUSPENDUE, s'il y en a une sur cette colonne. Elle est déterministe :
 	# la même colonne redonnera la même île après une éviction, au lieu d'en
 	# inventer une seconde à côté de la première.

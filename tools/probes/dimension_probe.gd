@@ -222,6 +222,23 @@ func _check_generic_dimension() -> void:
 					first = island
 	print("[%s] %d île(s) suspendue(s) sur 841 colonnes" % [TAG, isles])
 	_expect(isles > 20, "le ciel en porte assez pour qu'on en croise")
+
+	# LES ARBRES SUSPENDUS AUX PLAFONDS DE CAVERNE (croquis de l'auteur).
+	# Ils sont posés en MIROIR d'un arbre normal autour de leur point
+	# d'accroche — pas par un second générateur, qui aurait doublé la
+	# maintenance des 57 essences pour un résultat identique. On vérifie que le
+	# semis existe et qu'il est déterministe : sans ça, une caverne évincée puis
+	# regénérée verrait pousser un second arbre à côté du premier.
+	var hung := 0
+	for hx in range(-60, 61, 4):
+		for hz in range(-60, 61, 4):
+			if RiftBuilder.cave_tree_hash(WorldManager.world_seed, hx, hz) % 23 == 0:
+				hung += 1
+	print("[%s] %d point(s) d'accroche d'arbre suspendu sur 961 sondés" % [TAG, hung])
+	_expect(hung > 10, "les cavernes portent des arbres à l'envers")
+	_expect(RiftBuilder.cave_tree_species(WorldManager.world_seed, 12, -8)
+			== RiftBuilder.cave_tree_species(WorldManager.world_seed, 12, -8),
+			"le même point redonne la même essence suspendue")
 	if not first.is_empty():
 		var again := RiftBuilder.sky_island_at(WorldManager.world_seed,
 				Vector2i((int(first["centre"].x) - 8) / 16, (int(first["centre"].z) - 8) / 16))

@@ -1,0 +1,38 @@
+{
+  "id": "feuillage_ambre",
+  "name_key": "material.feuillage_ambre.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 1,
+    "densite": 1,
+    "valeur_base": 4,
+    "conductivite_mana": 45,
+    "flammabilite": 60,
+    "isolation": 30,
+    "conductivite_electrique": 10,
+    "flottabilite": 40,
+    "luminosite": 5,
+    "fertilite": 30,
+    "transparence": 10,
+    "elasticite": 40,
+    "friction": 45
+  },
+  "tags": [
+    "magique"
+  ],
+  "color": "#F0C878",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 923,
+    "amplitude": 0.12,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "hache",
+    "skill": "bucheronnage"
+  },
+  "world_gen": {
+    "mode": "aucun",
+    "biome_tags": []
+  }
+}

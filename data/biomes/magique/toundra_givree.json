@@ -1,0 +1,29 @@
+{
+  "id": "toundra_givree",
+  "name_key": "biome.toundra_givree.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "priority": 50,
+  "conditions": {},
+  "surface_material": "givre_songe",
+  "sub_material": "gres_stellaire",
+  "subsurface_material": "gres_stellaire",
+  "accent_material": "larme_de_lune",
+  "relief": "champignon",
+  "ores": [
+    "larme_de_lune"
+  ],
+  "vegetation": [
+    {
+      "id": "arbre_neige",
+      "density": 0.05
+    },
+    {
+      "id": "arbre_lanterne",
+      "density": 0.02
+    }
+  ]
+}

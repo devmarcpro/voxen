@@ -1,0 +1,39 @@
+{
+  "id": "arbre_velours",
+  "name_key": "tree.arbre_velours.name",
+  "wood_material": "bois_velours",
+  "leaf_material": "feuillage_vin",
+  "height_range": [
+    7,
+    12
+  ],
+  "trunk_radius": 1,
+  "branch_parameters": {
+    "start_fraction": 0.4,
+    "count_range": [
+      3,
+      5
+    ],
+    "angle_deg": 50,
+    "length_range": [
+      2,
+      4
+    ]
+  },
+  "canopy_shape": "voute",
+  "canopy_radius_range": [
+    5,
+    8
+  ],
+  "special_tags": [],
+  "architecture": {
+    "droop": -0.55,
+    "curve": 0.34,
+    "fork": 0.3,
+    "spread_deg": 46.0,
+    "leaf_density": 0.95,
+    "children": 5,
+    "roots": 6,
+    "_port": "arche de velours qui retombe au sol"
+  }
+}

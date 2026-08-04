@@ -44,7 +44,14 @@
     "dunes_irisees",
     "champs_solaires",
     "recif_corallien",
-    "cathedrale_cristal"
+    "cathedrale_cristal",
+    "landes_lavande",
+    "lagon_turquoise",
+    "plaine_cendree",
+    "velours_pourpre",
+    "toundra_givree",
+    "terrasses_ambre",
+    "marbrerie"
   ],
   "noise_layers": {
     "relief": {
@@ -53,7 +60,7 @@
       "seed_offset": 4522
     },
     "pays": {
-      "frequency": 0.006,
+      "frequency": 0.01,
       "octaves": 1,
       "seed_offset": 8891
     },
@@ -66,8 +73,18 @@
   "terrain": {
     "base_y": 64,
     "relief": 34,
-    "croute": 10,
+    "croute": 56,
     "demi_etendue": 48,
-    "rayon_streaming": 6
+    "rayon_streaming": 6,
+    "cavernes": {
+      "frequency": 0.028,
+      "seuil": 0.42,
+      "seed_offset": 21001
+    },
+    "spirales": {
+      "frequency": 0.004,
+      "seuil": 0.72,
+      "seed_offset": 31002
+    }
   }
 }

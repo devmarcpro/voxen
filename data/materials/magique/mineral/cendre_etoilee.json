@@ -1,0 +1,38 @@
+{
+  "id": "cendre_etoilee",
+  "name_key": "material.cendre_etoilee.name",
+  "category": "mineral",
+  "stats": {
+    "durete": 3,
+    "densite": 4,
+    "valeur_base": 4,
+    "conductivite_mana": 45,
+    "flammabilite": 20,
+    "isolation": 30,
+    "conductivite_electrique": 10,
+    "flottabilite": 40,
+    "luminosite": 3,
+    "fertilite": 90,
+    "transparence": 0,
+    "elasticite": 40,
+    "friction": 45
+  },
+  "tags": [
+    "magique"
+  ],
+  "color": "#3E3A5E",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 903,
+    "amplitude": 0.12,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "pelle",
+    "skill": "terrassement"
+  },
+  "world_gen": {
+    "mode": "aucun",
+    "biome_tags": []
+  }
+}

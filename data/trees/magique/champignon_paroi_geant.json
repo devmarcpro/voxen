@@ -1,0 +1,38 @@
+{
+  "id": "champignon_paroi_geant",
+  "name_key": "tree.champignon_paroi_geant.name",
+  "wood_material": "bois_creux",
+  "leaf_material": "champignon_paroi",
+  "height_range": [
+    4,
+    8
+  ],
+  "trunk_radius": 1,
+  "branch_parameters": {
+    "start_fraction": 0.4,
+    "count_range": [
+      3,
+      5
+    ],
+    "angle_deg": 50,
+    "length_range": [
+      2,
+      4
+    ]
+  },
+  "canopy_shape": "corolle",
+  "canopy_radius_range": [
+    3,
+    6
+  ],
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.1,
+    "curve": 0.4,
+    "fork": 0.92,
+    "spread_deg": 88.0,
+    "leaf_density": 0.98,
+    "children": 5,
+    "_port": "champignon de caverne, chapeau lumineux"
+  }
+}

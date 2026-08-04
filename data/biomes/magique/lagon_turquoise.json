@@ -1,0 +1,33 @@
+{
+  "id": "lagon_turquoise",
+  "name_key": "biome.lagon_turquoise.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "priority": 50,
+  "conditions": {},
+  "surface_material": "herbe_turquoise",
+  "sub_material": "roche_bulle",
+  "subsurface_material": "roche_bulle",
+  "accent_material": "mithril_songe",
+  "relief": "bulbeux",
+  "ores": [
+    "mithril_songe"
+  ],
+  "vegetation": [
+    {
+      "id": "arbre_nuage",
+      "density": 0.05
+    },
+    {
+      "id": "champignon_songe",
+      "density": 0.03
+    },
+    {
+      "id": "champignon_paroi_geant",
+      "density": 0.02
+    }
+  ]
+}

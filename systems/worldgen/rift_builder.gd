@@ -230,6 +230,79 @@ static func _column_hash(world_seed: int, column: Vector2i) -> int:
 	return absi(v ^ (v >> 16))
 
 
+## Semis des arbres de caverne : déterministe, comme celui des îles.
+static func cave_tree_hash(world_seed: int, x: int, z: int) -> int:
+	var v := (world_seed * 2246822519) ^ (x * 374761393) ^ (z * 668265263)
+	v = (v ^ (v >> 15)) * 1274126177
+	return absi(v ^ (v >> 13))
+
+
+## Essence suspendue. Les arbres à l'envers sont TOUJOURS des essences de rêve —
+## un chêne pendu au plafond d'une grotte serait comique, un arbre-lanterne ou
+## un champignon de paroi y sont chez eux.
+const CAVE_SPECIES := ["arbre_lanterne", "champignon_paroi_geant", "arbre_velours",
+		"arbre_de_verre"]
+
+static func cave_tree_species(world_seed: int, x: int, z: int) -> String:
+	return String(CAVE_SPECIES[cave_tree_hash(world_seed, x, z) / 23 % CAVE_SPECIES.size()])
+
+
+## CAVERNES : le bruit 3D creuse-t-il ici ?
+##
+## Un terrain qui n'a qu'une surface et une croûte pleine ne peut offrir ni
+## salle, ni surplomb, ni second niveau — on marche dessus et c'est tout. En
+## creusant au bruit 3D, le sol devient un VOLUME : des cavernes énormes, des
+## voûtes, des puits qui traversent.
+##
+## Le seuil monte avec la profondeur : près de la surface on ne troue presque
+## rien (sinon le sol serait une passoire), et plus bas les salles s'élargissent.
+static func is_hollow(declaration: Dictionary, world_seed: int,
+		x: int, y: int, z: int, top: int) -> bool:
+	var spec: Dictionary = (declaration.get("terrain", {}) as Dictionary).get("cavernes", {})
+	if spec.is_empty():
+		return false
+	var noise := FastNoiseLite.new()
+	noise.seed = world_seed ^ int(spec.get("seed_offset", 0))
+	noise.frequency = float(spec.get("frequency", 0.028))
+	var depth := float(top - y)
+	# Les huit premiers blocs restent pleins : une caverne qui débouche au ras
+	# du sol ferait un trou dans le paysage, pas une grotte.
+	var opening := clampf((depth - 8.0) / 26.0, 0.0, 1.0)
+	return absf(noise.get_noise_3d(float(x), float(y) * 1.6, float(z))) 			< float(spec.get("seuil", 0.42)) * opening
+
+
+## Veine de minerai : rare, groupée, et jamais en surface.
+static func is_ore(declaration: Dictionary, world_seed: int, x: int, y: int, z: int) -> bool:
+	var noise := FastNoiseLite.new()
+	noise.seed = world_seed ^ 55501
+	noise.frequency = 0.09
+	return noise.get_noise_3d(float(x), float(y), float(z)) > 0.62
+
+
+## SPIRALE : altitude de la rampe en (x, z), ou -INF s'il n'y en a pas ici.
+##
+## Une rampe hélicoïdale qui monte depuis le sol — ce qui rend les niveaux
+## praticables. Sans elle, un terrain à étages n'est qu'une pile de plateaux
+## qu'on ne peut que survoler, et la verticalité ne sert à rien.
+static func spiral_at(declaration: Dictionary, world_seed: int,
+		x: int, z: int, top: int) -> int:
+	var spec: Dictionary = (declaration.get("terrain", {}) as Dictionary).get("spirales", {})
+	if spec.is_empty():
+		return -(1 << 30)
+	var picker := FastNoiseLite.new()
+	picker.seed = world_seed ^ int(spec.get("seed_offset", 0))
+	picker.frequency = float(spec.get("frequency", 0.004))
+	# Un centre de spirale par grande poche de bruit.
+	if picker.get_noise_2d(float(x), float(z)) < float(spec.get("seuil", 0.72)):
+		return -(1 << 30)
+	# L'angle autour du centre de la poche donne la hauteur : un tour complet
+	# monte de douze blocs. C'est la définition même d'une hélice.
+	var angle := atan2(float(z), float(x))
+	var radius := sqrt(float(x * x + z * z))
+	var turns := angle / TAU + radius / 26.0
+	return top + int(round(turns * 12.0)) % 40 + 4
+
+
 ## Une couche de bruit déclarée en données. Le repli garde des valeurs saines
 ## si la fiche de dimension n'en décrit pas.
 static func _layer(layers: Dictionary, id: String, world_seed: int,

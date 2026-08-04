@@ -1,0 +1,29 @@
+{
+  "id": "landes_lavande",
+  "name_key": "biome.landes_lavande.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "priority": 50,
+  "conditions": {},
+  "surface_material": "herbe_lavande",
+  "sub_material": "basalte_lunaire",
+  "subsurface_material": "basalte_lunaire",
+  "accent_material": "larme_de_lune",
+  "relief": "doux",
+  "ores": [
+    "larme_de_lune"
+  ],
+  "vegetation": [
+    {
+      "id": "arbre_torsade",
+      "density": 0.05
+    },
+    {
+      "id": "arbre_neige",
+      "density": 0.03
+    }
+  ]
+}

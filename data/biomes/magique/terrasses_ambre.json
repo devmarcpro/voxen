@@ -1,0 +1,29 @@
+{
+  "id": "terrasses_ambre",
+  "name_key": "biome.terrasses_ambre.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "priority": 50,
+  "conditions": {},
+  "surface_material": "herbe_safran",
+  "sub_material": "gres_stellaire",
+  "subsurface_material": "gres_stellaire",
+  "accent_material": "veine_aurore",
+  "relief": "champignon",
+  "ores": [
+    "veine_aurore"
+  ],
+  "vegetation": [
+    {
+      "id": "arbre_creux",
+      "density": 0.05
+    },
+    {
+      "id": "tournesol_geant",
+      "density": 0.03
+    }
+  ]
+}

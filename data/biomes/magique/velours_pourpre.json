@@ -1,0 +1,25 @@
+{
+  "id": "velours_pourpre",
+  "name_key": "biome.velours_pourpre.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "priority": 50,
+  "conditions": {},
+  "surface_material": "sol_velours",
+  "sub_material": "marbre_iris",
+  "subsurface_material": "marbre_iris",
+  "accent_material": "orichalque",
+  "relief": "doux",
+  "ores": [
+    "orichalque"
+  ],
+  "vegetation": [
+    {
+      "id": "arbre_velours",
+      "density": 0.06
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "plaine_cendree",
+  "name_key": "biome.plaine_cendree.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "priority": 50,
+  "conditions": {},
+  "surface_material": "cendre_etoilee",
+  "sub_material": "obsidienne_claire",
+  "subsurface_material": "obsidienne_claire",
+  "accent_material": "coeur_prisme",
+  "relief": "tordu",
+  "ores": [
+    "coeur_prisme"
+  ],
+  "vegetation": [
+    {
+      "id": "arbre_de_verre",
+      "density": 0.03
+    },
+    {
+      "id": "arbre_neige",
+      "density": 0.03
+    },
+    {
+      "id": "champignon_paroi_geant",
+      "density": 0.02
+    }
+  ]
+}

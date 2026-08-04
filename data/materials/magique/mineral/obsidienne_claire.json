@@ -1,0 +1,38 @@
+{
+  "id": "obsidienne_claire",
+  "name_key": "material.obsidienne_claire.name",
+  "category": "mineral",
+  "stats": {
+    "durete": 3,
+    "densite": 4,
+    "valeur_base": 6,
+    "conductivite_mana": 45,
+    "flammabilite": 20,
+    "isolation": 30,
+    "conductivite_electrique": 10,
+    "flottabilite": 40,
+    "luminosite": 0,
+    "fertilite": 30,
+    "transparence": 0,
+    "elasticite": 40,
+    "friction": 45
+  },
+  "tags": [
+    "magique"
+  ],
+  "color": "#5A4E78",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 908,
+    "amplitude": 0.12,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "aucun",
+    "biome_tags": []
+  }
+}
