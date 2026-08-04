@@ -1,0 +1,26 @@
+{
+  "id": "mer_de_nuages",
+  "name_key": "biome.mer_de_nuages.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "priority": 50,
+  "conditions": {},
+  "surface_material": "nuage_compact",
+  "sub_material": "brume_solide",
+  "subsurface_material": "brume_solide",
+  "accent_material": "verre_songe",
+  "relief": "doux",
+  "vegetation": [
+    {
+      "id": "arbre_nuage",
+      "density": 0.06
+    },
+    {
+      "id": "arbre_lanterne",
+      "density": 0.03
+    }
+  ]
+}

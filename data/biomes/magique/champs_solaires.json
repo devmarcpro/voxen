@@ -1,0 +1,26 @@
+{
+  "id": "champs_solaires",
+  "name_key": "biome.champs_solaires.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "priority": 50,
+  "conditions": {},
+  "surface_material": "herbe_safran",
+  "sub_material": "roche_ambre",
+  "subsurface_material": "roche_ambre",
+  "accent_material": "cristal_solaire",
+  "relief": "doux",
+  "vegetation": [
+    {
+      "id": "tournesol_geant",
+      "density": 0.07
+    },
+    {
+      "id": "arbre_torsade",
+      "density": 0.02
+    }
+  ]
+}

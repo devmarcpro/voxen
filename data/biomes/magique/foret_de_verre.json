@@ -1,0 +1,26 @@
+{
+  "id": "foret_de_verre",
+  "name_key": "biome.foret_de_verre.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "priority": 50,
+  "conditions": {},
+  "surface_material": "mousse_lumineuse",
+  "sub_material": "pierre_lueur",
+  "subsurface_material": "pierre_lueur",
+  "accent_material": "verre_songe",
+  "relief": "tordu",
+  "vegetation": [
+    {
+      "id": "arbre_de_verre",
+      "density": 0.055
+    },
+    {
+      "id": "arbre_torsade",
+      "density": 0.02
+    }
+  ]
+}

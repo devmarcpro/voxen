@@ -26,15 +26,31 @@ const ORIGIN := Vector3i(0, 0, 0)
 ## Le maillage est fait UNE FOIS à la fin (`remesh_all`) : remailler à chaque
 ## bloc coûterait des milliers de maillages pour un seul résultat, et c'est
 ## exactement la raison d'être du paramètre `remesh` de `set_block_in`.
+## Étendue du pays, en blocs, depuis l'origine. Un carré de 320 blocs de côté :
+## assez pour marcher longtemps sans jamais voir le bord, assez petit pour être
+## bâti d'un coup à l'entrée.
+const HALF_SPAN := 160
+## Altitude moyenne du sol, et amplitude du relief.
+const BASE_Y := 64
+const RELIEF := 34.0
+## Profondeur de roche sous la surface.
+const CRUST := 10
+
+
+## Construit la dimension et retourne le point d'arrivée du joueur.
+##
+## TERRAIN CONTINU (2026-08-04, demande de l'auteur : « pas des îles dans le
+## vide »). La première version posait des îlots flottants — c'était une preuve
+## d'architecture, pas un pays. On ne marche pas dans un archipel : on tombe.
+##
+## Le relief est fait de bruit SUPERPOSÉ, comme l'overworld, mais avec des
+## règles qui n'ont rien de géologique : des terrasses franches, des bosses qui
+## se recouvrent, et une amplitude que la Terre n'autorise pas. C'est ce qui
+## garde le lieu onirique tout en le rendant praticable.
 static func build(dimension: StringName, declaration: Dictionary, world_seed: int) -> Vector3:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = world_seed ^ 0x5EED_FA11
 
-	# LES ZONES SONT DES BIOMES (2026-08-04). Elles étaient une liste propre à ce
-	# constructeur ; ce sont maintenant de vraies fiches de biome, déclarées
-	# `dimension: magique`. Un seul mécanisme de végétation pour tout le jeu, et
-	# la sonde qui exige qu'une essence pousse dans un biome redevient valable
-	# pour TOUTES les essences, sans exemption à plaider.
 	var zones: Array[Dictionary] = []
 	for biome_id: String in (declaration.get("biomes", []) as Array):
 		var biome: Dictionary = GameData.biomes.get(biome_id, {})
@@ -43,41 +59,128 @@ static func build(dimension: StringName, declaration: Dictionary, world_seed: in
 	if zones.is_empty():
 		push_warning("RiftBuilder : aucun biome déclaré pour cette dimension.")
 		return Vector3.ZERO
-	var islands: Dictionary = declaration.get("islands", {})
-	var count := int(islands.get("count", 12))
-	var radius_range: Array = islands.get("radius", [8, 18])
-	var thickness_range: Array = islands.get("thickness", [4, 8])
-	var spread := float(islands.get("spread", 110))
 
-	var arrival := Vector3.ZERO
-	for i in count:
-		# CHAQUE ÎLOT APPARTIENT À UNE ZONE, et les zones se succèdent au lieu
-		# d'être tirées au hasard : un monde de rêve doit se lire comme une
-		# suite de pays, pas comme une soupe. On tourne dans la liste, ce qui
-		# garantit que les quatre existent même sur peu d'îlots.
-		var zone: Dictionary = zones[i % zones.size()]
-		var center := ORIGIN
-		var radius := int(radius_range[1])
-		if i > 0:
-			center = ORIGIN + Vector3i(
-					roundi(rng.randf_range(-spread, spread)),
-					roundi(rng.randf_range(-30.0, 34.0)),
-					roundi(rng.randf_range(-spread, spread)))
-			radius = rng.randi_range(int(radius_range[0]), int(radius_range[1]))
-		var thickness := rng.randi_range(int(thickness_range[0]), int(thickness_range[1]))
-		# UN ROCHER-CHAMPIGNON A BESOIN DE HAUTEUR. Son intérêt est le surplomb,
-		# et un chapeau posé sur trois blocs de pied ne surplombe rien : on
-		# triple l'épaisseur pour cette zone-là.
-		if String(zone.get("relief", "")) == "champignon":
-			thickness *= 3
-		_carve_island(dimension, center, radius, thickness, zone, rng)
-		_plant_zone(dimension, center, radius, zone, rng, world_seed + i)
-		if i == 0:
-			arrival = Vector3(center) + Vector3(0.5, thickness + 2.5, 0.5)
+	# Les bruits : un pour le relief, un pour le découpage en pays. Le second
+	# est BEAUCOUP plus lisse — sans ça, les biomes se mélangeraient tous les
+	# dix blocs et aucun pays ne se lirait comme un pays.
+	var height_noise := FastNoiseLite.new()
+	height_noise.seed = world_seed ^ 0x11AA
+	height_noise.frequency = 0.012
+	height_noise.fractal_octaves = 4
+	var zone_noise := FastNoiseLite.new()
+	zone_noise.seed = world_seed ^ 0x22BB
+	zone_noise.frequency = 0.0035
+	var warp_noise := FastNoiseLite.new()
+	warp_noise.seed = world_seed ^ 0x33CC
+	warp_noise.frequency = 0.02
+
+	var top_of := {}          # Vector2i(x,z) -> altitude du sol.
+	var zone_of := {}         # Vector2i(x,z) -> index de biome.
+	for x in range(-HALF_SPAN, HALF_SPAN + 1):
+		for z in range(-HALF_SPAN, HALF_SPAN + 1):
+			var key := Vector2i(x, z)
+			var zi := _zone_at(zone_noise, x, z, zones.size())
+			zone_of[key] = zi
+			top_of[key] = _height_at(height_noise, warp_noise,
+					String((zones[zi] as Dictionary).get("relief", "doux")), x, z)
+
+	# On écrit la croûte : surface + roche en dessous. Sans épaisseur, le monde
+	# serait une feuille de papier qu'on traverse au premier coup de pioche.
+	for key: Vector2i in top_of:
+		var zone: Dictionary = zones[zone_of[key]]
+		var ground: int = GameData.material_runtime_ids.get(
+				String(zone.get("surface_material", "")), 0)
+		var rock: int = GameData.material_runtime_ids.get(
+				String(zone.get("subsurface_material", "")), 0)
+		var accent: int = GameData.material_runtime_ids.get(
+				String(zone.get("accent_material", "")), 0)
+		if ground == 0 or rock == 0:
+			continue
+		var top: int = top_of[key]
+		DimensionManager.set_block_in(dimension, Vector3i(key.x, top, key.y), ground, false)
+		for d in range(1, CRUST + 1):
+			var id := rock
+			# Veines de cristal : la dimension n'a pas de soleil, ce sont elles
+			# qui l'éclairent depuis les parois et les creux.
+			if accent != 0 and _edge_noise(Vector3i(key.x, top - d, key.y), world_seed) < 0.04:
+				id = accent
+			DimensionManager.set_block_in(dimension, Vector3i(key.x, top - d, key.y), id, false)
 
 	DimensionManager.remesh_all(dimension)
-	_populate(dimension, arrival, declaration, rng)
-	return arrival
+
+	# La flore, une fois le sol en place : elle a besoin de savoir où il est.
+	_plant_world(dimension, zones, top_of, zone_of, rng, world_seed)
+	DimensionManager.remesh_all(dimension)
+
+	var landing := Vector3(0.5, float(top_of[Vector2i(0, 0)]) + 2.5, 0.5)
+	_populate(dimension, landing, declaration, rng)
+	return landing
+
+
+## Altitude du sol en (x, z), selon le relief du pays.
+##
+## Le RELIEF N'EST PAS GÉOLOGIQUE, et c'est voulu : des terrasses franches, des
+## dômes qui se posent les uns sur les autres, des flèches. La Terre ne fait pas
+## ça — c'est précisément pour ça que le lieu se lit comme un rêve.
+static func _height_at(height_noise: FastNoiseLite, warp_noise: FastNoiseLite,
+		relief: String, x: int, z: int) -> int:
+	# Déformation du domaine : on tord les coordonnées avant d'échantillonner,
+	# ce qui courbe les crêtes au lieu de les laisser filer droit.
+	var wx := float(x) + warp_noise.get_noise_2d(float(x), float(z)) * 18.0
+	var wz := float(z) + warp_noise.get_noise_2d(float(z), float(x)) * 18.0
+	var n := height_noise.get_noise_2d(wx, wz)          # -1 .. 1
+	var h := float(BASE_Y) + n * RELIEF
+	match relief:
+		"tordu":
+			# CRÊTES : la valeur absolue du bruit fait des arêtes vives au lieu
+			# de collines molles, et l'exposant les rend franchement acérées.
+			h = float(BASE_Y) + pow(absf(n), 0.55) * RELIEF * 1.5
+		"champignon":
+			# TERRASSES : on quantifie l'altitude par paliers de six blocs, ce
+			# qui donne les plateaux étagés du croquis. Le surplomb, lui, vient
+			# des flèches posées par-dessus.
+			h = float(BASE_Y) + floor(n * RELIEF / 6.0) * 6.0
+		"bulbeux":
+			# DÔMES : le sinus rend des bosses régulières qui se recouvrent, à
+			# mi-chemin entre la colline et la bulle de savon.
+			h = float(BASE_Y) + sin(n * PI) * RELIEF * 0.8
+		_:
+			h = float(BASE_Y) + n * RELIEF * 0.6
+	return int(round(h))
+
+
+## Index du pays en (x, z). Un bruit très lisse, donc de grands territoires.
+static func _zone_at(zone_noise: FastNoiseLite, x: int, z: int, count: int) -> int:
+	var n := zone_noise.get_noise_2d(float(x), float(z)) * 0.5 + 0.5
+	return clampi(int(n * float(count)), 0, count - 1)
+
+
+## Plante la végétation de chaque pays sur le sol qu'on vient d'écrire.
+static func _plant_world(dimension: StringName, zones: Array[Dictionary],
+		top_of: Dictionary, zone_of: Dictionary, rng: RandomNumberGenerator,
+		world_seed: int) -> void:
+	var index := 0
+	for key: Vector2i in top_of:
+		index += 1
+		var zone: Dictionary = zones[zone_of[key]]
+		var vegetation: Array = zone.get("vegetation", [])
+		if vegetation.is_empty():
+			continue
+		for entry: Dictionary in vegetation:
+			# Un tirage par colonne et par essence : c'est la densité du biome,
+			# au même format que l'overworld.
+			if rng.randf() >= float(entry.get("density", 0.0)) * 0.35:
+				continue
+			var species: Dictionary = GameData.trees.get(String(entry["id"]), {})
+			if species.is_empty():
+				continue
+			var base := Vector3i(key.x, int(top_of[key]) + 1, key.y)
+			var tree := TreeGenerator.generate(base, world_seed + index, species)
+			var blocks: Dictionary = tree["blocks"]
+			for pos: Vector3i in blocks:
+				DimensionManager.set_block_in(dimension, pos, blocks[pos], false)
+			break   # Une essence par colonne : deux arbres au même endroit se
+					# traversent, et ça se voit tout de suite.
 
 
 ## LA FLORE D'UNE ZONE, plantée sur son îlot.
@@ -117,97 +220,10 @@ static func _plant_zone(dimension: StringName, center: Vector3i, radius: int,
 
 ## Sommet plein de la colonne (x, z) en partant de `from_y`, ou -INF.
 static func _surface_top(dimension: StringName, x: int, from_y: int, z: int) -> int:
-	for dy in range(from_y, from_y - 30, -1):
+	for dy in range(from_y, from_y - 90, -1):
 		if DimensionManager.block_at_in(dimension, Vector3i(x, dy, z)) != 0:
 			return dy + 1
 	return -(1 << 30)
-
-
-## Un îlot : un disque de sol qui s'effile vers le bas en pointe rocheuse, avec
-## quelques veines lumineuses. La pointe est ce qui le fait lire comme un
-## morceau arraché plutôt que comme une galette posée sur rien.
-static func _carve_island(dimension: StringName, center: Vector3i, radius: int,
-		thickness: int, zone: Dictionary, rng: RandomNumberGenerator) -> void:
-	var ground: int = GameData.material_runtime_ids.get(String(zone.get("surface_material", "")), 0)
-	var rock: int = GameData.material_runtime_ids.get(String(zone.get("sub_material", "")), 0)
-	var accent: int = GameData.material_runtime_ids.get(String(zone.get("accent_material", "")), 0)
-	if ground == 0 or rock == 0:
-		return
-	var relief := String(zone.get("relief", "doux"))
-	var seed_value := rng.randi()
-
-	for depth in thickness:
-		var t := float(depth) / float(maxi(thickness, 1))
-		var level_radius := radius
-		match relief:
-			"bulbeux":
-				# COLLINE EN BULBE : le rayon GONFLE sous la surface avant de se
-				# refermer. Ça donne un îlot en goutte, impossible en géologie
-				# et immédiatement lisible comme un décor de rêve.
-				level_radius = int(round(radius * (1.0 + 0.35 * sin(t * PI)) * (1.0 - t * 0.55)))
-			"champignon":
-				# ROCHER-CHAMPIGNON (croquis de l'auteur) : un CHAPEAU LARGE
-				# posé sur un PIED ÉTROIT, avec un surplomb franc. C'est le
-				# profil de Zhangjiajie, et il est impossible à obtenir en
-				# affinant vers le bas — il faut PINCER juste sous la surface
-				# puis tenir le pied fin sur toute la hauteur.
-				if t < 0.22:
-					level_radius = radius                       # le chapeau
-				else:
-					var pinch := (t - 0.22) / 0.78
-					level_radius = maxi(2, int(round(radius * lerpf(0.9, 0.22, pinch))))
-			"tordu":
-				level_radius = int(round(radius * (1.0 - t * 0.85)))
-			_:
-				level_radius = int(round(radius * (1.0 - t * 0.9)))
-		if depth == 0:
-			level_radius = radius
-		# DÉRIVE LATÉRALE : chaque couche est décalée, si bien que la pointe de
-		# l'îlot part en vrille au lieu de tomber à l'aplomb. C'est ce qui fait
-		# la « montagne tordue » demandée.
-		var lean := Vector3i.ZERO
-		if relief == "tordu":
-			lean = Vector3i(roundi(sin(t * 5.0) * float(radius) * 0.45), 0,
-					roundi(cos(t * 4.0) * float(radius) * 0.45))
-		for dx in range(-level_radius, level_radius + 1):
-			for dz in range(-level_radius, level_radius + 1):
-				if dx * dx + dz * dz > level_radius * level_radius:
-					continue
-				if depth == 0 and _edge_noise(center + Vector3i(dx, 0, dz), seed_value) < 0.18 \
-						and dx * dx + dz * dz > (level_radius - 1) * (level_radius - 1):
-					continue
-				var pos := center + lean + Vector3i(dx, -depth, dz)
-				var id := ground if depth == 0 else rock
-				# Veines de cristal : la dimension n'a pas de soleil, ce sont
-				# elles qui l'éclairent — et elles remplacent la scorie ardente
-				# du premier jet, écartée pour rester à l'écart de tout ce qui
-				# évoque la lave.
-				if depth > 0 and accent != 0 and _edge_noise(pos, seed_value + 7) < 0.05:
-					id = accent
-				DimensionManager.set_block_in(dimension, pos, id, false)
-
-	# FLÈCHES TORDUES au-dessus des cimes : des aiguilles qui montent en
-	# spirale, sans aucun aplomb. Le relief « tordu » ne serait qu'un cône
-	# penché sans elles.
-	if relief == "tordu":
-		var spires := rng.randi_range(2, 4)
-		for i in spires:
-			var angle := rng.randf() * TAU
-			var base := center + Vector3i(
-					roundi(cos(angle) * float(radius) * 0.4), 1,
-					roundi(sin(angle) * float(radius) * 0.4))
-			var height := rng.randi_range(8, 20)
-			for h in height:
-				var twist := float(h) * 0.55 + angle
-				var sway := float(h) * 0.22
-				var pos := base + Vector3i(roundi(cos(twist) * sway), h,
-						roundi(sin(twist) * sway))
-				var thick := maxi(0, 2 - h / 7)
-				for ox in range(-thick, thick + 1):
-					for oz in range(-thick, thick + 1):
-						DimensionManager.set_block_in(dimension,
-								pos + Vector3i(ox, 0, oz),
-								accent if (h % 5 == 0 and accent != 0) else rock, false)
 
 
 ## CE QU'ON RENCONTRE ET CE QU'ON RAMASSE.
@@ -224,7 +240,7 @@ static func _populate(dimension: StringName, arrival: Vector3, declaration: Dict
 		var angle := rng.randf() * TAU
 		var distance := rng.randf_range(6.0, 16.0)
 		var spot := arrival + Vector3(cos(angle) * distance, 0.0, sin(angle) * distance)
-		var top := _surface_top(dimension, roundi(spot.x), roundi(arrival.y) + 4, roundi(spot.z))
+		var top := _surface_top(dimension, roundi(spot.x), roundi(arrival.y) + 40, roundi(spot.z))
 		if top == -(1 << 30):
 			continue
 		spot.y = float(top)
@@ -245,7 +261,7 @@ static func _populate(dimension: StringName, arrival: Vector3, declaration: Dict
 		var angle := rng.randf() * TAU
 		var distance := rng.randf_range(8.0, 40.0)
 		var spot := arrival + Vector3(cos(angle) * distance, 0.0, sin(angle) * distance)
-		var top := _surface_top(dimension, roundi(spot.x), roundi(arrival.y) + 4, roundi(spot.z))
+		var top := _surface_top(dimension, roundi(spot.x), roundi(arrival.y) + 40, roundi(spot.z))
 		if top == -(1 << 30):
 			continue
 		DropManager.drop_materials(Vector3(spot.x, float(top) + 0.5, spot.z),

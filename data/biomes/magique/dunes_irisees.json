@@ -1,0 +1,26 @@
+{
+  "id": "dunes_irisees",
+  "name_key": "biome.dunes_irisees.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "priority": 50,
+  "conditions": {},
+  "surface_material": "sable_irise",
+  "sub_material": "nacre_dune",
+  "subsurface_material": "nacre_dune",
+  "accent_material": "quartz_rose",
+  "relief": "bulbeux",
+  "vegetation": [
+    {
+      "id": "champignon_songe",
+      "density": 0.02
+    },
+    {
+      "id": "tournesol_geant",
+      "density": 0.03
+    }
+  ]
+}

@@ -133,10 +133,16 @@ func _check_generic_dimension() -> void:
 	# ON LIT UN BLOC PAR LE CHEMIN NORMAL. Si l'aiguillage était resté câblé sur
 	# le donjon, cette lecture rendrait 0 : DungeonManager n'a rien à cet
 	# endroit, et le défaut serait invisible autrement.
+	# ON SONDE AUTOUR DU JOUEUR, pas autour de l'origine. Le terrain de la
+	# faille est devenu CONTINU le 2026-08-04 et son sol vit vers y = 64 ; la
+	# sonde cherchait encore des blocs à hauteur d'îlot flottant, près de zéro,
+	# et concluait que la dimension était vide.
+	var here: Vector3 = player.get_position_for_ai()
 	var solid := 0
-	for dy in range(-12, 13):
+	for dy in range(-24, 13):
 		for dx in range(-14, 15):
-			if WorldManager.block_at_world(Vector3i(dx, dy, 0)) != 0:
+			if WorldManager.block_at_world(Vector3i(roundi(here.x) + dx,
+					roundi(here.y) + dy, roundi(here.z))) != 0:
 				solid += 1
 	print("[%s] %d bloc(s) plein(s) lus au centre de la faille" % [TAG, solid])
 	_expect(solid > 0, "les blocs de la faille se lisent par WorldManager.block_at_world")
@@ -201,9 +207,10 @@ func _check_generic_dimension() -> void:
 	# MUTER AUSSI : une dimension où l'on ne peut rien casser n'est qu'un décor.
 	var target := Vector3i.ZERO
 	var found := false
-	for dy in range(12, -13, -1):
-		if WorldManager.block_at_world(Vector3i(0, dy, 0)) != 0:
-			target = Vector3i(0, dy, 0)
+	for dy in range(12, -30, -1):
+		var probe_pos := Vector3i(roundi(here.x), roundi(here.y) + dy, roundi(here.z))
+		if WorldManager.block_at_world(probe_pos) != 0:
+			target = probe_pos
 			found = true
 			break
 	if found:

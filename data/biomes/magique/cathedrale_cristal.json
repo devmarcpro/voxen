@@ -1,0 +1,26 @@
+{
+  "id": "cathedrale_cristal",
+  "name_key": "biome.cathedrale_cristal.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "priority": 50,
+  "conditions": {},
+  "surface_material": "mousse_lumineuse",
+  "sub_material": "verre_songe",
+  "subsurface_material": "verre_songe",
+  "accent_material": "cristal_solaire",
+  "relief": "tordu",
+  "vegetation": [
+    {
+      "id": "arbre_de_verre",
+      "density": 0.04
+    },
+    {
+      "id": "arbre_lanterne",
+      "density": 0.03
+    }
+  ]
+}

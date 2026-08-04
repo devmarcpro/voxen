@@ -1,0 +1,38 @@
+{
+  "id": "verre_songe",
+  "name_key": "material.verre_songe.name",
+  "category": "cristal",
+  "stats": {
+    "durete": 2,
+    "densite": 4,
+    "valeur_base": 5,
+    "conductivite_mana": 45,
+    "flammabilite": 20,
+    "isolation": 30,
+    "conductivite_electrique": 10,
+    "flottabilite": 40,
+    "luminosite": 6,
+    "fertilite": 30,
+    "transparence": 80,
+    "elasticite": 40,
+    "friction": 45
+  },
+  "tags": [
+    "magique"
+  ],
+  "color": "#BDE6F0",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 883,
+    "amplitude": 0.12,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "pioche",
+    "skill": "minage"
+  },
+  "world_gen": {
+    "mode": "aucun",
+    "biome_tags": []
+  }
+}

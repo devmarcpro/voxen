@@ -1,0 +1,38 @@
+{
+  "id": "mousse_lumineuse",
+  "name_key": "material.mousse_lumineuse.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 3,
+    "densite": 4,
+    "valeur_base": 5,
+    "conductivite_mana": 45,
+    "flammabilite": 20,
+    "isolation": 30,
+    "conductivite_electrique": 10,
+    "flottabilite": 40,
+    "luminosite": 10,
+    "fertilite": 90,
+    "transparence": 0,
+    "elasticite": 40,
+    "friction": 45
+  },
+  "tags": [
+    "magique"
+  ],
+  "color": "#A8F0C8",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 886,
+    "amplitude": 0.12,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "pelle",
+    "skill": "terrassement"
+  },
+  "world_gen": {
+    "mode": "aucun",
+    "biome_tags": []
+  }
+}

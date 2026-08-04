@@ -11,16 +11,16 @@
     "fog_density": 0.006
   },
   "islands": {
-    "count": 22,
+    "count": 34,
     "radius": [
       10,
-      22
+      24
     ],
     "thickness": [
       4,
       9
     ],
-    "spread": 130
+    "spread": 170
   },
   "materials": {
     "sol": "amethyste",
@@ -38,6 +38,12 @@
     "collines_dragee",
     "bois_colosses",
     "plateaux_suspendus",
-    "cimes_tordues"
+    "cimes_tordues",
+    "mer_de_nuages",
+    "foret_de_verre",
+    "dunes_irisees",
+    "champs_solaires",
+    "recif_corallien",
+    "cathedrale_cristal"
   ]
 }

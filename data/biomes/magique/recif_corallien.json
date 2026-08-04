@@ -1,0 +1,26 @@
+{
+  "id": "recif_corallien",
+  "name_key": "biome.recif_corallien.name",
+  "dimension": "magique",
+  "tags": [
+    "magique",
+    "onirique"
+  ],
+  "priority": 50,
+  "conditions": {},
+  "surface_material": "herbe_corail",
+  "sub_material": "roche_corail",
+  "subsurface_material": "roche_corail",
+  "accent_material": "quartz_rose",
+  "relief": "champignon",
+  "vegetation": [
+    {
+      "id": "champignon_songe",
+      "density": 0.06
+    },
+    {
+      "id": "arbre_nuage",
+      "density": 0.02
+    }
+  ]
+}

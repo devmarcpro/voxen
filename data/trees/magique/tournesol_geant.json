@@ -1,0 +1,39 @@
+{
+  "id": "tournesol_geant",
+  "name_key": "tree.tournesol_geant.name",
+  "wood_material": "bois_solaire",
+  "leaf_material": "feuillage_solaire",
+  "height_range": [
+    9,
+    15
+  ],
+  "trunk_radius": 1,
+  "branch_parameters": {
+    "start_fraction": 1.0,
+    "count_range": [
+      5,
+      7
+    ],
+    "angle_deg": 80,
+    "length_range": [
+      1,
+      2
+    ]
+  },
+  "canopy_shape": "flat",
+  "canopy_radius_range": [
+    3,
+    5
+  ],
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.15,
+    "curve": 0.16,
+    "fork": 0.95,
+    "spread_deg": 84.0,
+    "leaf_density": 0.98,
+    "children": 6,
+    "roots": 2,
+    "_port": "tige unique surmontee d'une corolle plate lumineuse"
+  }
+}
