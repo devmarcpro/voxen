@@ -20,7 +20,7 @@
       2
     ]
   },
-  "canopy_shape": "spherical",
+  "canopy_shape": "bulle",
   "canopy_radius_range": [
     3,
     5

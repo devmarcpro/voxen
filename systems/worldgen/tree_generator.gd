@@ -70,8 +70,14 @@ extends RefCounted
 ## d'essence contre cette liste. Elles désignent la SILHOUETTE VOULUE ; c'est
 ## `_architecture()` qui les traduit en règles de croissance.
 const CANOPY_SHAPES := [
+	# Silhouettes du monde réel (overworld).
 	"spherical", "conical", "flat", "weeping",
 	"columnar", "vase", "tiered", "umbrella", "oval", "broad",
+	# SILHOUETTES DE RÊVE (2026-08-04), réservées à la dimension magique. Elles
+	# ne décrivent AUCUN arbre terrestre, et c'est leur raison d'être : réutiliser
+	# une forme d'overworld, même avec une architecture tordue, laissait
+	# reconnaître un arbre d'ici-bas sous le déguisement.
+	"spirale", "bulle", "corolle", "voute",
 ]
 
 ## Pas du réseau fin, en subdivisions de 4 px : 4 = 16 px. NE PAS descendre
@@ -379,6 +385,58 @@ static func _architecture(species: Dictionary, rng: RandomNumberGenerator) -> Di
 	}
 
 	match shape:
+		"spirale":
+			# HÉLICE. L'axe monte en tournant sur lui-même et porte du feuillage
+			# sur toute sa longueur. La sinuosité est poussée au-delà de ce
+			# qu'aucun bois réel supporte — c'est ce qui fait le tire-bouchon.
+			arch["form"] = "excurrent"
+			arch["fork"] = 0.10
+			arch["spread_deg"] = 62.0
+			arch["droop"] = 0.30
+			arch["depth"] = 2
+			arch["children"] = 3
+			arch["length_ratio"] = 0.40
+			arch["whorls"] = 12
+			arch["curve"] = 1.10
+			arch["leaf_flatten"] = 0.9
+		"bulle":
+			# UNE SEULE MASSE, TRÈS HAUT, sur un pied grêle et sans ramure
+			# intermédiaire. Rien ne tient comme ça sous la gravité terrestre.
+			arch["form"] = "excurrent"
+			arch["fork"] = 0.94
+			arch["spread_deg"] = 18.0
+			arch["droop"] = 0.75
+			arch["depth"] = 1
+			arch["children"] = 2
+			arch["length_ratio"] = 0.18
+			arch["whorls"] = 1
+			arch["curve"] = 0.14
+			arch["leaf_flatten"] = 1.0
+		"corolle":
+			# FLEUR GÉANTE plutôt qu'arbre : une tige unique et une couronne
+			# plate qui rayonne du sommet.
+			arch["form"] = "palm"
+			arch["fork"] = 0.97
+			arch["spread_deg"] = 86.0
+			arch["droop"] = 0.10
+			arch["depth"] = 1
+			arch["children"] = 7
+			arch["length_ratio"] = 0.30
+			arch["curve"] = 0.16
+			arch["leaf_flatten"] = 0.20
+		"voute":
+			# ARCHE : les maîtresses branches montent puis RETOMBENT jusqu'au
+			# sol. Un banian s'en approche, mais chez lui ce sont des racines
+			# aériennes ; ici c'est le bois lui-même qui fait le pont.
+			arch["form"] = "decurrent"
+			arch["fork"] = 0.32
+			arch["spread_deg"] = 44.0
+			arch["droop"] = -0.62
+			arch["depth"] = 3
+			arch["children"] = 5
+			arch["length_ratio"] = 0.86
+			arch["curve"] = 0.30
+			arch["leaf_flatten"] = 0.75
 		"conical":
 			# Sapin, épicéa, mélèze : flèche unique, verticilles de branches
 			# horizontales d'autant plus courtes qu'on monte.
