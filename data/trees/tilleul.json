@@ -25,5 +25,14 @@
     4,
     6
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.28,
+    "curve": 0.14,
+    "fork": 0.5,
+    "spread_deg": 44.0,
+    "leaf_density": 0.92,
+    "children": 3,
+    "_port": "port dresse et regulier, feuillage serre"
+  }
 }

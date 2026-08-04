@@ -25,5 +25,14 @@
     1,
     2
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.82,
+    "curve": 0.06,
+    "fork": 0.14,
+    "spread_deg": 18.0,
+    "leaf_density": 0.9,
+    "children": 4,
+    "_port": "colonne serree, plus etroite encore"
+  }
 }

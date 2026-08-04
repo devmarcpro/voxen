@@ -28,6 +28,12 @@
   "special_tags": [],
   "architecture": {
     "leaf_density": 0.9,
-    "whorl_spacing": 1.8
+    "whorl_spacing": 1.8,
+    "droop": -0.05,
+    "curve": 0.13,
+    "fork": 0.12,
+    "spread_deg": 86.0,
+    "children": 5,
+    "_port": "sombre, large, presque conique-arrondi"
   }
 }

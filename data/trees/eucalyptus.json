@@ -25,5 +25,14 @@
     3,
     4
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": -0.22,
+    "curve": 0.18,
+    "fork": 0.7,
+    "spread_deg": 36.0,
+    "leaf_density": 0.6,
+    "children": 3,
+    "_port": "fut tres haut, feuilles pendantes, ciel visible"
+  }
 }

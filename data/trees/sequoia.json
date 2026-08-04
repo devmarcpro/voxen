@@ -30,6 +30,12 @@
     "fork": 0.42,
     "length_ratio": 0.24,
     "whorl_spacing": 3.2,
-    "roots": 8
+    "roots": 8,
+    "droop": -0.12,
+    "curve": 0.05,
+    "spread_deg": 66.0,
+    "leaf_density": 0.88,
+    "children": 4,
+    "_port": "colossal, houppier haut perche sur un fut nu"
   }
 }

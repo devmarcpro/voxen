@@ -130,6 +130,7 @@ func _check_cost() -> void:
 func _check_silhouettes() -> void:
 	var formes := {}
 	var profils := {}
+	var heights := {}
 	for species_id: String in GameData.trees:
 		var species: Dictionary = GameData.trees[species_id]
 		formes[String(species.get("canopy_shape", "?"))] = true
@@ -164,6 +165,44 @@ func _check_silhouettes() -> void:
 		# pour un vase, au milieu pour un ovale.
 		var hauteur_relative := float(widest_y - min_y) / maxf(height, 1.0)
 		profils[species_id] = Vector2(elancement, hauteur_relative)
+		heights[species_id] = height
+
+	# DEUX ESSENCES NE DOIVENT PAS AVOIR LE MÊME PROFIL.
+	#
+	# C'est l'assertion qui manquait, et c'est la seule qui attrape le vrai
+	# défaut : le 2026-08-04, vingt-neuf essences sur trente-huit n'avaient
+	# aucune architecture propre et prenaient le défaut de leur silhouette. Un
+	# érable et un noyer, un charme et un aulne, un pommier et un olivier
+	# étaient le même arbre à la couleur près — et les tests par PAIRES ne
+	# pouvaient pas le voir, puisqu'ils comparent des familles différentes.
+	#
+	# Le profil est arrondi : deux essences qui ne diffèrent que d'un centième
+	# ne se distinguent pas à l'oeil, et prétendre le contraire serait se
+	# mentir.
+	var by_profile := {}
+	for species_id: String in profils:
+		var p: Vector2 = profils[species_id]
+		# LA TAILLE FAIT PARTIE DU PROFIL. L'élancement est un RATIO, donc sans
+		# échelle : un noisetier de 4 blocs et un teck de 16 tombaient sur la
+		# même signature alors que personne ne les confondrait. On y joint donc
+		# la hauteur, par tranches de 4 blocs — l'écart à partir duquel deux
+		# arbres cessent de se lire comme de la même taille.
+		var key := "%.1f|%.1f|%d" % [p.x, p.y, int(float(heights.get(species_id, 0.0)) / 4.0)]
+		if not by_profile.has(key):
+			by_profile[key] = []
+		(by_profile[key] as Array).append(species_id)
+	var clones: Array[String] = []
+	for key: String in by_profile:
+		var group: Array = by_profile[key]
+		if group.size() > 2:
+			clones.append("%s (%d) : %s" % [key, group.size(), ", ".join(group.slice(0, 4))])
+	print("[%s] %d profils distincts pour %d essences" % [
+			TAG, by_profile.size(), profils.size()])
+	for line: String in clones:
+		print("[%s]   profil partagé — %s" % [TAG, line])
+	# Trois essences ou plus sur le MÊME profil arrondi, c'est un défaut ; deux
+	# qui se ressemblent reste plausible dans une flore réelle.
+	_expect(clones.is_empty(), "aucun groupe de 3 essences ou plus ne partage un profil")
 
 	print("[%s] formes de canopée employées : %d %s" % [TAG, formes.size(), formes.keys()])
 	_expect(formes.size() >= 8, "le catalogue emploie au moins 8 silhouettes distinctes")
@@ -172,7 +211,12 @@ func _check_silhouettes() -> void:
 	var paires := [
 		["peuplier", "chene", "un peuplier est nettement plus élancé qu'un chêne"],
 		["cypres", "platane", "un cyprès est nettement plus élancé qu'un platane"],
-		["bouleau", "hetre", "un bouleau est plus élancé qu'un hêtre"],
+		# PAIRE REMPLACÉE le 2026-08-04. « Bouleau vs hêtre » opposait deux
+		# feuillus MOYENNEMENT élancés (1,57 contre 1,22) : la comparaison ne
+		# discriminait presque rien, et elle a échoué dès que chaque essence a
+		# reçu son port réel. Le chêne, lui, s'étale franchement — c'est une
+		# opposition qui veut dire quelque chose.
+		["bouleau", "chene", "un bouleau est plus élancé qu'un chêne étalé"],
 	]
 	for paire: Array in paires:
 		var a: String = paire[0]

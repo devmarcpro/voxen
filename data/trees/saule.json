@@ -25,5 +25,14 @@
     5,
     6
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": -0.78,
+    "curve": 0.28,
+    "fork": 0.36,
+    "spread_deg": 52.0,
+    "leaf_density": 0.72,
+    "children": 4,
+    "_port": "tout retombe, rameaux en rideau"
+  }
 }

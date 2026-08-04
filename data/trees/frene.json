@@ -25,5 +25,14 @@
     4,
     5
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.38,
+    "curve": 0.13,
+    "fork": 0.52,
+    "spread_deg": 38.0,
+    "leaf_density": 0.74,
+    "children": 3,
+    "_port": "branches montantes, couronne aeree"
+  }
 }

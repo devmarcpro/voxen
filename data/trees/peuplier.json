@@ -25,5 +25,14 @@
     2,
     3
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.88,
+    "curve": 0.08,
+    "fork": 0.18,
+    "spread_deg": 22.0,
+    "leaf_density": 0.84,
+    "children": 4,
+    "_port": "fastigie : branches collees a la verticale"
+  }
 }

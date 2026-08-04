@@ -25,5 +25,14 @@
     3,
     4
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.2,
+    "curve": 0.21,
+    "fork": 0.44,
+    "spread_deg": 42.0,
+    "leaf_density": 0.91,
+    "children": 3,
+    "_port": "tronc cannele, ramure dense et fine"
+  }
 }

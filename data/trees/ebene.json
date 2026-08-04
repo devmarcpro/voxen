@@ -25,5 +25,14 @@
     3,
     4
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.14,
+    "curve": 0.16,
+    "fork": 0.5,
+    "spread_deg": 40.0,
+    "leaf_density": 0.93,
+    "children": 3,
+    "_port": "bois dense, feuillage sombre et serre"
+  }
 }

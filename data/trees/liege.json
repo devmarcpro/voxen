@@ -29,6 +29,10 @@
   "architecture": {
     "fork": 0.32,
     "curve": 0.3,
-    "spread_deg": 62.0
+    "spread_deg": 62.0,
+    "droop": 0.02,
+    "leaf_density": 0.82,
+    "children": 4,
+    "_port": "chene-liege noueux, ecorce epaisse, bas sur pattes"
   }
 }

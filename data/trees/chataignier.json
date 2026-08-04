@@ -25,5 +25,14 @@
     5,
     7
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.1,
+    "curve": 0.26,
+    "fork": 0.42,
+    "spread_deg": 52.0,
+    "leaf_density": 0.88,
+    "children": 4,
+    "_port": "tronc torsade, houppier irregulier"
+  }
 }

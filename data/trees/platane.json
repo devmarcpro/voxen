@@ -25,5 +25,14 @@
     6,
     8
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.12,
+    "curve": 0.13,
+    "fork": 0.52,
+    "spread_deg": 54.0,
+    "leaf_density": 0.86,
+    "children": 4,
+    "_port": "grosses charpentieres etalees, ecorce marbree"
+  }
 }

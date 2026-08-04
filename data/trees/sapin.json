@@ -25,5 +25,14 @@
     3,
     5
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": -0.18,
+    "curve": 0.07,
+    "fork": 0.16,
+    "spread_deg": 78.0,
+    "leaf_density": 0.92,
+    "children": 4,
+    "_port": "verticilles horizontaux, fleche nette"
+  }
 }

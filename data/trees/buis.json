@@ -32,6 +32,9 @@
     "spread_deg": 35.0,
     "depth": 2,
     "roots": 0,
-    "leaf_density": 0.9
+    "leaf_density": 0.9,
+    "droop": 0.1,
+    "curve": 0.09,
+    "_port": "buisson compact, feuillage opaque"
   }
 }

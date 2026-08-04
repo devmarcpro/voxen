@@ -25,5 +25,14 @@
     5,
     7
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.15,
+    "curve": 0.11,
+    "fork": 0.64,
+    "spread_deg": 46.0,
+    "leaf_density": 0.89,
+    "children": 4,
+    "_port": "long fut nu tropical puis couronne large"
+  }
 }

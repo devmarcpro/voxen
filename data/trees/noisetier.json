@@ -32,6 +32,10 @@
     "spread_deg": 20.0,
     "length_ratio": 0.92,
     "depth": 2,
-    "roots": 3
+    "roots": 3,
+    "droop": 0.3,
+    "curve": 0.22,
+    "leaf_density": 0.83,
+    "_port": "cepee : plusieurs tiges depuis la souche"
   }
 }

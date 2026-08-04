@@ -25,5 +25,14 @@
     3,
     4
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.12,
+    "curve": 0.27,
+    "fork": 0.3,
+    "spread_deg": 50.0,
+    "leaf_density": 0.9,
+    "children": 4,
+    "_port": "bois le plus dense, silhouette ramassee"
+  }
 }

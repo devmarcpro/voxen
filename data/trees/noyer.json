@@ -25,5 +25,14 @@
     4,
     6
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.04,
+    "curve": 0.21,
+    "fork": 0.44,
+    "spread_deg": 58.0,
+    "leaf_density": 0.76,
+    "children": 3,
+    "_port": "houppier ouvert, tres etale, clairsemé"
+  }
 }

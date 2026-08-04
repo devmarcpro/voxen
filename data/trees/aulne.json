@@ -25,5 +25,14 @@
     3,
     4
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.22,
+    "curve": 0.15,
+    "fork": 0.46,
+    "spread_deg": 40.0,
+    "leaf_density": 0.86,
+    "children": 3,
+    "_port": "dresse, pied humide, couronne etroite"
+  }
 }

@@ -23,7 +23,16 @@
   "canopy_shape": "oval",
   "canopy_radius_range": [
     2,
-    3
+    2
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": -0.12,
+    "curve": 0.24,
+    "fork": 0.4,
+    "spread_deg": 30.0,
+    "leaf_density": 0.68,
+    "children": 3,
+    "_port": "elance et etroit ; seuls les rameaux fins retombent"
+  }
 }

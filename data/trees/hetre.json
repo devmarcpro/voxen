@@ -25,5 +25,14 @@
     5,
     7
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.18,
+    "curve": 0.09,
+    "fork": 0.58,
+    "spread_deg": 42.0,
+    "leaf_density": 0.96,
+    "children": 3,
+    "_port": "fut lisse et droit, ombre dense au sol"
+  }
 }

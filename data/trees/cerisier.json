@@ -25,5 +25,14 @@
     3,
     4
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.24,
+    "curve": 0.19,
+    "fork": 0.38,
+    "spread_deg": 46.0,
+    "leaf_density": 0.85,
+    "children": 3,
+    "_port": "dresse puis etale, floraison en nuage"
+  }
 }

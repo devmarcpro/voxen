@@ -25,5 +25,14 @@
     3,
     4
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.08,
+    "curve": 0.32,
+    "fork": 0.38,
+    "spread_deg": 54.0,
+    "leaf_density": 0.66,
+    "children": 4,
+    "_port": "ramure anarchique, tres claire"
+  }
 }

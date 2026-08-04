@@ -25,5 +25,14 @@
     3,
     4
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.06,
+    "curve": 0.31,
+    "fork": 0.28,
+    "spread_deg": 56.0,
+    "leaf_density": 0.8,
+    "children": 4,
+    "_port": "verger : fourche tres bas, branches tordues"
+  }
 }

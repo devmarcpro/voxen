@@ -25,5 +25,14 @@
     3,
     4
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": -0.1,
+    "curve": 0.1,
+    "fork": 0.2,
+    "spread_deg": 70.0,
+    "leaf_density": 0.66,
+    "children": 3,
+    "_port": "conifere caduc, tres clair, branches fines"
+  }
 }

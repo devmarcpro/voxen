@@ -25,5 +25,14 @@
     3,
     4
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": -0.34,
+    "curve": 0.06,
+    "fork": 0.14,
+    "spread_deg": 74.0,
+    "leaf_density": 0.9,
+    "children": 4,
+    "_port": "rameaux retombants, silhouette en jupe"
+  }
 }

@@ -31,6 +31,9 @@
     "fork": 0.3,
     "curve": 0.34,
     "spread_deg": 55.0,
-    "leaf_density": 0.62
+    "leaf_density": 0.62,
+    "droop": 0.02,
+    "children": 5,
+    "_port": "tronc torturé, feuillage argente et transparent"
   }
 }

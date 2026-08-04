@@ -25,5 +25,14 @@
     4,
     6
   ],
-  "special_tags": []
+  "special_tags": [],
+  "architecture": {
+    "droop": 0.18,
+    "curve": 0.12,
+    "fork": 0.6,
+    "spread_deg": 44.0,
+    "leaf_density": 0.84,
+    "children": 3,
+    "_port": "tronc droit, grandes feuilles espacees"
+  }
 }
