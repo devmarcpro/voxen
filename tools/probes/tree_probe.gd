@@ -30,10 +30,83 @@ func run() -> void:
 		print("[%s] aucun arbre trouvé dans la fenêtre de recherche." % TAG)
 		main.get_tree().quit(1)
 		return
+	_check_cost()
 	_check_silhouettes()
 	_check_lookup(gen, tree)
 	_check_felling(gen, tree)
 	finish(_ok, TAG)
+
+
+## COÛT D'UN ARBRE, essence par essence (2026-08-04).
+##
+## POURQUOI. Un platane posé depuis le menu de triche faisait plus de 2 000
+## blocs. Un arbre est le décor le plus répandu du monde : son volume se paie à
+## la génération, au maillage, à la sauvegarde et à l'abattage, et personne ne
+## le regardait.
+##
+## On mesure aussi la part de feuillage ENFERMÉ — les blocs dont les six voisins
+## sont pleins. Ceux-là ne sont visibles d'aucun angle, et comme casser
+## n'importe quel bloc abat l'arbre entier, le joueur ne peut jamais entrer dans
+## une couronne pour les découvrir. C'est du volume payé pour rien.
+func _check_cost() -> void:
+	var total := 0
+	var worst := ""
+	var worst_count := 0
+	var enclosed_total := 0
+	var leaves_total := 0
+	var report: Array[String] = []
+	for species_id: String in GameData.trees:
+		var species: Dictionary = GameData.trees[species_id]
+		var tree := TreeGenerator.generate(Vector3i.ZERO, 20260804, species)
+		var blocks: Dictionary = tree["blocks"]
+		var leaf_id: int = GameData.material_runtime_ids.get(String(species["leaf_material"]), 0)
+		var enclosed := 0
+		var leaves := 0
+		for pos: Vector3i in blocks:
+			if blocks[pos] != leaf_id:
+				continue
+			leaves += 1
+			var buried := true
+			for dir: Vector3i in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0),
+					Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+				if not blocks.has(pos + dir):
+					buried = false
+					break
+			if buried:
+				enclosed += 1
+		total += blocks.size()
+		leaves_total += leaves
+		enclosed_total += enclosed
+		if blocks.size() > worst_count:
+			worst_count = blocks.size()
+			worst = species_id
+		if blocks.size() >= 900:
+			report.append("%s %d" % [species_id, blocks.size()])
+
+	print("[%s] COÛT : %d blocs pour %d essences, soit %d en moyenne" % [
+			TAG, total, GameData.trees.size(), total / maxi(1, GameData.trees.size())])
+	print("[%s]   la plus lourde : %s à %d blocs" % [TAG, worst, worst_count])
+	if not report.is_empty():
+		print("[%s]   au-dessus de 900 blocs : %s" % [TAG, ", ".join(report)])
+	print("[%s]   feuillage ENFERMÉ (invisible) : %d sur %d, soit %.0f %% du feuillage" % [
+			TAG, enclosed_total, leaves_total,
+			float(enclosed_total) / maxf(1.0, float(leaves_total)) * 100.0])
+	# LE SEUIL GARDE CONTRE UNE EXPLOSION, PAS CONTRE LE DESIGN.
+	#
+	# Il ne s'agit pas de décréter qu'un arbre doit être petit : le séquoia fait
+	# 22 à 32 blocs de haut par ses données, et son volume est celui que ces
+	# données demandent. Ce que la sonde doit attraper, c'est le jour où une
+	# essence part à 3 000 blocs pour une raison qui n'est pas dans sa fiche —
+	# ce qui est exactement arrivé le 2026-08-04 : un facteur de remplissage de
+	# couronne à 1,5 donnait 3,4 fois le volume de la couronne NOMINALE, et un
+	# platane pesait 2 882 blocs pour un rayon de 8.
+	#
+	# Le plafond est donc posé un cran au-dessus de la plus grosse essence
+	# légitime, et il baissera si l'auteur décide de rapetisser le catalogue.
+	_expect(worst_count < 2200, "aucune essence n'explose (la pire : %s à %d, plafond 2200)" % [
+			worst, worst_count])
+	_expect(total / maxi(1, GameData.trees.size()) < 600,
+			"la MOYENNE reste raisonnable (%d blocs)" % (total / maxi(1, GameData.trees.size())))
 
 
 ## SILHOUETTES RÉELLES (2026-08-03). Le catalogue comptait 38 essences pour 4

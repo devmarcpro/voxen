@@ -41,18 +41,24 @@ extends RefCounted
 ## l'inverse.
 ##
 ## ---------------------------------------------------------------------------
-## LA RÈGLE DE GRAIN : 32 / 16 / 8 PX, JAMAIS 4
+## LA RÈGLE DE GRAIN : 32 ET 16 PX, RIEN DE PLUS FIN
 ## ---------------------------------------------------------------------------
-## Le bloc plein fait 32 px, la moitié 16, le quart 8. Le système de
-## subdivision (4.1) descend à 4 px, mais on n'y va pas : c'est un détail qu'on
-## ne voit qu'en collant le nez au tronc, et il coûte cher à mailler.
+## Le bloc plein fait 32 px, la moitié 16. Le système de subdivision (4.1)
+## descend à 4 px et le générateur est passé un temps par le 8 px, mais **on
+## s'arrête au 16** (décision de l'auteur, 2026-08-04, pour la performance).
 ##
-## Tout le bois est donc tracé sur un réseau de 8 px — quatre pas par bloc et
-## par axe — puis PROMU : un bloc dont les 64 cellules fines sont pleines
-## redevient un bloc plein de 32 px. Les pièces de 16 px n'ont pas à être
-## posées explicitement, le mailleur glouton refusionne les faces coplanaires
-## de lui-même. C'est ce qui permet à une branche de s'affiner de 32 px au
-## départ à 8 px au bout, ce qu'aucune grille de blocs pleins ne peut faire.
+## CE QUE ÇA CHANGE, ET POURQUOI C'EST LE BON ÉCHANGE. Un réseau à 16 px porte
+## deux pas par bloc et par axe au lieu de quatre : une sous-grille compte donc
+## **huit** cellules signifiantes au lieu de soixante-quatre. Le mailleur en
+## sort beaucoup moins de quads, et surtout le nombre de MOTIFS distincts
+## s'effondre — ce qui fait travailler son cache de quads au lieu de le saturer.
+## Le prix payé est une branche qui ne descend plus sous le demi-bloc ; à la
+## distance où l'on voit un arbre, la différence entre 8 et 16 px sur une
+## brindille ne se lit pas.
+##
+## Tout le bois est tracé sur ce réseau puis PROMU : un bloc dont toutes les
+## cellules fines sont pleines redevient un bloc plein de 32 px. Le mailleur
+## glouton refusionne les faces coplanaires de lui-même.
 ##
 ## Le FEUILLAGE, lui, reste en blocs pleins : seule sa peau exposée est érodée
 ## en 8 px. Raffiner l'intérieur d'une couronne coûterait le prix fort pour du
@@ -68,11 +74,36 @@ const CANOPY_SHAPES := [
 	"columnar", "vase", "tiered", "umbrella", "oval", "broad",
 ]
 
-## Pas du réseau fin, en subdivisions de 4 px : 2 = 8 px. NE PAS descendre à 1,
-## c'est précisément ce que la règle de grain interdit.
-const FINE_STEP := 2
-## Pas fins par bloc et par axe.
-const FINE_PER_BLOCK := 4
+## Pas du réseau fin, en subdivisions de 4 px : 4 = 16 px. NE PAS descendre
+## sous 4, c'est précisément ce que la règle de grain interdit.
+const FINE_STEP := 4
+## Pas fins par bloc et par axe (8 / FINE_STEP × ... : ici 2).
+const FINE_PER_BLOCK := 2
+
+## Décalage et masque pour passer d'une coordonnée FINE à son BLOC, dérivés de
+## FINE_PER_BLOCK au lieu d'être écrits en dur.
+##
+## Ils l'étaient (`>> 2` et `& 3`, justes pour quatre pas par bloc), et le
+## passage au grain 16 px les a laissés derrière : l'arbre entier se retrouvait
+## écrasé de moitié dans l'espace des blocs, son pied ne tombait plus sur sa
+## propre case, et la recherche inverse ne le reconnaissait plus. Rien ne
+## plantait — le générateur produisait simplement des arbres faux.
+const FINE_SHIFT := 1   # log2(FINE_PER_BLOCK)
+const FINE_MASK := FINE_PER_BLOCK - 1
+
+## GRAIN PROPRE AUX POUSSES : 8 px, plus fin que le bois du monde.
+##
+## C'est une EXCEPTION ASSUMÉE à la règle 32/16, et elle se justifie par ce
+## qu'est une pousse : l'arbre entier réduit dans UN bloc. Au grain du monde,
+## une miniature ne dispose que de 2×2×2 pièces — elle ne peut représenter
+## aucune silhouette, et les 38 essences sortaient toutes en cube plein.
+##
+## La règle vise l'optimisation, et l'exception ne la contredit pas : le monde
+## porte des milliers d'arbres, alors qu'une pousse est un bloc posé à la main,
+## par dizaines au plus. Le coût de maillage y est négligeable, la lisibilité
+## non.
+const SAPLING_CELLS := 4                          # 4×4×4 pièces dans le bloc.
+const SAPLING_STEP := SubdivGrid.SIZE / SAPLING_CELLS
 
 ## Angle d'or. Les branches successives d'une pousse ne sortent ni au hasard ni
 ## à intervalle régulier : elles tournent d'environ 137,5° l'une par rapport à
@@ -81,9 +112,15 @@ const FINE_PER_BLOCK := 4
 ## des paquets et des trous.
 const PHYLLOTAXIS := 2.39996
 
-## En dessous de ce rayon (en pas fins), une pousse est un rameau terminal : on
+## En dessous de ce rayon (en PAS FINS), une pousse est un rameau terminal : on
 ## arrête de subdiviser et on y accroche du feuillage.
-const TIP_RADIUS := 0.55
+##
+## Exprimé en pas fins, donc à réviser si le grain change : la valeur a été
+## halvée le 2026-08-04 en passant du 8 px au 16 px, pour que le seuil garde la
+## même taille RÉELLE. L'oublier aurait doublé l'épaisseur de tous les rameaux
+## terminaux sans que rien ne le signale — le générateur aurait simplement
+## produit des arbres plus gros.
+const TIP_RADIUS := 0.28
 
 ## BUDGET D'EXTRÉMITÉS. La ramification est exponentielle, et le feuillage
 ## coûte un amas par extrémité : sans plafond, un cèdre produisait 325 rameaux
@@ -94,6 +131,35 @@ const TIP_RADIUS := 0.55
 ## construction (chaque génération est complète avant la suivante), donc ce qui
 ## saute est la génération la plus fine, celle qui se voit le moins.
 const MAX_TIPS := 96
+
+## REMPLISSAGE DE LA COURONNE (2026-08-04) — la constante la plus chère du
+## fichier, parce que son effet est CUBIQUE.
+##
+## `_foliage` dimensionne chaque amas à `crown × CROWN_FILL / N^⅓`. La division
+## par la racine cubique est correcte et rend le volume total indépendant du
+## nombre d'extrémités : N amas de rayon r couvrent N·r³, et N·(k/N^⅓)³ = k³.
+##
+## Mais ce volume total vaut alors `(4/3)π · CROWN_FILL³ · crown³`. À 1,5, cela
+## faisait **3,4 fois** le volume d'une couronne sphérique de rayon `crown` : le
+## feuillage débordait très largement du rayon que les données demandent, et un
+## platane pesait 2 882 blocs. À 1,0, le volume tombe sur la couronne nominale,
+## celle que `canopy_radius_range` décrit.
+##
+## Ne pas descendre trop bas : le plancher de 1,5 bloc par amas transforme un
+## arbre à beaucoup d'extrémités en confettis — c'est le défaut qu'un réglage
+## antérieur avait produit en divisant par la racine carrée.
+const CROWN_FILL := 1.0
+
+## ÉVIDAGE DU FEUILLAGE. Un bloc de feuille dont les six voisins sont pleins
+## n'est visible d'AUCUN angle. Et comme casser n'importe quel bloc abat l'arbre
+## entier, le joueur ne peut jamais entrer dans une couronne pour l'y découvrir :
+## ce volume est payé à la génération, au maillage et à la sauvegarde pour
+## quelque chose que personne ne verra jamais.
+##
+## Mesuré avant de le coder : 11 % du feuillage. C'est modeste — la vraie
+## économie est dans CROWN_FILL — mais c'est un gain sans aucune contrepartie
+## visuelle, ce qui est rare.
+const HOLLOW_CANOPY := true
 
 
 ## Génère un arbre à `base` (position du premier bloc de tronc, au sol).
@@ -148,6 +214,13 @@ static func generate(base: Vector3i, world_seed: int, species: Dictionary) -> Di
 	# --- 4. Le feuillage, accroché aux rameaux terminaux ---
 	_foliage(ctx, blocks, leaf_id)
 
+	# --- 4 bis. Évidage : le feuillage enfermé ne se voit d'aucun angle ---
+	# AVANT l'érosion de la peau, et l'ordre compte : l'érosion travaille sur les
+	# blocs EXPOSÉS, et évider après elle lui ferait ronger une surface qu'on
+	# vient de creuser.
+	if HOLLOW_CANOPY:
+		_hollow(blocks, leaf_id)
+
 	# --- 5. Peau du feuillage érodée en 8 px ---
 	_erode_leaf_shell(blocks, subdivs, leaf_id)
 
@@ -197,9 +270,9 @@ static func sapling_grid(species: Dictionary, seed_value: int) -> PackedInt32Arr
 	for pos: Vector3i in blocks:
 		var local := Vector3(pos - low)
 		var cell := Vector3i(
-				clampi(int(local.x / span.x * FINE_PER_BLOCK), 0, FINE_PER_BLOCK - 1),
-				clampi(int(local.y / span.y * FINE_PER_BLOCK), 0, FINE_PER_BLOCK - 1),
-				clampi(int(local.z / span.z * FINE_PER_BLOCK), 0, FINE_PER_BLOCK - 1))
+				clampi(int(local.x / span.x * SAPLING_CELLS), 0, SAPLING_CELLS - 1),
+				clampi(int(local.y / span.y * SAPLING_CELLS), 0, SAPLING_CELLS - 1),
+				clampi(int(local.z / span.z * SAPLING_CELLS), 0, SAPLING_CELLS - 1))
 		if not tally.has(cell):
 			tally[cell] = {}
 		var counts: Dictionary = tally[cell]
@@ -216,7 +289,7 @@ static func sapling_grid(species: Dictionary, seed_value: int) -> PackedInt32Arr
 				best_count = int(counts[id])
 				best = id
 		if best != 0:
-			SubdivGrid.set_region(grid, cell * FINE_STEP, FINE_STEP, best)
+			SubdivGrid.set_region(grid, cell * SAPLING_STEP, SAPLING_STEP, best)
 
 	# UNE POUSSE TOUCHE LE SOL. La réduction centre l'arbre sur sa boîte
 	# englobante, qui inclut les racines : sans ce recalage, une pousse à
@@ -654,7 +727,7 @@ static func _ball(ctx: Dictionary, center: Vector3, radius: float) -> void:
 static func _rasterize(fine: Dictionary, blocks: Dictionary, subdivs: Dictionary, wood_positions: Array[Vector3i]) -> float:
 	var per_block := {}
 	for cell: Vector3i in fine:
-		var block := Vector3i(cell.x >> 2, cell.y >> 2, cell.z >> 2)
+		var block := Vector3i(cell.x >> FINE_SHIFT, cell.y >> FINE_SHIFT, cell.z >> FINE_SHIFT)
 		if not per_block.has(block):
 			per_block[block] = []
 		(per_block[block] as Array).append(cell)
@@ -671,7 +744,7 @@ static func _rasterize(fine: Dictionary, blocks: Dictionary, subdivs: Dictionary
 			continue  # Plein : reste un bloc de 32 px.
 		var grid := SubdivGrid.create_empty()
 		for cell: Vector3i in cells:
-			var q := Vector3i(cell.x & 3, cell.y & 3, cell.z & 3)
+			var q := Vector3i(cell.x & FINE_MASK, cell.y & FINE_MASK, cell.z & FINE_MASK)
 			SubdivGrid.set_region(grid, q * FINE_STEP, FINE_STEP, material_id)
 		subdivs[block] = grid
 	return volume
@@ -708,7 +781,7 @@ static func _foliage(ctx: Dictionary, blocks: Dictionary, leaf_id: int) -> void:
 	# — une couronne pleine, débordant largement du rayon demandé.
 	var count := maxf(1.0, float(tips.size()))
 	var crown := float(arch["leaf_radius"])
-	var per_tip := clampf(crown * 1.5 / pow(count, 1.0 / 3.0), 1.5, crown * 0.7)
+	var per_tip := clampf(crown * CROWN_FILL / pow(count, 1.0 / 3.0), 1.5, crown * 0.7)
 
 	for tip: Vector3 in tips:
 		match style:
@@ -729,6 +802,28 @@ static func _foliage(ctx: Dictionary, blocks: Dictionary, leaf_id: int) -> void:
 
 
 ## Amas de feuillage ellipsoïdal autour d'un point, en blocs pleins.
+## Retire le feuillage totalement enfermé. Voir HOLLOW_CANOPY.
+##
+## UNE SEULE PASSE, sur l'état d'ORIGINE : on retire d'un coup tous les blocs
+## qui étaient enfermés avant de commencer. Le reste forme exactement la surface
+## de la couronne, identique vue du dehors. Enchaîner les passes creuserait au
+## contraire jusqu'à ne laisser qu'une coquille percée.
+static func _hollow(blocks: Dictionary, leaf_id: int) -> void:
+	var buried: Array[Vector3i] = []
+	for pos: Vector3i in blocks:
+		if blocks[pos] != leaf_id:
+			continue
+		var enclosed := true
+		for dir: Vector3i in FACE_DIRS:
+			if not blocks.has(pos + dir):
+				enclosed = false
+				break
+		if enclosed:
+			buried.append(pos)
+	for pos: Vector3i in buried:
+		blocks.erase(pos)
+
+
 static func _blob(blocks: Dictionary, tip_fine: Vector3, radius: float, flatten: float, density: float, leaf_id: int) -> void:
 	var center := tip_fine / float(FINE_PER_BLOCK)
 	var origin := Vector3i(roundi(center.x), roundi(center.y), roundi(center.z))
