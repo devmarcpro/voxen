@@ -63,26 +63,30 @@ static func build(dimension: StringName, declaration: Dictionary, world_seed: in
 	# Les bruits : un pour le relief, un pour le découpage en pays. Le second
 	# est BEAUCOUP plus lisse — sans ça, les biomes se mélangeraient tous les
 	# dix blocs et aucun pays ne se lirait comme un pays.
-	var height_noise := FastNoiseLite.new()
-	height_noise.seed = world_seed ^ 0x11AA
-	height_noise.frequency = 0.012
-	height_noise.fractal_octaves = 4
-	var zone_noise := FastNoiseLite.new()
-	zone_noise.seed = world_seed ^ 0x22BB
-	zone_noise.frequency = 0.0035
-	var warp_noise := FastNoiseLite.new()
-	warp_noise.seed = world_seed ^ 0x33CC
-	warp_noise.frequency = 0.02
+	# LES COUCHES DE BRUIT VIENNENT DES DONNÉES, comme `data/noise_layers.json`
+	# pour l'overworld. Elles étaient construites en dur ici : un second système
+	# parallèle, et rien qu'on puisse régler sans rouvrir du GDScript.
+	var layers: Dictionary = declaration.get("noise_layers", {})
+	var height_noise := _layer(layers, "relief", world_seed, 0.012, 4)
+	var zone_noise := _layer(layers, "pays", world_seed, 0.006, 1)
+	var warp_noise := _layer(layers, "torsion", world_seed, 0.020, 2)
+
+	var terrain: Dictionary = declaration.get("terrain", {})
+	var half := int(terrain.get("demi_etendue", HALF_SPAN))
+	var base_y := int(terrain.get("base_y", BASE_Y))
+	var amplitude := float(terrain.get("relief", RELIEF))
+	var crust := int(terrain.get("croute", CRUST))
 
 	var top_of := {}          # Vector2i(x,z) -> altitude du sol.
 	var zone_of := {}         # Vector2i(x,z) -> index de biome.
-	for x in range(-HALF_SPAN, HALF_SPAN + 1):
-		for z in range(-HALF_SPAN, HALF_SPAN + 1):
+	for x in range(-half, half + 1):
+		for z in range(-half, half + 1):
 			var key := Vector2i(x, z)
 			var zi := _zone_at(zone_noise, x, z, zones.size())
 			zone_of[key] = zi
 			top_of[key] = _height_at(height_noise, warp_noise,
-					String((zones[zi] as Dictionary).get("relief", "doux")), x, z)
+					String((zones[zi] as Dictionary).get("relief", "doux")), x, z,
+					base_y, amplitude)
 
 	# On écrit la croûte : surface + roche en dessous. Sans épaisseur, le monde
 	# serait une feuille de papier qu'on traverse au premier coup de pioche.
@@ -98,7 +102,7 @@ static func build(dimension: StringName, declaration: Dictionary, world_seed: in
 			continue
 		var top: int = top_of[key]
 		DimensionManager.set_block_in(dimension, Vector3i(key.x, top, key.y), ground, false)
-		for d in range(1, CRUST + 1):
+		for d in range(1, crust + 1):
 			var id := rock
 			# Veines de cristal : la dimension n'a pas de soleil, ce sont elles
 			# qui l'éclairent depuis les parois et les creux.
@@ -117,35 +121,47 @@ static func build(dimension: StringName, declaration: Dictionary, world_seed: in
 	return landing
 
 
+## Une couche de bruit déclarée en données. Le repli garde des valeurs saines
+## si la fiche de dimension n'en décrit pas.
+static func _layer(layers: Dictionary, id: String, world_seed: int,
+		default_frequency: float, default_octaves: int) -> FastNoiseLite:
+	var spec: Dictionary = layers.get(id, {})
+	var noise := FastNoiseLite.new()
+	noise.seed = world_seed ^ int(spec.get("seed_offset", 0))
+	noise.frequency = float(spec.get("frequency", default_frequency))
+	noise.fractal_octaves = int(spec.get("octaves", default_octaves))
+	return noise
+
+
 ## Altitude du sol en (x, z), selon le relief du pays.
 ##
 ## Le RELIEF N'EST PAS GÉOLOGIQUE, et c'est voulu : des terrasses franches, des
 ## dômes qui se posent les uns sur les autres, des flèches. La Terre ne fait pas
 ## ça — c'est précisément pour ça que le lieu se lit comme un rêve.
 static func _height_at(height_noise: FastNoiseLite, warp_noise: FastNoiseLite,
-		relief: String, x: int, z: int) -> int:
+		relief: String, x: int, z: int, base_y: int, amplitude: float) -> int:
 	# Déformation du domaine : on tord les coordonnées avant d'échantillonner,
 	# ce qui courbe les crêtes au lieu de les laisser filer droit.
 	var wx := float(x) + warp_noise.get_noise_2d(float(x), float(z)) * 18.0
 	var wz := float(z) + warp_noise.get_noise_2d(float(z), float(x)) * 18.0
 	var n := height_noise.get_noise_2d(wx, wz)          # -1 .. 1
-	var h := float(BASE_Y) + n * RELIEF
+	var h := float(base_y) + n * amplitude
 	match relief:
 		"tordu":
 			# CRÊTES : la valeur absolue du bruit fait des arêtes vives au lieu
 			# de collines molles, et l'exposant les rend franchement acérées.
-			h = float(BASE_Y) + pow(absf(n), 0.55) * RELIEF * 1.5
+			h = float(base_y) + pow(absf(n), 0.55) * amplitude * 1.5
 		"champignon":
 			# TERRASSES : on quantifie l'altitude par paliers de six blocs, ce
 			# qui donne les plateaux étagés du croquis. Le surplomb, lui, vient
 			# des flèches posées par-dessus.
-			h = float(BASE_Y) + floor(n * RELIEF / 6.0) * 6.0
+			h = float(base_y) + floor(n * amplitude / 6.0) * 6.0
 		"bulbeux":
 			# DÔMES : le sinus rend des bosses régulières qui se recouvrent, à
 			# mi-chemin entre la colline et la bulle de savon.
-			h = float(BASE_Y) + sin(n * PI) * RELIEF * 0.8
+			h = float(base_y) + sin(n * PI) * amplitude * 0.8
 		_:
-			h = float(BASE_Y) + n * RELIEF * 0.6
+			h = float(base_y) + n * amplitude * 0.6
 	return int(round(h))
 
 

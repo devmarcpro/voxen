@@ -45,5 +45,28 @@
     "champs_solaires",
     "recif_corallien",
     "cathedrale_cristal"
-  ]
+  ],
+  "noise_layers": {
+    "relief": {
+      "frequency": 0.012,
+      "octaves": 4,
+      "seed_offset": 4522
+    },
+    "pays": {
+      "frequency": 0.006,
+      "octaves": 1,
+      "seed_offset": 8891
+    },
+    "torsion": {
+      "frequency": 0.02,
+      "octaves": 2,
+      "seed_offset": 13260
+    }
+  },
+  "terrain": {
+    "base_y": 64,
+    "relief": 34,
+    "croute": 10,
+    "demi_etendue": 320
+  }
 }
