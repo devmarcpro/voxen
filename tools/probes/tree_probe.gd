@@ -103,7 +103,17 @@ func _check_cost() -> void:
 	#
 	# Le plafond est donc posé un cran au-dessus de la plus grosse essence
 	# légitime, et il baissera si l'auteur décide de rapetisser le catalogue.
-	_expect(worst_count < 2200, "aucune essence n'explose (la pire : %s à %d, plafond 2200)" % [
+	# PLAFOND RELEVÉ DE 2200 À 2400 le 2026-08-04, et voici pourquoi — un seuil
+	# qu'on déplace sans raison écrite ne garde plus rien.
+	#
+	# Le feuillage des conifères a été DENSIFIÉ à dessein le même jour : le sapin
+	# laissait voir son tronc entre des amas trop clairsemés et ne ressemblait à
+	# rien. Le séquoia, plus haute essence du catalogue (22 à 32 blocs), absorbe
+	# ce changement et passe de 2 011 à 2 215 blocs. Ce n'est pas une dérive,
+	# c'est le prix d'une correction voulue sur l'arbre le plus grand du jeu.
+	#
+	# La MOYENNE reste le vrai garde-fou : elle, elle n'a pas bougé.
+	_expect(worst_count < 2400, "aucune essence n'explose (la pire : %s à %d, plafond 2400)" % [
 			worst, worst_count])
 	_expect(total / maxi(1, GameData.trees.size()) < 600,
 			"la MOYENNE reste raisonnable (%d blocs)" % (total / maxi(1, GameData.trees.size())))

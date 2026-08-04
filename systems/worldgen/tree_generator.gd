@@ -543,6 +543,25 @@ static func _grow(ctx: Dictionary, from: Vector3, dir: Vector3, length: float, r
 	var travelled := 0.0
 	var next_whorl := float(arch["whorl_spacing"]) * (fork * 4.0 if leader else 0.0)
 
+	# BUDGET DE VERTICILLES, RÉPARTI SUR TOUTE LA HAUTEUR.
+	#
+	# Les verticilles se posent EN MONTANT le long de l'axe. Quand le plafond
+	# d'extrémités était atteint en chemin, ceux du haut n'étaient tout
+	# simplement jamais posés : le conifère perdait sa moitié supérieure et
+	# laissait dépasser un tronc nu. C'est exactement ce que montrait la
+	# capture du sapin — « il ne ressemble à rien », et pour cause, il lui
+	# manquait la pointe qui fait un sapin.
+	#
+	# On ne coupe donc plus quand le budget est épuisé : on RÉDUIT LE NOMBRE DE
+	# BRANCHES PAR VERTICILLE pour que tous les étages tiennent. Un sapin à
+	# trois branches par étage sur toute sa hauteur est un sapin ; un sapin à
+	# quatre branches sur sa moitié basse est un buisson surmonté d'un poteau.
+	var per_whorl := int(arch["children"])
+	if excurrent and leader:
+		var spacing := maxf(float(arch["whorl_spacing"]), 0.5)
+		var expected := maxf(1.0, run / spacing)
+		per_whorl = clampi(int(float(MAX_TIPS) * 0.85 / expected), 2, int(arch["children"]))
+
 	for i in steps:
 		var t0 := float(i) / steps
 		var t1 := float(i + 1) / steps
@@ -575,9 +594,10 @@ static func _grow(ctx: Dictionary, from: Vector3, dir: Vector3, length: float, r
 			# de la couronne, quelle que soit la taille de l'arbre.
 			var lateral_len := float(arch["crown_reach"]) * profile * 0.95
 			var lateral_r := radius * float(arch["radius_ratio"]) * lerpf(1.0, 0.4, t1)
-			var whorl := int(arch["children"])
-			if (ctx["tips"] as Array).size() >= MAX_TIPS:
-				whorl = 0
+			# Le budget est déjà réparti (voir `per_whorl`) : on ne coupe plus
+			# en chemin, sinon on recréerait la troncature qu'on vient de
+			# supprimer.
+			var whorl := per_whorl
 			for k in whorl:
 				var yaw := PHYLLOTAXIS * (i * whorl + k) + rng.randf_range(-0.25, 0.25)
 				var lateral := _spread(heading, yaw, deg_to_rad(float(arch["spread_deg"])
@@ -794,7 +814,12 @@ static func _foliage(ctx: Dictionary, blocks: Dictionary, leaf_id: int) -> void:
 				# Plateau : large, mince, posé à plat sur la branche.
 				_blob(blocks, tip, per_tip * 1.35, 0.28, density, leaf_id)
 			"needle":
-				_blob(blocks, tip, per_tip * 0.95, 0.6, density * 0.95, leaf_id)
+				# DENSE ET RAMASSÉ. Un conifère ne laisse pas voir son tronc :
+				# ses aiguilles forment un manteau opaque. Les amas étaient
+				# aplatis (0,6) et clairsemés, et le fût pâle transparaissait
+				# entre eux — un sapin doit être une masse sombre, pas un
+				# treillis. On les arrondit et on les serre.
+				_blob(blocks, tip, per_tip * 1.15, 0.85, minf(density * 1.25, 1.0), leaf_id)
 			"airy":
 				_blob(blocks, tip, per_tip * 0.9, flatten, density * 0.72, leaf_id)
 			_:
