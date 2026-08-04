@@ -31,6 +31,14 @@
     {
       "id": "bouleau",
       "density": 0.00042
+    },
+    {
+      "id": "pommier",
+      "density": 0.002
+    },
+    {
+      "id": "cerisier",
+      "density": 0.0018
     }
   ],
   "village_palette": {

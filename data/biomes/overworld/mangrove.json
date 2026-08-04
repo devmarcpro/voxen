@@ -31,6 +31,10 @@
     {
       "id": "paletuvier",
       "density": 0.014
+    },
+    {
+      "id": "tamaris",
+      "density": 0.004
     }
   ],
   "village_palette": {

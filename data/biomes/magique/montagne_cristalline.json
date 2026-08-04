@@ -30,6 +30,14 @@
     {
       "id": "cedre",
       "density": 0.00112
+    },
+    {
+      "id": "pin_montagne",
+      "density": 0.0035
+    },
+    {
+      "id": "genevrier",
+      "density": 0.0025
     }
   ],
   "village_palette": {

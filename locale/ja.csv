@@ -1149,3 +1149,12 @@ material.bois_fromager.name,カポック材
 material.feuilles_fromager.name,カポックの葉
 material.bois_genevrier.name,ネズ材
 material.feuilles_genevrier.name,ネズの葉
+tree.pin_montagne.name,ハイマツ
+tree.saxaoul.name,サクサウール
+tree.tamaris.name,ギョリュウ
+material.bois_pin_montagne.name,ハイマツ材
+material.feuilles_pin_montagne.name,ハイマツの葉
+material.bois_saxaoul.name,サクサウール材
+material.feuilles_saxaoul.name,サクサウールの葉
+material.bois_tamaris.name,ギョリュウ材
+material.feuilles_tamaris.name,ギョリュウの葉

@@ -46,6 +46,10 @@
     {
       "id": "pommier",
       "density": 0.00112
+    },
+    {
+      "id": "noyer",
+      "density": 0.0022
     }
   ],
   "village_palette": {

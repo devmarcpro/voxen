@@ -71,6 +71,10 @@
     {
       "id": "noisetier",
       "density": 0.0007
+    },
+    {
+      "id": "noyer",
+      "density": 0.0022
     }
   ],
   "village_palette": {

@@ -47,6 +47,10 @@
     {
       "id": "bambou",
       "density": 0.0056
+    },
+    {
+      "id": "fromager",
+      "density": 0.0022
     }
   ],
   "village_palette": {

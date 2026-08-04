@@ -31,6 +31,14 @@
     {
       "id": "bouleau",
       "density": 0.00112
+    },
+    {
+      "id": "aulne",
+      "density": 0.0045
+    },
+    {
+      "id": "saule",
+      "density": 0.0035
     }
   ],
   "village_palette": {

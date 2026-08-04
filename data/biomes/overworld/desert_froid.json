@@ -25,8 +25,12 @@
   ],
   "vegetation": [
     {
-      "id": "bouleau",
-      "density": 0.00017
+      "id": "saxaoul",
+      "density": 0.004
+    },
+    {
+      "id": "genevrier",
+      "density": 0.0018
     }
   ],
   "village_palette": {

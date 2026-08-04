@@ -26,6 +26,14 @@
     {
       "id": "baobab",
       "density": 0.00042
+    },
+    {
+      "id": "arbre_mort",
+      "density": 0.001
+    },
+    {
+      "id": "tamaris",
+      "density": 0.0018
     }
   ],
   "village_palette": {

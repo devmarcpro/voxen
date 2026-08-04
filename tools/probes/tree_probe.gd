@@ -204,6 +204,30 @@ func _check_silhouettes() -> void:
 	# qui se ressemblent reste plausible dans une flore réelle.
 	_expect(clones.is_empty(), "aucun groupe de 3 essences ou plus ne partage un profil")
 
+	# TOUTE ESSENCE DOIT POUSSER QUELQUE PART.
+	#
+	# Une essence absente de tout biome existe dans le catalogue, coûte ses deux
+	# entrées de palette et ses quatre clés de locale, et n'apparaît dans aucun
+	# monde — on ne peut la voir qu'au menu de triche. Rien ne le signale : le
+	# jeu tourne, la forêt pousse, et il manque simplement un arbre que personne
+	# ne cherchait.
+	#
+	# C'est arrivé deux fois. Le FROMAGER, câblé le 2026-08-04 sur un
+	# identifiant de biome inexistant (`jungle` au lieu de `jungle_tropicale`),
+	# et le NOYER, jamais câblé depuis sa création. Le script d'alors avait
+	# imprimé « 5 biomes câblés » quand huit étaient attendus, et l'écart n'a
+	# pas été relevé — d'où cette assertion, qui ne dépend d'aucune vigilance.
+	var planted := {}
+	for biome_id: String in GameData.biomes:
+		for entry: Dictionary in ((GameData.biomes[biome_id] as Dictionary).get("vegetation", []) as Array):
+			planted[String(entry["id"])] = true
+	var homeless: Array[String] = []
+	for species_id: String in GameData.trees:
+		if not planted.has(species_id):
+			homeless.append(species_id)
+	_expect(homeless.is_empty(), "toutes les essences poussent dans au moins un biome%s" % [
+			"" if homeless.is_empty() else " — orphelines : " + ", ".join(homeless)])
+
 	print("[%s] formes de canopée employées : %d %s" % [TAG, formes.size(), formes.keys()])
 	_expect(formes.size() >= 8, "le catalogue emploie au moins 8 silhouettes distinctes")
 

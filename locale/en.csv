@@ -1149,3 +1149,12 @@ material.bois_fromager.name,Kapok wood
 material.feuilles_fromager.name,Kapok leaves
 material.bois_genevrier.name,Juniper wood
 material.feuilles_genevrier.name,Juniper leaves
+tree.pin_montagne.name,Mountain pine
+tree.saxaoul.name,Saxaul
+tree.tamaris.name,Tamarisk
+material.bois_pin_montagne.name,Mountain pine wood
+material.feuilles_pin_montagne.name,Mountain pine needles
+material.bois_saxaoul.name,Saxaul wood
+material.feuilles_saxaoul.name,Saxaul leaves
+material.bois_tamaris.name,Tamarisk wood
+material.feuilles_tamaris.name,Tamarisk leaves

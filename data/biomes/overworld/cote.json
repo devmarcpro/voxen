@@ -22,6 +22,18 @@
     {
       "id": "palmier",
       "density": 0.00168
+    },
+    {
+      "id": "tamaris",
+      "density": 0.006
+    },
+    {
+      "id": "pin_parasol",
+      "density": 0.004
+    },
+    {
+      "id": "liege",
+      "density": 0.0025
     }
   ],
   "village_palette": {

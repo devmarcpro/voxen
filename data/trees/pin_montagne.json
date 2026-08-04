@@ -1,0 +1,38 @@
+{
+  "id": "pin_montagne",
+  "name_key": "tree.pin_montagne.name",
+  "wood_material": "bois_pin_montagne",
+  "leaf_material": "feuilles_pin_montagne",
+  "height_range": [
+    6,
+    10
+  ],
+  "trunk_radius": 1,
+  "branch_parameters": {
+    "start_fraction": 0.25,
+    "count_range": [
+      4,
+      6
+    ],
+    "angle_deg": 66,
+    "length_range": [
+      2,
+      3
+    ]
+  },
+  "canopy_shape": "conical",
+  "canopy_radius_range": [
+    3,
+    4
+  ],
+  "architecture": {
+    "droop": -0.24,
+    "curve": 0.44,
+    "fork": 0.2,
+    "spread_deg": 74.0,
+    "leaf_density": 0.8,
+    "children": 4,
+    "_port": "rabougri, tordu par le vent d'altitude"
+  },
+  "special_tags": []
+}

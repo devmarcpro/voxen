@@ -1149,3 +1149,12 @@ material.bois_fromager.name,木棉木
 material.feuilles_fromager.name,木棉叶
 material.bois_genevrier.name,刺柏木
 material.feuilles_genevrier.name,刺柏叶
+tree.pin_montagne.name,高山松
+tree.saxaoul.name,梭梭
+tree.tamaris.name,柽柳
+material.bois_pin_montagne.name,高山松木
+material.feuilles_pin_montagne.name,高山松针
+material.bois_saxaoul.name,梭梭木
+material.feuilles_saxaoul.name,梭梭叶
+material.bois_tamaris.name,柽柳木
+material.feuilles_tamaris.name,柽柳叶
