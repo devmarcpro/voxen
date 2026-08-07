@@ -51,5 +51,15 @@
   "tags": [
     "toundra",
     "froid"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "plant_chou",
+      "density": 0.004
+    },
+    {
+      "material_id": "navet",
+      "density": 0.004
+    }
   ]
 }

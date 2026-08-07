@@ -51,5 +51,15 @@
   "tags": [
     "cote",
     "plage"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "roseau",
+      "density": 0.03
+    },
+    {
+      "material_id": "asperge",
+      "density": 0.004
+    }
   ]
 }

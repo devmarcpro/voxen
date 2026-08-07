@@ -34,5 +34,6 @@
     "leaf_density": 0.93,
     "children": 3,
     "_port": "bois dense, feuillage sombre et serre"
-  }
+  },
+  "reach": 10
 }

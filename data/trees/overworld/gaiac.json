@@ -34,5 +34,6 @@
     "leaf_density": 0.9,
     "children": 4,
     "_port": "bois le plus dense, silhouette ramassee"
-  }
+  },
+  "reach": 9
 }

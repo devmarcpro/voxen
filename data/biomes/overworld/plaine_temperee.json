@@ -72,6 +72,138 @@
     {
       "material_id": "buisson",
       "density": 0.008
+    },
+    {
+      "material_id": "avoine",
+      "density": 0.004
+    },
+    {
+      "material_id": "ble",
+      "density": 0.004
+    },
+    {
+      "material_id": "bleuet",
+      "density": 0.01
+    },
+    {
+      "material_id": "camomille",
+      "density": 0.004
+    },
+    {
+      "material_id": "coquelicot",
+      "density": 0.01
+    },
+    {
+      "material_id": "fleurs",
+      "density": 0.006
+    },
+    {
+      "material_id": "herbe_haute",
+      "density": 0.03
+    },
+    {
+      "material_id": "mais",
+      "density": 0.004
+    },
+    {
+      "material_id": "orge",
+      "density": 0.004
+    },
+    {
+      "material_id": "plant_carotte",
+      "density": 0.004
+    },
+    {
+      "material_id": "plant_chou",
+      "density": 0.004
+    },
+    {
+      "material_id": "plant_courge",
+      "density": 0.004
+    },
+    {
+      "material_id": "plant_oignon",
+      "density": 0.004
+    },
+    {
+      "material_id": "plant_pomme_de_terre",
+      "density": 0.004
+    },
+    {
+      "material_id": "tournesol",
+      "density": 0.01
+    },
+    {
+      "material_id": "ail",
+      "density": 0.004
+    },
+    {
+      "material_id": "asperge",
+      "density": 0.004
+    },
+    {
+      "material_id": "betterave",
+      "density": 0.004
+    },
+    {
+      "material_id": "concombre",
+      "density": 0.004
+    },
+    {
+      "material_id": "epinard",
+      "density": 0.004
+    },
+    {
+      "material_id": "haricot",
+      "density": 0.004
+    },
+    {
+      "material_id": "laitue",
+      "density": 0.004
+    },
+    {
+      "material_id": "lin_plante",
+      "density": 0.004
+    },
+    {
+      "material_id": "navet",
+      "density": 0.004
+    },
+    {
+      "material_id": "panais",
+      "density": 0.004
+    },
+    {
+      "material_id": "persil",
+      "density": 0.004
+    },
+    {
+      "material_id": "pissenlit",
+      "density": 0.01
+    },
+    {
+      "material_id": "poireau",
+      "density": 0.004
+    },
+    {
+      "material_id": "pois",
+      "density": 0.004
+    },
+    {
+      "material_id": "radis",
+      "density": 0.004
+    },
+    {
+      "material_id": "sarrasin",
+      "density": 0.004
+    },
+    {
+      "material_id": "seigle",
+      "density": 0.004
+    },
+    {
+      "material_id": "trefle",
+      "density": 0.03
     }
   ]
 }

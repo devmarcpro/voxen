@@ -20,6 +20,14 @@ uniform float world_seed = 0.0;
 uniform int herbe_id = -1;
 uniform int eau_id = -1;
 uniform sampler2D grass_tint_map : filter_linear, repeat_disable;
+// ATLAS DES PLANTES (2026-08-04). Chaque espèce en croix y a une cellule de
+// 16 px de large — EXACTEMENT la grille de `PIXELS` ci-dessous, pour qu'une
+// plante ait le même grain qu'un bloc posé à côté d'elle. `filter_nearest` est
+// impératif : un filtrage linéaire lisserait les pixels et le monde entier
+// cesserait d'être pixelisé à cet endroit précis.
+uniform sampler2D plant_atlas : source_color, filter_nearest, repeat_disable;
+uniform int plant_atlas_columns = 8;
+uniform int plant_atlas_rows = 1;
 
 // TEINTE SAISONNIÈRE DU FEUILLAGE (2026-08-04). Multipliée sur la couleur de
 // palette des blocs de style S_LEAVES, jamais substituée : les 38 essences ont
@@ -371,5 +379,35 @@ void fragment() {
 		vec3 warm = ALBEDO * vec3(1.25, 1.08, 0.82);
 		ALBEDO = mix(ALBEDO, warm, block_light * (1.0 - daylight * 0.75));
 		ALBEDO *= 1.0 + block_light * (1.0 - daylight) * 1.6;
+	}
+
+	// PLANTE : un quad plat qui porte une IMAGE, pas une face de bloc.
+	//
+	// Le mailleur l'a signalée par `COLOR.a = 0.5` et a rangé l'UV du sprite
+	// dans `COLOR.gb` — la lumière n'occupant que `COLOR.r`, ces canaux étaient
+	// libres, et s'en servir évite d'ajouter un second jeu d'UV à CHAQUE sommet
+	// du monde pour le bénéfice des seules plantes.
+	//
+	// `discard` sur les pixels transparents : c'est LUI qui donne la silhouette.
+	// Sans lui, la plante serait le rectangle plein qu'elle est géométriquement.
+	//
+	// CE BLOC EST EN FIN DE FONCTION, ET C'EST OBLIGÉ : GDShader interdit
+	// `return` dans `fragment()`. Placé en tête avec un `return`, il ne
+	// compilait pas — et un shader qui ne compile pas ne se signale pas en
+	// jeu, il rend le monde ENTIÈREMENT BLANC. On écrase donc l'albédo déjà
+	// calculé plutôt que de court-circuiter le calcul ; quelques instructions
+	// gaspillées sur les seuls pixels de plante, contre une restructuration de
+	// quatre-vingt-dix lignes.
+	if (COLOR.a < 0.75) {
+		int cell = int(round(v_host));
+		vec2 grid = vec2(float(plant_atlas_columns), float(plant_atlas_rows));
+		vec2 cell_xy = vec2(float(cell % plant_atlas_columns),
+				float(cell / plant_atlas_columns));
+		// v inversé : l'atlas est écrit du haut vers le bas, le quad monte.
+		vec2 auv = (cell_xy + vec2(COLOR.g, 1.0 - COLOR.b)) / grid;
+		vec4 texel = texture(plant_atlas, auv);
+		if (texel.a < 0.5) discard;
+		float plight = mix(night_floor, 1.0, daylight);
+		ALBEDO = texel.rgb * mix(night_tint, vec3(1.0), daylight) * plight;
 	}
 }

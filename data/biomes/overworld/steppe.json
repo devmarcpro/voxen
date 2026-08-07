@@ -44,6 +44,46 @@
     {
       "material_id": "buisson",
       "density": 0.004
+    },
+    {
+      "material_id": "orge",
+      "density": 0.004
+    },
+    {
+      "material_id": "safran",
+      "density": 0.004
+    },
+    {
+      "material_id": "touffe_seche",
+      "density": 0.03
+    },
+    {
+      "material_id": "betterave",
+      "density": 0.004
+    },
+    {
+      "material_id": "chardon",
+      "density": 0.01
+    },
+    {
+      "material_id": "lentille",
+      "density": 0.004
+    },
+    {
+      "material_id": "lin_plante",
+      "density": 0.004
+    },
+    {
+      "material_id": "millet",
+      "density": 0.004
+    },
+    {
+      "material_id": "pavot",
+      "density": 0.01
+    },
+    {
+      "material_id": "seigle",
+      "density": 0.004
     }
   ],
   "village_palette": {

@@ -1,0 +1,47 @@
+{
+  "id": "pavot",
+  "name_key": "material.pavot.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 1,
+    "densite": 1,
+    "valeur_base": 4,
+    "conductivite_mana": 5,
+    "flammabilite": 70,
+    "isolation": 10,
+    "conductivite_electrique": 8,
+    "flottabilite": 35,
+    "luminosite": 0,
+    "fertilite": 28,
+    "transparence": 60,
+    "elasticite": 25,
+    "friction": 35
+  },
+  "tags": [
+    "organique",
+    "medicinale",
+    "fleur"
+  ],
+  "color": "#B84A6B",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 430,
+    "amplitude": 0.05,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "mains_nues",
+    "skill": "herboristerie"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "mediterraneen",
+      "steppe"
+    ]
+  },
+  "render": "croix",
+  "port": "fleur",
+  "hauteur_image": 0.5,
+  "largeur_image": 0.9
+}

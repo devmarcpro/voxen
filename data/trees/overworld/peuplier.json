@@ -34,5 +34,6 @@
     "leaf_density": 0.84,
     "children": 4,
     "_port": "fastigie : branches collees a la verticale"
-  }
+  },
+  "reach": 5
 }

@@ -57,6 +57,28 @@ func _check_projectiles() -> void:
 	p.assemblies = {}
 	p.mana.current = 999.0
 
+	# CIEL DÉGAGÉ, ET C'EST INDISPENSABLE (2026-08-04).
+	#
+	# Cette sonde partait de la position SAUVEGARDÉE du joueur, donc d'un endroit
+	# quelconque : dans une maison qu'il a bâtie, dans une grotte, contre une
+	# paroi. La boule de feu heurtait alors le décor à QUARANTE CENTIMÈTRES et
+	# s'éteignait avant la frame suivante — `flying_count()` rendait zéro, et les
+	# trois assertions de vol échouaient en accusant le code des projectiles,
+	# qui marchait parfaitement.
+	#
+	# C'est la même famille de fragilité que les sondes qui ÉCRIVAIENT dans la
+	# sauvegarde : une sonde ne doit dépendre ni de ce que le joueur a construit,
+	# ni de l'endroit où il s'est arrêté de jouer. On se place donc haut au-dessus
+	# du terrain, là où le seul obstacle possible est le ciel.
+	var ground := 64
+	if WorldManager.generator != null:
+		ground = WorldManager.generator.height_at(0, 0)
+	camera.input_locked = true
+	p.input_locked = true
+	p.teleport_to(Vector3(0.5, float(ground) + 40.0, 0.5))
+	camera.rotation_degrees = Vector3(0.0, 0.0, 0.0)   # Horizontale : rien devant.
+	await wait_frame()
+
 	# 1. UN EFFET À PROJECTILE MET RÉELLEMENT UN PROJECTILE EN VOL.
 	var avant := ProjectileManager.flying_count()
 	p.set_assembly(p.SPELL_FAMILY, 0, ["boule_de_feu"])

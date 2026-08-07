@@ -34,5 +34,6 @@
     "leaf_density": 0.85,
     "children": 3,
     "_port": "dresse puis etale, floraison en nuage"
-  }
+  },
+  "reach": 10
 }

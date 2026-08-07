@@ -13,10 +13,19 @@
   "vegetation": [
     {
       "id": "arbre_geant_songe",
-      "density": 0.012
+      "density": 0.0006
     }
   ],
-  "priority": 50,
-  "conditions": {},
+  "priority": 88,
+  "conditions": {
+    "temperature": [
+      0.43,
+      0.5
+    ],
+    "humidite": [
+      0.0,
+      0.45
+    ]
+  },
   "subsurface_material": "roche_songe"
 }

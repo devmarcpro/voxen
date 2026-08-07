@@ -13,14 +13,23 @@
   "vegetation": [
     {
       "id": "champignon_songe",
-      "density": 0.03
+      "density": 0.01125
     },
     {
       "id": "arbre_lanterne",
-      "density": 0.02
+      "density": 0.0075
     }
   ],
-  "priority": 50,
-  "conditions": {},
+  "priority": 86,
+  "conditions": {
+    "temperature": [
+      0.57,
+      0.66
+    ],
+    "humidite": [
+      0.0,
+      0.45
+    ]
+  },
   "subsurface_material": "roche_songe"
 }

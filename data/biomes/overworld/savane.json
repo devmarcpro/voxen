@@ -61,6 +61,34 @@
     {
       "material_id": "buisson",
       "density": 0.004
+    },
+    {
+      "material_id": "mais",
+      "density": 0.004
+    },
+    {
+      "material_id": "plant_courge",
+      "density": 0.004
+    },
+    {
+      "material_id": "touffe_seche",
+      "density": 0.03
+    },
+    {
+      "material_id": "tournesol",
+      "density": 0.01
+    },
+    {
+      "material_id": "melon",
+      "density": 0.004
+    },
+    {
+      "material_id": "millet",
+      "density": 0.004
+    },
+    {
+      "material_id": "poivron",
+      "density": 0.004
     }
   ]
 }

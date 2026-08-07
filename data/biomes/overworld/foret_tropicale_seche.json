@@ -58,6 +58,54 @@
     {
       "material_id": "buisson",
       "density": 0.005
+    },
+    {
+      "material_id": "fougere",
+      "density": 0.006
+    },
+    {
+      "material_id": "herbe_haute",
+      "density": 0.03
+    },
+    {
+      "material_id": "marguerite",
+      "density": 0.01
+    },
+    {
+      "material_id": "menthe",
+      "density": 0.004
+    },
+    {
+      "material_id": "plant_carotte",
+      "density": 0.004
+    },
+    {
+      "material_id": "plant_fraise",
+      "density": 0.004
+    },
+    {
+      "material_id": "epinard",
+      "density": 0.004
+    },
+    {
+      "material_id": "ortie",
+      "density": 0.006
+    },
+    {
+      "material_id": "persil",
+      "density": 0.004
+    },
+    {
+      "material_id": "poireau",
+      "density": 0.004
+    },
+    {
+      "material_id": "pois",
+      "density": 0.004
+    },
+    {
+      "material_id": "radis",
+      "density": 0.004
     }
   ]
 }

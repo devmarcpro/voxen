@@ -34,5 +34,6 @@
     "leaf_density": 0.8,
     "children": 4,
     "_port": "verger : fourche tres bas, branches tordues"
-  }
+  },
+  "reach": 8
 }

@@ -6,8 +6,17 @@
     "magique",
     "onirique"
   ],
-  "priority": 50,
-  "conditions": {},
+  "priority": 73,
+  "conditions": {
+    "temperature": [
+      0.66,
+      1.0
+    ],
+    "humidite": [
+      0.55,
+      1.0
+    ]
+  },
   "surface_material": "mousse_lumineuse",
   "sub_material": "marbre_iris",
   "subsurface_material": "marbre_iris",
@@ -19,15 +28,15 @@
   "vegetation": [
     {
       "id": "arbre_de_verre",
-      "density": 0.04
+      "density": 0.00937
     },
     {
       "id": "arbre_creux",
-      "density": 0.02
+      "density": 0.00469
     },
     {
       "id": "champignon_paroi_geant",
-      "density": 0.02
+      "density": 0.00469
     }
   ]
 }

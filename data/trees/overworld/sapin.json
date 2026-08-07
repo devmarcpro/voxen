@@ -34,5 +34,6 @@
     "leaf_density": 0.92,
     "children": 4,
     "_port": "verticilles horizontaux, fleche nette"
-  }
+  },
+  "reach": 8
 }

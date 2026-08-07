@@ -35,5 +35,6 @@
     "droop": 0.02,
     "children": 5,
     "_port": "tronc torturé, feuillage argente et transparent"
-  }
+  },
+  "reach": 9
 }

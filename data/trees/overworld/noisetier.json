@@ -37,5 +37,6 @@
     "curve": 0.22,
     "leaf_density": 0.83,
     "_port": "cepee : plusieurs tiges depuis la souche"
-  }
+  },
+  "reach": 9
 }

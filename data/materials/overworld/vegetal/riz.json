@@ -1,0 +1,56 @@
+{
+  "id": "riz",
+  "name_key": "material.riz.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 1,
+    "densite": 1,
+    "valeur_base": 5,
+    "conductivite_mana": 5,
+    "flammabilite": 70,
+    "isolation": 10,
+    "conductivite_electrique": 8,
+    "flottabilite": 35,
+    "luminosite": 0,
+    "fertilite": 30,
+    "transparence": 60,
+    "elasticite": 25,
+    "friction": 35
+  },
+  "tags": [
+    "organique",
+    "culture",
+    "cereale",
+    "aquatique"
+  ],
+  "color": "#A8B86A",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 323,
+    "amplitude": 0.05,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "mains_nues",
+    "skill": "herboristerie"
+  },
+  "render": "croix",
+  "port": "epi",
+  "hauteur": [
+    0.5,
+    0.75
+  ],
+  "brins": [
+    4,
+    6
+  ],
+  "largeur": 0.07,
+  "tete": 0.26,
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "marecage",
+      "jungle"
+    ]
+  }
+}

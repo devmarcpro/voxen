@@ -55,6 +55,7 @@ func _check_cost() -> void:
 	var enclosed_total := 0
 	var leaves_total := 0
 	var report: Array[String] = []
+	var too_wide: Array[String] = []
 	for species_id: String in GameData.trees:
 		var species: Dictionary = GameData.trees[species_id]
 		var tree := TreeGenerator.generate(Vector3i.ZERO, 20260804, species)
@@ -77,6 +78,30 @@ func _check_cost() -> void:
 		total += blocks.size()
 		leaves_total += leaves
 		enclosed_total += enclosed
+		# PORTÉE HORIZONTALE contre la FENÊTRE DE RECHERCHE (2026-08-04).
+		#
+		# LE DÉFAUT QU'ELLE DÉFEND, et qui existait sans que rien ne le dise :
+		# une colonne de chunks ne cherche les arbres qui débordent sur elle que
+		# dans un rayon de `TREE_MAX_REACH` blocs. Une essence plus large que ça
+		# est SILENCIEUSEMENT TRONQUÉE à la frontière — la moitié de sa couronne
+		# n'existe pas, et rien n'échoue : le monde se génère, l'arbre a juste
+		# été coupé au couteau, et on ne s'en aperçoit qu'en volant à côté.
+		#
+		# Ça ne se voit pas non plus dans la fiche d'essence : `canopy_radius`
+		# dit 14 quand le squelette récursif, lui, va chercher 35. Seule la
+		# génération réelle le dit, et c'est donc ici que ça se vérifie.
+		var reach := 0
+		for pos: Vector3i in blocks:
+			reach = maxi(reach, maxi(absi(pos.x), absi(pos.z)))
+		# Sur PLUSIEURS GRAINES : la portée d'une essence varie d'un tirage à
+		# l'autre, et un échantillon unique sous-estime forcément le pire cas.
+		for extra_seed in [1, 7, 42, 1337, 99999, 20260804, 555, 31415]:
+			var variant: Dictionary = TreeGenerator.generate(Vector3i.ZERO, extra_seed, species)
+			for vp: Vector3i in (variant["blocks"] as Dictionary):
+				reach = maxi(reach, maxi(absi(vp.x), absi(vp.z)))
+		var declared := int(species.get("reach", 0))
+		if reach > declared:
+			too_wide.append("%s (mesurée %d > déclarée %d)" % [species_id, reach, declared])
 		# LE PLAFOND NE S'APPLIQUE QU'À L'OVERWORLD. Le colosse des songes fait
 		# 40 à 60 blocs de haut PAR SA FICHE — trois fois le séquoia, et c'est
 		# tout son propos. Le comparer au budget d'une forêt tempérée n'aurait
@@ -95,6 +120,18 @@ func _check_cost() -> void:
 	print("[%s]   la plus lourde : %s à %d blocs" % [TAG, worst, worst_count])
 	if not report.is_empty():
 		print("[%s]   au-dessus de 900 blocs : %s" % [TAG, ", ".join(report)])
+	# LA PORTÉE DÉCLARÉE DOIT COUVRIR LA RÉALITÉ.
+	#
+	# `reach` pilote deux choses : la largeur de la fenêtre de recherche d'une
+	# colonne, et le tri qui décide de générer un arbre ou non. Une valeur
+	# sous-estimée TRONQUE la couronne à la frontière de chunk sans que rien
+	# n'échoue — c'est exactement le défaut qui a vécu ici jusqu'au 2026-08-04,
+	# avec quatre essences au-delà de la borne dont deux dans l'overworld.
+	print("[%s] fenêtre de recherche : %d blocs (la plus large essence)" % [
+			TAG, WorldManager.generator.TREE_MAX_REACH])
+	_expect(too_wide.is_empty(),
+			"chaque essence tient dans la portée qu'elle déclare%s" % [
+					"" if too_wide.is_empty() else " — débordent : " + ", ".join(too_wide)])
 	print("[%s]   feuillage ENFERMÉ (invisible) : %d sur %d, soit %.0f %% du feuillage" % [
 			TAG, enclosed_total, leaves_total,
 			float(enclosed_total) / maxf(1.0, float(leaves_total)) * 100.0])

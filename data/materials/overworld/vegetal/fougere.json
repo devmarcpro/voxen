@@ -3,14 +3,51 @@
   "name_key": "material.fougere.name",
   "category": "vegetal",
   "stats": {
-    "durete": 1, "densite": 1, "valeur_base": 1,
-    "conductivite_mana": 6, "flammabilite": 65, "isolation": 15,
-    "conductivite_electrique": 10, "flottabilite": 30, "luminosite": 0,
-    "fertilite": 25, "transparence": 30, "elasticite": 20, "friction": 40
+    "durete": 1,
+    "densite": 1,
+    "valeur_base": 1,
+    "conductivite_mana": 6,
+    "flammabilite": 65,
+    "isolation": 15,
+    "conductivite_electrique": 10,
+    "flottabilite": 30,
+    "luminosite": 0,
+    "fertilite": 25,
+    "transparence": 30,
+    "elasticite": 20,
+    "friction": 40
   },
-  "tags": ["organique", "decoratif"],
+  "tags": [
+    "organique",
+    "decoratif"
+  ],
   "color": "#2F5D34",
-  "noise": { "type": "procedural", "seed_offset": 203, "amplitude": 0.05, "scale": 3 },
-  "harvest": { "tool_category": "mains_nues", "skill": "herboristerie" },
-  "world_gen": { "mode": "biome", "biome_tags": ["foret", "marecage"] }
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 203,
+    "amplitude": 0.05,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "mains_nues",
+    "skill": "herboristerie"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "foret",
+      "marecage"
+    ]
+  },
+  "render": "croix",
+  "port": "touffe",
+  "hauteur": [
+    0.4,
+    0.6
+  ],
+  "brins": [
+    4,
+    6
+  ],
+  "largeur": 0.2
 }

@@ -6,8 +6,17 @@
     "magique",
     "onirique"
   ],
-  "priority": 50,
-  "conditions": {},
+  "priority": 82,
+  "conditions": {
+    "temperature": [
+      0.43,
+      0.5
+    ],
+    "humidite": [
+      0.45,
+      0.55
+    ]
+  },
   "surface_material": "herbe_safran",
   "sub_material": "roche_ambre",
   "subsurface_material": "roche_ambre",
@@ -16,11 +25,11 @@
   "vegetation": [
     {
       "id": "tournesol_geant",
-      "density": 0.07
+      "density": 0.01458
     },
     {
       "id": "arbre_torsade",
-      "density": 0.02
+      "density": 0.00417
     }
   ]
 }

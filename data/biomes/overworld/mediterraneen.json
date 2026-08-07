@@ -51,5 +51,87 @@
   "tags": [
     "mediterraneen",
     "sec"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "basilic",
+      "density": 0.004
+    },
+    {
+      "material_id": "lavande_fleur",
+      "density": 0.01
+    },
+    {
+      "material_id": "plant_oignon",
+      "density": 0.004
+    },
+    {
+      "material_id": "plant_tomate",
+      "density": 0.004
+    },
+    {
+      "material_id": "safran",
+      "density": 0.004
+    },
+    {
+      "material_id": "sauge",
+      "density": 0.004
+    },
+    {
+      "material_id": "thym",
+      "density": 0.004
+    },
+    {
+      "material_id": "vigne_raisin",
+      "density": 0.004
+    },
+    {
+      "material_id": "ail",
+      "density": 0.004
+    },
+    {
+      "material_id": "artichaut",
+      "density": 0.004
+    },
+    {
+      "material_id": "aubergine",
+      "density": 0.004
+    },
+    {
+      "material_id": "coriandre",
+      "density": 0.004
+    },
+    {
+      "material_id": "haricot",
+      "density": 0.004
+    },
+    {
+      "material_id": "laitue",
+      "density": 0.004
+    },
+    {
+      "material_id": "lentille",
+      "density": 0.004
+    },
+    {
+      "material_id": "melon",
+      "density": 0.004
+    },
+    {
+      "material_id": "origan",
+      "density": 0.004
+    },
+    {
+      "material_id": "pavot",
+      "density": 0.01
+    },
+    {
+      "material_id": "poivron",
+      "density": 0.004
+    },
+    {
+      "material_id": "romarin",
+      "density": 0.004
+    }
   ]
 }

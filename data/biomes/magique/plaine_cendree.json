@@ -6,8 +6,17 @@
     "magique",
     "onirique"
   ],
-  "priority": 50,
-  "conditions": {},
+  "priority": 77,
+  "conditions": {
+    "temperature": [
+      0.34,
+      0.43
+    ],
+    "humidite": [
+      0.55,
+      1.0
+    ]
+  },
   "surface_material": "cendre_etoilee",
   "sub_material": "obsidienne_claire",
   "subsurface_material": "obsidienne_claire",
@@ -19,15 +28,15 @@
   "vegetation": [
     {
       "id": "arbre_de_verre",
-      "density": 0.03
+      "density": 0.00703
     },
     {
       "id": "arbre_neige",
-      "density": 0.03
+      "density": 0.00703
     },
     {
       "id": "champignon_paroi_geant",
-      "density": 0.02
+      "density": 0.00469
     }
   ]
 }

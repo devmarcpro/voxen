@@ -6,8 +6,17 @@
     "magique",
     "onirique"
   ],
-  "priority": 50,
-  "conditions": {},
+  "priority": 75,
+  "conditions": {
+    "temperature": [
+      0.5,
+      0.57
+    ],
+    "humidite": [
+      0.55,
+      1.0
+    ]
+  },
   "surface_material": "givre_songe",
   "sub_material": "gres_stellaire",
   "subsurface_material": "gres_stellaire",
@@ -19,11 +28,11 @@
   "vegetation": [
     {
       "id": "arbre_neige",
-      "density": 0.05
+      "density": 0.01339
     },
     {
       "id": "arbre_lanterne",
-      "density": 0.02
+      "density": 0.00536
     }
   ]
 }

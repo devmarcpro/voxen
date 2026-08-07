@@ -51,5 +51,11 @@
   "tags": [
     "desert",
     "chaud"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "touffe_seche",
+      "density": 0.03
+    }
   ]
 }

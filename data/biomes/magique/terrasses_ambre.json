@@ -6,8 +6,17 @@
     "magique",
     "onirique"
   ],
-  "priority": 50,
-  "conditions": {},
+  "priority": 74,
+  "conditions": {
+    "temperature": [
+      0.57,
+      0.66
+    ],
+    "humidite": [
+      0.55,
+      1.0
+    ]
+  },
   "surface_material": "herbe_safran",
   "sub_material": "gres_stellaire",
   "subsurface_material": "gres_stellaire",
@@ -19,11 +28,11 @@
   "vegetation": [
     {
       "id": "arbre_creux",
-      "density": 0.05
+      "density": 0.01172
     },
     {
       "id": "tournesol_geant",
-      "density": 0.03
+      "density": 0.00703
     }
   ]
 }

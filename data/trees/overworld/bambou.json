@@ -36,5 +36,6 @@
     "lean": 0.08,
     "roots": 0,
     "leaf_density": 0.5
-  }
+  },
+  "reach": 4
 }

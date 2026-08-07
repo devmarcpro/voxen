@@ -1,6 +1,7 @@
 {
   "id": "faille_de_mana",
   "name_key": "dimension.faille_de_mana.name",
+  "biome_set": "magique",
   "ambience": {
     "sunlight": false,
     "background": "#2A1E4A",
@@ -10,24 +11,6 @@
     "fog_color": "#6B4FA8",
     "fog_density": 0.006
   },
-  "islands": {
-    "count": 34,
-    "radius": [
-      10,
-      24
-    ],
-    "thickness": [
-      4,
-      9
-    ],
-    "spread": 170
-  },
-  "materials": {
-    "sol": "amethyste",
-    "roche": "obsidienne",
-    "lumiere": "scorie_ardente"
-  },
-  "builder": "rift",
   "habitants": [
     "ermite",
     "deserteur",
@@ -60,9 +43,14 @@
       "seed_offset": 4522
     },
     "pays": {
-      "frequency": 0.01,
+      "frequency": 0.0016,
       "octaves": 1,
       "seed_offset": 8891
+    },
+    "climat": {
+      "frequency": 0.0021,
+      "octaves": 1,
+      "seed_offset": 9930
     },
     "torsion": {
       "frequency": 0.02,
@@ -74,8 +62,6 @@
     "base_y": 64,
     "relief": 34,
     "croute": 18,
-    "demi_etendue": 48,
-    "rayon_streaming": 4,
     "cavernes": {
       "frequency": 0.028,
       "seuil": 0.42,
@@ -85,6 +71,25 @@
       "frequency": 0.004,
       "seuil": 0.72,
       "seed_offset": 31002
+    },
+    "minerais": {
+      "frequency": 0.09,
+      "seed_offset": 55501
+    },
+    "iles_suspendues": {
+      "periode": 11,
+      "rayon": [5, 11],
+      "epaisseur": [3, 7],
+      "altitude": [26, 59]
+    },
+    "arbres_suspendus": {
+      "periode": 23,
+      "essences": [
+        "arbre_lanterne",
+        "champignon_paroi_geant",
+        "arbre_velours",
+        "arbre_de_verre"
+      ]
     }
   }
 }

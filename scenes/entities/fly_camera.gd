@@ -304,7 +304,15 @@ func _is_blocking(wx: int, wy: int, wz: int) -> bool:
 	if solid >= 0:
 		return solid >= SubdivGrid.CELLS / 8
 	var id := WorldManager.block_at_world(pos)
-	return id != 0 and id != GameData.material_runtime_ids.get("eau", -1)
+	if id == 0:
+		return false
+	# ON TRAVERSE LES PLANTES (2026-08-04, demande explicite « pas de hitbox »).
+	# Sans ça, un champ de blé est un mur de cubes invisibles qu'il faut sauter
+	# un par un — et c'est le même défaut que les cultures en sous-voxels avaient
+	# déjà causé avant leur correction par le seuil des 50 %.
+	if id < GameData.cross_mask.size() and GameData.cross_mask[id] == 1:
+		return false
+	return id != GameData.material_runtime_ids.get("eau", -1)
 
 
 ## Un bloc plein occupe-t-il l'un des 4 coins de l'emprise horizontale du

@@ -35,5 +35,6 @@
     "foliage": "needle",
     "_port": "long fut nu puis parasol d'aiguilles"
   },
-  "special_tags": []
+  "special_tags": [],
+  "reach": 15
 }

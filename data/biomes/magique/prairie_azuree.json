@@ -13,14 +13,23 @@
   "vegetation": [
     {
       "id": "arbre_lanterne",
-      "density": 0.05
+      "density": 0.01172
     },
     {
       "id": "arbre_torsade",
-      "density": 0.03
+      "density": 0.00703
     }
   ],
-  "priority": 50,
-  "conditions": {},
+  "priority": 90,
+  "conditions": {
+    "temperature": [
+      0.0,
+      0.34
+    ],
+    "humidite": [
+      0.0,
+      0.45
+    ]
+  },
   "subsurface_material": "roche_songe"
 }

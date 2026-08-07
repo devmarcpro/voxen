@@ -126,9 +126,19 @@ func _check_generic_dimension() -> void:
 	_expect(DimensionManager.active == rift, "la dimension active est bien la faille")
 	_expect(WorldManager.active_dimension == rift,
 			"WorldManager suit la bascule (sinon les blocs seraient lus dans l'overworld)")
-	var chunks := DimensionManager.chunk_count(rift)
-	print("[%s] la faille contient %d chunk(s)" % [TAG, chunks])
-	_expect(chunks > 0, "la faille a été construite à l'entrée")
+	# LE TERRAIN ARRIVE PAR LE STREAMING, plus par une construction à l'entrée.
+	# C'est tout l'objet de l'unification : on ne bâtit plus la dimension, on la
+	# streame comme l'overworld. Il faut donc LAISSER PASSER DES FRAMES avant de
+	# compter — mesurer à la frame suivante ne dirait que « l'asynchrone est
+	# asynchrone », et l'assertion échouerait sur un système qui marche.
+	var chunks := 0
+	for i in 90:
+		await wait_frame()
+		chunks = DimensionManager.chunk_count(rift)
+		if chunks > 0:
+			break
+	print("[%s] la faille contient %d chunk(s) après %d frame(s)" % [TAG, chunks, 90])
+	_expect(chunks > 0, "la faille se streame autour du joueur dès l'arrivée")
 
 	# ON LIT UN BLOC PAR LE CHEMIN NORMAL. Si l'aiguillage était resté câblé sur
 	# le donjon, cette lecture rendrait 0 : DungeonManager n'a rien à cet
@@ -205,6 +215,20 @@ func _check_generic_dimension() -> void:
 	_expect(chunks_after > chunks_before,
 			"le monde se génère à la demande au lieu d'être borné")
 
+	# LE GÉNÉRATEUR DE LA DIMENSION EST CELUI DE L'OVERWORLD (2026-08-04).
+	#
+	# C'est l'assertion qui défend l'unification elle-même. Il a existé un SECOND
+	# pipeline (`RiftBuilder` + `DimensionManager._build_column`) écrivant les
+	# blocs un par un dans le fil principal ; il a été supprimé. Si un jour
+	# quelqu'un en réintroduit un, cette ligne le dira : la dimension active doit
+	# être servie par un `NoiseGenerator` — le même type que l'overworld — et il
+	# doit savoir dans quelle dimension il est.
+	var generator: NoiseGenerator = WorldManager.generator
+	_expect(generator != null and generator.dimension == rift,
+			"la faille est générée par un NoiseGenerator qui se sait dans la faille")
+	if generator == null:
+		return
+
 	# LES ÎLES SUSPENDUES EXISTENT, et elles sont DÉTERMINISTES.
 	#
 	# Le semis est calculé depuis la colonne et la graine, jamais tiré : c'est
@@ -213,13 +237,15 @@ func _check_generic_dimension() -> void:
 	# la première — un défaut qu'on ne voit qu'en marchant longtemps.
 	var isles := 0
 	var first := {}
+	var first_col := Vector2i.ZERO
 	for cx in range(-14, 15):
 		for cz in range(-14, 15):
-			var island := RiftBuilder.sky_island_at(WorldManager.world_seed, Vector2i(cx, cz))
+			var island := generator.sky_island_at(Vector2i(cx, cz))
 			if not island.is_empty():
 				isles += 1
 				if first.is_empty():
 					first = island
+					first_col = Vector2i(cx, cz)
 	print("[%s] %d île(s) suspendue(s) sur 841 colonnes" % [TAG, isles])
 	_expect(isles > 20, "le ciel en porte assez pour qu'on en croise")
 
@@ -230,41 +256,116 @@ func _check_generic_dimension() -> void:
 	# semis existe et qu'il est déterministe : sans ça, une caverne évincée puis
 	# regénérée verrait pousser un second arbre à côté du premier.
 	var hung := 0
-	for hx in range(-60, 61, 4):
-		for hz in range(-60, 61, 4):
-			if RiftBuilder.cave_tree_hash(WorldManager.world_seed, hx, hz) % 23 == 0:
+	for hx in range(-15, 16):
+		for hz in range(-15, 16):
+			if generator.hung_species_at(hx, hz) != "":
 				hung += 1
-	print("[%s] %d point(s) d'accroche d'arbre suspendu sur 961 sondés" % [TAG, hung])
+	print("[%s] %d point(s) d'accroche d'arbre suspendu sur 961 cellules" % [TAG, hung])
 	_expect(hung > 10, "les cavernes portent des arbres à l'envers")
 
-	# LE COÛT D'UNE COLONNE, chronométré.
+	# LE COÛT D'UNE COLONNE, ET LE BUDGET DE FRAME. C'EST LE CRITÈRE.
 	#
-	# L'auteur a signalé que la dimension ramait énormément. Les sondes
-	# vérifiaient que le terrain EXISTE, jamais qu'il se génère vite : les
-	# cavernes ont fait passer une colonne de 10 à 56 blocs de profondeur, et
-	# les bruits de caverne et de minerai étaient reconstruits À CHAQUE BLOC —
-	# quatorze mille allocations par colonne. Le streaming en fait une par
-	# frame : au-delà du budget d'une frame, ça se voit immédiatement.
-	var samples: Array[float] = []
+	# ---------------------------------------------------------------------
+	# CE QUE CE CHRONOMÈTRE MESURE, ET POURQUOI IL A CHANGÉ DE POINT D'APPUI
+	# ---------------------------------------------------------------------
+	# Il chronométrait `DimensionManager._build_column`, qui écrivait les blocs
+	# UN PAR UN DANS LE FIL PRINCIPAL, une colonne par frame : 738 ms mesurés,
+	# et 50 ms était alors le bon seuil, puisque chaque milliseconde tombait
+	# dans une frame.
+	#
+	# Cette fonction n'existe plus. La génération d'une dimension passe
+	# désormais par le pipeline de l'overworld : WorkerThreadPool, six colonnes
+	# en vol, deux meshes installés par frame. Le temps d'une colonne ne tombe
+	# donc PLUS dans une frame, et un seuil de 50 ms appliqué à ce temps ne
+	# mesurerait plus ce qu'il prétend — l'overworld lui-même ne l'a jamais
+	# tenu : une colonne BOISÉE d'overworld coûte ~650 ms à froid.
+	#
+	# On garde donc deux assertions, et aucune n'est plus tendre que l'ancienne :
+	#
+	#   1. PARITÉ. Une colonne de dimension ne doit pas coûter sensiblement plus
+	#      qu'une colonne d'overworld équivalente. C'est LA propriété que
+	#      l'unification devait produire, et elle ne se contourne pas en
+	#      bricolant un seuil : le témoin bouge avec la machine.
+	#
+	#   2. BUDGET DE FRAME, mesuré sur la frame. C'est ce que l'auteur a
+	#      constaté en jouant — « le jeu rame franchement » — et c'est donc là
+	#      qu'il faut regarder. Le seuil reste 50 ms, le nombre d'origine.
+	#
+	# DEUX PIÈGES DE MESURE se sont refermés avant d'obtenir ces chiffres, et
+	# ils valent d'être écrits ici : (a) le premier témoin d'overworld tombait
+	# en plein OCÉAN et ne générait aucun arbre — il comparait une forêt à de
+	# l'eau ; (b) le repérage des colonnes boisées RÉCHAUFFAIT le cache d'arbres
+	# du générateur qui servait ensuite à chronométrer, si bien que le témoin
+	# mesurait un cache et la faille une génération. On repère donc avec un
+	# générateur ÉCLAIREUR et on chronomètre avec un générateur NEUF, des deux
+	# côtés.
+	var scout := NoiseGenerator.new(WorldManager.world_seed, {}, &"overworld")
+	var wooded: Array[Vector2i] = []
+	for i in 400:
+		var c := Vector2i(200 + i * 23, -60 + i * 41)
+		# SEUIL BAISSÉ À DOUZE (2026-08-04). `_trees_in_window` écarte désormais
+		# les essences trop étroites pour atteindre la colonne : le tableau rendu
+		# est plus court à densité de forêt ÉGALE, et le seuil de vingt ne
+		# trouvait plus que deux colonnes sur quatre cents — une médiane sur deux
+		# échantillons ne vaut pas grand-chose.
+		if (scout.prepare_context(c)["trees"] as Array).size() >= 12:
+			wooded.append(c)
+			if wooded.size() == 5:
+				break
+	var ow_fresh := NoiseGenerator.new(WorldManager.world_seed, {}, &"overworld")
+	var ow_samples := _time_columns(ow_fresh, wooded)
+	var ow_median := ow_samples[ow_samples.size() / 2] if not ow_samples.is_empty() else 0.0
+	print("[%s] témoin : colonne d'overworld BOISÉE à froid, médiane %.1f ms (%d colonnes)" % [
+			TAG, ow_median, ow_samples.size()])
+
+	var cold: Array[Vector2i] = []
 	for i in 5:
-		var far := Vector2i(500 + i * 9, -500 - i * 7)
-		var start := Time.get_ticks_usec()
-		DimensionManager.call("_build_column", declaration, far)
-		samples.append(float(Time.get_ticks_usec() - start) / 1000.0)
-	samples.sort()
+		cold.append(Vector2i(500 + i * 9, -500 - i * 7))
+	var fresh := NoiseGenerator.new(WorldManager.world_seed, {}, rift)
+	var samples := _time_columns(fresh, cold)
 	var median := samples[samples.size() / 2]
-	print("[%s] génération d'une colonne : médiane %.1f ms (min %.1f, max %.1f)" % [
+	print("[%s] génération d'une colonne de faille : médiane %.1f ms (min %.1f, max %.1f)" % [
 			TAG, median, samples[0], samples[samples.size() - 1]])
-	_expect(median < 50.0,
-			"une colonne se génère sans bloquer la frame (%.1f ms)" % median)
-	_expect(RiftBuilder.cave_tree_species(WorldManager.world_seed, 12, -8)
-			== RiftBuilder.cave_tree_species(WorldManager.world_seed, 12, -8),
+	if ow_median > 0.0:
+		print("[%s]   soit %.2f fois le témoin d'overworld" % [TAG, median / ow_median])
+		_expect(median <= ow_median * 1.6,
+				"la faille se génère au prix de l'overworld (%.2f×, plafond 1,60×)"
+						% (median / ow_median))
+	_expect(generator.hung_species_at(3, -2) == generator.hung_species_at(3, -2),
 			"le même point redonne la même essence suspendue")
 	if not first.is_empty():
-		var again := RiftBuilder.sky_island_at(WorldManager.world_seed,
-				Vector2i((int(first["centre"].x) - 8) / 16, (int(first["centre"].z) - 8) / 16))
-		_expect(str(again) == str(first),
+		_expect(str(generator.sky_island_at(first_col)) == str(first),
 				"la même colonne redonne exactement la même île")
+
+	# LE BUDGET DE FRAME, MESURÉ SUR LA FRAME.
+	#
+	# On marche en terrain neuf, et on regarde ce que coûte chaque frame pendant
+	# que la dimension se streame derrière. C'est exactement la situation où
+	# l'auteur a vu le jeu ramer, et c'est la seule mesure qu'on ne peut pas
+	# satisfaire en déplaçant du travail ailleurs : si le fil principal bloque,
+	# elle le dit.
+	var walk_from: Vector3 = player.get_position_for_ai()
+	player.teleport_to(walk_from + Vector3(3000.0, 0.0, 3000.0))
+	var worst := 0.0
+	var frames := 0
+	var last := Time.get_ticks_usec()
+	for i in 240:
+		await wait_frame()
+		var now := Time.get_ticks_usec()
+		var ms := float(now - last) / 1000.0
+		last = now
+		# Les toutes premières frames après une téléportation portent la bascule
+		# elle-même (files vidées, centre reconstruit) : on regarde le RÉGIME
+		# de streaming, pas l'à-coup du voyage.
+		if i >= 10:
+			worst = maxf(worst, ms)
+			frames += 1
+	print("[%s] streaming de la faille : pire frame %.1f ms sur %d frames" % [TAG, worst, frames])
+	_expect(worst < 50.0,
+			"la génération tient dans un budget de frame (pire frame %.1f ms)" % worst)
+	player.teleport_to(walk_from)
+	for i in 20:
+		await wait_frame()
 
 	# CE QUE LE JOUEUR A BÂTI SURVIT À L'ÉVICTION.
 	#
@@ -351,3 +452,24 @@ func _check_isolation() -> void:
 			"le témoin de la faille n'existe PAS dans l'overworld")
 	_expect(DimensionManager.chunk_count(rift) == 0,
 			"la faille est libérée en sortant (elle se regénère à la prochaine visite)")
+
+
+## Chronomètre la génération de colonnes complètes : le contexte (relief,
+## biomes, matériaux, features) PUIS chacun de leurs chunks. C'est le travail
+## exact qu'une tâche de streaming exécute pour une colonne.
+##
+## LE MAILLAGE N'Y EST PAS, volontairement : il a son propre budget et sa propre
+## sonde (`--probe-mesh`). Le compter ici mesurerait deux choses sous une seule
+## étiquette — c'est déjà arrivé dans ce projet, et le chiffre avait envoyé
+## l'optimisation sur le mauvais code.
+func _time_columns(gen: NoiseGenerator, columns: Array[Vector2i]) -> Array[float]:
+	var samples: Array[float] = []
+	for col: Vector2i in columns:
+		var start := Time.get_ticks_usec()
+		var ctx := gen.prepare_context(col)
+		var span := gen.cy_range(col)
+		for cy in range(span.x, span.y + 1):
+			gen.generate_chunk(Vector3i(col.x, cy, col.y), ctx)
+		samples.append(float(Time.get_ticks_usec() - start) / 1000.0)
+	samples.sort()
+	return samples

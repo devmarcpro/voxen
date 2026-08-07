@@ -99,7 +99,7 @@ func _process(delta: float) -> void:
 		return
 	var still_flying: Array[Dictionary] = []
 	for shot: Dictionary in _flying:
-		if _advance(shot, delta):
+		if _advance_substepped(shot, delta):
 			still_flying.append(shot)
 			continue
 		if shot["node"] != null:
@@ -112,6 +112,42 @@ func _process(delta: float) -> void:
 		if callback.is_valid():
 			callback.call(shot["position"] as Vector3, shot.get("last_victim"))
 	_flying = still_flying
+
+
+## SOUS-PAS : un projectile ne franchit jamais plus d'une fraction de bloc d'un
+## coup, quelle que soit la durée de la frame.
+##
+## POURQUOI (bug réel, trouvé le 2026-08-04 par `--probe-assemblage`). `_advance`
+## était écrit sur l'hypothèse — écrite noir sur blanc dans son commentaire de
+## collision — qu'« à cette vitesse la frame entière fait moins d'un mètre ».
+## Elle est fausse dès que la frame s'allonge : une boule de feu à 18 blocs/s
+## sur une frame de 2 s parcourt 36 blocs en UN pas. Conséquences, toutes
+## silencieuses :
+##   — elle dépasse sa portée de 28 blocs et s'éteint AVANT d'avoir volé, ce qui
+##     faisait échouer la sonde ;
+##   — `line_blocked` et le balayage des créatures ne voient qu'un segment
+##     énorme : le projectile TRAVERSE murs et cibles au lieu de les toucher.
+##
+## Ce n'était pas un défaut de la sonde : c'est du tunneling, et il frappe le
+## jeu réel exactement quand ça compte — pendant une chute de framerate.
+##
+## Le nombre de sous-pas est BORNÉ : une frame pathologique ne doit pas coûter
+## des centaines de balayages de créatures. Au-delà, on accepte des pas plus
+## grossiers plutôt que de bloquer la frame davantage.
+const SUBSTEP_DISTANCE := 0.5      # Fraction de bloc franchie par sous-pas.
+const SUBSTEP_MAX := 24            # Plafond de sous-pas par frame et par projectile.
+
+
+func _advance_substepped(shot: Dictionary, delta: float) -> bool:
+	var speed := (shot["velocity"] as Vector3).length()
+	var steps := 1
+	if speed > 0.0:
+		steps = clampi(ceili(speed * delta / SUBSTEP_DISTANCE), 1, SUBSTEP_MAX)
+	var slice := delta / float(steps)
+	for i in steps:
+		if not _advance(shot, slice):
+			return false
+	return true
 
 
 ## Avance un projectile d'une frame. Retourne false quand il a fini sa course

@@ -34,5 +34,6 @@
     "leaf_density": 0.86,
     "children": 3,
     "_port": "dresse, pied humide, couronne etroite"
-  }
+  },
+  "reach": 10
 }

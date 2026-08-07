@@ -13,14 +13,23 @@
   "vegetation": [
     {
       "id": "arbre_torsade",
-      "density": 0.05
+      "density": 0.01042
     },
     {
       "id": "champignon_songe",
-      "density": 0.04
+      "density": 0.00833
     }
   ],
-  "priority": 50,
-  "conditions": {},
+  "priority": 89,
+  "conditions": {
+    "temperature": [
+      0.34,
+      0.43
+    ],
+    "humidite": [
+      0.0,
+      0.45
+    ]
+  },
   "subsurface_material": "roche_nacree"
 }

@@ -6,8 +6,17 @@
     "magique",
     "onirique"
   ],
-  "priority": 50,
-  "conditions": {},
+  "priority": 78,
+  "conditions": {
+    "temperature": [
+      0.0,
+      0.34
+    ],
+    "humidite": [
+      0.55,
+      1.0
+    ]
+  },
   "surface_material": "herbe_turquoise",
   "sub_material": "roche_bulle",
   "subsurface_material": "roche_bulle",
@@ -19,15 +28,15 @@
   "vegetation": [
     {
       "id": "arbre_nuage",
-      "density": 0.05
+      "density": 0.00937
     },
     {
       "id": "champignon_songe",
-      "density": 0.03
+      "density": 0.00562
     },
     {
       "id": "champignon_paroi_geant",
-      "density": 0.02
+      "density": 0.00375
     }
   ]
 }

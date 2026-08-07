@@ -61,6 +61,22 @@
     {
       "material_id": "buisson",
       "density": 0.005
+    },
+    {
+      "material_id": "menthe",
+      "density": 0.004
+    },
+    {
+      "material_id": "riz",
+      "density": 0.004
+    },
+    {
+      "material_id": "roseau",
+      "density": 0.03
+    },
+    {
+      "material_id": "ortie",
+      "density": 0.006
     }
   ]
 }

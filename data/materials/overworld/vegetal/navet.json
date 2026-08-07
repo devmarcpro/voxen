@@ -1,0 +1,47 @@
+{
+  "id": "navet",
+  "name_key": "material.navet.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 1,
+    "densite": 1,
+    "valeur_base": 4,
+    "conductivite_mana": 5,
+    "flammabilite": 70,
+    "isolation": 10,
+    "conductivite_electrique": 8,
+    "flottabilite": 35,
+    "luminosite": 0,
+    "fertilite": 28,
+    "transparence": 60,
+    "elasticite": 25,
+    "friction": 35
+  },
+  "tags": [
+    "organique",
+    "culture",
+    "tubercule"
+  ],
+  "color": "#9FB86B",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 407,
+    "amplitude": 0.05,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "mains_nues",
+    "skill": "herboristerie"
+  },
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "plaine",
+      "toundra"
+    ]
+  },
+  "render": "croix",
+  "port": "touffe",
+  "hauteur_image": 0.35,
+  "largeur_image": 0.9
+}

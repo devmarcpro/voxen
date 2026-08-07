@@ -36,5 +36,6 @@
     "roots": 3,
     "_port": "tire-bouchon surmonte d'une touffe bouffante"
   },
-  "special_tags": []
+  "special_tags": [],
+  "reach": 10
 }

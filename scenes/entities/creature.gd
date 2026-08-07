@@ -1442,8 +1442,13 @@ func _ground_height() -> float:
 		return _ground_cached
 
 	var water_id: int = GameData.material_runtime_ids.get("eau", -1)
+	var crosses := GameData.cross_mask
 	for wy in range(start + 1, start - 9, -1):
 		var id := WorldManager.block_at_world(Vector3i(bx, wy, bz))
+		# LES PLANTES NE SONT PAS DU SOL. Sans ce test, un villageois qui traverse
+		# une prairie marche SUR les fleurs, un demi-bloc trop haut, et flotte.
+		if id != 0 and id < crosses.size() and crosses[id] == 1:
+			continue
 		if id != 0 and id != water_id:
 			_ground_cached = float(wy) + 0.5
 			return _ground_cached

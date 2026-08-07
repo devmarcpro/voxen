@@ -36,5 +36,6 @@
     "droop": 0.1,
     "curve": 0.09,
     "_port": "buisson compact, feuillage opaque"
-  }
+  },
+  "reach": 6
 }

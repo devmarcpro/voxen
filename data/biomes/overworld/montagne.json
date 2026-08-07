@@ -55,5 +55,39 @@
   "tags": [
     "montagne",
     "froid"
+  ],
+  "plantes_sol": [
+    {
+      "material_id": "avoine",
+      "density": 0.004
+    },
+    {
+      "material_id": "plant_fraise",
+      "density": 0.004
+    },
+    {
+      "material_id": "plant_pomme_de_terre",
+      "density": 0.004
+    },
+    {
+      "material_id": "sauge",
+      "density": 0.004
+    },
+    {
+      "material_id": "chardon",
+      "density": 0.01
+    },
+    {
+      "material_id": "panais",
+      "density": 0.004
+    },
+    {
+      "material_id": "quinoa",
+      "density": 0.004
+    },
+    {
+      "material_id": "sarrasin",
+      "density": 0.004
+    }
   ]
 }

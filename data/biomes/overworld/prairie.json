@@ -62,6 +62,38 @@
     {
       "material_id": "buisson",
       "density": 0.006
+    },
+    {
+      "material_id": "ble",
+      "density": 0.004
+    },
+    {
+      "material_id": "bleuet",
+      "density": 0.01
+    },
+    {
+      "material_id": "camomille",
+      "density": 0.004
+    },
+    {
+      "material_id": "coquelicot",
+      "density": 0.01
+    },
+    {
+      "material_id": "herbe_haute",
+      "density": 0.03
+    },
+    {
+      "material_id": "marguerite",
+      "density": 0.01
+    },
+    {
+      "material_id": "pissenlit",
+      "density": 0.01
+    },
+    {
+      "material_id": "trefle",
+      "density": 0.03
     }
   ]
 }

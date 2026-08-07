@@ -1,0 +1,54 @@
+{
+  "id": "sauge",
+  "name_key": "material.sauge.name",
+  "category": "vegetal",
+  "stats": {
+    "durete": 1,
+    "densite": 1,
+    "valeur_base": 8,
+    "conductivite_mana": 5,
+    "flammabilite": 70,
+    "isolation": 10,
+    "conductivite_electrique": 8,
+    "flottabilite": 35,
+    "luminosite": 0,
+    "fertilite": 30,
+    "transparence": 60,
+    "elasticite": 25,
+    "friction": 35
+  },
+  "tags": [
+    "organique",
+    "culture",
+    "medicinale"
+  ],
+  "color": "#7E9384",
+  "noise": {
+    "type": "procedural",
+    "seed_offset": 346,
+    "amplitude": 0.05,
+    "scale": 3
+  },
+  "harvest": {
+    "tool_category": "mains_nues",
+    "skill": "herboristerie"
+  },
+  "render": "croix",
+  "port": "buisson",
+  "hauteur": [
+    0.3,
+    0.5
+  ],
+  "brins": [
+    3,
+    4
+  ],
+  "largeur": 0.26,
+  "world_gen": {
+    "mode": "biome",
+    "biome_tags": [
+      "mediterraneen",
+      "montagne"
+    ]
+  }
+}

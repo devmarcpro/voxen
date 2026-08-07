@@ -34,5 +34,6 @@
     "leaf_density": 0.85,
     "children": 4,
     "_port": "en gerbe : branches montantes en eventail"
-  }
+  },
+  "reach": 15
 }

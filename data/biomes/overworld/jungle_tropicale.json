@@ -78,6 +78,22 @@
     {
       "material_id": "buisson",
       "density": 0.015
+    },
+    {
+      "material_id": "poivrier",
+      "density": 0.004
+    },
+    {
+      "material_id": "riz",
+      "density": 0.004
+    },
+    {
+      "material_id": "concombre",
+      "density": 0.004
+    },
+    {
+      "material_id": "coriandre",
+      "density": 0.004
     }
   ]
 }

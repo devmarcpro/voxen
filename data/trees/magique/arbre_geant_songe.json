@@ -16,25 +16,26 @@
     ],
     "angle_deg": 44,
     "length_range": [
-      5,
-      8
+      2,
+      4
     ]
   },
   "canopy_shape": "voute",
   "canopy_radius_range": [
-    10,
-    14
+    5,
+    7
   ],
   "architecture": {
     "droop": 0.18,
     "curve": 0.14,
     "fork": 0.58,
-    "spread_deg": 52.0,
+    "spread_deg": 32.0,
     "leaf_density": 0.84,
-    "children": 5,
-    "depth": 4,
+    "children": 4,
+    "depth": 3,
     "roots": 10,
     "_port": "colosse a contreforts, couronne en voute"
   },
-  "special_tags": []
+  "special_tags": [],
+  "reach": 18
 }
