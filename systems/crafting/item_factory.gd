@@ -156,7 +156,40 @@ static func craft(item_id: String, material_choices: Dictionary, quality: float)
 		"materials": material_choices.duplicate(),
 	}
 	_set_gem(instance, String(material_choices.get(GEM_CATEGORY, "")))
+	_set_innate_spell(instance, item)
 	return instance
+
+
+## SORT INNÉ D'UNE ARME MAGIQUE (2026-08-07, demande de l'auteur : « les armes
+## magiques sont préchargées d'un sort préconstruit généré par le jeu »).
+##
+## GÉNÉRÉ, ET GRAVÉ SUR L'EXEMPLAIRE. Pas écrit dans une fiche : deux bâtons
+## faits de bois et de minerais différents ne lancent pas le même sort, et c'est
+## ce qui donne un intérêt à en forger plusieurs. Pas tiré au sort non plus —
+## dérivé des MATÉRIAUX, donc reproductible : le même bâton donne toujours le
+## même sort, et un joueur peut viser celui qu'il veut en choisissant sa matière.
+##
+## Le pool vient du CATALOGUE (les modules d'effet offensifs), jamais d'une liste
+## écrite ici : un module ajouté entre dans le tirage sans qu'on y touche.
+static func _set_innate_spell(instance: Dictionary, item: Dictionary) -> void:
+	if String(item.get("weapon_class", "")) != "magique":
+		return
+	var pool: Array[String] = []
+	for module_id: String in GameData.modules:
+		var module: Dictionary = GameData.modules[module_id]
+		if String(module.get("module_type", "")) == "effet" and module.has("degats_des"):
+			pool.append(module_id)
+	if pool.is_empty():
+		return
+	pool.sort()
+	# La matière décide. `hash` sur les choix triés : deux exemplaires de même
+	# recette et même matière portent le même sort, c'est la promesse.
+	var seed_text := ""
+	var categories: Array = (instance.get("materials", {}) as Dictionary).keys()
+	categories.sort()
+	for category: String in categories:
+		seed_text += "%s=%s;" % [category, instance["materials"][category]]
+	instance["sort_inne"] = pool[absi(hash(seed_text)) % pool.size()]
 
 
 # --- Gemme sertie (support d'enchantement) -----------------------------------

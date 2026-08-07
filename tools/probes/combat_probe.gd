@@ -74,6 +74,7 @@ func run() -> void:
 	ok = _check_catalogue() and ok
 	ok = await _check_dual_wielding() and ok
 	ok = await _check_bare_hands() and ok
+	ok = await _check_magic_and_combat_slot() and ok
 	ok = await _check_npc_defence() and ok
 	ok = _check_head_only_symmetry() and ok
 	ok = await _check_cover_and_stagger() and ok
@@ -1400,30 +1401,34 @@ func _check_bare_hands() -> bool:
 	var before := float(target.health)
 	var hits := await _swing_and_collect()
 	await main.get_tree().process_frame
-	ok = _report("le poing touche et blesse",
-		hits.size() > 0 and float(target.health) < before,
+	# DEUX COUPS PAR GESTE, un par poing : c'est la mécanique du dual wielding,
+	# appliquée aux mains nues parce qu'on a bien deux armes. Un seul coup
+	# voudrait dire qu'un bras reste au repos.
+	ok = _report("le poing touche et blesse, DEUX fois (un par main)",
+		hits.size() == 2 and float(target.health) < before,
 		"%d coup(s), PV %.0f → %.0f" % [hits.size(), before, float(target.health)]) and ok
 	_despawn(target)
 
-	# LA MAIN SUIT LA DIRECTION. On interroge la décision UNIQUE dont dépendent
-	# le geste et la hitbox — pas deux lectures séparées, qui pourraient être
-	# d'accord par hasard.
-	var attack: MeleeAttack = player.get("_attack")
+	# LA MAIN SUIT LA DIRECTION, ET LES DEUX POINGS SERVENT. On interroge la
+	# règle PURE, pas l'état de l'attaque : interrogée après le geste, la machine
+	# à états a déjà joué ses deux frappes et l'on mesurerait la seconde en
+	# croyant lire la première — c'est exactement l'erreur qu'a faite la première
+	# version de ce test, qui rendait un résultat incohérent d'une direction à
+	# l'autre.
+	var PlayerScript := preload("res://scenes/entities/player.gd")
 	var hands: Array[String] = []
-	# CHAQUE CIBLE EST RETIRÉE APRÈS SON COUP. Les laisser derrière soi est une
-	# contamination classique ici : le test de parade qui suit spawnait sa propre
-	# cible à 1,2 m et frappait en réalité l'une des miennes, restée sans garde —
-	# « une garde bien orientée arrête la lame » échouait sur un coup qui n'avait
-	# jamais rencontré cette garde.
-	for entry: Array in [[Vector2(-90.0, 0.0), "gauche"], [Vector2(90.0, 0.0), "droite"],
-			[Vector2(0.0, 60.0), "droite"], [Vector2(0.0, -90.0), "droite"]]:
-		var dummy := _spawn_in_front(punch_range)
-		await _swing_in_direction(entry[0])
-		hands.append("gauche" if bool(player.call("_strike_uses_offhand")) else "droite")
-		_despawn(dummy)
-	var expected: Array[String] = ["gauche", "droite", "droite", "droite"]
-	ok = _report("le crochet du gauche part du poing GAUCHE, les autres du droit",
-		hands == expected, "obtenu %s, attendu %s" % [str(hands), str(expected)]) and ok
+	for direction: int in [MeleeAttack.Direction.TAILLE_GAUCHE, MeleeAttack.Direction.TAILLE_DROITE,
+			MeleeAttack.Direction.ESTOC, MeleeAttack.Direction.OVERHEAD]:
+		var first: bool = PlayerScript.punch_uses_left(direction, false)
+		var second: bool = PlayerScript.punch_uses_left(direction, true)
+		hands.append("%s puis %s" % ["G" if first else "D", "G" if second else "D"])
+		ok = _report("  %s : les deux poings, jamais deux fois le même" % 
+			MeleeAttack.direction_name(direction), first != second) and ok
+	ok = _report("le crochet du gauche PART du poing gauche",
+		PlayerScript.punch_uses_left(MeleeAttack.Direction.TAILLE_GAUCHE, false)
+		and not PlayerScript.punch_uses_left(MeleeAttack.Direction.TAILLE_DROITE, false),
+		str(hands)) and ok
+
 	# ET AVEC UNE ARME, RIEN NE CHANGE : une épée se tient d'une main, la
 	# direction ne doit pas décider pour elle. Sans ce contre-test, la règle de
 	# boxe pourrait fuir dans le combat armé sans qu'on s'en aperçoive.
@@ -1433,6 +1438,119 @@ func _check_bare_hands() -> bool:
 	ok = _report("armé, un coup à gauche reste dans la main de l'arme",
 		not bool(player.call("_strike_uses_offhand"))) and ok
 	_despawn(armed_dummy)
+	return ok
+
+
+## ARME MAGIQUE ET GESTE MMO (2026-08-07).
+##
+## TROIS CHOSES À DÉFENDRE, dont aucune ne se voit en lisant le code.
+##
+## 1. LE SORT INNÉ EST GRAVÉ À LA FORGE, et il DÉPEND DE LA MATIÈRE. S'il était
+##    constant, forger un second bâton n'aurait aucun intérêt ; s'il était tiré
+##    au sort, le même bâton changerait de sort d'une partie à l'autre.
+##
+## 2. LA CHARGE EST EXIGÉE. Un relâchement immédiat ne doit RIEN lancer et ne
+##    RIEN coûter — sinon un clic malheureux vide le mana.
+##
+## 3. LE GESTE MMO NE VAUT QU'EN COMBAT. Sur l'entrée de combat, un chiffre
+##    déclenche l'emplacement SANS quitter la garde ; partout ailleurs il change
+##    de main, comme toujours. Le même appui rend deux services opposés, et
+##    c'est exactement le genre de règle qui se casse en silence.
+func _check_magic_and_combat_slot() -> bool:
+	var ok := true
+	print("[%s] --- arme magique et geste de combat ---" % TAG)
+
+	var staff_a := ItemFactory.craft("baton_magique", {"bois": "chene", "minerai": "fer"}, 1.0)
+	var staff_b := ItemFactory.craft("baton_magique", {"bois": "ebene", "minerai": "or"}, 1.0)
+	var staff_a2 := ItemFactory.craft("baton_magique", {"bois": "chene", "minerai": "fer"}, 1.0)
+	var sword := ItemFactory.craft("epee", {"bois": "chene", "minerai": "fer"}, 1.0)
+	ok = _report("un bâton magique sort de la forge avec un sort",
+		String(staff_a.get("sort_inne", "")) != "", String(staff_a.get("sort_inne", ""))) and ok
+	ok = _report("une épée n'en a pas",
+		String(sword.get("sort_inne", "")) == "") and ok
+	ok = _report("le sort DÉPEND DE LA MATIÈRE",
+		String(staff_a.get("sort_inne", "")) != String(staff_b.get("sort_inne", "")),
+		"%s vs %s" % [staff_a.get("sort_inne", ""), staff_b.get("sort_inne", "")]) and ok
+	ok = _report("et il est REPRODUCTIBLE : même matière, même sort",
+		String(staff_a.get("sort_inne", "")) == String(staff_a2.get("sort_inne", ""))) and ok
+
+	# On équipe le bâton et on se met en combat.
+	for slot: String in ["arme_1", "arme_2"]:
+		if not (player.equipment.equipped(slot) as Dictionary).is_empty():
+			player.call("unequip_slot", slot)
+	player.inventory.add_object(staff_a)
+	player.call("equip_instance", staff_a)
+	player.call("bind_hotbar", player.COMBAT_SLOT, {"kind": "combat"})
+	player.active_hotbar = 0
+	player.selected_slot = player.COMBAT_SLOT
+	player.mana.current = player.mana.max_mana()
+
+	print("[%s]   équipé=%s · combat=%s · mana %.0f/%.0f · sort %s" % [
+		TAG, String((player.equipment.equipped("arme_1") as Dictionary).get("item_id", "(rien)")),
+		bool(player.call("_wants_combat")), float(player.mana.current), player.mana.max_mana(),
+		String(player.call("innate_spell_of", player.equipment.equipped("arme_1")))])
+	# LA CHARGE EST EXIGÉE : relâcher tout de suite ne lance rien et ne coûte rien.
+	var mana_before := float(player.mana.current)
+	player.call("_begin_combat_input")
+	var fired_early: bool = bool(player.call("_release_innate_spell"))
+	ok = _report("relâcher sans charger ne lance rien, et ne coûte pas de mana",
+		not fired_early and is_equal_approx(float(player.mana.current), mana_before)) and ok
+
+	# CHARGÉ, IL PART ET IL COÛTE.
+	# ON ATTEND SUR L'HORLOGE DU CODE, PAS SUR UN MINUTEUR. `wait_seconds(0.4)`
+	# n'a fait avancer la charge que de 156 ms — un `SceneTreeTimer` et
+	# `Time.get_ticks_msec()` ne mesurent pas la même chose en headless. Le test
+	# concluait « le sort ne part pas » alors qu'il n'avait simplement pas
+	# chargé. On attend donc que la charge SOIT là, ce qui est la seule
+	# condition qui compte.
+	player.call("_begin_combat_input")
+	for i in 240:
+		if float(player.call("channel_ratio")) > 0.30:
+			break
+		await wait_frame()
+	print("[%s]   charge atteinte : %.2f" % [TAG, float(player.call("channel_ratio"))])
+	var fired: bool = bool(player.call("_release_innate_spell"))
+	ok = _report("chargé puis relâché, le sort part et consomme du mana",
+		fired and float(player.mana.current) < mana_before,
+		"lancé=%s, mana %.1f → %.1f, cooldown=%d" % [fired, mana_before,
+			float(player.mana.current), int(player.get("_module_cooldown_ticks"))]) and ok
+
+	# LE GESTE MMO. Un consommable dans un autre emplacement, et l'appui du
+	# chiffre correspondant : il doit être MANGÉ sans que la main change.
+	var food_id := ""
+	for mat_id: String in GameData.materials:
+		if (GameData.materials[mat_id] as Dictionary).has("nutrition"):
+			food_id = mat_id
+			break
+	if food_id != "":
+		player.inventory.add_material(food_id, 5)
+		player.call("bind_hotbar", 6, {"kind": "material", "id": food_id})
+		player.hunger = player.hunger_max * 0.4
+		var hunger_before := float(player.hunger)
+		var held_before: int = int(player.selected_slot)
+		var used: bool = bool(player.call("_use_from_combat", 6))
+		ok = _report("en combat, le chiffre CONSOMME l'emplacement visé",
+			used and float(player.hunger) > hunger_before,
+			"%s : consommé=%s, faim %.0f → %.0f" % [food_id, used, hunger_before, float(player.hunger)]) and ok
+		ok = _report("et la main NE CHANGE PAS : on reste en garde",
+			int(player.selected_slot) == held_before) and ok
+
+		# HORS COMBAT, LE MÊME APPUI CHANGE DE MAIN. Sans ce contre-test, la
+		# règle pourrait fuir partout et l'on ne pourrait plus prendre une pioche.
+		player.call("bind_hotbar", 7, {"kind": "material", "id": food_id})
+		player.selected_slot = 7
+		ok = _report("hors combat, le chiffre ne consomme pas : il sélectionne",
+			not bool(player.call("_use_from_combat", 6))) and ok
+		player.selected_slot = player.COMBAT_SLOT
+
+	# UN EMPLACEMENT VIDE NE PIÈGE PAS LE JOUEUR : l'appui doit retomber sur la
+	# sélection ordinaire, sinon on resterait coincé en combat sans en sortir.
+	# L'EMPLACEMENT EST VIDÉ EXPLICITEMENT. L'auto-remplissage a garni la barre :
+	# le supposer libre parce qu'on n'y a rien mis soi-même, c'est tester autre
+	# chose que ce qu'on croit — ici, manger ce que le remplissage y avait posé.
+	player.call("unbind_hotbar", 8)
+	ok = _report("un emplacement vide laisse le chiffre changer de main",
+		not bool(player.call("_use_from_combat", 8))) and ok
 	return ok
 
 

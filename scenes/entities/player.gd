@@ -649,7 +649,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				# Ctrl+1..9 : changer de banque (2026-07-27, remplace Shift —
 				# Shift reste libre pour les usages classiques de déplacement).
 				active_hotbar = mini(slot, hotbar_bank_count() - 1)
-			else:
+			elif not _use_from_combat(slot):
 				selected_slot = slot
 			return
 		# Table action -> méthode : une chaîne de `elif` avait laissé passer
@@ -1013,6 +1013,14 @@ func _current_weapon_stats() -> Dictionary:
 ## Le clic gauche BANDE ou ARME, selon ce qu'on tient. Un seul aiguillage, pour
 ## que le reste du fichier n'ait jamais à retester le type d'arme.
 func _begin_combat_input() -> void:
+	# ARME MAGIQUE : ON CHARGE, SANS DIRECTION (2026-08-07). L'attaque de base
+	# d'un bâton n'est pas un coup de bâton, c'est son SORT INNÉ — gravé sur
+	# l'exemplaire à la forge, payé en mana. Il n'y a donc ni geste à lire ni
+	# arc à parcourir : on tient pour charger, on relâche pour lancer. Le
+	# directionnel reste pour tout le reste, c'est-à-dire pour ce qui frappe.
+	if not innate_spell_of(_equipped_weapon()).is_empty():
+		_channel_start_ms = Time.get_ticks_msec()
+		return
 	if WeaponStats.is_ranged(_current_weapon_stats()):
 		_begin_draw()
 		return
@@ -1020,10 +1028,66 @@ func _begin_combat_input() -> void:
 
 
 func _release_combat_input() -> void:
+	if not innate_spell_of(_equipped_weapon()).is_empty():
+		_release_innate_spell()
+		return
 	if WeaponStats.is_ranged(_current_weapon_stats()):
 		_fire_shot()
 		return
 	_attack.release_input()
+
+
+## Durée de charge minimale d'un sort inné, en millisecondes. En dessous, le
+## lancer est REFUSÉ plutôt qu'affaibli : un sort qui part à moitié chargé sans
+## qu'on l'ait voulu est une dépense de mana qu'on n'a pas décidée.
+const CHANNEL_MIN_MS := 250.0
+## Charge au-delà de laquelle la puissance ne monte plus.
+const CHANNEL_FULL_MS := 1200.0
+
+var _channel_start_ms := -1
+
+## Sort inné d'une arme, ou "" — gravé sur l'exemplaire à la forge.
+func innate_spell_of(weapon: Dictionary) -> String:
+	return String(weapon.get("sort_inne", ""))
+
+
+## Fraction de charge en cours (0..1), pour l'interface. -1 si on ne charge pas.
+func channel_ratio() -> float:
+	if _channel_start_ms < 0:
+		return -1.0
+	return clampf(float(Time.get_ticks_msec() - _channel_start_ms) / CHANNEL_FULL_MS, 0.0, 1.0)
+
+
+func _release_innate_spell() -> bool:
+	if _channel_start_ms < 0:
+		return false
+	var held_ms := float(Time.get_ticks_msec() - _channel_start_ms)
+	_channel_start_ms = -1
+	if held_ms < CHANNEL_MIN_MS:
+		return false
+	var module_id := innate_spell_of(_equipped_weapon())
+	if module_id == "":
+		return false
+	if _module_cooldown_ticks > 0 or statuses.has("etourdi") or statuses.has("confusion"):
+		return false
+	var compiled := SpellAssembly.compile([module_id], known_modules)
+	var casts: Array = compiled.get("casts", [])
+	if casts.is_empty():
+		return false
+	# LE MANA EST PAYÉ ICI, au lancer, jamais à la charge : tenir pour rien ne
+	# doit pas coûter — c'est la même règle que le tir à l'arc, et pour la même
+	# raison (préparer son coup est le geste qu'on veut encourager).
+	var overheat := mana.spend(SpellAssembly.mana_cost([module_id], known_modules,
+		float(_current_weapon_stats().get("mana_conductivity", 0.0))),
+		skills.level("controle_mana"))
+	if overheat > 0.0:
+		health = maxf(0.0, health - overheat)
+	_module_cooldown_ticks = 5
+	_execute_casts(casts)
+	for fired: String in SpellAssembly.modules_fired(compiled):
+		known_modules[fired] = int(known_modules.get(fired, 0)) + 1
+	skills.gain_xp(SPELL_SLOT_SKILL, 2.0)
+	return true
 
 
 ## Commence à bander. Le tir ne coûte l'endurance qu'au DÉCOCHAGE : tendre pour
@@ -1139,6 +1203,16 @@ func _begin_attack() -> void:
 		_swing_stats_off = offhand_stats().duplicate()
 		_swing_hardness_off = float(offhand.get("base_hardness", 1.0))
 		_swing_quality_off = float(offhand.get("quality", 1.0))
+	# MAINS NUES : DEUX FRAPPES, UNE PAR POING (2026-08-07, demande de l'auteur
+	# « je voudrais que le combat à mains nues se fasse à deux mains »). C'est
+	# exactement la mécanique du dual wielding — un geste, deux coups — et pour
+	# la même raison : on a bien deux armes, ce sont les poings. Un boxeur ne
+	# frappe pas d'une seule main.
+	var barehanded := weapon.is_empty()
+	if barehanded:
+		_swing_stats_off = weapon_stats.duplicate()
+		_swing_hardness_off = 1.0
+		_swing_quality_off = 1.0
 	_attack.begin(weapon_stats, 2 if not _swing_stats_off.is_empty() else 1)
 
 
@@ -1551,11 +1625,24 @@ const TWO_HANDED_GRIP_CENTERING := 0.25
 ##      poing gauche — c'est la seule chose qui distingue une boxe d'un
 ##      moulinet, et elle ne coûte que cette ligne.
 func _strike_uses_offhand() -> bool:
-	if _attack.is_offhand_strike():
-		return true
 	if not _equipped_weapon().is_empty():
-		return false
-	return _attack.strike_direction() == MeleeAttack.Direction.TAILLE_GAUCHE
+		# Une arme se tient d'une main donnée ; seul l'enchaînement à deux armes
+		# fait partir la seconde frappe de la gauche.
+		return _attack.is_offhand_strike()
+	return punch_uses_left(_attack.strike_direction(), _attack.is_offhand_strike())
+
+
+## LA RÈGLE DES POINGS, ISOLÉE ET PURE. Un crochet du gauche part du poing
+## gauche ; le coup qui l'enchaîne part forcément de l'AUTRE poing, sinon ce
+## serait deux fois le même bras — c'est ce qui fait qu'on boxe à deux mains.
+##
+## Fonction séparée parce qu'elle se TESTE : interrogée après coup, la machine à
+## états de l'attaque a déjà tourné et l'on mesure alors la seconde frappe en
+## croyant lire la première. Une règle pure se vérifie sur ses huit
+## combinaisons, sans rien devoir au moment où on l'appelle.
+static func punch_uses_left(direction: int, second_strike: bool) -> bool:
+	var lead_left := direction == MeleeAttack.Direction.TAILLE_GAUCHE
+	return lead_left != second_strike
 
 
 func _grip_position(camera_basis: Basis, offhand: bool = false) -> Vector3:
@@ -3459,6 +3546,49 @@ func held_name_key() -> String:
 	return ""
 
 
+## GESTE MMO : EN COMBAT, UN CHIFFRE DÉCLENCHE SANS CHANGER DE MAIN
+## (2026-08-07, demande de l'auteur : « quand le joueur est sur son slot de
+## combat et qu'il appuie sur 5 qui a un sort programmé, le sort se lance et la
+## hotbar RESTE sur le slot de combat, un peu style WoW »).
+##
+## POURQUOI CETTE RÈGLE N'EST VRAIE QU'EN COMBAT. Hors combat, un chiffre choisit
+## ce qu'on tient : c'est la fonction normale de la barre, et la lui retirer
+## rendrait impossible de prendre une pioche. En combat, changer de main est
+## précisément ce qu'on ne veut pas — on lance un sort, on boit une potion, et on
+## reste garde levée. Le même appui rend donc deux services opposés selon qu'on
+## se bat ou non, et c'est voulu.
+##
+## Retourne true si l'appui a été CONSOMMÉ (l'emplacement portait quelque chose
+## d'utilisable). Sinon on retombe sur la sélection ordinaire : appuyer sur un
+## chiffre vide ou sur un bloc doit continuer de changer de main, même en garde —
+## sans quoi on se retrouverait coincé en combat sans pouvoir en sortir.
+func _use_from_combat(slot: int) -> bool:
+	if not _wants_combat():
+		return false
+	var binding: Variant = hotbar_bindings.get(active_hotbar * HOTBAR_SLOTS + slot)
+	if binding == null:
+		return false
+	var entry := _resolve_binding(binding)
+	match String(entry.get("kind", "")):
+		"assemblage":
+			return cast_assembly(String(entry.get("skill", "")), int(entry.get("slot", -1)))
+		"object", "material":
+			# CONSOMMÉ DIRECTEMENT, sans passer en main. `_try_consume_held` lit
+			# l'entrée SÉLECTIONNÉE : on lui passe donc l'entrée visée, sinon on
+			# mangerait ce qu'on tient au lieu de ce qu'on a désigné.
+			#
+			# LES MATÉRIAUX AUSSI, et ce n'est pas un détail : la moitié de ce
+			# qui se mange dans ce jeu est un matériau empilé (blé, tubercule,
+			# algue), pas une instance d'objet. Je les avais oubliés, et le
+			# geste ne marchait que sur les viandes.
+			#
+			# `_consume_entry` rend false pour un matériau NON comestible : un
+			# chiffre pointant sur de la pierre continue donc de changer de
+			# main, ce qui est la seule façon de pouvoir bâtir en combat.
+			return _consume_entry(entry)
+	return false
+
+
 ## Entrée sélectionnée (API publique — vue première personne, UI).
 func held_entry() -> Dictionary:
 	return _selected_entry()
@@ -4172,7 +4302,14 @@ func _refresh_state_modifiers() -> void:
 ## Jusqu'ici rien n'appelait `read_book` — les grimoires se ramassaient et ne
 ## se lisaient nulle part.
 func _try_consume_held() -> bool:
-	var entry := _selected_entry()
+	return _consume_entry(_selected_entry())
+
+
+## Consomme une ENTRÉE donnée (lue, mangée). Extraite de `_try_consume_held`
+## pour que le geste MMO puisse consommer un emplacement SANS le prendre en
+## main : les deux chemins doivent manger exactement la même chose, et deux
+## copies de cette logique auraient divergé au premier objet consommable ajouté.
+func _consume_entry(entry: Dictionary) -> bool:
 	if String(entry.get("kind", "")) == "object":
 		var obj: Dictionary = entry["object"]
 		if BookFactory.is_book(obj):
@@ -4183,21 +4320,26 @@ func _try_consume_held() -> bool:
 			else:
 				EventBus.ui_notification.emit("ui.toast.lecture_echouee")
 			return true
-	return _try_eat()
+	return _try_eat(entry)
 
 
 ## Mange le comestible en main. Retourne true si l'action a été TRAITÉE (y
 ## compris un refus expliqué : « pas comestible » est une réponse, et le clic
 ## ne doit pas retomber sur la pose de bloc après l'avoir affichée).
-func _try_eat() -> bool:
+## `entry` VIDE = ce qu'on tient. Le paramètre existe pour le geste MMO, qui
+## mange l'emplacement DÉSIGNÉ sans le prendre en main.
+func _try_eat(entry: Dictionary = {}) -> bool:
 	# Comestible EN MAIN : soit une instance (viande — modèle objet), soit un
 	# matériau empilé (blé, tubercule — récolte de bloc).
-	var entry := _selected_entry()
+	if entry.is_empty():
+		entry = _selected_entry()
 	var instance: Dictionary = entry.get("object", {}) if entry.get("kind", "") == "object" else {}
 	var mat: Dictionary = instance
 	var mat_name := ""
 	if instance.is_empty():
-		mat_name = _selected_material()
+		# L'ID VIENT DE L'ENTRÉE, pas de la sélection : le geste MMO mange
+		# l'emplacement désigné, qui n'est pas celui qu'on tient.
+		mat_name = String(entry.get("id", "")) if String(entry.get("kind", "")) == "material" else ""
 		if mat_name == "":
 			# RIEN EN MAIN QUI SE MANGE : non traité. C'est le seul cas qui doit
 			# rendre false, pour que le clic droit retombe sur la pose de bloc.
