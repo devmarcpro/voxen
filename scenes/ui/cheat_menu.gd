@@ -640,20 +640,67 @@ func _build_weapon_tab() -> void:
 		_refresh_forge_label()))
 	_weapon_list.add_child(gem_row)
 
-	var weapons := _weapon_ids()
-	_add_forge_section("Armes (%d) — clic = forger avec la sélection" % weapons.size())
-	var grid := GridContainer.new()
-	grid.columns = 5
-	for item_id: String in weapons:
-		var item: Dictionary = GameData.items[item_id]
-		var button := Button.new()
-		button.text = tr(item["name_key"])
-		button.custom_minimum_size = Vector2(210, UITheme.ROW_H)
-		button.tooltip_text = _weapon_tooltip(item_id)
-		button.pressed.connect(func() -> void: _forge_weapon(item_id))
-		grid.add_child(button)
-	_weapon_list.add_child(grid)
+	# GROUPÉES PAR CLASSE, et pas en une grille alphabétique de vingt et un
+	# boutons où l'épée voisine l'espadon et la faux le gourdin. Le seul
+	# regroupement que le jeu possède est le TYPE DE DÉGÂTS — chaque arme ayant
+	# sa propre fonctionnalité et sa propre compétence — et il porte même des
+	# compétences du même nom. Les groupes sont DÉRIVÉS du catalogue : une arme
+	# ajoutée tombe dans le sien sans qu'on touche à ce fichier.
+	for group: Array in _weapons_by_class():
+		var class_id: String = group[0]
+		var ids: Array = group[1]
+		_add_forge_section("%s (%d) — clic = forger avec la sélection" % [
+				_weapon_class_title(class_id), ids.size()])
+		var grid := GridContainer.new()
+		grid.columns = 5
+		for item_id: String in ids:
+			var item: Dictionary = GameData.items[item_id]
+			var button := Button.new()
+			button.text = tr(item["name_key"])
+			button.custom_minimum_size = Vector2(210, UITheme.ROW_H)
+			button.tooltip_text = _weapon_tooltip(item_id)
+			button.pressed.connect(func() -> void: _forge_weapon(item_id))
+			grid.add_child(button)
+		_weapon_list.add_child(grid)
 	_refresh_forge_label()
+
+
+## Armes et outils groupés par classe : [[classe, [ids triés]], …].
+##
+## Les trois classes de dégâts d'abord, dans l'ordre du plus courant au plus
+## rare ; les outils ensuite, qui n'en ont pas. L'ordre est FIXE et non
+## alphabétique : on cherche une masse dans « contondant », pas à la lettre C.
+func _weapons_by_class() -> Array:
+	var by_class := {}
+	for item_id: String in _weapon_ids():
+		var key := String((GameData.items[item_id] as Dictionary).get("weapon_class", ""))
+		if not by_class.has(key):
+			by_class[key] = [] as Array
+		(by_class[key] as Array).append(item_id)
+	var out: Array = []
+	for key: String in WEAPON_CLASS_ORDER:
+		if by_class.has(key):
+			(by_class[key] as Array).sort()
+			out.append([key, by_class[key]])
+			by_class.erase(key)
+	# Une classe INCONNUE de cette liste n'est pas perdue : elle passe en queue.
+	# Sans ça, ajouter un type de dégâts ferait disparaître ses armes du menu
+	# sans le moindre signe — la panne silencieuse habituelle.
+	var rest := by_class.keys()
+	rest.sort()
+	for key: String in rest:
+		(by_class[key] as Array).sort()
+		out.append([key, by_class[key]])
+	return out
+
+
+const WEAPON_CLASS_ORDER: Array[String] = ["tranchant", "percant", "contondant", ""]
+
+
+func _weapon_class_title(class_id: String) -> String:
+	if class_id == "":
+		return "Outils"
+	return "Armes %ses" % tr("skill.%s.name" % class_id).to_lower()
 
 
 func _add_forge_section(title_text: String) -> void:

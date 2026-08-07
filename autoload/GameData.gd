@@ -1051,6 +1051,28 @@ func _load_items() -> void:
 			if sprite_path != "" and not FileAccess.file_exists(sprite_path):
 				push_warning("GameData : sprite « %s » introuvable (%s de l'objet « %s »)." % [
 						sprite_path, part, item["id"]])
+		# CLASSE D'ARME, dérivée de la FONCTIONNALITÉ et recopiée à plat sur la
+		# fiche (2026-08-07). Les 21 armes ont chacune leur propre `functionality`
+		# et leur propre compétence : le seul regroupement que le jeu possède est
+		# le TYPE DE DÉGÂTS — tranchant, perçant, contondant — et il porte même
+		# des compétences du même nom. Sans ce champ, tout affichage voulant
+		# grouper les armes devrait rouvrir la fiche de fonctionnalité, ou pire,
+		# maintenir sa propre table.
+		item["weapon_class"] = String(functionalities.get(
+				String(item.get("functionality", "")), {}).get("type_degats", ""))
+		# RANGEMENT PAR DOSSIER, vérifié. `data/items/<type>/` et, pour les armes,
+		# `data/items/arme/<type de dégâts>/`. Le classement est ainsi une DONNÉE
+		# portée par l'arborescence — comme la catégorie des matériaux et la
+		# dimension des essences — et non une liste à tenir à jour dans le code.
+		# Une fiche mal rangée est signalée : sans ça, le dossier deviendrait un
+		# commentaire, et un commentaire finit toujours par mentir.
+		var folder := path.get_base_dir().get_file()
+		var expected := String(item.get("type", ""))
+		if expected == "arme":
+			expected = String(item["weapon_class"])
+		if folder != "items" and folder != expected:
+			push_warning("GameData : « %s » est rangé dans « %s » mais son classement est « %s »." % [
+					item["id"], folder, expected])
 		if items.has(item["id"]):
 			_blocking_error("id d'objet dupliqué « %s »" % item["id"])
 		else:

@@ -1314,3 +1314,8 @@ vitrine.arbres,Arbres
 vitrine.structures,Structures
 vitrine.overworld,Monde
 vitrine.hors_monde,Objets
+item_type.arme.name,Armes
+item_type.armure.name,Armures
+item_type.bouclier.name,Boucliers
+item_type.outil.name,Outils
+item_type.livre.name,Livres

@@ -6,6 +6,30 @@ extends RefCounted
 ## 4.2/A.4.1). Le dépassement de capacité n'est PAS bloqué : il applique un
 ## malus de vitesse (A.4.2) — géré par le porteur, pas par l'inventaire.
 
+## QUELQUE CHOSE VIENT D'ENTRER (2026-08-07). Émis par les trois seules portes
+## d'entrée de l'inventaire — matériau, objet, volume — et par elles seules.
+##
+## POURQUOI UN SIGNAL ICI, ET PAS UN APPEL À CHAQUE ENDROIT QUI DONNE. Le porteur
+## doit lier ce qu'il obtient à un emplacement de hotbar libre. Or on obtient des
+## choses par une bonne douzaine de chemins : miner, récolter un sous-bloc,
+## dépecer, ouvrir un coffre, ramasser une cache, forger, acheter, reprendre un
+## objet posé, recevoir un butin de donjon. Appeler le remplissage à chacun,
+## c'est en oublier au moins un — c'était déjà le cas : trois appels existaient,
+## pour le kit de départ, la création de personnage et le dépeçage. Tout le
+## reste tombait dans un inventaire que la hotbar ne montrait pas.
+##
+## Trois portes, un signal : un nouveau chemin d'acquisition est branché sans
+## rien savoir de la hotbar.
+##
+## IL PORTE CE QUI EST ENTRÉ, et c'est tout l'enjeu. Un signal nu obligeait le
+## porteur à balayer l'inventaire et à lier la première entrée non liée venue —
+## on ramassait une épée, la hotbar y mettait un caillou qu'on avait en deux
+## cents exemplaires. Ce qu'on vient d'obtenir doit être ce qu'on a sous la main.
+##
+## `entry` a la forme des entrées d'inventaire : { "kind": "material", "id" }
+## ou { "kind": "object", "object" }.
+signal gained(entry: Dictionary)
+
 ## Piles de matériaux : id matériau -> quantité (blocs entiers).
 var material_stacks := {}
 ## Fractions de bloc par matériau (0..1) — la monnaie de la subdivision 4.1 :
@@ -23,7 +47,10 @@ static func capacity_for(force: int) -> float:
 
 
 func add_material(material_id: String, amount: int) -> void:
+	if amount == 0:
+		return
 	material_stacks[material_id] = int(material_stacks.get(material_id, 0)) + amount
+	gained.emit({"kind": "material", "id": material_id})
 
 
 ## Retire `amount` unités ; retourne false (sans rien retirer) si insuffisant.
@@ -48,6 +75,7 @@ func add_object(object_instance: Dictionary) -> void:
 		for existing in objects:
 			if String(existing.get("resource_id", "")) == resource_id:
 				existing["count"] = int(existing.get("count", 1)) + int(object_instance.get("count", 1))
+				gained.emit({"kind": "object", "object": existing})
 				return
 	# Un objet peut entrer par le craft (uid déjà alloué) comme par un
 	# chargement de sauvegarde (uid d'une session précédente). On le déclare dans
@@ -55,6 +83,7 @@ func add_object(object_instance: Dictionary) -> void:
 	# seul endroit où l'on est sûr qu'aucun uid ne sera redistribué plus tard.
 	ItemFactory.note_uid(int(object_instance.get("uid", 0)))
 	objects.append(object_instance)
+	gained.emit({"kind": "object", "object": object_instance})
 
 
 ## Retire `count` unités d'une instance (l'entrée disparaît à zéro).
@@ -112,12 +141,17 @@ func add_volume(material_id: String, volume: float) -> void:
 	var fraction := float(material_fractions.get(material_id, 0.0)) + volume
 	var whole := floori(fraction)
 	if whole > 0:
-		add_material(material_id, whole)
+		add_material(material_id, whole)  # Émet déjà `gained`.
 		fraction -= whole
 	if fraction > 0.0001:
 		material_fractions[material_id] = fraction
 	else:
 		material_fractions.erase(material_id)
+	# UNE FRACTION COMPTE AUSSI. Miner un sous-bloc ne rend qu'un huitième de
+	# bloc : sans cette émission, un matériau récolté à la sculpture n'apparaît
+	# dans la hotbar qu'au huitième coup, et le joueur croit ne rien récolter.
+	if whole <= 0:
+		gained.emit({"kind": "material", "id": material_id})
 
 
 ## Débite un volume (pose de sous-blocs) ; casse un bloc entier en fraction

@@ -345,35 +345,81 @@ func _build_structure_row(content_set: String) -> void:
 ## catégorie de sa recette : c'est ce que la vitrine doit montrer, une épée
 ## faite de bois et de métal réels.
 func _build_object_row(content_set: String) -> void:
-	var ids: Array[String] = []
+	var by_group := {}
 	for id: String in GameData.materials:
 		var mat: Dictionary = GameData.materials[id]
-		if String(mat.get("category", "")) == "objet" and _set_of(mat) == content_set:
-			ids.append(id)
-	if ids.is_empty():
-		return
-	ids.sort()
-	var z := _next_z
-	_next_z += ROW_GAP
-	rows.append({"label": "category.objet.name", "z": z, "scale": "bloc", "set": content_set})
-	var x := ORIGIN.x
-	for id: String in ids:
-		var runtime_id: int = GameData.material_runtime_ids.get(id, 0)
-		if runtime_id == 0:
+		if String(mat.get("category", "")) != "objet" or _set_of(mat) != content_set:
 			continue
-		var pos := Vector3i(x, PLACE_Y, z)
-		var instance := _sample_instance(String((GameData.materials[id] as Dictionary)
-				.get("parametric", {}).get("source_id", "")))
-		if not instance.is_empty():
-			# LE REGISTRE AVANT LE BLOC, comme à la pose par le joueur : c'est
-			# lui qui dit QUEL objet est ce bloc.
-			PlacedItemManager.remember(pos, instance)
-		if WorldManager.set_block_batched(pos, runtime_id):
-			blocks_written += 1
-		positions["materiau:" + id] = pos
-		x += STEP
-		_maybe_flush()
-	await _breathe()
+		var key := _object_group_of(String(mat.get("parametric", {}).get("source_id", "")))
+		if not by_group.has(key):
+			by_group[key] = [] as Array[String]
+		(by_group[key] as Array[String]).append(id)
+	if by_group.is_empty():
+		return
+	# ORDRE FIXE, du plus courant au plus rare, et non alphabétique : on cherche
+	# une masse dans « contondant », pas à la lettre C. Une clé absente de la
+	# liste passe en queue plutôt que de disparaître — ajouter un type de dégâts
+	# ne doit pas escamoter ses armes sans le moindre signe.
+	var keys: Array[String] = []
+	for key: String in GROUP_ORDER:
+		if by_group.has(key):
+			keys.append(key)
+	var rest := by_group.keys()
+	rest.sort()
+	for key: String in rest:
+		if not (key in keys):
+			keys.append(key)
+	for key: String in keys:
+		var ids: Array[String] = by_group[key]
+		ids.sort()
+		_row(content_set, GROUP_LABELS.get(key, "material.objet.name"), ids, STEP, ROW_GAP)
+		# UN EXEMPLAIRE PAR BLOC, sans quoi la rangée est INVISIBLE : le bloc
+		# `objet_*` n'est pas maillé, c'est `PlacedItemManager` qui monte le
+		# modèle depuis l'instance. Le regroupement par classe a fait passer
+		# cette rangée par `_row`, qui pose des blocs et rien d'autre — et les
+		# quarante et un objets ont disparu d'un coup. C'est l'assertion
+		# « chaque bloc d'objet porte un exemplaire » qui l'a dit, écrite
+		# précisément parce que ce défaut-là ne se voit qu'en capture.
+		for id: String in ids:
+			var instance := _sample_instance(String((GameData.materials[id] as Dictionary)
+					.get("parametric", {}).get("source_id", "")))
+			if not instance.is_empty() and positions.has("materiau:" + id):
+				PlacedItemManager.remember(positions["materiau:" + id], instance)
+		await _breathe()
+
+
+## Groupe d'un objet du catalogue : sa CLASSE DE DÉGÂTS pour une arme, son TYPE
+## sinon. C'est le rangement des fiches sur disque (`data/items/<type>/` et
+## `data/items/arme/<classe>/`), relu depuis les champs plutôt que depuis le
+## chemin — GameData a déjà vérifié que les deux s'accordent.
+func _object_group_of(item_id: String) -> String:
+	var item: Dictionary = GameData.items.get(item_id, {})
+	if item.is_empty():
+		return "divers"
+	var type_id := String(item.get("type", ""))
+	if type_id == "arme":
+		var weapon_class := String(item.get("weapon_class", ""))
+		return weapon_class if weapon_class != "" else "arme"
+	return type_id
+
+
+const GROUP_ORDER: Array[String] = [
+	"tranchant", "percant", "contondant", "arme", "bouclier", "armure", "outil", "livre", "divers",
+]
+## Clé de traduction par groupe. Les trois classes de dégâts empruntent celle de
+## la COMPÉTENCE du même nom : le jeu nomme déjà ces familles, il serait absurde
+## de les renommer ici et de laisser les deux libellés diverger.
+const GROUP_LABELS := {
+	"tranchant": "skill.tranchant.name",
+	"percant": "skill.percant.name",
+	"contondant": "skill.contondant.name",
+	"arme": "item_type.arme.name",
+	"bouclier": "item_type.bouclier.name",
+	"armure": "item_type.armure.name",
+	"outil": "item_type.outil.name",
+	"livre": "item_type.livre.name",
+	"divers": "material.objet.name",
+}
 
 
 ## Exemplaire représentatif d'un objet du catalogue. Le repli générique

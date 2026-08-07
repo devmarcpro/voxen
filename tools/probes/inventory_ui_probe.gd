@@ -17,6 +17,7 @@ func run() -> void:
 	# menu de triche) : c'est la situation qui a révélé le bug — des centaines
 	# de lignes pour une poignée d'emplacements liés. Un échantillon réduit
 	# aurait tout lié d'office et n'aurait rien détecté.
+	var ok_autofill := true
 	var ajoutes := 0
 	for mid: String in GameData.materials:
 		player.inventory.add_material(mid, 50)
@@ -25,12 +26,60 @@ func run() -> void:
 			break
 	player.autofill_hotbar()
 
+	# --- L'AUTO-REMPLISSAGE (2026-08-07) ---
+	#
+	# CE QUI EST DÉFENDU : tout ce qu'on obtient doit atterrir dans un
+	# emplacement libre, quel que soit le CHEMIN par lequel on l'obtient. Le
+	# remplissage n'était appelé qu'à trois endroits (kit de départ, création de
+	# personnage, dépeçage) : miner, ramasser, forger ou acheter versaient dans
+	# un inventaire que la hotbar ne montrait pas. Il est désormais branché sur
+	# le signal `gained` de l'inventaire, c'est-à-dire sur ses trois seules
+	# portes d'entrée.
+	# ON LIBÈRE UN EMPLACEMENT D'ABORD. La sonde a rempli l'inventaire de deux
+	# cents matériaux : la hotbar est pleine, et un gain de plus n'a nulle part
+	# où aller. Sans cette libération, le test mesurait « rien ne bouge » et
+	# l'aurait appelé un échec — vrai constat, mauvaise conclusion.
+	# ON LAISSE D'ABORD RETOMBER LA POUSSIÈRE. Les deux cents matériaux ajoutés
+	# ci-dessus ont chacun émis `gained` ; leur liaison est différée d'une frame.
+	# Sans cette attente, la file contient deux cents entrées ET la dague, la
+	# seule place libérée revient au premier de la file, et le test conclut que
+	# la dague n'a pas été liée alors que le mécanisme a parfaitement marché.
+	await main.get_tree().process_frame
+	var freed := -1
+	for index: int in player.hotbar_bindings.keys():
+		if index % int(player.HOTBAR_SLOTS) != int(player.COMBAT_SLOT):
+			freed = index
+			break
+	player.unbind_hotbar(freed)
+	var before: int = player.hotbar_bindings.size()
+	var gagne: Dictionary = ItemFactory.craft("dague", {"bois": "chene", "minerai": "fer"}, 1.0)
+	player.inventory.add_object(gagne)
+	# Le remplissage est DIFFÉRÉ (une fois par frame, pas une fois par unité
+	# gagnée) : mesurer tout de suite ne verrait rien et conclurait à tort.
+	await main.get_tree().process_frame
+	var place: int = player.hotbar_index_of({"kind": "object", "object": gagne})
+	print("[INVUI] liaisons %d -> %d après un gain ; la dague est à l'emplacement %d (attendu >= 0)" % [
+			before, player.hotbar_bindings.size(), place])
+	ok_autofill = place >= 0
+
+	# L'EMPLACEMENT DE COMBAT NE DOIT JAMAIS ÊTRE REMPLI : il suit l'arme
+	# équipée. `bind_hotbar` le refuse, mais le remplissage écrit dans le
+	# dictionnaire DIRECTEMENT — le garde-fou ne le couvrait pas, et un premier
+	# bloc miné aurait chassé l'arme de la main.
+	var combat_pris := false
+	for index: int in player.hotbar_bindings:
+		if index % player.HOTBAR_SLOTS == player.COMBAT_SLOT:
+			combat_pris = true
+	print("[INVUI] emplacement de combat rempli par l'auto-remplissage : %s (attendu non)" % (
+			"OUI" if combat_pris else "non"))
+	ok_autofill = ok_autofill and not combat_pris
+
 	var menu: CanvasLayer = preload("res://scenes/ui/game_menu.gd").new()
 	menu.name = "GameMenuProbe"
 	main.add_child(menu)
 	await main.get_tree().process_frame
 
-	var ok := true
+	var ok := ok_autofill
 	var entries: Array[Dictionary] = menu._build_inventory_entries()
 	print("[INVUI] %d lignes d'inventaire construites" % entries.size())
 	ok = ok and entries.size() > 0

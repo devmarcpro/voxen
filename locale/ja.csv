@@ -1314,3 +1314,8 @@ vitrine.arbres,木
 vitrine.structures,建物
 vitrine.overworld,地上
 vitrine.hors_monde,物品
+item_type.arme.name,武器
+item_type.armure.name,防具
+item_type.bouclier.name,盾
+item_type.outil.name,道具
+item_type.livre.name,本

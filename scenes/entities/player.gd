@@ -292,6 +292,11 @@ func _ready() -> void:
 	skills = PlayerSkills.new()
 	skills.owner_entity = self
 	inventory = Inventory.new()
+	# TOUT CE QUI ENTRE VA DANS UN EMPLACEMENT LIBRE (2026-08-07, demande de
+	# l'auteur). Branché sur la SEULE porte d'entrée de l'inventaire plutôt
+	# qu'aux douze endroits qui donnent quelque chose : c'est ce qui garantit
+	# qu'un nouveau chemin d'acquisition n'oubliera pas de le faire.
+	inventory.gained.connect(_on_inventory_gained)
 	equipment = Equipment.new()
 	collection = Collection.new()
 	reputation = Reputation.new()
@@ -667,12 +672,67 @@ func _hotbar_for_save() -> Array:
 ## pas encore liées, dans l'ordre. Appelé après la constitution du kit de
 ## départ et après un ramassage : sans ça, la hotbar assignable démarrerait
 ## VIDE et le joueur ne pourrait rien tenir.
+## CE QU'ON VIENT D'OBTENIR VA DANS UN EMPLACEMENT LIBRE (2026-08-07, demande de
+## l'auteur : « quand on obtient quelque chose ça se met automatiquement dans les
+## slots libres de hotbar »).
+##
+## On lie L'ENTRÉE REÇUE, pas « la première entrée non liée » : avec deux cents
+## piles de matériaux en poche, ramasser une épée aurait mis un caillou dans la
+## main. Ce qu'on vient d'obtenir est ce qu'on veut sous la main.
+##
+## DIFFÉRÉ D'UNE FRAME, et groupé. Un coup de foreuse crédite jusqu'à
+## vingt-cinq blocs, chacun par un appel séparé ; un coffre vidé ou une cache
+## ramassée en font autant. Lier à chaque unité rejouerait le balayage complet
+## des liaisons des dizaines de fois dans la même frame.
+var _hotbar_pending: Array[Dictionary] = []
+
+
+func _on_inventory_gained(entry: Dictionary) -> void:
+	if _hotbar_pending.is_empty():
+		_flush_hotbar_fill.call_deferred()
+	_hotbar_pending.append(entry)
+
+
+func _flush_hotbar_fill() -> void:
+	var pending := _hotbar_pending
+	_hotbar_pending = []
+	for entry: Dictionary in pending:
+		_bind_to_free_slot(entry)
+
+
+## Lie `entry` au premier emplacement libre. Ne fait rien si elle est déjà liée
+## (miner cent pierres ne doit pas occuper cent emplacements) ni s'il n'y a plus
+## de place — la hotbar pleine n'est pas une erreur, c'est un état.
+func _bind_to_free_slot(entry: Dictionary) -> void:
+	var binding := _binding_for(entry)
+	if binding.is_empty():
+		return
+	for index: int in hotbar_bindings:
+		if hotbar_bindings[index] == binding:
+			return
+	for index in HOTBAR_MIN_BANKS * HOTBAR_SLOTS:
+		# L'emplacement de COMBAT suit l'arme équipée : il n'est jamais libre.
+		if index % HOTBAR_SLOTS == COMBAT_SLOT:
+			continue
+		if not hotbar_bindings.has(index):
+			hotbar_bindings[index] = binding
+			return
+
+
 func autofill_hotbar() -> void:
 	var used := {}
 	for index: int in hotbar_bindings:
 		used[hotbar_bindings[index]] = true
 	var free_slots: Array[int] = []
 	for index in HOTBAR_MIN_BANKS * HOTBAR_SLOTS:
+		# L'EMPLACEMENT DE COMBAT N'EST PAS LIBRE : il suit l'arme équipée.
+		# `bind_hotbar` le refuse, mais ce remplissage écrit dans le dictionnaire
+		# DIRECTEMENT et passait donc à côté du garde-fou. Le défaut existait
+		# depuis le 2026-08-02 sans se voir, l'auto-remplissage n'ayant lieu qu'au
+		# kit de départ ; il devient permanent maintenant que tout gain le
+		# déclenche — le premier bloc miné aurait chassé l'arme de la main.
+		if index % HOTBAR_SLOTS == COMBAT_SLOT:
+			continue
 		if not hotbar_bindings.has(index):
 			free_slots.append(index)
 	var cursor := 0
