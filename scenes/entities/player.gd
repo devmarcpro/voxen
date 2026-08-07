@@ -328,6 +328,7 @@ func apply_default_character() -> void:
 	inventory.add_object(ItemFactory.craft("epee", {"bois": "pin", "minerai": "cuivre"}, STARTER_QUALITY))
 	inventory.add_material("etal_de_vente", 1)
 	_recompute_derived()
+	_bind_default_combat()
 	autofill_hotbar()
 
 
@@ -370,6 +371,7 @@ func apply_character(config: Dictionary) -> void:
 	gold = int(cls.get("gold", 0))
 
 	_recompute_derived()
+	_bind_default_combat()
 	autofill_hotbar()
 
 
@@ -453,13 +455,24 @@ func restore_state(data: Dictionary) -> void:
 		stat_potentials[stat_id] = float(saved_potentials.get(stat_id, POTENTIAL_BASE))
 	hotbar_bindings.clear()
 	for entry: Variant in data.get("hotbar", []):
-		if entry is Dictionary and (entry as Dictionary).has("slot"):
-			var saved: Dictionary = entry
-			hotbar_bindings[int(saved["slot"])] = {
-				"kind": String(saved.get("kind", "")),
-				"id": String(saved.get("id", "")),
-			} if String(saved.get("kind", "")) == "material" else {
-				"kind": "object", "uid": int(saved.get("uid", -1))}
+		if not (entry is Dictionary and (entry as Dictionary).has("slot")):
+			continue
+		var saved: Dictionary = entry
+		var slot := int(saved["slot"])
+		if saved.has("liaison"):
+			hotbar_bindings[slot] = (saved["liaison"] as Dictionary).duplicate()
+	# UNE BARRE SANS COMBAT N'EST PAS UN CHOIX, C'EST UNE BARRE CASSÉE. Sans ce
+	# rattrapage, une partie dont la barre ne porte pas l'entrée de combat
+	# n'aurait plus aucun moyen de se battre — et rien ne le dirait.
+	#
+	# On ne la repose QUE si elle manque partout : un joueur qui l'a déplacée la
+	# retrouve où il l'a mise, pas en double sous son premier doigt.
+	var has_combat := false
+	for index: int in hotbar_bindings:
+		if String((hotbar_bindings[index] as Dictionary).get("kind", "")) == "combat":
+			has_combat = true
+	if not has_combat:
+		hotbar_bindings[COMBAT_SLOT] = {"kind": "combat"}
 	# Santé/mana dérivent des stats/compétences restaurées (A.5). Le mana
 	# repart plein (simplification), la santé est restaurée telle quelle,
 	# bornée par le nouveau max (l'Endurance restaurée peut l'avoir changé).
@@ -658,14 +671,33 @@ func _unhandled_input(event: InputEvent) -> void:
 func _hotbar_for_save() -> Array:
 	var out: Array = []
 	for index: int in hotbar_bindings:
-		var binding: Dictionary = hotbar_bindings[index]
-		var row := {"slot": index, "kind": String(binding.get("kind", ""))}
-		if String(binding.get("kind", "")) == "material":
-			row["id"] = String(binding.get("id", ""))
-		else:
-			row["uid"] = int(binding.get("uid", -1))
-		out.append(row)
+		# LA LIAISON EST IMBRIQUÉE, PAS APLATIE, et il y a une raison précise.
+		#
+		# L'ancienne version énumérait les genres à la main — « matériau → id,
+		# TOUT LE RESTE → uid » — et les assemblages, liables à la hotbar depuis
+		# le 2026-08-03, en faisaient les frais : sauvegardés en `{kind:
+		# "assemblage", uid: -1}`, ils revenaient en objet d'uid -1, c'est-à-dire
+		# en case morte. **Un sort mis dans la barre ne survivait pas au
+		# rechargement, et rien ne le disait.**
+		#
+		# Aplatir la liaison à côté de `slot` ne marche pas non plus : une
+		# liaison d'assemblage a DÉJÀ un champ `slot` (l'emplacement du sort dans
+		# sa compétence), que l'emplacement de hotbar écraserait. D'où
+		# l'imbrication : aucun champ ne peut se cogner, et un genre ajoutévoyage
+		# sans qu'on touche à ce code.
+		out.append({"slot": index, "liaison": (hotbar_bindings[index] as Dictionary).duplicate()})
 	return out
+
+
+## Pose l'entrée de COMBAT à son emplacement par défaut, si rien ne l'occupe.
+##
+## Appelée à la création du personnage, jamais au chargement : un joueur qui a
+## déplacé son combat ailleurs — ou qui l'a retiré — ne doit pas le voir
+## réapparaître sous son premier doigt à chaque partie.
+func _bind_default_combat() -> void:
+	if hotbar_bindings.has(COMBAT_SLOT):
+		return
+	hotbar_bindings[COMBAT_SLOT] = {"kind": "combat"}
 
 
 ## Remplit les emplacements libres de la hotbar avec les entrées d'inventaire
@@ -711,9 +743,6 @@ func _bind_to_free_slot(entry: Dictionary) -> void:
 		if hotbar_bindings[index] == binding:
 			return
 	for index in HOTBAR_MIN_BANKS * HOTBAR_SLOTS:
-		# L'emplacement de COMBAT suit l'arme équipée : il n'est jamais libre.
-		if index % HOTBAR_SLOTS == COMBAT_SLOT:
-			continue
 		if not hotbar_bindings.has(index):
 			hotbar_bindings[index] = binding
 			return
@@ -725,14 +754,6 @@ func autofill_hotbar() -> void:
 		used[hotbar_bindings[index]] = true
 	var free_slots: Array[int] = []
 	for index in HOTBAR_MIN_BANKS * HOTBAR_SLOTS:
-		# L'EMPLACEMENT DE COMBAT N'EST PAS LIBRE : il suit l'arme équipée.
-		# `bind_hotbar` le refuse, mais ce remplissage écrit dans le dictionnaire
-		# DIRECTEMENT et passait donc à côté du garde-fou. Le défaut existait
-		# depuis le 2026-08-02 sans se voir, l'auto-remplissage n'ayant lieu qu'au
-		# kit de départ ; il devient permanent maintenant que tout gain le
-		# déclenche — le premier bloc miné aurait chassé l'arme de la main.
-		if index % HOTBAR_SLOTS == COMBAT_SLOT:
-			continue
 		if not hotbar_bindings.has(index):
 			free_slots.append(index)
 	var cursor := 0
@@ -940,6 +961,10 @@ func _update_mining_overlay() -> void:
 ## n'est sélectionnée (4.2 : type d'arme déterminé par ce qui est en main).
 func _equipped_weapon() -> Dictionary:
 	var entry := _selected_entry()
+	# L'entrée de COMBAT porte l'arme équipée, ou rien du tout — et « rien du
+	# tout » est un cas légitime, pas une absence : ce sont les poings.
+	if String(entry.get("kind", "")) == "combat":
+		return entry.get("object", {})
 	if entry.get("kind", "") == "object":
 		var obj: Dictionary = entry["object"]
 		var item: Dictionary = GameData.items.get(obj["item_id"], {})
@@ -948,14 +973,20 @@ func _equipped_weapon() -> Dictionary:
 	return {}
 
 
-## Le clic gauche doit-il frapper plutôt que miner ? Une arme en main met le
-## joueur en posture de combat ; à mains nues il continue de miner, sauf si une
-## créature est effectivement devant lui — sinon on ne pourrait plus jamais
-## boxer, ce qui condamnerait tout le début de partie sans équipement.
+## Le clic gauche doit-il frapper plutôt que miner ?
+##
+## C'EST L'ENTRÉE SÉLECTIONNÉE QUI TRANCHE, et rien d'autre (2026-08-07). La
+## règle était auparavant devinée : « une arme en main, ou bien une créature
+## sous le réticule ». Elle avait deux défauts. On frappait sans l'avoir voulu
+## dès qu'un villageois passait devant la pioche ; et surtout **le combat à
+## mains nues n'avait aucune façon de se déclencher volontairement** — on ne
+## pouvait ni s'entraîner, ni menacer, ni lever les poings avant que la cible
+## n'arrive.
+##
+## Sélectionner l'entrée de combat, c'est se mettre en garde. Avec une arme
+## équipée on se bat à l'arme ; sans arme, aux POINGS.
 func _wants_combat() -> bool:
-	if not _equipped_weapon().is_empty():
-		return true
-	return _target_creature != null and is_instance_valid(_target_creature)
+	return String(_selected_entry().get("kind", "")) == "combat"
 
 
 ## Fonctionnalité + stats dérivées de l'arme en main. Le cache est invalidé par
@@ -1504,6 +1535,29 @@ const GRIP_RIGHT := 0.16
 const TWO_HANDED_GRIP_CENTERING := 0.25
 
 
+## Le coup en cours part-il de la main GAUCHE ?
+##
+## UNE SEULE DÉCISION POUR LE GESTE ET POUR LA HITBOX. Elles étaient prises
+## séparément à deux endroits, chacun lisant `is_offhand_strike()` : ajouter un
+## troisième cas — la boxe — sans les réunir aurait garanti qu'un jour on voie
+## un crochet du gauche dont les dégâts partent de la droite.
+##
+## TROIS CAS, dans cet ordre :
+##   1. enchaînement à deux armes : la seconde frappe part de la gauche, c'est
+##      la mécanique du dual wielding et elle prime ;
+##   2. une arme en main : elle se tient d'une main donnée, la question ne se
+##      pose pas ;
+##   3. À MAINS NUES : LA MAIN SUIT LA DIRECTION. Un crochet du gauche part du
+##      poing gauche — c'est la seule chose qui distingue une boxe d'un
+##      moulinet, et elle ne coûte que cette ligne.
+func _strike_uses_offhand() -> bool:
+	if _attack.is_offhand_strike():
+		return true
+	if not _equipped_weapon().is_empty():
+		return false
+	return _attack.strike_direction() == MeleeAttack.Direction.TAILLE_GAUCHE
+
+
 func _grip_position(camera_basis: Basis, offhand: bool = false) -> Vector3:
 	var right := camera_basis.x
 	right.y = 0.0
@@ -1663,7 +1717,7 @@ func hand_targets(hand_radius: float, offhand_offset: float, delta: float) -> Di
 	# main qui décrit l'arc est alors la gauche, et c'est la droite qui revient
 	# au port. Sans ça le geste vu serait celui de la mauvaise main, alors même
 	# que la hitbox, elle, partirait bien de la gauche.
-	var offhand_strike: bool = _attack.is_busy() and _attack.is_offhand_strike()
+	var offhand_strike: bool = _attack.is_busy() and _strike_uses_offhand()
 	if offhand_strike:
 		grip = _grip_position(camera_basis, true)
 		carry = grip + _carry_direction(camera_basis) * hand_radius
@@ -2086,7 +2140,7 @@ func _advance_attack(delta: float) -> void:
 		var allowed := SWING_TURN_CAP * delta
 		_swing_basis = Basis(current.slerp(aim, clampf(allowed / gap, 0.0, 1.0)))
 	var camera_basis := _swing_basis
-	var grip := _grip_position(camera_basis, _attack.is_offhand_strike())
+	var grip := _grip_position(camera_basis, _strike_uses_offhand())
 
 	if event == "locked":
 		# Télégraphie (E.12) : la direction devient publique dès le
@@ -3282,6 +3336,11 @@ func all_entries() -> Array[Dictionary]:
 			if (slots[slot] as Array).is_empty():
 				continue
 			entries.append({"kind": "assemblage", "skill": skill_id, "slot": slot})
+	# COMBAT (2026-08-07) : une ENTRÉE, pas un emplacement réservé. Elle
+	# s'assigne comme n'importe quoi d'autre, à autant d'emplacements qu'on
+	# veut. Sélectionnée, elle met en posture de combat avec ce qui est ÉQUIPÉ —
+	# et à mains nues si rien ne l'est.
+	entries.append({"kind": "combat"})
 	return entries
 
 
@@ -3298,11 +3357,6 @@ func hotbar_bank_count() -> int:
 ## `index`. Une entrée déjà liée ailleurs est DÉPLACÉE — sans ça le même
 ## objet occuperait deux emplacements et l'un des deux mentirait.
 func bind_hotbar(index: int, entry: Dictionary) -> void:
-	# L'emplacement de COMBAT ne se lie pas : il suit l'arme équipée. Refuser
-	# ici plutôt que dans l'UI garantit qu'aucun chemin (menu, sonde, réseau) ne
-	# puisse y coller une pioche et faire mentir la posture.
-	if index % HOTBAR_SLOTS == COMBAT_SLOT:
-		return
 	var binding := _binding_for(entry)
 	if binding.is_empty():
 		return
@@ -3340,6 +3394,8 @@ func _binding_for(entry: Dictionary) -> Dictionary:
 			# modules d'un assemblage ne doit pas le faire tomber de la barre.
 			return {"kind": "assemblage", "skill": String(entry.get("skill", "")),
 				"slot": int(entry.get("slot", -1))}
+		"combat":
+			return {"kind": "combat"}
 	return {}
 
 
@@ -3368,6 +3424,15 @@ func _resolve_binding(binding: Dictionary) -> Dictionary:
 			if assembly_at(skill_id, slot).is_empty():
 				return {}
 			return {"kind": "assemblage", "skill": skill_id, "slot": slot}
+		"combat":
+			# JAMAIS VIDE, même sans arme : c'est tout l'objet du combat à mains
+			# nues. `object` porte l'arme équipée quand il y en a une, et reste
+			# absent quand on se bat aux poings.
+			var weapon: Dictionary = equipment.equipped("arme_1")
+			var combat := {"kind": "combat"}
+			if not weapon.is_empty():
+				combat["object"] = weapon
+			return combat
 	return {}
 
 
@@ -3378,11 +3443,6 @@ func hotbar_entries(bank: int = -1) -> Array[Dictionary]:
 	var start := (active_hotbar if bank < 0 else bank) * HOTBAR_SLOTS
 	var result: Array[Dictionary] = []
 	for slot in HOTBAR_SLOTS:
-		if slot == COMBAT_SLOT:
-			# Réservé au combat : il suit l'ÉQUIPEMENT, pas une liaison.
-			var main_hand: Dictionary = equipment.equipped("arme_1")
-			result.append({} if main_hand.is_empty() else {"kind": "object", "object": main_hand})
-			continue
 		var binding: Variant = hotbar_bindings.get(start + slot)
 		result.append(_resolve_binding(binding) if binding != null else {})
 	return result
@@ -3404,19 +3464,21 @@ func held_entry() -> Dictionary:
 	return _selected_entry()
 
 
-## L'EMPLACEMENT 1 EST CELUI DU COMBAT (2026-08-02, demande de l'auteur). Il
-## n'est lié à rien : il montre en permanence l'ARME ÉQUIPÉE en main forte, dans
-## toutes les banques. C'est ce qui réconcilie deux systèmes qui coexistaient
-## sans se parler — l'équipement (arme_1 / arme_2, avec sa posture et ses
-## compétences de style) et la hotbar (ce qu'on tient). On ne peut plus se
-## retrouver avec un bouclier équipé et une pioche en main en croyant se battre.
+## EMPLACEMENT PAR DÉFAUT DU COMBAT (2026-08-07). Ce n'était pas ça avant : le
+## slot 1 était RÉSERVÉ, dans toutes les banques, et suivait l'arme équipée sans
+## qu'on puisse rien y faire.
+##
+## Le combat est désormais une ENTRÉE comme une autre (`kind: "combat"`), posée
+## ici au départ et assignable à n'importe quel emplacement depuis le menu
+## Combat. Ce qu'elle apporte reste le même — elle réconcilie l'équipement
+## (arme_1/arme_2, posture, compétences de style) avec la hotbar — mais elle
+## cesse de confisquer un emplacement dans chaque banque, et surtout elle peut
+## désigner LES POINGS : sélectionnée sans arme équipée, c'est le combat à mains
+## nues, qui n'avait aucune façon de se déclencher volontairement.
 const COMBAT_SLOT := 0
 
 
 func _selected_entry() -> Dictionary:
-	if selected_slot == COMBAT_SLOT:
-		var main_hand: Dictionary = equipment.equipped("arme_1")
-		return {} if main_hand.is_empty() else {"kind": "object", "object": main_hand}
 	var binding: Variant = hotbar_bindings.get(active_hotbar * HOTBAR_SLOTS + selected_slot)
 	return _resolve_binding(binding) if binding != null else {}
 
@@ -3652,13 +3714,15 @@ func _try_take_object() -> bool:
 func _try_place_object() -> bool:
 	if not (_target_valid and _target_normal != Vector3i.ZERO):
 		return false
-	# UN OBJET ÉQUIPÉ NE SE POSE PAS. L'emplacement de combat montre l'arme
-	# portée, pas une ligne d'inventaire : la retirer par ce chemin laisserait
-	# l'équipement pointer sur un objet qui n'est plus nulle part.
-	if selected_slot == COMBAT_SLOT:
+	var entry := _selected_entry()
+	# UN OBJET ÉQUIPÉ NE SE POSE PAS. L'entrée de combat montre l'arme portée,
+	# pas une ligne d'inventaire : la retirer par ce chemin laisserait
+	# l'équipement pointer sur un objet qui n'est plus nulle part. Le test porte
+	# sur le GENRE de l'entrée et non sur son emplacement — le combat n'est plus
+	# assigné à un index fixe.
+	if String(entry.get("kind", "")) == "combat":
 		EventBus.ui_notification.emit("ui.toast.objet_equipe")
 		return false
-	var entry := _selected_entry()
 	if entry.get("kind", "") != "object":
 		return false
 	var held: Dictionary = entry["object"]

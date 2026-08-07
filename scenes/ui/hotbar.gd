@@ -124,6 +124,33 @@ func _refresh() -> void:
 			_slots[i].tooltip_text = ""
 			continue
 		var entry: Dictionary = entries[i]
+		# COMBAT (2026-08-07) : l'entrée porte l'arme ÉQUIPÉE, ou rien — et
+		# « rien » veut dire les poings, pas une case vide. La branche générique
+		# plus bas lisait `entry["id"]` et plantait sur tout genre inconnu ; elle
+		# aurait planté pareil sur un assemblage. Une barre qui crashe parce
+		# qu'on y met ce que le jeu propose n'est pas une barre.
+		if String(entry.get("kind", "")) == "combat":
+			var armed: Dictionary = entry.get("object", {})
+			_heads[i].color = Color.TRANSPARENT
+			_handles[i].visible = false
+			_counts[i].text = ""
+			if armed.is_empty():
+				_icons[i].texture = BlockIcon.item_mask(SLOT_SIZE - 12)
+				_icons[i].modulate = Color(0.92, 0.78, 0.62)  # Un poing : teinte de peau.
+				_slots[i].tooltip_text = tr("ui.hotbar.mains_nues")
+			else:
+				var item: Dictionary = GameData.items.get(armed.get("item_id", ""), {})
+				_icons[i].texture = WeaponPreview.item_icon(item, armed.get("materials", {}), SLOT_SIZE)
+				_slots[i].tooltip_text = tr(String(armed.get("name_key", "")))
+			continue
+		if String(entry.get("kind", "")) == "assemblage":
+			_heads[i].color = Color.TRANSPARENT
+			_handles[i].visible = false
+			_counts[i].text = ""
+			_icons[i].texture = BlockIcon.item_mask(SLOT_SIZE - 12)
+			_icons[i].modulate = Color(0.55, 0.75, 1.0)  # Bleu de mana.
+			_slots[i].tooltip_text = tr("ui.hotbar.assemblage")
+			continue
 		if String(entry.get("kind", "")) == "object":
 			var obj: Dictionary = entry["object"]
 			var mats: Dictionary = obj.get("materials", {})

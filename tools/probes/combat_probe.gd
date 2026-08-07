@@ -73,6 +73,7 @@ func run() -> void:
 	ok = _check_weapon_geometry() and ok
 	ok = _check_catalogue() and ok
 	ok = await _check_dual_wielding() and ok
+	ok = await _check_bare_hands() and ok
 	ok = await _check_npc_defence() and ok
 	ok = _check_head_only_symmetry() and ok
 	ok = await _check_cover_and_stagger() and ok
@@ -1335,19 +1336,129 @@ func _check_guard_blade() -> bool:
 ##      décor ;
 ##   3. l'emplacement 1 de la hotbar est celui du COMBAT : il suit l'arme
 ##      équipée et refuse toute liaison.
+## COMBAT À MAINS NUES, STYLE BOXE (2026-08-07).
+##
+## CE QUI EST DÉFENDU, et aucun de ces trois points ne se voit en lisant le code.
+##
+## 1. QU'ON PUISSE FRAPPER SANS ARME, DÉLIBÉRÉMENT. C'était impossible : le
+##    combat ne s'engageait qu'avec une arme en main ou une créature déjà sous
+##    le réticule. On ne pouvait ni s'entraîner, ni lever les poings d'avance.
+##
+## 2. QUE LE COUP PORTE VRAIMENT. Une posture de boxe qui ne fait pas de dégâts
+##    est un mime. Le chemin des stats passe par un repli (`mains_nues`) qui
+##    n'était exercé par aucun test.
+##
+## 3. QUE LA MAIN SUIVE LA DIRECTION. C'est la seule chose qui distingue une
+##    boxe d'un moulinet, et elle se décide en un endroit dont dépendent À LA
+##    FOIS le geste vu et la hitbox. Si les deux divergeaient, on verrait un
+##    crochet du gauche dont les dégâts partent de la droite — et absolument
+##    rien ne le signalerait.
+func _check_bare_hands() -> bool:
+	var ok := true
+	print("[%s] --- mains nues ---" % TAG)
+	# DÉSARMÉ POUR DE BON : les deux mains, sinon la seconde arme resterait et
+	# on testerait un dual wielding manchot en croyant tester des poings.
+	for slot: String in ["arme_1", "arme_2"]:
+		if not (player.equipment.equipped(slot) as Dictionary).is_empty():
+			player.call("unequip_slot", slot)
+	player.call("bind_hotbar", player.COMBAT_SLOT, {"kind": "combat"})
+	player.active_hotbar = 0
+	player.selected_slot = player.COMBAT_SLOT
+
+	var stats: Dictionary = player.call("_current_weapon_stats")
+	ok = _report("sans arme, l'entrée de combat met en posture de poing",
+		bool(player.call("_wants_combat")) and String(stats.get("skill", "")) == "mains_nues",
+		String(stats.get("skill", ""))) and ok
+	# LA PORTÉE D'UN POING N'EST PAS CELLE D'UNE ÉPÉE. Elle valait 1,5 m —
+	# la même qu'une épée longue — ce qui laissait frapper d'un mètre et demi.
+	# L'ASSERTION PORTE SUR LA BANDE VULNÉRANTE, pas sur le champ `portee` de la
+	# fiche : ce champ n'est qu'un terme d'une formule qui y ajoute la longueur
+	# du bras. Vérifier la fiche aurait été vert avec une allonge réelle de
+	# 1,62 m — un « poing » qui frappe d'un mètre et demi.
+
+	# LE COUP PORTE.
+	# LA CIBLE EST PLACÉE DANS LA BANDE VULNÉRANTE, CALCULÉE. Un poing n'a ni la
+	# portée ni la bande d'une épée, et deux montages successifs ont conclu « le
+	# poing ne fait rien » alors qu'il frappait dans le vide. On demande donc la
+	# bande au même code que le jeu, et on vise son milieu — une distance écrite
+	# à la main serait une devinette, et elle redeviendrait fausse au premier
+	# réglage d'allonge.
+	var span := WeaponStats.head_span(stats,
+		preload("res://scenes/entities/player_body.gd").HAND_ARC_RADIUS,
+		preload("res://scenes/entities/held_item.gd").PART_SCALE)
+	var punch_range := (span.x + span.y) * 0.5
+	print("[%s]   bande vulnérante du poing : %.2f→%.2f m, cible à %.2f" % [
+		TAG, span.x, span.y, punch_range])
+	# ET C'EST BIEN UNE ALLONGE DE POING. L'assertion porte sur la BANDE, pas sur
+	# le champ `portee` de la fiche : ce champ n'est qu'un terme d'une formule
+	# qui y ajoute la longueur du bras. Vérifier la fiche laissait passer une
+	# allonge réelle de 1,62 m — un « poing » qui frappe d'un mètre et demi,
+	# c'est-à-dire aussi loin qu'une épée (1,68).
+	ok = _report("l'allonge est celle d'un bras, pas d'une lame",
+		span.y < 1.40, "%.2f m contre 1,68 pour une épée" % span.y) and ok
+	var target := _spawn_in_front(punch_range)
+	var before := float(target.health)
+	var hits := await _swing_and_collect()
+	await main.get_tree().process_frame
+	ok = _report("le poing touche et blesse",
+		hits.size() > 0 and float(target.health) < before,
+		"%d coup(s), PV %.0f → %.0f" % [hits.size(), before, float(target.health)]) and ok
+	_despawn(target)
+
+	# LA MAIN SUIT LA DIRECTION. On interroge la décision UNIQUE dont dépendent
+	# le geste et la hitbox — pas deux lectures séparées, qui pourraient être
+	# d'accord par hasard.
+	var attack: MeleeAttack = player.get("_attack")
+	var hands: Array[String] = []
+	# CHAQUE CIBLE EST RETIRÉE APRÈS SON COUP. Les laisser derrière soi est une
+	# contamination classique ici : le test de parade qui suit spawnait sa propre
+	# cible à 1,2 m et frappait en réalité l'une des miennes, restée sans garde —
+	# « une garde bien orientée arrête la lame » échouait sur un coup qui n'avait
+	# jamais rencontré cette garde.
+	for entry: Array in [[Vector2(-90.0, 0.0), "gauche"], [Vector2(90.0, 0.0), "droite"],
+			[Vector2(0.0, 60.0), "droite"], [Vector2(0.0, -90.0), "droite"]]:
+		var dummy := _spawn_in_front(punch_range)
+		await _swing_in_direction(entry[0])
+		hands.append("gauche" if bool(player.call("_strike_uses_offhand")) else "droite")
+		_despawn(dummy)
+	var expected: Array[String] = ["gauche", "droite", "droite", "droite"]
+	ok = _report("le crochet du gauche part du poing GAUCHE, les autres du droit",
+		hands == expected, "obtenu %s, attendu %s" % [str(hands), str(expected)]) and ok
+	# ET AVEC UNE ARME, RIEN NE CHANGE : une épée se tient d'une main, la
+	# direction ne doit pas décider pour elle. Sans ce contre-test, la règle de
+	# boxe pourrait fuir dans le combat armé sans qu'on s'en aperçoive.
+	_equip_sword()
+	var armed_dummy := _spawn_in_front(1.1)
+	await _swing_in_direction(Vector2(-90.0, 0.0))
+	ok = _report("armé, un coup à gauche reste dans la main de l'arme",
+		not bool(player.call("_strike_uses_offhand"))) and ok
+	_despawn(armed_dummy)
+	return ok
+
+
 func _check_dual_wielding() -> bool:
 	var ok := true
 	print("[%s] --- dual wielding ---" % TAG)
 	_equip_sword()
 
-	# L'emplacement de combat ne se laisse pas détourner.
-	var pick := ItemFactory.craft("pioche", {"bois": "chene", "minerai": "fer"}, 1.0) 		if GameData.items.has("pioche") else {}
-	if not pick.is_empty():
-		player.inventory.add_object(pick)
-		player.call("bind_hotbar", 0, {"kind": "object", "object": pick})
-		var still_sword: bool = String((player.call("held_entry") as Dictionary)
-			.get("object", {}).get("item_id", "")) == "epee"
-		ok = _report("l'emplacement de combat refuse toute liaison", still_sword) and ok
+	# LE COMBAT S'ASSIGNE, ET C'EST LE CONTRAIRE DE CE QU'ON VÉRIFIAIT ICI
+	# (2026-08-07). L'emplacement 1 était RÉSERVÉ et refusait toute liaison ; le
+	# combat est devenu une ENTRÉE comme une autre, qu'on pose où l'on veut. Ce
+	# qu'il faut prouver a donc changé de sens : l'entrée suit son assignation,
+	# et se DÉPLACE au lieu de se dédoubler.
+	player.call("bind_hotbar", 5, {"kind": "combat"})
+	player.selected_slot = 5
+	var moved: bool = String((player.call("held_entry") as Dictionary).get("kind", "")) == "combat"
+	ok = _report("le combat se joue depuis l'emplacement où on l'a mis", moved) and ok
+	var count := 0
+	for index: int in player.hotbar_bindings:
+		if String((player.hotbar_bindings[index] as Dictionary).get("kind", "")) == "combat":
+			count += 1
+	ok = _report("l'assigner ailleurs le DÉPLACE, il ne se dédouble pas",
+		count == 1, "%d occurrence(s)" % count) and ok
+	# Remis à sa place pour la suite des tests.
+	player.call("bind_hotbar", player.COMBAT_SLOT, {"kind": "combat"})
+	player.selected_slot = player.COMBAT_SLOT
 
 	# Une seule arme : une posture à une main, un seul coup par clic.
 	var solo_stance := String(player.call("combat_stance"))

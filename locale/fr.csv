@@ -1321,3 +1321,5 @@ item_type.outil.name,Outils
 item_type.livre.name,Livres
 weapon_class.distance.name,À distance
 weapon_class.magique.name,Magiques
+ui.hotbar.mains_nues,Mains nues
+ui.hotbar.assemblage,Sort assemblé

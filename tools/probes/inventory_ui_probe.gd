@@ -62,17 +62,16 @@ func run() -> void:
 			before, player.hotbar_bindings.size(), place])
 	ok_autofill = place >= 0
 
-	# L'EMPLACEMENT DE COMBAT NE DOIT JAMAIS ÊTRE REMPLI : il suit l'arme
-	# équipée. `bind_hotbar` le refuse, mais le remplissage écrit dans le
-	# dictionnaire DIRECTEMENT — le garde-fou ne le couvrait pas, et un premier
-	# bloc miné aurait chassé l'arme de la main.
-	var combat_pris := false
-	for index: int in player.hotbar_bindings:
-		if index % player.HOTBAR_SLOTS == player.COMBAT_SLOT:
-			combat_pris = true
-	print("[INVUI] emplacement de combat rempli par l'auto-remplissage : %s (attendu non)" % (
-			"OUI" if combat_pris else "non"))
-	ok_autofill = ok_autofill and not combat_pris
+	# L'ENTRÉE DE COMBAT NE SE FAIT PAS CHASSER PAR UN GAIN (2026-08-07).
+	# L'emplacement 1 n'est plus réservé — le combat y est simplement POSÉ, et
+	# doit donc s'y trouver encore après deux cents ramassages. La version
+	# précédente de ce test vérifiait l'inverse (que le slot restait vide),
+	# parce que le combat n'était alors lié à rien.
+	var combat_intact := String((player.hotbar_bindings.get(player.COMBAT_SLOT, {})
+			as Dictionary).get("kind", "")) == "combat"
+	print("[INVUI] l'entrée de combat tient sa place après les gains : %s (attendu oui)" % (
+			"oui" if combat_intact else "NON"))
+	ok_autofill = ok_autofill and combat_intact
 
 	var menu: CanvasLayer = preload("res://scenes/ui/game_menu.gd").new()
 	menu.name = "GameMenuProbe"
@@ -130,6 +129,11 @@ func run() -> void:
 			badges += 1
 	var liaisons := 0
 	for index: int in player.hotbar_bindings:
+		# LE COMBAT N'EST PAS UNE LIGNE D'INVENTAIRE. C'est une liaison bien
+		# vivante, mais elle ne désigne ni un matériau ni un objet possédé :
+		# la compter ici ferait attendre un badge sur une ligne qui n'existe pas.
+		if String((player.hotbar_bindings[index] as Dictionary).get("kind", "")) == "combat":
+			continue
 		if not player._resolve_binding(player.hotbar_bindings[index]).is_empty():
 			liaisons += 1
 	print("[INVUI] lignes marquées assignées=%d, liaisons actives=%d (doivent coïncider), sur %d lignes" % [

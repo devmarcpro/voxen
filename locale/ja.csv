@@ -1321,3 +1321,5 @@ item_type.outil.name,道具
 item_type.livre.name,本
 weapon_class.distance.name,遠距離
 weapon_class.magique.name,魔法
+ui.hotbar.mains_nues,素手
+ui.hotbar.assemblage,組んだ呪文

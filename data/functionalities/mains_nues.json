@@ -8,7 +8,7 @@
   "penetration": 0.0,
   "windup_ratio": 0.3,
   "vitesse_base": 2.5,
-  "portee": 1.5,
+  "portee": 0.6,
   "type_degats": "contondant",
   "poids_reference": 1,
   "attaques": [

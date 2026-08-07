@@ -1321,3 +1321,5 @@ item_type.outil.name,Tools
 item_type.livre.name,Books
 weapon_class.distance.name,Ranged
 weapon_class.magique.name,Magical
+ui.hotbar.mains_nues,Bare hands
+ui.hotbar.assemblage,Assembled spell

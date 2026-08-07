@@ -156,11 +156,18 @@ func _drill_with(player: Node, tool: Dictionary, target: Vector3i, normal: Vecto
 	player.set("_mining", true)
 	player.set("_progress", 0.0)
 	# ON MET VRAIMENT L'OUTIL EN MAIN. C'est l'outil TENU qui compte (4.2), et
-	# le posséder ne suffit pas : la première version de cette sonde devinait
-	# des index de hotbar qui n'existent pas sous ces noms, si bien que le
-	# joueur creusait à mains nues et la sonde accusait les foreuses.
-	player.call("equip_instance_in_slot", tool, "arme_1")
-	player.set("selected_slot", player.COMBAT_SLOT)
+	# le posséder ne suffit pas : une première version devinait des index de
+	# hotbar qui n'existent pas sous ces noms, si bien que le joueur creusait à
+	# mains nues et la sonde accusait les foreuses.
+	#
+	# DANS UN EMPLACEMENT ORDINAIRE, PAS DANS CELUI DU COMBAT (2026-08-07).
+	# Depuis que le combat est une ENTRÉE et non un emplacement réservé, le
+	# sélectionner veut dire « se battre » — même avec une foreuse équipée, on
+	# la balance comme une arme au lieu de creuser. La sonde ne minait donc plus
+	# rien, et l'accusait des foreuses une seconde fois.
+	player.set("active_hotbar", 0)
+	player.set("selected_slot", 4)
+	player.call("bind_hotbar", 4, {"kind": "object", "object": tool})
 	# Assez de ticks pour venir à bout du carré, jamais infini.
 	for i in 400:
 		TickManager.push_ticks(1)
