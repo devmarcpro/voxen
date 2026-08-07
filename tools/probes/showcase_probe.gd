@@ -258,6 +258,25 @@ func _check_object_round_trip() -> void:
 	_expect(back.get("materials", {}) == expected_materials,
 			"matériaux conservés : %s" % str(back.get("materials", {})))
 
+	# LA ROTATION. Un objet posé se pose DROIT ET À PLAT — tous pareil, sans quoi
+	# une rangée d'objets ressemble à un tas renversé — et le clic droit à main
+	# vide le fait pivoter d'un quart de tour. Deux choses à vérifier : que le
+	# quart de tour est bien appliqué, et qu'il REVIENT à l'orientation de départ
+	# au quatrième, faute de quoi l'angle dériverait sans jamais se refermer.
+	PlacedItemManager.remember(cell, instance)
+	_expect(int((PlacedItemManager.placed[cell] as Dictionary).get("yaw", -1)) == 0,
+			"un objet fraîchement posé est droit (yaw 0)")
+	PlacedItemManager.rotate(cell)
+	_expect(int((PlacedItemManager.placed[cell] as Dictionary).get("yaw", -1)) == 1,
+			"le clic droit à main vide fait pivoter d'un quart de tour")
+	for _i in 3:
+		PlacedItemManager.rotate(cell)
+	_expect(int((PlacedItemManager.placed[cell] as Dictionary).get("yaw", -1)) == 0,
+			"quatre quarts de tour ramènent à l'orientation de départ")
+	_expect(not PlacedItemManager.rotate(cell + Vector3i(0, 4, 0)),
+			"tourner là où il n'y a aucun objet ne fait rien (et le dit)")
+	PlacedItemManager.take(cell)
+
 	# LE REGISTRE NE DOIT PAS FUIR. Une entrée laissée derrière ferait
 	# réapparaître l'objet au sol le jour où le bloc serait miné — donc un
 	# duplicata, l'exploit dans l'autre sens.

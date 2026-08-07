@@ -26,7 +26,8 @@ extends Node
 ## bloc, ce qui rend la vérification de cohérence triviale et la sauvegarde
 ## différentielle (E.10) directe.
 
-## Objets posés : Vector3i → { "item": Dictionary, "dimension": StringName }.
+## Objets posés : Vector3i → { "item": Dictionary, "dimension": StringName,
+##                              "yaw": int (quarts de tour, 0-3) }.
 var placed := {}
 
 ## Script de rendu d'objet, le MÊME que la main du joueur et que le butin au
@@ -72,13 +73,18 @@ static func material_for(instance: Dictionary) -> String:
 ## Enregistre une instance posée en `pos`. N'ÉCRIT PAS LE BLOC : l'appelant le
 ## fait, parce que lui seul sait s'il passe par `set_block` (pose du joueur,
 ## remaillage immédiat) ou `set_block_batched` (construction en masse).
-func remember(pos: Vector3i, instance: Dictionary) -> void:
+func remember(pos: Vector3i, instance: Dictionary, yaw: int = 0) -> void:
 	placed[pos] = {
 		# DUPLICATION PROFONDE : l'instance contient `materials`, un
 		# sous-dictionnaire. Sans copie profonde, l'objet posé et celui resté en
 		# main partageraient leurs matériaux — modifier l'un modifierait l'autre.
 		"item": instance.duplicate(true),
 		"dimension": WorldManager.active_dimension,
+		# TOUS POSÉS PAREIL, à plat et droit. La première version dérivait
+		# l'orientation de la position : deux épées côte à côte partaient chacune
+		# dans son sens et une rangée d'objets ressemblait à un tas renversé. Un
+		# objet qu'on dépose se pose droit ; c'est au joueur de le tourner.
+		"yaw": posmod(yaw, QUARTER_TURNS),
 	}
 	refresh_markers()
 
@@ -114,6 +120,24 @@ func forget(pos: Vector3i) -> void:
 
 func count() -> int:
 	return placed.size()
+
+
+## Quarts de tour possibles. Quatre et non huit : le monde est aligné sur grille
+## à toutes les résolutions (4.1), et un objet posé de biais entre deux blocs
+## trahirait cet alignement partout où il se pose contre un mur.
+const QUARTER_TURNS := 4
+
+
+## Fait pivoter d'un quart de tour l'objet posé en `pos`. Retourne false s'il n'y
+## a pas d'objet là — c'est ce qui permet à l'appelant d'enchaîner sur autre
+## chose sans avoir à interroger le registre d'abord.
+func rotate(pos: Vector3i) -> bool:
+	if peek(pos).is_empty():
+		return false
+	var entry: Dictionary = placed[pos]
+	entry["yaw"] = posmod(int(entry.get("yaw", 0)) + 1, QUARTER_TURNS)
+	refresh_markers()
+	return true
 
 
 ## Le bloc a disparu autrement que par une reprise : l'objet tombe au sol.
@@ -175,7 +199,10 @@ func refresh_markers() -> void:
 		# MAIN — une épée verticale, longue de plus d'un bloc : posée telle
 		# quelle, elle sortait de sa case par le haut et se plantait dans le sol
 		# comme un piquet. Un objet déposé se lit à plat.
-		pivot.rotation_degrees = Vector3(90.0, float(_yaw_at(pos)), 0.0)
+		# Ordre de rotation YXZ (défaut de Node3D) : le lacet s'applique APRÈS le
+		# basculement, donc autour de la verticale du monde. L'objet couché
+		# pivote bien à plat sur le sol, et non autour de son propre axe.
+		pivot.rotation_degrees = Vector3(90.0, 90.0 * float(int(entry.get("yaw", 0))), 0.0)
 		_marker_root.add_child(pivot)
 		var visual := MeshInstance3D.new()
 		visual.set_script(HELD_ITEM_SCRIPT)
@@ -187,13 +214,6 @@ func refresh_markers() -> void:
 		_markers.append(pivot)
 
 
-## Orientation déterministe d'un objet posé, dérivée de sa case. Déterministe et
-## non tirée au sort : sans ça, recharger la partie ferait pivoter tous les
-## objets posés du monde.
-func _yaw_at(pos: Vector3i) -> int:
-	return absi((pos.x * 73856093) ^ (pos.z * 83492791)) % 360
-
-
 # --- Sauvegarde (E.10, via SaveManager) ---
 
 func save_state() -> Dictionary:
@@ -203,6 +223,7 @@ func save_state() -> Dictionary:
 		out["%d,%d,%d" % [pos.x, pos.y, pos.z]] = {
 			"item": entry["item"],
 			"dimension": String(entry.get("dimension", "overworld")),
+			"yaw": int(entry.get("yaw", 0)),
 		}
 	return out
 
@@ -227,5 +248,6 @@ func restore_state(data: Dictionary) -> void:
 		placed[Vector3i(int(parts[0]), int(parts[1]), int(parts[2]))] = {
 			"item": instance,
 			"dimension": StringName(entry.get("dimension", "overworld")),
+			"yaw": int(entry.get("yaw", 0)),
 		}
 	refresh_markers()

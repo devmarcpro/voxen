@@ -612,8 +612,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif not _equipped_weapon().is_empty():
 				_set_guard(button.pressed)
 			elif button.pressed:
-				if not _try_consume_held():
-					_try_place()
+				# MAIN VIDE : le clic droit TOURNE l'objet posé qu'on regarde.
+				# Le geste est libre quand on ne tient rien — il n'y a ni bloc à
+				# poser ni objet à consommer — et c'est le seul moment où on peut
+				# le donner sans le prendre à autre chose.
+				if not _try_rotate_placed_object():
+					if not _try_consume_held():
+						_try_place()
 		elif button.pressed and button.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_scroll_hotbar(-1, button.ctrl_pressed)
 		elif button.pressed and button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
@@ -3550,6 +3555,22 @@ func _try_place_or_take_object() -> void:
 	if _try_take_object():
 		return
 	_try_place_object()
+
+
+## Clic droit MAIN VIDE sur un objet posé : quart de tour.
+##
+## Les objets se posent tous droits et à plat, ce qui est la seule façon qu'une
+## rangée d'objets se lise. Les orienter reste possible, mais c'est un geste
+## VOULU, pas un tirage à la pose.
+func _try_rotate_placed_object() -> bool:
+	if not _target_valid:
+		return false
+	# La main doit être VIDE : tenir un bloc et vouloir le poser reste
+	# prioritaire, sinon on ne pourrait plus rien construire au-dessus d'un
+	# objet posé.
+	if not _selected_entry().is_empty():
+		return false
+	return PlacedItemManager.rotate(_target)
 
 
 func _try_take_object() -> bool:

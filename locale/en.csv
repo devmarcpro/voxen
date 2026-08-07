@@ -915,7 +915,7 @@ ui.loi.saisie,"Unable to pay, one of your goods is seized."
 ui.loi.gardes_hostiles,The kingdom's guards are after you.
 ui.hud.cle.lois,Laws
 ui.hud.cle.localite,Settlement
-ui.hud.souris,Left click (hold): harvest/sculpt/attack · Right click: place · Ctrl+right click: place/pick up an item
+ui.hud.souris,"Left click (hold): harvest/sculpt/attack · Right click: place, or rotate a placed item with an empty hand · Ctrl+right click: place/pick up an item"
 ui.hud.hotbar,1-9/wheel: select · Ctrl+1-9/wheel: bank
 ui.input.move_forward,walk
 ui.input.jump,jump

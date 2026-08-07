@@ -915,7 +915,7 @@ ui.loi.saisie,无力支付，你的一件财物被没收。
 ui.loi.gardes_hostiles,王国卫兵正在追捕你。
 ui.hud.cle.lois,法律
 ui.hud.cle.localite,聚落
-ui.hud.souris,按住左键：采集/雕刻/攻击 · 右键：放置 · Ctrl＋右键：放置/收回物品
+ui.hud.souris,按住左键：采集/雕刻/攻击 · 右键：放置，空手时旋转已放置的物品 · Ctrl＋右键：放置/收回物品
 ui.hud.hotbar,1-9/滚轮：选择 · Ctrl+1-9/滚轮：存入
 ui.input.move_forward,前进
 ui.input.jump,跳跃

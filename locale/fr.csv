@@ -915,7 +915,7 @@ ui.loi.saisie,"Faute de pouvoir payer, un bien vous est saisi."
 ui.loi.gardes_hostiles,Les gardes du royaume vous cherchent.
 ui.hud.cle.lois,Lois
 ui.hud.cle.localite,Localité
-ui.hud.souris,Clic gauche (maintenu) : récolter/sculpter/attaquer · Clic droit : poser · Ctrl+clic droit : poser/reprendre un objet
+ui.hud.souris,"Clic gauche (maintenu) : récolter/sculpter/attaquer · Clic droit : poser, ou tourner un objet posé à main vide · Ctrl+clic droit : poser/reprendre un objet"
 ui.hud.hotbar,1-9/molette : choisir · Ctrl+1-9/molette : banque
 ui.input.move_forward,marcher
 ui.input.jump,sauter

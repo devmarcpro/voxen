@@ -915,7 +915,7 @@ ui.loi.saisie,支払えないため、所持品を差し押さえられた。
 ui.loi.gardes_hostiles,王国の衛兵があなたを追っている。
 ui.hud.cle.lois,法
 ui.hud.cle.localite,集落
-ui.hud.souris,左クリック長押し：採取・彫る・攻撃 · 右クリック：設置 · Ctrl＋右クリック：物を置く/拾う
+ui.hud.souris,左クリック長押し：採取・彫る・攻撃 · 右クリック：設置、手ぶらなら置いた物を回す · Ctrl＋右クリック：物を置く/拾う
 ui.hud.hotbar,1-9/ホイール：選択 · Ctrl+1-9/ホイール：預ける
 ui.input.move_forward,前進
 ui.input.jump,ジャンプ
