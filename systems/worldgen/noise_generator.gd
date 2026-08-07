@@ -89,7 +89,49 @@ const SUBSURFACE_THICKNESS := 3          # Blocs de sous-surface biome sous le b
 ## Sous-estimer cette borne ne se voit pas à la génération — ça se voit à
 ## l'ABATTAGE, où la recherche inverse ne retrouve plus l'arbre auquel appartient
 ## un rameau lointain, et le morceau reste suspendu en l'air.
-const TREE_MAX_REACH := 13
+##
+## ---------------------------------------------------------------------------
+## LA PORTÉE VIENT DES DONNÉES DEPUIS LE 2026-08-04, ET C'EST UNE CORRECTION
+## ---------------------------------------------------------------------------
+## Cette constante valait 13 pendant que QUATRE essences allaient plus loin :
+## `arbre_geant_songe` (35), `arbre_velours` (20), `platane` (16), `fromager`
+## (15) — dont deux dans l'OVERWORLD. Elles étaient donc silencieusement
+## TRONQUÉES aux frontières de chunk-colonne : la moitié de la couronne
+## n'existait pas, et rien n'échouait. Aucune fiche ne pouvait le dire non plus,
+## `canopy_radius` annonçant 14 là où le squelette récursif va chercher 35.
+##
+## Chaque fiche porte maintenant sa `reach`, MESURÉE sur neuf graines avec deux
+## blocs de marge, et `--probe-arbres` échoue si la réalité dépasse la donnée.
+##
+## LE PLAFOND N'A PAS RENDU LE SCAN PLUS CHER, IL L'A RENDU MOINS CHER : la
+## fenêtre s'ouvre à la plus large essence du catalogue, mais chaque candidat
+## est écarté d'après SA PROPRE portée avant qu'on ne génère quoi que ce soit.
+## Auparavant, un chêne de 10 blocs de portée planté à 13 blocs de la colonne
+## était généré intégralement pour être ensuite ignoré.
+var _tree_reach := {}        # id d'essence → portée horizontale (blocs)
+var _tree_reach_max := 13
+
+
+## Portées d'essences, lues une fois au démarrage.
+func _compile_tree_reach() -> void:
+	_tree_reach.clear()
+	_tree_reach_max = 1
+	for species_id: String in GameData.trees:
+		var declared := int((GameData.trees[species_id] as Dictionary).get("reach", 0))
+		if declared <= 0:
+			# Une fiche sans portée déclarée ne doit PAS être tronquée en
+			# silence : on lui prête le maximum du catalogue, quitte à la
+			# scanner de trop loin. La sonde, elle, réclamera la vraie valeur.
+			push_warning("NoiseGenerator : essence « %s » sans champ `reach`." % species_id)
+			declared = 35
+		_tree_reach[species_id] = declared
+		_tree_reach_max = maxi(_tree_reach_max, declared)
+
+
+## Portée de la fenêtre de recherche : celle de la plus large essence.
+var TREE_MAX_REACH: int:
+	get:
+		return _tree_reach_max
 ## Candidats testés par CELLULE (comme les POI, E.2 : « hash(seed, cell_x,
 ## cell_z) »), pas par bloc individuel — un scan par bloc mesuré au bench
 ## coûtait ~50 % de fps (900 colonnes/chunk-colonne). Une cellule 4×4 donne
@@ -266,6 +308,23 @@ var _p_tree_mult := 1.0             # Multiplicateur de densité d'arbres (0 = a
 var _p_rivers := true
 var _p_caves := true
 var _p_forced_biome := ""           # Id de biome forcé partout ("" = normal).
+## MONDE PLAT (`terrain: "plat"`, 2026-08-06) — le sol du monde VITRINE.
+##
+## Ce n'est PAS un second générateur, et ça ne doit jamais le devenir : c'est
+## une branche de `_terrain` qui rend une hauteur constante. Tout le reste du
+## pipeline — biomes, matériaux de surface, chunks, LOD, maillage, éviction —
+## continue de tourner sans une ligne de plus, exactement comme l'unification
+## des dimensions l'a rendu possible. Écrire un « FlatGenerator » à côté
+## reproduirait le doublon de pipeline qui a coûté RiftBuilder.
+##
+## Les systèmes de l'overworld qui n'ont aucun sens sur une dalle (cavernes,
+## rivières, villes, tours, arbres, plantes) se coupent par les interrupteurs
+## qui EXISTENT DÉJÀ pour eux — pas par de nouveaux `if _p_flat` semés partout.
+var _p_flat := false
+## Hauteur du sol plat. AU-DESSUS du niveau de la mer (64 par défaut) : une
+## dalle sous l'eau ferait un monde vitrine noyé, et le défaut ne se verrait
+## qu'à la première capture.
+const FLAT_HEIGHT := 72.0
 var _forced_biome_index := -1
 var _water_id := 0
 ## Littoraux (2026-07-20) : ids résolus une fois, sélection par pente locale.
@@ -392,11 +451,94 @@ const _CONDITION_LAYERS: Array[String] = ["altitude", "temperature", "humidite",
 const _CONDITION_COUNT := 4
 
 
-func _init(seed_value: int, params: Dictionary = {}) -> void:
+# ---------------------------------------------------------------------------
+# UNE DIMENSION EST UN JEU DE DONNÉES, PAS UN SECOND GÉNÉRATEUR (2026-08-04)
+# ---------------------------------------------------------------------------
+# Il a existé ici un doublon coûteux : `RiftBuilder` + `DimensionManager`
+# écrivaient les blocs des dimensions UN PAR UN dans le fil principal, pendant
+# que ce fichier faisait déjà le même travail pour l'overworld — mais
+# multithreadé, chunké, maillé en asynchrone, LODé et borné en budget. Mesuré :
+# 738 ms pour une colonne de chunks, 148 après un palliatif, contre un budget
+# de frame de 16.
+#
+# LE PRINCIPE RETENU : l'overworld est une dimension parmi les autres. Ce
+# générateur en prend une en paramètre, et c'est la seule chose qui change. Ce
+# qui distingue une dimension d'une autre est ENTIÈREMENT dans ses données :
+# son jeu de biomes (`data/biomes/<set>/`), ses couches de bruit, l'épaisseur
+# de sa croûte, ses cavernes, ses reliefs et ses features (îles suspendues,
+# spirales, arbres pendus aux plafonds).
+#
+# Ce qui reste propre à l'overworld — continents, climat par latitude,
+# rivières, villes, tours de donjon, strates, littoraux — est GARDÉ par
+# `_is_overworld`. Ce ne sont pas des cas particuliers empilés : ce sont des
+# systèmes que les données d'une autre dimension ne réclament simplement pas.
+
+## Dimension générée. `&"overworld"` = le monde de base.
+var dimension: StringName = &"overworld"
+var _is_overworld := true
+## Fiche de dimension (`data/dimensions/<id>.json`), vide pour l'overworld.
+var _dim: Dictionary = {}
+## Bruits propres à la dimension.
+var _dim_relief: FastNoiseLite
+var _dim_zone: FastNoiseLite
+var _dim_climate: FastNoiseLite
+var _dim_warp: FastNoiseLite
+var _dim_cave: FastNoiseLite
+var _dim_ore: FastNoiseLite
+var _dim_spiral: FastNoiseLite
+## Terrain de dimension, lu une fois de la fiche (chemin chaud : jamais de
+## `Dictionary.get` par colonne).
+var _dim_base_y := 64
+var _dim_amplitude := 34.0
+## Épaisseur de croûte. 0 = croûte infinie (strates de l'overworld) ; > 0 = le
+## sol est une dalle posée sur le vide, ce qui rend le lieu praticable ET
+## borne le coût : rien n'est écrit sous la croûte.
+var _dim_crust := 0
+var _dim_cave_freq := 0.0
+var _dim_cave_threshold := 0.42
+var _dim_spiral_freq := 0.0
+var _dim_spiral_threshold := 0.72
+## Features de dimension (îles suspendues, arbres pendus). Activées par la
+## présence de leur bloc de données, jamais par le nom de la dimension.
+var _dim_islands: Dictionary = {}
+var _dim_hung: Dictionary = {}
+## Relief et accent par biome — le relief façonne l'altitude, l'accent est le
+## minerai/cristal qui donne une raison de creuser.
+var _biome_relief: Array[String] = []
+var _biome_accent := PackedInt32Array()
+
+## Semis des features de dimension : décalages de graine distincts, comme les
+## arbres et les rivières de l'overworld.
+const SEED_DIM_ISLAND := 9160
+const SEED_DIM_HUNG := 9161
+const SEED_DIM_CAVE_CELL := 9162
+const SEED_DIM_ORE_CELL := 9163
+## Même leçon que les arbres, les plantes, les rivières et le karst : un rejet
+## PAR CELLULE avant le premier échantillon de bruit 3D. `RiftBuilder` n'en
+## avait aucun — chaque bloc de croûte payait deux bruits 3D pleins.
+const DIM_CAVE_CELL_SHIFT := 4
+const DIM_CAVE_CELL_ACCEPT := 0.55
+const DIM_ORE_CELL_SHIFT := 3
+const DIM_ORE_CELL_ACCEPT := 0.16
+const DIM_ORE_VEIN_THRESHOLD := 0.42
+## Une île suspendue par cellule de chunks, en moyenne une sur onze.
+const DIM_ISLAND_PERIOD := 11
+## Un point d'accroche d'arbre pendu sur vingt-trois.
+const DIM_HUNG_PERIOD := 23
+
+
+func _init(seed_value: int, params: Dictionary = {}, dimension_id: StringName = &"overworld") -> void:
 	world_seed = seed_value
+	dimension = dimension_id
+	_is_overworld = dimension_id == &"overworld"
+	_dim = GameData.dimensions.get(String(dimension_id), {})
 	# Les royaumes sont dérivés de la graine : un cache survivant d'un monde à
 	# l'autre mélangerait deux géographies politiques sans rien signaler.
-	KingdomGenerator.clear_cache()
+	# SEUL le générateur de l'overworld le purge : les royaumes sont un système
+	# de l'overworld, et entrer dans une dimension construit un second
+	# générateur — qui jetterait le travail de préchauffage du premier.
+	if _is_overworld:
+		KingdomGenerator.clear_cache()
 	_p_relief = clampf(float(params.get("relief", 1.0)), 0.0, 4.0)
 	world_radius = maxi(int(params.get("rayon_monde", DEFAULT_WORLD_RADIUS)), WORLD_EDGE_OCEAN + 500)
 	_land_radius = world_radius - WORLD_EDGE_OCEAN
@@ -408,6 +550,16 @@ func _init(seed_value: int, params: Dictionary = {}) -> void:
 	_p_rivers = bool(params.get("rivieres", true))
 	_p_caves = bool(params.get("cavernes", true))
 	_p_forced_biome = String(params.get("biome_force", ""))
+	# MONDE PLAT : on éteint par les interrupteurs EXISTANTS. Rivières et
+	# cavernes ont déjà leur paramètre de monde, les arbres leur multiplicateur.
+	# Villes et tours n'en ont pas — leurs deux points d'entrée sont gardés plus
+	# bas, à côté du `_is_overworld` qui les garde déjà, et pour la même raison :
+	# ce sont des systèmes que ce terrain-là ne réclame pas.
+	_p_flat = String(params.get("terrain", "")) == "plat"
+	if _p_flat:
+		_p_rivers = false
+		_p_caves = false
+		_p_tree_mult = 0.0
 
 	# Les 8 couches de B.8 : simplex + FBM, seed = graine monde + seed_offset.
 	for layer_name in GameData.noise_layers:
@@ -533,7 +685,78 @@ func _init(seed_value: int, params: Dictionary = {}) -> void:
 	_road_id = GameData.material_runtime_ids.get("gravier", 0)  # Route de village (chemin de gravier).
 	_compile_strata()
 	_compile_ore_bands()
+	_compile_dimension()
+	_compile_tree_reach()
 	_compile_biomes()
+
+
+## Les bruits et les réglages d'une dimension, lus UNE FOIS de sa fiche.
+##
+## Ils étaient construits À CHAQUE APPEL dans l'ancien constructeur de faille —
+## donc à chaque bloc pour les cavernes et les minerais : quatorze mille
+## FastNoiseLite alloués par colonne. Ici c'est le même patron que le reste du
+## fichier : tout le bruit est monté une fois, dans `_init`, et le chemin chaud
+## ne fait que l'échantillonner.
+func _compile_dimension() -> void:
+	if _is_overworld or _dim.is_empty():
+		return
+	var terrain: Dictionary = _dim.get("terrain", {})
+	_dim_base_y = int(terrain.get("base_y", 64))
+	_dim_amplitude = float(terrain.get("relief", 34.0))
+	# La croûte est BORNÉE, et c'est ce qui borne le coût : une dimension sans
+	# fond écrirait 512 blocs par colonne pour un sol qu'on ne voit jamais.
+	_dim_crust = maxi(int(terrain.get("croute", 18)), 1)
+
+	var layers: Dictionary = _dim.get("noise_layers", {})
+	_dim_relief = _dim_layer(layers, "relief", 0.012, 4)
+	_dim_zone = _dim_layer(layers, "pays", 0.0016, 1)
+	_dim_climate = _dim_layer(layers, "climat", 0.0021, 1)
+	_dim_warp = _dim_layer(layers, "torsion", 0.020, 2)
+
+	var caves: Dictionary = terrain.get("cavernes", {})
+	if not caves.is_empty():
+		_dim_cave_freq = float(caves.get("frequency", 0.028))
+		_dim_cave_threshold = float(caves.get("seuil", 0.42))
+		_dim_cave = FastNoiseLite.new()
+		_dim_cave.noise_type = FastNoiseLite.TYPE_SIMPLEX
+		_dim_cave.seed = world_seed ^ int(caves.get("seed_offset", 21001))
+		_dim_cave.frequency = _dim_cave_freq
+		_dim_cave.fractal_type = FastNoiseLite.FRACTAL_NONE
+
+	var spirals: Dictionary = terrain.get("spirales", {})
+	if not spirals.is_empty():
+		_dim_spiral_freq = float(spirals.get("frequency", 0.004))
+		_dim_spiral_threshold = float(spirals.get("seuil", 0.72))
+		_dim_spiral = FastNoiseLite.new()
+		_dim_spiral.noise_type = FastNoiseLite.TYPE_SIMPLEX
+		_dim_spiral.seed = world_seed ^ int(spirals.get("seed_offset", 31002))
+		_dim_spiral.frequency = _dim_spiral_freq
+		_dim_spiral.fractal_type = FastNoiseLite.FRACTAL_NONE
+
+	var ores: Dictionary = terrain.get("minerais", {})
+	_dim_ore = FastNoiseLite.new()
+	_dim_ore.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	_dim_ore.seed = world_seed ^ int(ores.get("seed_offset", 55501))
+	_dim_ore.frequency = float(ores.get("frequency", 0.09))
+	_dim_ore.fractal_type = FastNoiseLite.FRACTAL_NONE
+
+	_dim_islands = terrain.get("iles_suspendues", {})
+	_dim_hung = terrain.get("arbres_suspendus", {})
+
+
+## Une couche de bruit déclarée en données, avec un repli sain si la fiche n'en
+## décrit pas — même contrat que `data/noise_layers.json` pour l'overworld.
+func _dim_layer(layers: Dictionary, id: String, default_frequency: float,
+		default_octaves: int) -> FastNoiseLite:
+	var spec: Dictionary = layers.get(id, {})
+	var noise := FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	noise.seed = world_seed ^ int(spec.get("seed_offset", 0))
+	noise.frequency = float(spec.get("frequency", default_frequency))
+	var octaves := int(spec.get("octaves", default_octaves))
+	noise.fractal_type = FastNoiseLite.FRACTAL_FBM if octaves > 1 else FastNoiseLite.FRACTAL_NONE
+	noise.fractal_octaves = octaves
+	return noise
 
 
 func _compile_strata() -> void:
@@ -630,12 +853,23 @@ func _compile_biomes() -> void:
 	# biomes d'autres dimensions (magique, enfers…) vivent dans des sous-dossiers
 	# data/biomes/<dimension>/ et sont réservés à leur dimension / au système
 	# d'infiltration (2026-07-26 : « pas de forêt de mana dans l'overworld »).
+	# LE JEU DE BIOMES EST CELUI DE LA DIMENSION GÉNÉRÉE (2026-08-04). Le filtre
+	# était écrit en dur sur « overworld », ce qui rendait ce générateur
+	# inutilisable ailleurs — et c'est précisément ce qui a fait écrire un second
+	# générateur pour les dimensions. La fiche déclare son jeu (`biome_set`) ;
+	# à défaut, l'id de la dimension fait office de jeu.
+	var wanted := "overworld"
+	if not _is_overworld:
+		wanted = String(_dim.get("biome_set", String(dimension)))
 	var sorted_biomes: Array[Dictionary] = []
 	for id in GameData.biomes:
-		if String(GameData.biomes[id].get("dimension", "overworld")) == "overworld":
+		if String(GameData.biomes[id].get("dimension", "overworld")) == wanted:
 			sorted_biomes.append(GameData.biomes[id])
 	sorted_biomes.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return int(a["priority"]) > int(b["priority"]))
+	if sorted_biomes.is_empty():
+		push_warning("NoiseGenerator : aucun biome pour le jeu « %s » (dimension « %s »)." % [
+				wanted, dimension])
 
 	_biome_count = sorted_biomes.size()
 	_biome_ids.clear()
@@ -647,12 +881,22 @@ func _compile_biomes() -> void:
 	_biome_veg.resize(_biome_count)
 	_biome_plants.resize(_biome_count)
 	_biome_cultures.resize(_biome_count)
+	_biome_relief.clear()
+	_biome_accent.resize(_biome_count)
 	for b in _biome_count:
 		var biome: Dictionary = sorted_biomes[b]
 		_biome_ids.append(String(biome["id"]))
 		_biome_name_keys.append(String(biome["name_key"]))
 		_biome_surface[b] = GameData.material_runtime_ids.get(biome["surface_material"], 0)
 		_biome_subsurface[b] = GameData.material_runtime_ids.get(biome["subsurface_material"], 0)
+		# RELIEF ET ACCENT : lus pour tout le monde, employés par les dimensions.
+		# L'overworld tire son relief de sa géologie (continents, orogenèse) et
+		# ses filons des bandes de profondeur ; une dimension n'a ni l'une ni les
+		# autres, et déclare à la place la FORME de son sol et le cristal qui
+		# l'éclaire.
+		_biome_relief.append(String(biome.get("relief", "doux")))
+		_biome_accent[b] = GameData.material_runtime_ids.get(
+				String(biome.get("accent_material", "")), 0)
 		# Végétation (B.6) : plusieurs essences possibles par biome, chacune
 		# avec sa propre densité (TreeGenerator, un vrai volume 3D par arbre).
 		var vegetation: Array = biome.get("vegetation", [])
@@ -705,6 +949,13 @@ func _compile_biomes() -> void:
 	_tree_envelope = minf(_compute_envelope(_biome_veg, TREE_CELL_SIZE, "vegetation") * _p_tree_mult, 1.0)
 	_plant_envelope = _compute_envelope(_biome_plants, PLANT_CELL_SIZE, "plantes_sol")
 	_culture_envelope = _compute_envelope(_biome_cultures, CULTURE_CELL_SIZE, "cultures")
+	# MONDE PLAT : semis à zéro. L'enveloppe est le rejet PAR CELLULE, en amont
+	# du premier échantillon de bruit — la mettre à zéro ne coupe donc pas
+	# seulement le résultat, elle coupe aussi le coût. Les arbres passent déjà
+	# par `_p_tree_mult`, les deux autres n'ont pas de paramètre de monde.
+	if _p_flat:
+		_plant_envelope = 0.0
+		_culture_envelope = 0.0
 
 	# Biome forcé (paramètre de monde) : résolu en indice compilé.
 	_forced_biome_index = -1
@@ -737,6 +988,13 @@ func _compute_envelope(pools: Array[Array], cell_size: int, family: String) -> f
 ## continentalité — 0..~0.3, réutilisé par l'orogenèse ET les littoraux/E.2.5
 ## sans ré-échantillonnage supplémentaire).
 func _terrain(fx: float, fz: float) -> Vector3:
+	if _p_flat:
+		# Altitude normalisée FIXE (0.5, le milieu de l'échelle) : c'est l'axe
+		# vertical de la matrice de biomes B.6. La laisser varier ferait changer
+		# de biome d'un bout à l'autre d'une dalle strictement horizontale.
+		return Vector3(FLAT_HEIGHT, 0.5, 0.0)
+	if not _is_overworld:
+		return _dim_terrain(fx, fz)
 	# Domain warping fin (détail) : le bruit déforme ses propres coordonnées.
 	var wx := fx + _warp_x.get_noise_2d(fx, fz) * WARP_AMPLITUDE
 	var wz := fz + _warp_z.get_noise_2d(fx, fz) * WARP_AMPLITUDE
@@ -845,6 +1103,75 @@ func _volcano_add(fx: float, fz: float) -> float:
 	return best
 
 
+## TERRAIN D'UNE DIMENSION — la contrepartie de `_terrain` pour tout ce qui
+## n'est pas l'overworld.
+##
+## Rien ici n'est géologique, et c'est voulu : ni continent, ni latitude, ni
+## érosion. Le sol d'une dimension est un CHAMP DE BRUIT MIS EN FORME par le
+## `relief` du biome traversé — terrasses franches, dômes qui se recouvrent,
+## arêtes acérées. C'est ce qui fait lire le lieu comme un rêve plutôt que
+## comme une contrée.
+##
+## L'ORDRE COMPTE ET IL EST SANS BOUCLE : le biome se résout sur des champs qui
+## ne dépendent PAS de l'altitude (les deux bruits « pays » et « climat »), et
+## c'est seulement ensuite que son relief façonne la hauteur. L'inverse —
+## choisir le biome d'après une altitude qu'il détermine lui-même — n'aurait
+## pas de point fixe.
+##
+## Conséquence assumée et documentée : pour une dimension, la condition
+## `altitude` d'un biome porte sur le champ de relief BRUT (0..1), pas sur la
+## hauteur mise en forme. Elle reste utilisable, elle ne ment pas — elle
+## désigne « le haut du champ », pas « au-dessus de tel palier ».
+const DIM_WARP_AMPLITUDE := 18.0
+
+
+func _dim_terrain(fx: float, fz: float) -> Vector3:
+	if _dim_relief == null:
+		return Vector3(float(_dim_base_y), 0.5, 0.0)
+	# Déformation du domaine : on tord les coordonnées avant d'échantillonner,
+	# ce qui courbe les crêtes au lieu de les laisser filer droit.
+	var wx := fx + _dim_warp.get_noise_2d(fx, fz) * DIM_WARP_AMPLITUDE
+	var wz := fz + _dim_warp.get_noise_2d(fz, fx) * DIM_WARP_AMPLITUDE
+	var n := _dim_relief.get_noise_2d(wx, wz)          # -1 .. 1
+	var alt_n := clampf(n * 0.5 + 0.5, 0.0, 1.0)
+	var b := _biome_index_at(fx, fz, alt_n, _dim_zone_at(fx, fz), _dim_climate_at(fx, fz), 1.0)
+	var mode := "doux" if b < 0 else _biome_relief[b]
+	return Vector3(_dim_shape(n, mode), alt_n, 0.0)
+
+
+## La mise en forme du relief, par mode déclaré en données. Chaque mode est une
+## SILHOUETTE, pas un réglage : c'est elle qu'on reconnaît en jouant.
+func _dim_shape(n: float, mode: String) -> float:
+	var base := float(_dim_base_y)
+	match mode:
+		"tordu":
+			# CRÊTES : la valeur absolue du bruit fait des arêtes vives au lieu
+			# de collines molles, l'exposant les rend franchement acérées.
+			return base + pow(absf(n), 0.55) * _dim_amplitude * 1.5
+		"champignon":
+			# TERRASSES : altitude quantifiée par paliers de six blocs — les
+			# plateaux étagés, et donc les surplombs.
+			return base + floorf(n * _dim_amplitude / 6.0) * 6.0
+		"bulbeux":
+			# DÔMES : le sinus rend des bosses régulières qui se recouvrent, à
+			# mi-chemin de la colline et de la bulle de savon.
+			return base + sin(n * PI) * _dim_amplitude * 0.8
+		_:
+			return base + n * _dim_amplitude * 0.6
+
+
+## Les deux champs qui découpent une dimension en pays. Ils tiennent la place
+## que la température et l'humidité tiennent dans l'overworld — donc la matrice
+## de conditions des biomes (B.6) s'applique telle quelle, sans une ligne de
+## code de sélection en plus.
+func _dim_zone_at(fx: float, fz: float) -> float:
+	return clampf(_dim_zone.get_noise_2d(fx, fz) * 0.5 + 0.5, 0.0, 1.0)
+
+
+func _dim_climate_at(fx: float, fz: float) -> float:
+	return clampf(_dim_climate.get_noise_2d(fx, fz) * 0.5 + 0.5, 0.0, 1.0)
+
+
 ## Hauteur seule — pour les estimations de plage verticale du streaming.
 func _height(fx: float, fz: float) -> float:
 	return _terrain(fx, fz).x
@@ -856,6 +1183,8 @@ func _height(fx: float, fz: float) -> float:
 ## variation plutôt que comme signal primaire) + refroidissement par
 ## altitude (lapse rate, E.2). Voir note d'en-tête (échelle jouable).
 func _temperature_at(fx: float, fz: float, h: float) -> float:
+	if not _is_overworld:
+		return _dim_zone_at(fx, fz)   # Pas de latitude hors du monde : un champ de pays.
 	var lat_n := cos((fz / _lat_period) * PI) * 0.5 + 0.5
 	var pert: float = (_layers["temperature"] as FastNoiseLite).get_noise_2d(fx, fz) * 0.18
 	var lapse := clampf(h, 0.0, TEMPERATURE_LAPSE_REF_HEIGHT) / TEMPERATURE_LAPSE_REF_HEIGHT * TEMPERATURE_LAPSE_RATE
@@ -880,6 +1209,8 @@ func _zonal_precip(lat: float) -> float:
 ## de bruit + ombre pluviométrique + continentalité (intérieurs des continents
 ## plus secs, façon steppes/grandes plaines). Réécrite « style Terre » 2026-07-26.
 func _humidity_at(fx: float, fz: float) -> float:
+	if not _is_overworld:
+		return _dim_climate_at(fx, fz)
 	var lat := clampf(absf(fz) / _lat_period, 0.0, 1.0)
 	var zonal := _zonal_precip(lat)
 	var noise: float = (_layers["humidite"] as FastNoiseLite).get_noise_2d(fx, fz) * 0.5 + 0.5
@@ -928,6 +1259,8 @@ func _biome_index_at(fx: float, fz: float, alt_n: float, temp_n: float, hum_n: f
 ## Mana normalisé (0..1) — échantillonné en plus de alt/temp/hum pour les
 ## biomes spéciaux (Forêt de mana, Montagne cristalline, C.7).
 func _mana_at(fx: float, fz: float) -> float:
+	if not _is_overworld:
+		return 1.0   # Une dimension magique baigne dedans : l'axe ne discrimine rien.
 	return (_layers["mana"] as FastNoiseLite).get_noise_2d(fx, fz) * 0.5 + 0.5
 
 
@@ -1126,7 +1459,15 @@ func _plant_candidate_in_cell(cell_x: int, cell_z: int) -> Dictionary:
 	var fertility := _fertility_at(fx, fz, terrain.x, temp_n, hum_n)
 	var cumulative := 0.0
 	for entry: Dictionary in pool:
-		cumulative += float(entry["density"]) * PLANT_CELL_SIZE * PLANT_CELL_SIZE * fertility
+		# LA FERTILITÉ COMMANDE LA VÉGÉTATION, ET FRANCHEMENT (2026-08-04).
+		#
+		# Elle était déjà un facteur, mais LINÉAIRE sur une plage de 0,25 à 1 :
+		# entre la pire terre du monde et la meilleure, la densité variait d'un
+		# facteur quatre — invisible en jouant. Au CARRÉ, l'écart passe à seize :
+		# une terre pauvre est nettement pelée, une terre riche est couverte.
+		# C'est ce qui donne au joueur une raison de LIRE le sol avant de
+		# s'installer, au lieu de bâtir n'importe où.
+		cumulative += float(entry["density"]) * PLANT_CELL_SIZE * PLANT_CELL_SIZE 				* fertility * fertility
 		if roll < cumulative:
 			return {"material_id": int(entry["material_id"]), "pos": Vector3i(wx, h + 1, wz)}
 	return {}
@@ -1210,14 +1551,24 @@ func _cultures_in_window(min_x: int, max_x: int, min_z: int, max_z: int) -> Arra
 ## chunk-colonnes voisines qui partagent une partie de leur fenêtre.
 func _trees_in_window(min_x: int, max_x: int, min_z: int, max_z: int) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	var cell_min_x := floori(float(min_x - TREE_MAX_REACH) / TREE_CELL_SIZE)
-	var cell_max_x := floori(float(max_x + TREE_MAX_REACH) / TREE_CELL_SIZE)
-	var cell_min_z := floori(float(min_z - TREE_MAX_REACH) / TREE_CELL_SIZE)
-	var cell_max_z := floori(float(max_z + TREE_MAX_REACH) / TREE_CELL_SIZE)
+	var span := _tree_reach_max
+	var cell_min_x := floori(float(min_x - span) / TREE_CELL_SIZE)
+	var cell_max_x := floori(float(max_x + span) / TREE_CELL_SIZE)
+	var cell_min_z := floori(float(min_z - span) / TREE_CELL_SIZE)
+	var cell_max_z := floori(float(max_z + span) / TREE_CELL_SIZE)
 	for cx in range(cell_min_x, cell_max_x + 1):
 		for cz in range(cell_min_z, cell_max_z + 1):
 			var cand := _tree_candidate_in_cell(cx, cz)
 			if cand.is_empty():
+				continue
+			# TRI PAR PORTÉE PROPRE, AVANT DE GÉNÉRER. La fenêtre est taillée
+			# pour la plus large essence du catalogue ; la plupart des arbres
+			# sont bien plus étroits et ne peuvent pas atteindre cette colonne.
+			# Les écarter ici évite un `TreeGenerator.generate` complet — c'est
+			# le poste le plus cher de la préparation d'une colonne.
+			var base: Vector3i = cand["base"]
+			var own := int(_tree_reach.get(cand["species_id"], span))
+			if base.x + own < min_x or base.x - own > max_x 					or base.z + own < min_z or base.z - own > max_z:
 				continue
 			result.append(_generate_tree_cached(cand))
 	return result
@@ -1246,6 +1597,177 @@ func _generate_tree_cached(cand: Dictionary) -> Dictionary:
 	_tree_cache[base] = tree
 	_tree_cache_mutex.unlock()
 	return tree
+
+
+# --- Features de dimension (2026-08-04) ---
+#
+# Îles suspendues, arbres pendus aux plafonds de caverne, rampes en spirale.
+# Ce sont les seules choses qu'une dimension ajoute par-dessus le terrain, et
+# elles sont DES DONNÉES : chacune n'existe que si sa fiche la déclare.
+#
+# Toutes sont posées par un SEMIS DÉTERMINISTE, calculé depuis les coordonnées
+# et la graine, jamais tiré au hasard. C'est ce qui permet à une colonne
+# évincée puis regénérée de retrouver exactement la même île — sans quoi
+# revenir sur ses pas ferait pousser une seconde île à côté de la première, un
+# défaut qu'on ne voit qu'en marchant longtemps.
+
+
+## L'île suspendue d'une colonne de chunks, ou {} s'il n'y en a pas.
+func sky_island_at(column: Vector2i) -> Dictionary:
+	if _dim_islands.is_empty():
+		return {}
+	var h := _pcg_hash(column.x, column.y, world_seed + SEED_DIM_ISLAND)
+	if h % int(_dim_islands.get("periode", DIM_ISLAND_PERIOD)) != 0:
+		return {}
+	var radius: Array = _dim_islands.get("rayon", [5, 11])
+	var thickness: Array = _dim_islands.get("epaisseur", [3, 7])
+	var altitude: Array = _dim_islands.get("altitude", [26, 59])
+	return {
+		"centre": Vector3i(column.x * 16 + 8, 0, column.y * 16 + 8),
+		"rayon": int(radius[0]) + (h >> 4) % maxi(int(radius[1]) - int(radius[0]) + 1, 1),
+		"epaisseur": int(thickness[0]) + (h >> 12) % maxi(int(thickness[1]) - int(thickness[0]) + 1, 1),
+		"hauteur": int(altitude[0]) + (h >> 8) % maxi(int(altitude[1]) - int(altitude[0]) + 1, 1),
+	}
+
+
+## Point d'accroche d'un arbre pendu, par CELLULE d'arbre (comme la végétation
+## normale). Retourne l'essence, ou "" s'il n'y en a pas ici.
+##
+## Les essences suspendues sont déclarées en données : un chêne pendu au
+## plafond d'une grotte serait comique, un arbre-lanterne y est chez lui.
+func hung_species_at(cell_x: int, cell_z: int) -> String:
+	if _dim_hung.is_empty():
+		return ""
+	var species: Array = _dim_hung.get("essences", [])
+	if species.is_empty():
+		return ""
+	var h := _pcg_hash(cell_x, cell_z, world_seed + SEED_DIM_HUNG)
+	if h % int(_dim_hung.get("periode", DIM_HUNG_PERIOD)) != 0:
+		return ""
+	return String(species[(h >> 8) % species.size()])
+
+
+## Altitude de la rampe en spirale en (x, z), ou -INF s'il n'y en a pas.
+##
+## Une hélice qui monte depuis le sol : c'est elle qui rend les niveaux
+## praticables. Sans elle, un terrain à étages n'est qu'une pile de plateaux
+## qu'on ne peut que survoler, et la verticalité ne sert à rien.
+func _dim_spiral_at(x: int, z: int, top: int) -> int:
+	if _dim_spiral == null:
+		return -(1 << 30)
+	if _dim_spiral.get_noise_2d(float(x), float(z)) < _dim_spiral_threshold:
+		return -(1 << 30)
+	# L'angle autour de l'origine donne la hauteur : un tour complet monte de
+	# douze blocs. C'est la définition même d'une hélice.
+	var turns := atan2(float(z), float(x)) / TAU + sqrt(float(x * x + z * z)) / 26.0
+	return top + int(round(turns * 12.0)) % 40 + 4
+
+
+## Le survol 3D épars d'une colonne de chunks : tout ce que les features de la
+## dimension posent AU-DESSUS (ou en travers) du terrain.
+## LES TABLEAUX SONT PASSÉS, JAMAIS RANGÉS DANS L'OBJET. Les colonnes se
+## préparent en parallèle sur le WorkerThreadPool : un champ d'instance servant
+## de presse-papier entre deux appels serait écrasé par la colonne voisine, et
+## le défaut ne se verrait qu'en pièces de terrain mal colorées, au hasard.
+func _dim_features(col: Vector2i, heights: PackedInt32Array, surfaces: PackedInt32Array,
+		subsurfaces: PackedInt32Array, accents: PackedInt32Array) -> Dictionary:
+	var overlay := {}
+	var bx := col.x * ChunkData.SIZE
+	var bz := col.y * ChunkData.SIZE
+
+	# ÎLE SUSPENDUE : un disque de sol qui s'effile en pointe rocheuse dessous.
+	var island := sky_island_at(col)
+	if not island.is_empty():
+		var centre_i := 9 + 9 * 18   # colonne centrale du contexte (x=8, z=8)
+		_carve_sky_island(overlay, island, heights[centre_i], surfaces[centre_i],
+				subsurfaces[centre_i], accents[centre_i])
+
+	# SPIRALES et ARBRES PENDUS, colonne par colonne.
+	for lz in ChunkData.SIZE:
+		for lx in ChunkData.SIZE:
+			var icol := (lx + 1) + (lz + 1) * 18
+			var top := heights[icol]
+			if _dim_spiral != null:
+				var ramp := _dim_spiral_at(bx + lx, bz + lz, top)
+				if ramp != -(1 << 30):
+					overlay[Vector3i(bx + lx, ramp, bz + lz)] = surfaces[icol]
+
+	if not _dim_hung.is_empty():
+		var cell_min_x := floori(float(bx) / TREE_CELL_SIZE)
+		var cell_max_x := floori(float(bx + ChunkData.SIZE - 1) / TREE_CELL_SIZE)
+		var cell_min_z := floori(float(bz) / TREE_CELL_SIZE)
+		var cell_max_z := floori(float(bz + ChunkData.SIZE - 1) / TREE_CELL_SIZE)
+		for cx in range(cell_min_x, cell_max_x + 1):
+			for cz in range(cell_min_z, cell_max_z + 1):
+				_hang_cave_tree(overlay, cx, cz, heights, bx, bz)
+	return overlay
+
+
+func _carve_sky_island(overlay: Dictionary, island: Dictionary, ground_y: int,
+		surface: int, rock: int, accent: int) -> void:
+	if surface == 0 or rock == 0:
+		return
+	var centre: Vector3i = island["centre"]
+	var radius := int(island["rayon"])
+	var thickness := maxi(int(island["epaisseur"]), 1)
+	var top := ground_y + int(island["hauteur"])
+	for depth in thickness:
+		# S'effile vers le bas : c'est la pointe qui fait lire un morceau
+		# arraché plutôt qu'une galette posée sur rien.
+		var level := int(round(float(radius) * (1.0 - float(depth) / float(thickness) * 0.85)))
+		for dx in range(-level, level + 1):
+			for dz in range(-level, level + 1):
+				if dx * dx + dz * dz > level * level:
+					continue
+				var pos := Vector3i(centre.x + dx, top - depth, centre.z + dz)
+				# Bord rongé, sinon l'île a un contour de compas.
+				if depth == 0 and dx * dx + dz * dz > (level - 1) * (level - 1) \
+						and _pcg_hash(pos.x, pos.z, world_seed + SEED_DIM_ISLAND + 1) \
+								/ float(1 << 31) < 0.16:
+					continue
+				var id := surface if depth == 0 else rock
+				if depth > 0 and accent != 0 \
+						and _pcg_hash(pos.x, pos.y * 31 + pos.z, world_seed + SEED_DIM_ISLAND + 2) \
+								/ float(1 << 31) < 0.06:
+					id = accent
+				overlay[pos] = id
+
+
+## UN ARBRE PENDU AU PLAFOND D'UNE CAVERNE (croquis de l'auteur).
+##
+## Ce n'est PAS un second générateur d'arbre : on prend l'arbre normal et on
+## MIROITE ses blocs autour de son point d'accroche. Un générateur inversé
+## aurait doublé la maintenance des 57 essences pour un résultat identique.
+##
+## Le plafond se lit dans le terrain sans l'avoir écrit : c'est un bloc de
+## croûte que le bruit de caverne ne creuse pas, avec du vide dessous.
+func _hang_cave_tree(overlay: Dictionary, cell_x: int, cell_z: int,
+		heights: PackedInt32Array, bx: int, bz: int) -> void:
+	var species_id := hung_species_at(cell_x, cell_z)
+	if species_id == "" or not GameData.trees.has(species_id):
+		return
+	var wx := cell_x * TREE_CELL_SIZE + _pcg_hash(cell_x, cell_z,
+			world_seed + SEED_DIM_HUNG + 1) % TREE_CELL_SIZE
+	var wz := cell_z * TREE_CELL_SIZE + _pcg_hash(cell_x, cell_z,
+			world_seed + SEED_DIM_HUNG + 2) % TREE_CELL_SIZE
+	var lx := wx - bx
+	var lz := wz - bz
+	if lx < 0 or lx >= ChunkData.SIZE or lz < 0 or lz >= ChunkData.SIZE:
+		return   # L'ancre appartient à une autre colonne : c'est elle qui la pose.
+	var top := heights[(lx + 1) + (lz + 1) * 18]
+	for depth in range(14, _dim_crust - 6):
+		var ceiling := top - depth
+		if _dim_is_cave_at(wx, ceiling, wz, top):
+			continue                       # Le plafond doit être plein.
+		if not _dim_is_cave_at(wx, ceiling - 1, wz, top):
+			continue                       # Et le vide, juste dessous.
+		var tree := _generate_tree_cached({
+			"base": Vector3i(wx, ceiling, wz), "species_id": species_id,
+		})
+		for pos: Vector3i in (tree["blocks"] as Dictionary):
+			# LE MIROIR : on retourne autour du point d'accroche.
+			overlay[Vector3i(pos.x, 2 * ceiling - pos.y, pos.z)] = tree["blocks"][pos]
+		return
 
 
 # --- Rivières (2026-07-20, E.2.2) ---
@@ -1326,6 +1848,8 @@ func _trace_river(cand: Dictionary) -> Dictionary:
 ## tracé entier) : garde le test de distance par colonne, plus loin, bon marché.
 func _rivers_near(min_x: int, max_x: int, min_z: int, max_z: int) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
+	if not _is_overworld:
+		return result   # Pas d'hydrologie hors du monde.
 	if not _p_rivers:
 		return result  # Rivières désactivées par le profil du monde.
 	var center_x := (min_x + max_x) / 2
@@ -1361,6 +1885,11 @@ func _city_cell_of(wx: int, wz: int) -> Vector2i:
 
 ## Layout de ville d'une cellule (caché) — {} si aucun village constructible.
 func _city_layout(cell: Vector2i) -> Dictionary:
+	# Les villes sont un système de l'OVERWORLD (E.2/3.4). Une dimension n'en a
+	# pas, et ce court-circuit vaut aussi pour le coût : sans lui, chaque colonne
+	# de dimension paierait la recherche de site d'un village qui n'existe pas.
+	if not _is_overworld or _p_flat:
+		return {}
 	_city_cache_mutex.lock()
 	if _city_cache.has(cell):
 		var cached: Dictionary = _city_cache[cell]
@@ -1578,6 +2107,8 @@ func _tower_ground(cell: Vector2i) -> int:
 ## ne pouvait pas distinguer « pas de tour ici » de « intérieur vide » — le
 ## terrain reprenait le dessus et la tour se remplissait de roche.
 func _tower_block_at(wx: int, wy: int, wz: int) -> int:
+	if not _is_overworld:
+		return -1
 	var cell: Variant = _tower_cell_at(wx, wz)
 	if cell == null:
 		return -1
@@ -1600,6 +2131,13 @@ var _tower_cache_mutex := Mutex.new()
 
 
 func _tower_info(cell: Vector2i) -> Dictionary:
+	# LE VRAI POINT DE PASSAGE UNIQUE DES TOURS, et il a fallu que
+	# `--probe-vitrine` le dise. J'avais coupé dans `_tower_cell_at` en le
+	# croyant seul : `tower_top_for_column` et `_tower_in_chunk` appellent
+	# `_tower_info` DIRECTEMENT, et une tour continuait donc de pousser au
+	# milieu des rangées. Trois appelants, un seul endroit où décider.
+	if _p_flat:
+		return {"donjon": false, "sol": 0}
 	_tower_cache_mutex.lock()
 	var cached: Variant = _tower_cache.get(cell)
 	_tower_cache_mutex.unlock()
@@ -1665,6 +2203,8 @@ func dungeon_ground(cell: Vector2i) -> int:
 ## du code (`_tower_in_chunk`, `generate_chunk`) gérait déjà correctement toute
 ## la hauteur : il ne manquait plus que la portée verticale du streaming.
 func tower_top_for_column(col: Vector2i) -> int:
+	if not _is_overworld:
+		return -1
 	var t := ChunkData.SIZE
 	var x0 := col.x * t
 	var z0 := col.y * t
@@ -1812,7 +2352,13 @@ func _sample_column(wx: int, wz: int, city: Dictionary = {}) -> Dictionary:
 	# Littoral (2026-07-20) : dans la bande côtière, la pente locale (déjà
 	# calculée par _terrain, aucun coût supplémentaire) l'emporte sur le
 	# matériau de biome — plage/estran/falaise/marécage logiques (E.2.5).
-	surf_pair = _coastal_override(h, terrain.z, hum_n, surf_pair)
+	# UNIQUEMENT DANS L'OVERWORLD : le sable et les galets sont des matériaux de
+	# l'overworld, et une dimension n'emploie que les siens (demande de l'auteur
+	# du 2026-08-04, verrouillée par `--probe-dimensions`).
+	if _is_overworld:
+		var coastal := _coastal_override(h, terrain.z, hum_n,
+				Vector2i(surf_pair.x, surf_pair.y))
+		surf_pair = Vector3i(coastal.x, coastal.y, surf_pair.z)
 
 	var trans := int(_transition_noise.get_noise_2d(fx, fz) * 1000.0)
 
@@ -1838,9 +2384,15 @@ func _sample_column(wx: int, wz: int, city: Dictionary = {}) -> Dictionary:
 					surface = int(palette["pave"])
 				CityGenerator.Tile.CHAMP:
 					surface = int(palette["champ"])
-			return {"h": h, "surf": surface, "sub": int(palette["sol"]), "trans": trans}
+			return {"h": h, "surf": surface, "sub": int(palette["sol"]), "trans": trans, "acc": 0}
 
-	return {"h": h, "surf": surf_pair.x, "sub": surf_pair.y, "trans": trans}
+	# `acc` : matériau d'accent du biome retenu — le cristal/minerai que les
+	# dimensions déposent en veines. Zéro dans l'overworld, qui tire ses filons
+	# des bandes de profondeur (G.9) et non du biome de surface.
+	var accent := 0
+	if not _is_overworld and surf_pair.z >= 0:
+		accent = _biome_accent[surf_pair.z]
+	return {"h": h, "surf": surf_pair.x, "sub": surf_pair.y, "trans": trans, "acc": accent}
 
 
 ## Bande côtière (WATER_LEVEL à WATER_LEVEL+3) : le matériau de surface/sous-
@@ -1887,14 +2439,18 @@ func _biome_clearance(alt_n: float, temp_n: float, hum_n: float, b: int) -> Dict
 ## Matériaux de surface/sous-surface au point (fx,fz), mélangés par
 ## dithering déterministe avec le biome voisin à l'approche d'une frontière
 ## (façon Minecraft — bande de quelques blocs, pas une coupure nette).
-func _blended_surface(fx: float, fz: float, alt_n: float, temp_n: float, hum_n: float, mana_n: float) -> Vector2i:
+## RETOURNE AUSSI L'INDICE DU BIOME RETENU (`.z`, -1 si aucun). Il était
+## recalculé par l'appelant qui en avait besoin — un second parcours complet de
+## la matrice de biomes sur le chemin le plus chaud du générateur, pour une
+## valeur qu'on venait de choisir ici.
+func _blended_surface(fx: float, fz: float, alt_n: float, temp_n: float, hum_n: float, mana_n: float) -> Vector3i:
 	var b0 := _biome_index_at(fx, fz, alt_n, temp_n, hum_n, mana_n)
 	if b0 < 0:
-		return Vector2i.ZERO
+		return Vector3i(0, 0, -1)
 	var info := _biome_clearance(alt_n, temp_n, hum_n, b0)
 	var clearance: float = info["clearance"]
 	if clearance >= BIOME_TRANSITION_MARGIN or info["axis"] < 0:
-		return Vector2i(_biome_surface[b0], _biome_subsurface[b0])
+		return Vector3i(_biome_surface[b0], _biome_subsurface[b0], b0)
 
 	# Point proche d'un bord : ré-échantillonne légèrement AU-DELÀ de ce bord
 	# sur l'axe concerné pour trouver le biome voisin plausible.
@@ -1907,12 +2463,12 @@ func _blended_surface(fx: float, fz: float, alt_n: float, temp_n: float, hum_n: 
 	values[axis] = (lo - push) if (values[axis] - lo) < (hi - values[axis]) else (hi + push)
 	var b1 := _biome_index_at(fx, fz, values[0], values[1], values[2], mana_n)
 	if b1 < 0 or b1 == b0:
-		return Vector2i(_biome_surface[b0], _biome_subsurface[b0])
+		return Vector3i(_biome_surface[b0], _biome_subsurface[b0], b0)
 
 	var roll := _pcg_hash(int(fx), int(fz), world_seed + SEED_BIOME_DITHER) / float(1 << 31)
 	var b1_chance := clampf(1.0 - clearance / BIOME_TRANSITION_MARGIN, 0.0, 1.0)
 	var chosen := b1 if roll < b1_chance else b0
-	return Vector2i(_biome_surface[chosen], _biome_subsurface[chosen])
+	return Vector3i(_biome_surface[chosen], _biome_subsurface[chosen], chosen)
 
 
 ## Contexte de colonne-chunk : les 18×18 colonnes (16×16 intérieures + la
@@ -1928,6 +2484,8 @@ func prepare_context(col: Vector2i) -> Dictionary:
 	subsurfaces.resize(324)
 	var transitions := PackedInt32Array()
 	transitions.resize(324)
+	var accents := PackedInt32Array()
+	accents.resize(324)
 	var bx := col.x * ChunkData.SIZE - 1
 	var bz := col.y * ChunkData.SIZE - 1
 	# Ville (point 5) : layout de la cellule de CE chunk-colonne, calculé UNE
@@ -1945,6 +2503,7 @@ func prepare_context(col: Vector2i) -> Dictionary:
 			surfaces[i] = r["surf"]
 			subsurfaces[i] = r["sub"]
 			transitions[i] = r["trans"]
+			accents[i] = r["acc"]
 			h_min = mini(h_min, r["h"])
 			h_max = maxi(h_max, r["h"])
 			i += 1
@@ -2021,8 +2580,20 @@ func prepare_context(col: Vector2i) -> Dictionary:
 	if tower_top > 0:
 		top_max = maxi(top_max, tower_top)
 
+	# FEATURES DE DIMENSION (îles suspendues, arbres pendus aux plafonds,
+	# spirales). Elles empruntent le même canal que les arbres : un survol 3D
+	# épars calculé UNE FOIS par colonne de chunks, puis estampé chunk par
+	# chunk. C'est ce qui les fait passer par le pipeline multithreadé au lieu
+	# d'être écrites bloc par bloc dans la frame.
+	var overlay := {}
+	if not _is_overworld:
+		overlay = _dim_features(col, heights, surfaces, subsurfaces, accents)
+		for pos: Vector3i in overlay:
+			top_max = maxi(top_max, pos.y)
+
 	return {
 		"h": heights, "surf": surfaces, "sub": subsurfaces, "trans": transitions,
+		"acc": accents, "overlay": overlay,
 		"trees": trees, "plants": plants, "cultures": cultures, "hmin": h_min, "hmax": top_max,
 		"local_water": local_water, "city": city,
 	}
@@ -2038,6 +2609,8 @@ func prepare_context(col: Vector2i) -> Dictionary:
 func _is_cave_at(wx: int, wy: int, wz: int, h: int) -> bool:
 	if not _p_caves:
 		return false  # Cavernes désactivées par le profil du monde.
+	if not _is_overworld:
+		return _dim_is_cave_at(wx, wy, wz, h)
 	var depth := h - wy
 	if depth < CAVE_MIN_DEPTH or depth > CAVE_MAX_DEPTH:
 		return false
@@ -2064,6 +2637,47 @@ func _is_cave_at(wx: int, wy: int, wz: int, h: int) -> bool:
 		return false
 	var b := _cave_b.get_noise_3d(fx, fy, fz)
 	return absf(b) < CAVE_TUNNEL_THRESHOLD  # Intersection des deux champs = tunnel.
+
+
+## CAVERNES D'UNE DIMENSION : le sol n'est pas une croûte mais un VOLUME.
+##
+## Un terrain qui n'a qu'une surface et un remplissage plein n'offre ni salle,
+## ni surplomb, ni second niveau — on marche dessus et c'est tout. Le bruit 3D
+## y creuse des cavernes, des voûtes et des puits qui traversent.
+##
+## LE REJET PAR CELLULE EST LA RAISON POUR LAQUELLE C'EST ABORDABLE, et c'est ce
+## qui manquait à l'ancien constructeur : chaque bloc de croûte y payait un
+## échantillon de bruit 3D plein. La leçon est la même que pour les arbres, les
+## plantes, les rivières et le karst de l'overworld — un hachage par cellule
+## AVANT le premier échantillon, et l'immense majorité des zones ne paie rien.
+func _dim_is_cave_at(wx: int, wy: int, wz: int, h: int) -> bool:
+	if _dim_cave == null:
+		return false
+	var depth := h - wy
+	# Les premiers blocs restent pleins : une caverne qui débouche au ras du sol
+	# ferait un trou dans le paysage, pas une grotte.
+	if depth < 8:
+		return false
+	if _pcg_hash(wx >> DIM_CAVE_CELL_SHIFT, wz >> DIM_CAVE_CELL_SHIFT,
+			world_seed + SEED_DIM_CAVE_CELL) / float(1 << 31) >= DIM_CAVE_CELL_ACCEPT:
+		return false
+	# Le seuil monte avec la profondeur : à peine troué près de la surface, des
+	# salles larges plus bas.
+	var opening := clampf((float(depth) - 8.0) / 26.0, 0.0, 1.0)
+	return absf(_dim_cave.get_noise_3d(float(wx), float(wy) * 1.6, float(wz))) \
+			< _dim_cave_threshold * opening
+
+
+## FILON D'UNE DIMENSION : rare, groupé, jamais en surface — la raison de
+## creuser. Le matériau est l'`accent_material` du biome, donc la donnée dit
+## quel cristal éclaire quel pays.
+func _dim_is_ore_at(wx: int, wy: int, wz: int) -> bool:
+	if _dim_ore == null:
+		return false
+	if _pcg_hash(wx >> DIM_ORE_CELL_SHIFT, wz >> DIM_ORE_CELL_SHIFT,
+			world_seed + SEED_DIM_ORE_CELL) / float(1 << 31) >= DIM_ORE_CELL_ACCEPT:
+		return false
+	return _dim_ore.get_noise_3d(float(wx), float(wy), float(wz)) > DIM_ORE_VEIN_THRESHOLD
 
 
 ## Spéléothèmes (calcite) + dépôts organiques (guano) : passe appliquée APRÈS
@@ -2125,14 +2739,23 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 	# retirée — un arbre ne descend jamais sous la surface, donc jamais sous
 	# hmin-400 ; en forêt, elle désactivait ce fast-path pour TOUS les chunks
 	# profonds, qui allouaient leurs 8 Ko au lieu d'être uniformes.)
-	if y1 < int(ctx["hmin"]) - 400 and _strata_count > 0 and tower_cell == null:
-		return ChunkData.create_uniform(_strata_ids[_strata_count - 1])
+	if _is_overworld:
+		if y1 < int(ctx["hmin"]) - 400 and _strata_count > 0 and tower_cell == null:
+			return ChunkData.create_uniform(_strata_ids[_strata_count - 1])
+	# SOUS LA CROÛTE D'UNE DIMENSION IL N'Y A RIEN, et c'est ce qui borne le
+	# coût : le sol y est une dalle posée sur le vide, pas une planète pleine.
+	# Sans ce chemin rapide, chaque colonne écrirait des centaines de blocs de
+	# roche que personne ne voit — c'était l'essentiel du coût de l'ancien
+	# constructeur, qui remplissait sa croûte bloc par bloc.
+	elif y1 < int(ctx["hmin"]) - _dim_crust:
+		return ChunkData.create_uniform(0)
 
 	var heights: PackedInt32Array = ctx["h"]
 	var surfaces: PackedInt32Array = ctx["surf"]
 	var subsurfaces: PackedInt32Array = ctx["sub"]
 	var transitions: PackedInt32Array = ctx["trans"]
 	var local_water: PackedInt32Array = ctx["local_water"]
+	var accents: PackedInt32Array = ctx["acc"]
 	var blocks := PackedByteArray()
 	blocks.resize(ChunkData.VOLUME * 2)  # zéros = air
 	var block_hosts := {}  # indice bloc → roche/terre hôte (masque minerai/herbe).
@@ -2150,6 +2773,7 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 			var surface := surfaces[icol]
 			var subsurface := subsurfaces[icol]
 			var trans := transitions[icol]
+			var accent := accents[icol]
 			var wx := chunk_bx + x
 			var wz := chunk_bz + z
 			var top_y := mini(ChunkData.SIZE - 1, col_top - y0)
@@ -2163,7 +2787,26 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 					id = surface
 					if depth == 0 and id == _herbe_id:
 						host = subsurface  # Herbe = masque vert sur la terre dessous.
-					if depth > 0:
+					if depth > 0 and not _is_overworld:
+						# DIMENSION : la surface, une croûte de roche, puis le vide.
+						# Les veines d'accent y remplacent la roche — c'est la seule
+						# raison de creuser, une dimension n'ayant ni strates ni
+						# bandes de minerais par profondeur.
+						# CE BLOC ET `_deep_block` DOIVENT RESTER DES MIROIRS : le
+						# second remplit la coquille de voisinage du mailleur, et une
+						# divergence entre les deux se voit en parois fantômes aux
+						# frontières de chunk.
+						if depth > _dim_crust:
+							id = 0
+						else:
+							id = subsurface
+							if accent != 0 and _dim_is_ore_at(wx, wy, wz):
+								host = id
+								id = accent
+							if id != 0 and _dim_is_cave_at(wx, wy, wz, h):
+								id = 0
+								host = 0
+					elif depth > 0:
 						if depth <= SUBSURFACE_THICKNESS:
 							id = subsurface
 						else:
@@ -2298,7 +2941,22 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 				var index := ChunkData.index_of(local_pos.x, wy - y0, local_pos.z)
 				blocks.encode_u16(index << 1, int(bb[local_pos]))
 
-	_speleothem_pass(blocks, heights, y0, chunk_bx, chunk_bz)
+	if _is_overworld:
+		_speleothem_pass(blocks, heights, y0, chunk_bx, chunk_bz)
+	else:
+		# FEATURES DE DIMENSION : îles suspendues, rampes en spirale, arbres
+		# pendus aux plafonds. Elles sont AUTORITAIRES sur le terrain — une île
+		# doit exister même si le relief remonte dedans, et une rampe qui cède
+		# au sol ne mène nulle part.
+		var overlay: Dictionary = ctx["overlay"]
+		for pos: Vector3i in overlay:
+			if pos.y < y0 or pos.y > y1:
+				continue
+			var olx := pos.x - chunk_bx
+			var olz := pos.z - chunk_bz
+			if olx < 0 or olx >= ChunkData.SIZE or olz < 0 or olz >= ChunkData.SIZE:
+				continue
+			blocks.encode_u16(ChunkData.index_of(olx, pos.y - y0, olz) << 1, int(overlay[pos]))
 
 	# Tour de donjon : écrite EN DERNIER et de façon autoritaire — ses murs
 	# remplacent le terrain, et son intérieur creux reste creux même si le
@@ -2357,6 +3015,7 @@ func fill_shell(cpos: Vector3i, pad: PackedInt32Array, ctx: Dictionary) -> bool:
 	var subsurfaces: PackedInt32Array = ctx["sub"]
 	var transitions: PackedInt32Array = ctx["trans"]
 	var local_water: PackedInt32Array = ctx["local_water"]
+	var accents: PackedInt32Array = ctx["acc"]
 	var air := false
 
 	# Les 6 dalles sont traitées PAR COLONNE de coquille : la résolution
@@ -2394,6 +3053,7 @@ func fill_shell(cpos: Vector3i, pad: PackedInt32Array, ctx: Dictionary) -> bool:
 			var surface := surfaces[icol]
 			var subsurface := subsurfaces[icol]
 			var trans := transitions[icol]
+			var accent := accents[icol]
 			var water_level := local_water[icol]
 			for y in t:
 				var wy := y0 + y
@@ -2402,15 +3062,10 @@ func fill_shell(cpos: Vector3i, pad: PackedInt32Array, ctx: Dictionary) -> bool:
 					var depth := h - wy
 					if depth == 0:
 						v = surface
-					elif depth <= SUBSURFACE_THICKNESS:
+					elif depth <= SUBSURFACE_THICKNESS and _is_overworld:
 						v = subsurface
 					else:
-						for s in _strata_count:
-							if depth <= _strata_end[s] + (trans * _strata_trans[s]) / 1000:
-								v = _strata_ids[s]
-								break
-						if v != 0 and _is_cave_at(wx, wy, wz, h):
-							v = 0
+						v = _deep_block(depth, subsurface, trans, accent, wx, wy, wz, h)
 				elif wy <= water_level:
 					v = _water_id
 				else:
@@ -2431,16 +3086,11 @@ func fill_shell(cpos: Vector3i, pad: PackedInt32Array, ctx: Dictionary) -> bool:
 					var depth := h - wy
 					if depth == 0:
 						v = surfaces[icol]
-					elif depth <= SUBSURFACE_THICKNESS:
+					elif depth <= SUBSURFACE_THICKNESS and _is_overworld:
 						v = subsurfaces[icol]
 					else:
-						var trans := transitions[icol]
-						for s in _strata_count:
-							if depth <= _strata_end[s] + (trans * _strata_trans[s]) / 1000:
-								v = _strata_ids[s]
-								break
-						if v != 0 and _is_cave_at(cpos.x * t + x, wy, cpos.z * t + z, h):
-							v = 0
+						v = _deep_block(depth, subsurfaces[icol], transitions[icol], accents[icol],
+								cpos.x * t + x, wy, cpos.z * t + z, h)
 				elif wy <= local_water[icol]:
 					v = _water_id
 				else:
@@ -2452,6 +3102,20 @@ func fill_shell(cpos: Vector3i, pad: PackedInt32Array, ctx: Dictionary) -> bool:
 	var bx := cpos.x * t
 	var by := cpos.y * t
 	var bz := cpos.z * t
+	# Features de dimension : mêmes règles que les arbres, mais AUTORITAIRES —
+	# une île suspendue est du terrain, pas un survol posé sur de l'air.
+	if not _is_overworld:
+		var overlay: Dictionary = ctx["overlay"]
+		for pos: Vector3i in overlay:
+			var ox := pos.x - bx
+			var oy := pos.y - by
+			var oz := pos.z - bz
+			if ox < -1 or ox > t or oy < -1 or oy > t or oz < -1 or oz > t:
+				continue
+			if ox > -1 and ox < t and oy > -1 and oy < t and oz > -1 and oz < t:
+				continue   # Intérieur du chunk : ce n'est pas la coquille.
+			pad[(ox + 1) + (oz + 1) * 18 + (oy + 1) * 324] = int(overlay[pos])
+
 	for tree: Dictionary in (ctx["trees"] as Array):
 		for pos: Vector3i in (tree["blocks"] as Dictionary):
 			var px := pos.x - bx
@@ -2499,18 +3163,47 @@ func fill_shell(cpos: Vector3i, pad: PackedInt32Array, ctx: Dictionary) -> bool:
 
 ## Résolution d'un bloc depuis les données de colonne (surface/sous-surface/
 ## strates). Petite et appelée hors chemins chauds uniquement.
-func _block_from_column(wy: int, h: int, surface: int, subsurface: int, trans: int) -> int:
+## LE BLOC SOUS LA SOUS-SURFACE, résolu une fois pour tous les chemins FROIDS :
+## la coquille de voisinage du mailleur (`fill_shell`, 6 dalles) et les requêtes
+## ponctuelles (`_block_from_column`).
+##
+## Le chemin CHAUD — la boucle de `generate_chunk` — garde sa version inline :
+## un appel de méthode par bloc s'y paierait des centaines de milliers de fois
+## par colonne. Les deux DOIVENT rester des miroirs ; une divergence se
+## traduirait par des parois fantômes aux frontières de chunk, là où la coquille
+## et le chunk ne s'accorderaient plus sur ce qui est plein.
+func _deep_block(depth: int, subsurface: int, trans: int, accent: int,
+		wx: int, wy: int, wz: int, h: int) -> int:
+	if not _is_overworld:
+		if depth > _dim_crust:
+			return 0
+		var id := subsurface
+		if accent != 0 and _dim_is_ore_at(wx, wy, wz):
+			id = accent
+		if id != 0 and _dim_is_cave_at(wx, wy, wz, h):
+			return 0
+		return id
+	var v := 0
+	for st in _strata_count:
+		if depth <= _strata_end[st] + (trans * _strata_trans[st]) / 1000:
+			v = _strata_ids[st]
+			break
+	if v != 0 and _is_cave_at(wx, wy, wz, h):
+		return 0
+	return v
+
+
+func _block_from_column(wy: int, h: int, surface: int, subsurface: int, trans: int,
+		accent: int = 0, wx: int = 0, wz: int = 0) -> int:
 	if wy > h:
-		return _water_id if wy <= water_level else 0
+		# Pas de niveau de mer dans une dimension : au-dessus du sol, c'est le vide.
+		return (_water_id if wy <= water_level else 0) if _is_overworld else 0
 	var depth := h - wy
 	if depth == 0:
 		return surface
-	if depth <= SUBSURFACE_THICKNESS:
+	if depth <= SUBSURFACE_THICKNESS and _is_overworld:
 		return subsurface
-	for s in _strata_count:
-		if depth <= _strata_end[s] + (trans * _strata_trans[s]) / 1000:
-			return _strata_ids[s]
-	return 0
+	return _deep_block(depth, subsurface, trans, accent, wx, wy, wz, h)
 
 
 # --- Accès unitaires (HUD, spawn, futurs systèmes — hors chemins chauds) ---
@@ -2531,17 +3224,21 @@ func block_at(wx: int, wy: int, wz: int) -> int:
 	var tower_id := _tower_block_at(wx, wy, wz)
 	if tower_id >= 0:
 		return tower_id  # 0 = intérieur creux, et c'est une réponse VALIDE.
-	var terrain_id := _block_from_column(wy, r["h"], r["surf"], r["sub"], r["trans"])
+	var terrain_id := _block_from_column(wy, r["h"], r["surf"], r["sub"], r["trans"],
+			int(r["acc"]), wx, wz)
 	# Filon de minerai dans la roche (G.9) — cohérent avec generate_chunk :
-	# strate résolue puis filon, avant le creusement des cavernes.
-	if terrain_id != 0 and terrain_id != _water_id:
-		var depth := int(r["h"]) - wy
-		if depth > SUBSURFACE_THICKNESS:
-			var ore := _ore_at(wx, wy, wz, depth, terrain_id)
-			if ore != 0:
-				terrain_id = ore
-	if terrain_id != 0 and terrain_id != _water_id and _is_cave_at(wx, wy, wz, r["h"]):
-		terrain_id = 0
+	# strate résolue puis filon, avant le creusement des cavernes. Une dimension
+	# a déjà eu ses veines et ses cavernes dans `_deep_block` : les rejouer ici
+	# lui appliquerait EN PLUS les bandes de minerais de l'overworld.
+	if _is_overworld:
+		if terrain_id != 0 and terrain_id != _water_id:
+			var depth := int(r["h"]) - wy
+			if depth > SUBSURFACE_THICKNESS:
+				var ore := _ore_at(wx, wy, wz, depth, terrain_id)
+				if ore != 0:
+					terrain_id = ore
+		if terrain_id != 0 and terrain_id != _water_id and _is_cave_at(wx, wy, wz, r["h"]):
+			terrain_id = 0
 	var pos := Vector3i(wx, wy, wz)
 	# En ville, pas d'arbre (filtré à la génération) — mais un arbre HORS
 	# footprint reste possible juste à côté ; la requête ponctuelle le garde.
@@ -2665,4 +3362,13 @@ func cy_range(col: Vector2i) -> Vector2i:
 	var tower_top := tower_top_for_column(col)
 	if tower_top > 0:
 		h_max = maxf(h_max, float(tower_top))
+	if not _is_overworld:
+		# Une île suspendue vit très au-dessus du sol : sans cette extension, le
+		# streaming ne demanderait jamais ses chunks et l'île serait tranchée.
+		# En bas, on s'arrête à la croûte — il n'y a rien dessous.
+		var island := sky_island_at(col)
+		if not island.is_empty():
+			h_max = maxf(h_max, float(int(island["hauteur"]) + int(h_min)))
+		return Vector2i(floori((h_min - float(_dim_crust) - 16.0) / 16.0),
+				floori((h_max + 16.0) / 16.0))
 	return Vector2i(floori((h_min - 48.0) / 16.0), floori((h_max + 16.0) / 16.0))

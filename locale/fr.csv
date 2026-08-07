@@ -915,7 +915,7 @@ ui.loi.saisie,"Faute de pouvoir payer, un bien vous est saisi."
 ui.loi.gardes_hostiles,Les gardes du royaume vous cherchent.
 ui.hud.cle.lois,Lois
 ui.hud.cle.localite,Localité
-ui.hud.souris,Clic gauche (maintenu) : récolter/sculpter/attaquer · Clic droit : poser
+ui.hud.souris,Clic gauche (maintenu) : récolter/sculpter/attaquer · Clic droit : poser · Ctrl+clic droit : poser/reprendre un objet
 ui.hud.hotbar,1-9/molette : choisir · Ctrl+1-9/molette : banque
 ui.input.move_forward,marcher
 ui.input.jump,sauter
@@ -1244,3 +1244,73 @@ material.bois_velours.name,Bois de velours
 material.feuillage_vin.name,Feuillage lie-de-vin
 material.bois_creux.name,Bois creux
 material.feuillage_ambre.name,Feuillage ambré
+material.herbe_haute.name,Herbe haute
+material.roseau.name,Roseau
+material.ble.name,Blé
+material.orge.name,Orge
+material.avoine.name,Avoine
+material.riz.name,Riz
+material.mais.name,Maïs
+material.plant_tomate.name,Plant de tomate
+material.plant_pomme_de_terre.name,Plant de pomme de terre
+material.plant_carotte.name,Fanes de carotte
+material.plant_chou.name,Chou
+material.plant_oignon.name,Oignon
+material.plant_courge.name,Courge
+material.plant_fraise.name,Fraisier
+material.vigne_raisin.name,Vigne
+material.safran.name,Safran
+material.poivrier.name,Poivrier
+material.menthe.name,Menthe
+material.thym.name,Thym
+material.basilic.name,Basilic
+material.camomille.name,Camomille
+material.sauge.name,Sauge
+material.coquelicot.name,Coquelicot
+material.bleuet.name,Bleuet
+material.marguerite.name,Marguerite
+material.lavande_fleur.name,Lavande
+material.tournesol.name,Tournesol
+material.touffe_seche.name,Touffe sèche
+material.seigle.name,Seigle
+material.millet.name,Millet
+material.sarrasin.name,Sarrasin
+material.quinoa.name,Quinoa
+material.haricot.name,Haricot
+material.pois.name,Pois
+material.lentille.name,Lentille
+material.navet.name,Navet
+material.betterave.name,Betterave
+material.radis.name,Radis
+material.panais.name,Panais
+material.epinard.name,Épinard
+material.laitue.name,Laitue
+material.poireau.name,Poireau
+material.artichaut.name,Artichaut
+material.asperge.name,Asperge
+material.aubergine.name,Aubergine
+material.poivron.name,Poivron
+material.concombre.name,Concombre
+material.melon.name,Melon
+material.ail.name,Ail
+material.persil.name,Persil
+material.romarin.name,Romarin
+material.origan.name,Origan
+material.coriandre.name,Coriandre
+material.ortie.name,Ortie
+material.pissenlit.name,Pissenlit
+material.trefle.name,Trèfle
+material.chardon.name,Chardon
+material.lin_plante.name,Lin
+material.pavot.name,Pavot
+material.objet.name,Objet posé
+category.objet.name,Objet
+ui.toast.objet_repris,Objet repris
+ui.toast.objet_equipe,Objet équipé : le déséquiper avant de le poser
+ui.menu.vitrine,Monde vitrine
+ui.menu.vitrine_aide,"Dalle plate garnie de tout le contenu du jeu, une rangée par catégorie."
+vitrine.plantes,Plantes
+vitrine.arbres,Arbres
+vitrine.structures,Structures
+vitrine.overworld,Monde
+vitrine.hors_monde,Objets

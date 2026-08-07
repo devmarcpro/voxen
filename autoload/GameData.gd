@@ -112,6 +112,34 @@ var material_by_runtime: Array[String] = ["air"]
 ## Masque des liquides par id runtime (1 = liquide) — le mesher abaisse leur
 ## face du dessus (2026-07-24). Thread-safe en lecture (rempli au boot).
 var liquid_mask := PackedByteArray()
+## MASQUE DES BLOCS « EN CROIX » par id runtime (2026-08-04) : herbes, céréales,
+## fleurs, légumes — tout ce qui ne se lit PAS comme un cube.
+##
+## POURQUOI UN MASQUE ET PAS UNE CATÉGORIE. La catégorie dit ce QU'EST un
+## matériau (végétal, roche, métal) ; celle-ci dit comment il SE DESSINE. Une
+## bûche et un brin d'herbe sont tous deux « vegetal » et n'ont rien à voir à
+## l'écran. C'est le champ `render` de la fiche qui tranche, et lui seul.
+##
+## Un bloc en croix N'OCCULTE RIEN : le mesher le traite comme de l'air pour le
+## calcul des faces voisines, sinon un champ de blé creuserait un trou carré
+## dans le sol qu'il recouvre.
+var cross_mask := PackedByteArray()
+## MASQUE DES BLOCS INVISIBLES par id runtime (2026-08-07) : les objets posés.
+## Ils occupent leur case (visée, collision, sauvegarde) mais ne sont PAS
+## maillés — leur apparence est leur vrai modèle d'objet, monté en scène par
+## `PlacedItemManager`. Comme les blocs en croix, ils sont retirés du pad AVANT
+## le balayage des faces : laissés dedans, une épée posée sur l'herbe volerait
+## sa face du dessus au bloc de sol et creuserait un trou carré.
+var hidden_mask := PackedByteArray()
+## Id runtime → fiche du matériau, pour les seuls blocs en croix. Le mailleur y
+## lit le PORT de la plante (touffe, épi, buisson, rampante, fleur) et ses
+## dimensions. C'est la fiche de MATÉRIAU elle-même : une plante se pose, se
+## casse et se ramasse comme un bloc, lui inventer un second registre parallèle
+## rejouerait l'erreur qui a coûté deux pipelines de génération.
+var plant_species_by_runtime: Dictionary = {}
+## Id runtime → cellule de l'atlas de sprites (voir PlantAtlas). Rempli par
+## WorldManager au moment de bâtir le matériau, quand la palette est prête.
+var plant_atlas_index: Dictionary = {}
 ## Émission lumineuse (0-15) et transmission par id runtime (G.3). Lues sans
 ## verrou depuis les threads de meshing — comme tout GameData, figées au boot.
 var emission_by_runtime := PackedByteArray()
@@ -284,6 +312,9 @@ func load_all() -> bool:
 	# couleur aux feuilles de son essence, et doit recevoir son id runtime avec
 	# les autres matériaux.
 	_generate_sapling_materials()
+	# APRÈS le catalogue d'objets, AVANT l'index : un objet posé est un bloc, il
+	# lui faut son id runtime comme aux autres.
+	_generate_object_materials()
 	_finalize_material_index()
 	_validate_translation_keys()
 
@@ -326,6 +357,13 @@ func _load_materials() -> void:
 		var folder := path.get_base_dir().get_file()
 		if folder != "materials" and folder != String(mat["category"]):
 			push_warning("GameData : « %s » est dans le dossier « %s » mais sa catégorie est « %s »." % [mat["id"], folder, mat["category"]])
+		# DIMENSION = DOSSIER, exactement comme pour les biomes (`data/materials/
+		# <dimension>/<catégorie>/`). Elle n'était nulle part : rien ne pouvait
+		# dire qu'un cristal de songe appartient à la faille et pas au monde, et
+		# le monde vitrine les alignait donc dans la même rangée. Un matériau
+		# posé directement sous data/materials est supposé overworld (compat).
+		var dim_folder := path.get_base_dir().get_base_dir().get_file()
+		mat["dimension"] = "overworld" if dim_folder == "materials" else dim_folder
 		var id: String = mat["id"]
 		if materials.has(id):
 			_blocking_error("id de matériau dupliqué « %s » (%s)" % [id, path])
@@ -395,9 +433,19 @@ func _finalize_material_index() -> void:
 
 	liquid_mask = PackedByteArray()
 	liquid_mask.resize(palette_size())
+	cross_mask = PackedByteArray()
+	cross_mask.resize(palette_size())
+	hidden_mask = PackedByteArray()
+	hidden_mask.resize(palette_size())
+	plant_species_by_runtime.clear()
 	for id in sorted_ids:
 		if String(materials[id].get("category", "")) == "liquide":
 			liquid_mask[material_runtime_ids[id]] = 1
+		if String(materials[id].get("render", "cube")) == "croix":
+			cross_mask[material_runtime_ids[id]] = 1
+			plant_species_by_runtime[material_runtime_ids[id]] = materials[id]
+		elif String(materials[id].get("render", "cube")) == "objet":
+			hidden_mask[material_runtime_ids[id]] = 1
 
 
 ## Largeur des textures de palette indexées par id runtime (couleurs, bruit,
@@ -584,8 +632,125 @@ func _generate_sapling_materials() -> void:
 			"world_gen": {"mode": "aucun", "biome_tags": []},
 			"parametric": {"source": "tree", "source_id": species_id},
 			"source_name_key": String(species.get("name_key", "")),
+			# La pousse appartient au monde de son essence : une pousse d'arbre
+			# de songe n'est pas un végétal de l'overworld.
+			"dimension": String(species.get("dimension", "overworld")),
 		}
 		_derive_tags(materials[id])
+
+
+## OBJETS POSÉS : un matériau par TYPE d'objet du catalogue (2026-08-06).
+##
+## Ctrl + clic droit pose n'importe quel objet d'inventaire au sol EN TANT QUE
+## BLOC. Or un objet n'a pas d'id runtime de palette, et il ne peut pas en
+## recevoir un à l'exécution : les ids sont FIGÉS au démarrage par
+## `_finalize_material_index`, ils dimensionnent les masques et les textures de
+## palette, et ce sont eux qui sont écrits dans la sauvegarde. Un id créé au
+## moment où le joueur pose une épée n'aurait aucune stabilité d'une partie à
+## l'autre.
+##
+## POURQUOI PAR TYPE, ET PAS PAR INSTANCE. 21 armes × 41 bois × 21 minerais font
+## 18 081 combinaisons pour les seules armes, avant qualité et usure : une entrée
+## de palette par instance est hors de question. Ce qui distingue deux instances
+## (qualité, matériaux, usure) va donc dans un REGISTRE POSITIONNEL,
+## `PlacedItemManager` — le patron des pousses, qui résout déjà exactement ce
+## cas : le bloc porte la forme, le registre porte ce que le bloc ne sait pas
+## dire. La reprise rend l'instance TELLE QUELLE, ce qui interdit la machine à
+## réparer qu'un objet reconstruit depuis sa fiche aurait été.
+##
+## POURQUOI PAS UNE SEULE ENTRÉE GÉNÉRIQUE non plus : les quarante objets du
+## catalogue seraient alors le même cube, et la rangée d'objets du monde vitrine
+## ne montrerait rien — or c'est précisément ce que la vitrine existe pour
+## montrer.
+##
+## Parcours du CATALOGUE, jamais une liste écrite ici : un objet ajouté à
+## `data/items/` reçoit son bloc sans qu'on y touche.
+func _generate_object_materials() -> void:
+	# COULEURS RÉPARTIES, PAS TIRÉES AU HASARD. `_variant_color` décale la teinte
+	# par le hash de l'id : sur quarante et un blocs partant tous de la MÊME
+	# couleur de base, deux hashs finissent dans le même seau et rendent le même
+	# hex — `objet_hache` et `objet_masse` l'ont fait du premier coup, et
+	# `--probe-butin` l'a signalé (une couleur en double, c'est deux blocs
+	# indistinguables dans la palette du monde, donc dans la vitrine aussi).
+	# Une teinte par rang sur le tour complet ne peut pas se cogner.
+	var ids: Array[String] = []
+	for item_id: String in items:
+		ids.append(OBJECT_PREFIX + item_id)
+	ids.sort()
+	# REPLI pour les instances dont le `item_id` n'est PAS un objet du catalogue :
+	# les ressources de créature (viande, peau) portent un genre (« viande ») et
+	# non un id d'objet. Sans ce bloc, poser un quartier de viande n'aurait aucun
+	# matériau et l'action échouerait en silence.
+	ids.append(GENERIC_OBJECT_MATERIAL)
+	var used := {}
+	for id: String in materials:
+		used[String((materials[id] as Dictionary).get("color", "")).to_upper()] = true
+	for index in ids.size():
+		var id: String = ids[index]
+		var name_key := "material.objet.name"
+		var source: Dictionary = items.get(id.substr(OBJECT_PREFIX.length()), {})
+		if not source.is_empty():
+			name_key = String(source.get("name_key", name_key))
+		_add_object_material(id, name_key, _free_object_color(index, ids.size(), used))
+
+
+## Teinte du n-ième bloc d'objet : le tour de roue divisé en parts égales, avec
+## luminosité alternée pour que deux voisins de teinte ne se confondent pas non
+## plus. Si la couleur est DÉJÀ PRISE par un matériau existant, on avance d'un
+## cran plutôt que d'accepter un doublon — la palette du monde exige l'unicité.
+func _free_object_color(index: int, total: int, used: Dictionary) -> String:
+	for attempt in 64:
+		var hue := fposmod(float(index) / float(maxi(total, 1)) + float(attempt) * 0.0037, 1.0)
+		var value := 0.62 if index % 2 == 0 else 0.78
+		var hex := ("#" + Color.from_hsv(hue, 0.55, value).to_html(false)).to_upper()
+		if not used.has(hex):
+			used[hex] = true
+			return hex
+	return "#B08A55"  # Repli : la sonde de palette dira si on en arrive là.
+
+
+## Prefixe des matériaux d'objet posé, et matériau de repli.
+const OBJECT_PREFIX := "objet_"
+const GENERIC_OBJECT_MATERIAL := "objet_divers"
+
+
+func _add_object_material(id: String, source_name_key: String, color: String) -> void:
+	if materials.has(id):
+		return  # Un fichier écrit à la main gagne toujours.
+	materials[id] = {
+		"id": id,
+		# LE NOM DE L'OBJET, pas « Objet posé ». Les quarante et un blocs
+		# portaient le même libellé générique : dans l'inventaire comme dans la
+		# vitrine, une épée posée et une pioche posée s'appelaient pareil.
+		"name_key": source_name_key if source_name_key != "" else "material.objet.name",
+		"category": "objet",
+		# NE SE MAILLE PAS EN CUBE. Un objet posé est rendu par son VRAI modèle
+		# (voir PlacedItemManager) : le bloc n'est là que pour occuper la case,
+		# être visé et traverser la sauvegarde. Sans ce champ on voyait un cube
+		# coloré à la place de l'épée.
+		"render": "objet",
+		"stats": {
+			# INERTE. Un objet posé n'est pas une matière première : il ne se
+			# mine pas pour en tirer du minerai, il se REPREND. Les stats sont
+			# donc neutres, et sa valeur est celle de l'instance, pas du bloc.
+			"durete": 2, "densite": 4, "valeur_base": 1,
+			"conductivite_mana": 0, "flammabilite": 20, "isolation": 10,
+			"conductivite_electrique": 0, "flottabilite": 20, "luminosite": 0,
+			"fertilite": 0, "transparence": 0, "elasticite": 20, "friction": 40,
+		},
+		"tags": ["objet"],
+		"color": color,
+		"noise": {"type": "procedural", "seed_offset": 950, "amplitude": 0.05, "scale": 1},
+		"harvest": {"tool_category": "mains_nues", "skill": "collecte"},
+		"world_gen": {"mode": "aucun", "biome_tags": []},
+		"parametric": {"source": "item", "source_id": id.substr(OBJECT_PREFIX.length())},
+		"source_name_key": source_name_key,
+		# AUCUNE DIMENSION, et c'est exact : un objet posé n'appartient à aucun
+		# monde, on l'emporte partout. Le monde vitrine lui fait donc son propre
+		# groupe au lieu de le ranger arbitrairement dans l'overworld.
+		"dimension": "",
+	}
+	_derive_tags(materials[id])
 
 
 ## Crée un matériau paramétrique dérivé de `source`, s'il n'existe pas déjà
@@ -918,6 +1083,10 @@ func _load_trees() -> void:
 		# faisait échouer 25 arbres au boot sans que le générateur soit en cause.
 		if not (tree["canopy_shape"] in TreeGenerator.CANOPY_SHAPES):
 			_blocking_error("canopy_shape invalide « %s » pour l'arbre « %s »" % [tree["canopy_shape"], tree["id"]])
+		# Dimension = dossier parent sous data/trees/ (même règle que les
+		# biomes et les matériaux).
+		var tree_folder := path.get_base_dir().get_file()
+		tree["dimension"] = "overworld" if tree_folder == "trees" else tree_folder
 		if trees.has(tree["id"]):
 			_blocking_error("id d'essence d'arbre dupliqué « %s »" % tree["id"])
 		else:

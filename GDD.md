@@ -188,6 +188,14 @@ Le monde est généré par superposition de multiples couches de bruit (type Per
 - Fonction de la subdivision : **esthétique uniquement** — détails fins de construction, sculpture, décoration.
 - ~~Physique/destruction fine façon Noita~~ **Abandonné** (trop coûteux et trop difficile à synchroniser en multijoueur — voir section 8).
 
+**Poser un objet au sol (2026-08-06) :** **Ctrl + clic droit** pose n'importe quel objet d'inventaire dans le monde **en tant que bloc** — pas un drop au sol : il occupe sa case, se voit de loin et traverse la sauvegarde comme le reste du monde. Le même geste le reprend.
+- **Un matériau par TYPE d'objet** (`objet_<id>`, généré depuis `data/items/` comme les pousses le sont depuis les essences), et l'**exemplaire** dans un registre positionnel (`PlacedItemManager`) : une entrée de palette par exemplaire est impossible (18 081 combinaisons pour les seules armes, et les ids runtime sont figés au démarrage).
+- **La reprise rend l'instance stockée telle quelle** — qualité, matériaux, usure. Un objet reconstruit depuis sa fiche ferait de « poser puis reprendre » une **machine à réparer gratuite**.
+- Un bloc d'objet détruit autrement (miné par mégarde) **rend l'objet au sol** au lieu de le supprimer.
+- **Rendu avec son VRAI modèle** (`render: "objet"` — le mailleur ne l'émet pas ; `PlacedItemManager` monte le modèle via le même pipeline que la main du joueur et le butin au sol), couché à plat dans sa case. Le bloc reste là pour occuper la case, être visé et traverser la sauvegarde.
+
+**Monde vitrine (2026-08-06, séparé par monde le 2026-08-07) :** paramètre de monde `terrain: "plat"` (case « Monde vitrine » à la création, ou `-- --plat`). Dalle plate — cavernes, rivières, villages, tours, arbres et plantes coupés — garnie au démarrage de **tout le contenu du jeu en rangées, une par catégorie** : les 17 catégories de matériaux, les plantes en croix, les 57 essences d'arbre, les archétypes de bâtiment. **Un bloc de rangées PAR MONDE** (overworld, faille de mana, puis les objets qui n'appartiennent à aucun monde) : la dimension d'un matériau ou d'une essence est son **dossier** dans `data/`, comme elle l'était déjà pour les biomes. **Construit par parcours du catalogue, jamais depuis une liste écrite à la main** : ajouter une fiche l'ajoute à la vitrine. `--probe-vitrine` échoue si le nombre d'entrées posées ne vaut pas la taille du catalogue, et relit le monde à chaque position.
+
 **Destruction (explosions, etc.) :** approche discrète façon Minecraft/Terraria — une bombe détruit des **blocs pleins** (chaque bloc individuel, à sa résolution de subdivision, est soit détruit soit intact) dans un rayon donné, sans simulation de fragments/particules physiques.
 
 **Prévisualisation de placement (ghost preview) :**

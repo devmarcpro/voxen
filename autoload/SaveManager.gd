@@ -64,6 +64,9 @@ const DISABLED_ARGS: Array[String] = [
 	# monde de test au lieu de sa partie. Toute nouvelle sonde qui touche à
 	# SaveManager doit être ajoutée ici.
 	"--probe-heure", "--probe-tour", "--probe-etages", "--probe-assemblage", "--probe-mains", "--probe-arbres", "--probe-refonte-donjon",
+	# `--probe-vitrine` écrit des dizaines de milliers de blocs : sans cette
+	# ligne, chaque exécution les sauvegarderait dans le monde du joueur.
+	"--probe-vitrine",
 ]
 
 var enabled := true
@@ -400,6 +403,7 @@ func _gather_state() -> Dictionary:
 		"drops": DropManager.save_state(),
 		"chests": ContainerManager.save_state(),
 		"saplings": SaplingManager.save_state(),
+		"placed_items": PlacedItemManager.save_state(),
 	}
 	# Filet : si le joueur n'est plus joignable (sauvegarde de sortie après
 	# libération de la scène), on réécrit son DERNIER état connu plutôt que
@@ -640,6 +644,7 @@ func apply_pending_state() -> void:
 	if _pending_state.is_empty():
 		return  # Rien à appliquer (monde neuf, ou déjà appliqué).
 	SaplingManager.restore_state(_pending_state.get("saplings", {}))
+	PlacedItemManager.restore_state(_pending_state.get("placed_items", {}))
 	ClaimManager.restore_state(_pending_state.get("claims", {}))
 	VillageManager.restore_state(_pending_state.get("villages", {}))
 	ExplorationManager.restore_state(_pending_state.get("exploration", []))

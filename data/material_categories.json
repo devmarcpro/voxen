@@ -78,5 +78,10 @@
     "tool": "faucille",
     "harvest_skill": "herboristerie",
     "station_transform": null
+  },
+  "objet": {
+    "tool": null,
+    "harvest_skill": null,
+    "station_transform": null
   }
 }

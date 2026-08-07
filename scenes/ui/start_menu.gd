@@ -41,6 +41,10 @@ var _hum_slider: HSlider
 var _trees_slider: HSlider
 var _rivers_check: CheckBox
 var _caves_check: CheckBox
+## MONDE VITRINE : dalle plate, garnie de toutes les rangées de contenu au
+## démarrage. Une case et non un mode à part : c'est un paramètre de monde
+## (`terrain: "plat"`), au même titre que les rivières ou les cavernes.
+var _flat_check: CheckBox
 var _biome_option: OptionButton
 var _biome_ids: Array[String] = []
 var _preview_rect: TextureRect
@@ -229,6 +233,10 @@ func _build_new_world() -> VBoxContainer:
 	_caves_check.text = tr("ui.menu.cavernes")
 	_caves_check.button_pressed = true
 	checks.add_child(_caves_check)
+	_flat_check = CheckBox.new()
+	_flat_check.text = tr("ui.menu.vitrine")
+	_flat_check.tooltip_text = tr("ui.menu.vitrine_aide")
+	checks.add_child(_flat_check)
 	box.add_child(checks)
 
 	var biome_row := HBoxContainer.new()
@@ -631,6 +639,12 @@ func _current_params() -> Dictionary:
 		"cavernes": _caves_check.button_pressed,
 		"biome_force": _biome_ids[_biome_option.selected],
 	}
+	# LE MONDE VITRINE ÉCRASE LE RESTE des paramètres de relief, et c'est voulu :
+	# NoiseGenerator coupe rivières, cavernes, villes, tours, arbres et plantes
+	# dès que le terrain est plat. Les laisser cochés dans l'interface mentirait
+	# sur ce qu'on va obtenir.
+	if _flat_check != null and _flat_check.button_pressed:
+		p["terrain"] = "plat"
 	# Point de spawn choisi au clic sur l'aperçu (sinon spawn auto sur terre).
 	if _chosen_spawn != null:
 		p["spawn"] = [(_chosen_spawn as Vector2i).x, (_chosen_spawn as Vector2i).y]

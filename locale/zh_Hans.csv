@@ -915,7 +915,7 @@ ui.loi.saisie,无力支付，你的一件财物被没收。
 ui.loi.gardes_hostiles,王国卫兵正在追捕你。
 ui.hud.cle.lois,法律
 ui.hud.cle.localite,聚落
-ui.hud.souris,左键（长按）：采集/挖掘/攻击 · 右键：放置
+ui.hud.souris,按住左键：采集/雕刻/攻击 · 右键：放置 · Ctrl＋右键：放置/收回物品
 ui.hud.hotbar,1-9/滚轮：选择 · Ctrl+1-9/滚轮：存入
 ui.input.move_forward,前进
 ui.input.jump,跳跃
@@ -1244,3 +1244,73 @@ material.bois_velours.name,Bois de velours
 material.feuillage_vin.name,Feuillage lie-de-vin
 material.bois_creux.name,Bois creux
 material.feuillage_ambre.name,Feuillage ambré
+material.herbe_haute.name,高草
+material.roseau.name,芦苇
+material.ble.name,小麦
+material.orge.name,大麦
+material.avoine.name,燕麦
+material.riz.name,水稻
+material.mais.name,玉米
+material.plant_tomate.name,番茄植株
+material.plant_pomme_de_terre.name,马铃薯植株
+material.plant_carotte.name,胡萝卜叶
+material.plant_chou.name,卷心菜
+material.plant_oignon.name,洋葱
+material.plant_courge.name,南瓜
+material.plant_fraise.name,草莓植株
+material.vigne_raisin.name,葡萄藤
+material.safran.name,藏红花
+material.poivrier.name,胡椒树
+material.menthe.name,薄荷
+material.thym.name,百里香
+material.basilic.name,罗勒
+material.camomille.name,洋甘菊
+material.sauge.name,鼠尾草
+material.coquelicot.name,虞美人
+material.bleuet.name,矢车菊
+material.marguerite.name,雏菊
+material.lavande_fleur.name,薰衣草
+material.tournesol.name,向日葵
+material.touffe_seche.name,干草丛
+material.seigle.name,黑麦
+material.millet.name,小米
+material.sarrasin.name,荞麦
+material.quinoa.name,藜麦
+material.haricot.name,菜豆
+material.pois.name,豌豆
+material.lentille.name,小扁豆
+material.navet.name,芜菁
+material.betterave.name,甜菜
+material.radis.name,萝卜
+material.panais.name,欧防风
+material.epinard.name,菠菜
+material.laitue.name,生菜
+material.poireau.name,韭葱
+material.artichaut.name,洋蓟
+material.asperge.name,芦笋
+material.aubergine.name,茄子
+material.poivron.name,甜椒
+material.concombre.name,黄瓜
+material.melon.name,甜瓜
+material.ail.name,大蒜
+material.persil.name,欧芹
+material.romarin.name,迷迭香
+material.origan.name,牛至
+material.coriandre.name,芫荽
+material.ortie.name,荨麻
+material.pissenlit.name,蒲公英
+material.trefle.name,三叶草
+material.chardon.name,蓟
+material.lin_plante.name,亚麻
+material.pavot.name,罂粟
+material.objet.name,放置物
+category.objet.name,物品
+ui.toast.objet_repris,已收回
+ui.toast.objet_equipe,已装备：先卸下再放置
+ui.menu.vitrine,展示世界
+ui.menu.vitrine_aide,平坦地面上按类别陈列全部内容。
+vitrine.plantes,植物
+vitrine.arbres,树
+vitrine.structures,建筑
+vitrine.overworld,主世界
+vitrine.hors_monde,物品

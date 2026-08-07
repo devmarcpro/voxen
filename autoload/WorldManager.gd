@@ -249,8 +249,13 @@ func _process(_delta: float) -> void:
 		return
 	_push_season_tint()
 	_upload_ready_meshes()  # Draine toujours les résultats en vol (même cachés).
+	if _delegated():
+		return
+	# LE STREAMING SUIT LA DIMENSION ACTIVE, quelle qu'elle soit (2026-08-04).
+	_launch_tasks()
+	# Les villes et les royaumes sont des systèmes de l'overworld : rien à
+	# préchauffer ailleurs.
 	if active_dimension == &"overworld":
-		_launch_tasks()
 		_warm_world_metadata()
 
 
@@ -316,25 +321,192 @@ func _warm_world_metadata() -> void:
 					return  # Un par frame, et on rend la main.
 
 
-## Bascule de dimension (3.5) : cache/révèle le monde overworld et prévient
-## les créatures (visibilité + gel des ticks hors dimension active).
+# ---------------------------------------------------------------------------
+# UN MONDE PAR DIMENSION (2026-08-04)
+# ---------------------------------------------------------------------------
+# Ce gestionnaire supposait l'overworld partout : « si ce n'est pas l'overworld,
+# demander à DimensionManager ». C'est ce qui a fait écrire un SECOND pipeline
+# de génération à côté de celui-ci — non multithreadé, non chunké, non borné —
+# et une colonne de chunks y coûtait 738 ms.
+#
+# Désormais il streame la dimension ACTIVE, quelle qu'elle soit. Chaque
+# dimension a son générateur, son cache de chunks, ses meshes, ses éditions et
+# sa racine de scène ; entrer ou sortir ÉCHANGE ces références, ce qui ne copie
+# rien. Seules les dimensions à BACKEND spécialisé (le donjon, qui a son propre
+# constructeur d'étages) restent aiguillées ailleurs.
+#
+# POURQUOI UN ÉCHANGE DE RÉFÉRENCES PLUTÔT QU'UN OBJET « monde » : le reste de
+# ce fichier — mille lignes de streaming, de meshing, d'éviction et de LOD —
+# nomme ces dictionnaires directement. Les déplacer dans une structure aurait
+# touché chaque ligne pour un résultat identique à l'exécution.
+
+## Champs qui constituent un monde. Tout ce qui est ici est REMPLACÉ à la
+## bascule ; tout ce qui n'y est pas est partagé entre les dimensions.
+const _WORLD_FIELDS := [
+	"generator", "chunk_root", "_chunks", "_meshes", "_empty", "_edits", "_sub_edits",
+	"_edit_cols", "_fine_meshes", "_coarse_meshes", "_lod_fine", "_dirty", "_urgent_cols",
+	"_ranges", "_ctx_cache", "_installed_epoch", "_dirty_save", "_material",
+]
+## dimension → instantané de ses champs. L'overworld y figure comme les autres.
+var _worlds := {}
+
+
+## La dimension est-elle servie par un backend spécialisé (donjon) plutôt que
+## par ce streaming ? C'est la SEULE distinction qui reste dans ce fichier — il
+## n'y a plus de « cas overworld » et de « cas autre ».
+func _delegated() -> bool:
+	return active_dimension != &"overworld" and DimensionManager.has_backend(active_dimension)
+
+
+## Bascule de dimension (3.5) : échange le monde courant, prévient les créatures
+## (visibilité + gel des ticks hors dimension active).
 func set_active_dimension(dim: StringName) -> void:
 	if dim == active_dimension:
 		return
+	# ON ATTEND LES TÂCHES EN VOL AVANT D'ÉCHANGER. Elles écrivent leurs
+	# résultats dans `_results`, qui n'est PAS un champ de monde : une colonne de
+	# l'overworld déposée après la bascule installerait un mesh d'overworld dans
+	# la faille. `_generation` les invalide de toute façon, mais attendre coûte
+	# quelques millisecondes une fois par voyage et supprime la question.
+	wait_for_in_flight()
+	_generation += 1
+	_results.clear()
+	_queue.clear()
+	_queue_idx = 0
+	_in_flight.clear()
+	_save_world(active_dimension)
 	active_dimension = dim
-	if chunk_root != null:
-		chunk_root.visible = dim == &"overworld"
-	CreatureManager.on_dimension_changed(dim)
+	_load_world(dim)
 	# Les caches au sol sont filtrées par dimension (2026-08-02) : sans ce
 	# rafraîchissement, les marqueurs de la dimension qu'on vient de quitter
 	# resteraient affichés dans celle où l'on arrive.
 	DropManager.on_dimension_changed()
+	PlacedItemManager.on_dimension_changed()
+
+
+# --- Accès par dimension (pour DimensionManager et les sondes) --------------
+#
+# CES TROIS FONCTIONS NE RÉPONDENT QUE POUR LA DIMENSION ACTIVE, volontairement.
+# Lire ou écrire dans un monde qui n'est pas monté demanderait d'échanger les
+# champs, de faire le travail, puis de les remettre — un chemin détourné, et
+# surtout un chemin qui rendrait possible d'écrire dans un monde qu'on ne
+# regarde pas. Aucun appelant n'en a besoin : on bâtit là où l'on est.
+
+func set_block_in(dimension: StringName, pos: Vector3i, material_id: int) -> bool:
+	if dimension != active_dimension:
+		return false
+	return set_block(pos, material_id)
+
+
+func block_at_in(dimension: StringName, pos: Vector3i) -> int:
+	if dimension != active_dimension:
+		return 0
+	return block_at_world(pos)
+
+
+## Nombre de chunks tenus par une dimension — active ou rangée.
+func chunk_count_in(dimension: StringName) -> int:
+	if dimension == active_dimension:
+		return _chunks.size()
+	var stored: Dictionary = _worlds.get(dimension, {})
+	return (stored.get("_chunks", {}) as Dictionary).size()
+
+
+## Jette le monde d'une dimension : ses chunks, ses meshes et sa racine.
+## Appelé en sortant — une dimension se regénère à la visite suivante (G.1).
+func free_dimension(dimension: StringName) -> void:
+	if dimension == &"overworld" or dimension == active_dimension:
+		return   # L'overworld ne se jette pas, et on ne jette pas le sol qu'on foule.
+	var stored: Dictionary = _worlds.get(dimension, {})
+	var root := stored.get("chunk_root") as Node3D
+	if root != null:
+		root.queue_free()
+	_worlds.erase(dimension)
+
+
+## Range le monde courant sous son nom, et cache sa scène.
+func _save_world(dim: StringName) -> void:
+	if generator == null:
+		return   # Aucun monde actif (menu de démarrage) : rien à ranger.
+	if DimensionManager.has_backend(dim):
+		# On n'a JAMAIS monté de monde pour une dimension à backend : les champs
+		# pointent encore sur celui d'où l'on vient. Le ranger sous ce nom-là
+		# écraserait l'overworld par lui-même sous une mauvaise clé, et le
+		# retour ramènerait un monde caché qu'on ne réafficherait jamais.
+		return
+	var snapshot := {"_center": _center}
+	for field: String in _WORLD_FIELDS:
+		snapshot[field] = get(field)
+	_worlds[dim] = snapshot
+	if chunk_root != null:
+		chunk_root.visible = false
+
+
+## Reprend le monde d'une dimension, ou en crée un si c'est la première visite.
+##
+## UNE DIMENSION SE REGÉNÈRE À CHAQUE VISITE (G.1 : jamais stocker ce qui est
+## régénérable) — sauf l'overworld, qu'on retrouve tel qu'on l'a laissé parce
+## que le joueur y a bâti et que ses éditions vivent dans son diff. C'est
+## `DimensionManager.leave` qui décide de jeter, pas ce fichier.
+func _load_world(dim: StringName) -> void:
+	if DimensionManager.has_backend(dim):
+		# Backend spécialisé : il tient ses propres blocs et sa propre scène.
+		# On garde le monde courant rangé et on ne monte rien.
+		return
+	if _worlds.has(dim):
+		var snapshot: Dictionary = _worlds[dim]
+		for field: String in _WORLD_FIELDS:
+			set(field, snapshot[field])
+		_center = snapshot["_center"]
+		if chunk_root != null:
+			chunk_root.visible = true
+		_rebuild_queue()
+		return
+	_create_world(dim)
+
+
+## Monte le monde neuf d'une dimension : son générateur, sa racine de scène,
+## ses caches vides.
+func _create_world(dim: StringName) -> void:
+	generator = NoiseGenerator.new(world_seed,
+			SaveManager.active_config.get("params", {}), dim)
+	_chunks = {}
+	_meshes = {}
+	_empty = {}
+	_edits = {}
+	_sub_edits = {}
+	_edit_cols = {}
+	_fine_meshes = {}
+	_coarse_meshes = {}
+	_lod_fine = {}
+	_dirty = {}
+	_urgent_cols = {}
+	_ranges = {}
+	_ctx_cache = {}
+	_installed_epoch = {}
+	_dirty_save = {}
+	_material = null
+	# Chaque dimension a sa RACINE de scène : cacher un nœud est plus sûr et
+	# beaucoup moins cher que de libérer puis reconstruire des centaines de
+	# MeshInstance3D à chaque aller-retour.
+	var parent := _worlds.get(&"overworld", {}).get("chunk_root") as Node3D
+	if parent == null:
+		parent = chunk_root
+	var root := Node3D.new()
+	root.name = "ChunkRoot_%s" % dim
+	if parent != null and parent.get_parent() != null:
+		parent.get_parent().add_child(root)
+	else:
+		add_child(root)
+	chunk_root = root
+	_build_material()
+	_center = Vector2i(1 << 30, 0)
 
 
 ## Appelé par la caméra/le joueur : met à jour le centre de streaming.
 func update_center(world_pos: Vector3) -> void:
-	if active_dimension != &"overworld":
-		return  # En donjon, les coordonnées locales ne doivent JAMAIS piloter le streaming overworld.
+	if _delegated():
+		return  # En donjon, les coordonnées locales ne pilotent aucun streaming.
 	var center := Vector2i(
 		floori(world_pos.x / ChunkData.SIZE),
 		floori(world_pos.z / ChunkData.SIZE)
@@ -375,7 +547,11 @@ func line_blocked(from: Vector3, to: Vector3) -> bool:
 	var travelled := LINE_STEP
 	while travelled < distance:
 		var point := from + direction * travelled
-		if block_at_world(Vector3i(floori(point.x), floori(point.y), floori(point.z))) != 0:
+		var id := block_at_world(Vector3i(floori(point.x), floori(point.y), floori(point.z)))
+		# Les plantes n'arrêtent RIEN : ni une flèche, ni un regard. Un brin
+		# d'herbe qui bloque une ligne de vue rendrait les hautes herbes
+		# aveuglantes pour les créatures comme pour les projectiles.
+		if id != 0 and not (id < GameData.cross_mask.size() and GameData.cross_mask[id] == 1):
 			return true
 		travelled += LINE_STEP
 	return false
@@ -384,7 +560,7 @@ func line_blocked(from: Vector3, to: Vector3) -> bool:
 func block_at_world(pos: Vector3i) -> int:
 	if generator == null:
 		return 0  # Aucun monde actif (menu de démarrage).
-	if active_dimension != &"overworld":
+	if _delegated():
 		return DimensionManager.block_at(pos)
 	var ck := Vector3i(pos.x >> 4, pos.y >> 4, pos.z >> 4)
 	var index := (pos.x & 15) | ((pos.z & 15) << 4) | ((pos.y & 15) << 8)
@@ -406,8 +582,8 @@ func block_at_world(pos: Vector3i) -> int:
 ## quand le monde n'est pas là — c'est exactement ce qui coûtait 4,6 ms par
 ## villageois et par tick.
 func is_block_loaded(pos: Vector3i) -> bool:
-	if active_dimension != &"overworld":
-		return true  # Une dimension tient tout en mémoire, il n'y a rien à streamer.
+	if _delegated():
+		return true  # Un backend tient tout en mémoire, il n'y a rien à streamer.
 	return _chunks.has(Vector3i(pos.x >> 4, pos.y >> 4, pos.z >> 4))
 
 
@@ -492,7 +668,7 @@ func _touched_chunks(pos: Vector3i) -> Array[Vector3i]:
 ## worker libre derrière de longues tâches de streaming). Pour une mutation de
 ## SIMULATION (fluides, intégrité, croissance), utiliser set_block_batched().
 func _apply_block(pos: Vector3i, material_id: int) -> bool:
-	if active_dimension != &"overworld":
+	if _delegated():
 		return DimensionManager.apply_block(pos, material_id)
 	var old_id := _write_block_data(pos, material_id)
 	if old_id < 0:
@@ -556,7 +732,7 @@ var _batch_events: Array = []
 func set_block_batched(pos: Vector3i, material_id: int) -> bool:
 	if generator == null:
 		return false
-	if active_dimension != &"overworld":
+	if _delegated():
 		return DimensionManager.apply_block(pos, material_id)
 	var old_id := _write_block_data(pos, material_id)
 	if old_id < 0:
@@ -578,7 +754,19 @@ func has_batched_edits() -> bool:
 ## Vide le lot : UN remesh par chunk touché, puis les signaux. À appeler une fois
 ## par tick, en fin de phase monde (TickManager) — jamais depuis un système de
 ## simulation lui-même, sinon on retombe sur le coût par-bloc qu'on évitait.
-func flush_batched_edits() -> void:
+## `mesh_now = false` : on se contente de MARQUER les chunks sales et on laisse
+## la file de streaming les remailler à son rythme.
+##
+## À N'UTILISER QUE POUR UNE ÉCRITURE DE MASSE dont le résultat n'est pas sous
+## les yeux du joueur — la construction du monde vitrine, qui écrit des dizaines
+## de milliers de blocs sur des centaines de chunks. `_get_chunk_sync` place dans
+## `_chunks` TOUT chunk où l'on écrit, si bien que la condition ci-dessous est
+## vraie pour la vitrine entière et qu'on la remaillait intégralement, de façon
+## synchrone, pour n'en montrer qu'un coin. Mesuré : 32 s des 59 de construction.
+##
+## Pour une mutation de simulation ordinaire (fluides, croissance), garder la
+## valeur par défaut : le joueur regarde ce qui change.
+func flush_batched_edits(mesh_now: bool = true) -> void:
 	if _batch_touched.is_empty():
 		return
 	_install_epoch += 1
@@ -588,7 +776,7 @@ func flush_batched_edits() -> void:
 		# Chunk non chargé : le drapeau dirty suffit, la file de streaming le
 		# remaillera à son arrivée. Le forcer ici paierait un generate_chunk
 		# complet sur le thread principal pour un chunk que personne ne voit.
-		if _meshes.has(tck) or _chunks.has(tck):
+		if mesh_now and (_meshes.has(tck) or _chunks.has(tck)):
 			_remesh_chunk_now(tck, epoch)
 	_batch_touched.clear()
 
@@ -636,7 +824,7 @@ func set_sub_region(block_pos: Vector3i, cell_min: Vector3i, cell_size: int, mat
 
 
 func _apply_sub_region(block_pos: Vector3i, cell_min: Vector3i, cell_size: int, material_id: int) -> String:
-	if active_dimension != &"overworld":
+	if _delegated():
 		return "invalid"  # Pas de sculpture fine en donjon (simplification 3.5 assumée).
 	if block_pos.y < WORLD_Y_MIN or block_pos.y > WORLD_Y_MAX:
 		return "invalid"
@@ -734,7 +922,7 @@ func rpc_request_sub_region(block_pos: Vector3i, cell_min: Vector3i, cell_size: 
 ##
 ## Retourne false si le bloc est hors du monde ou hors de l'overworld.
 func set_subdiv_grid(block_pos: Vector3i, grid: PackedInt32Array, material_id: int) -> bool:
-	if active_dimension != &"overworld":
+	if _delegated():
 		return false  # Pas de sculpture fine en donjon (simplification 3.5 assumée).
 	if block_pos.y < WORLD_Y_MIN or block_pos.y > WORLD_Y_MAX:
 		return false
@@ -744,6 +932,23 @@ func set_subdiv_grid(block_pos: Vector3i, grid: PackedInt32Array, material_id: i
 	if data == null:
 		return false
 
+	var touched := _write_subdiv_data(data, ck, index, block_pos, grid)
+	for tck: Vector3i in touched:
+		_mark_dirty(tck)
+	_install_epoch += 1
+	for tck: Vector3i in touched:
+		if _meshes.has(tck) or _chunks.has(tck):
+			_remesh_chunk_now(tck, _install_epoch)
+	return true
+
+
+## Écriture DONNÉES d'une sous-grille, sans remesh ni signal — la partie commune
+## au chemin instantané (`set_subdiv_grid`) et au chemin batché. Retourne les
+## chunks à remailler. Un seul écrivain, pour la même raison que
+## `_write_block_data` : deux copies de cette logique finiraient par diverger,
+## et la divergence se lirait en parois fantômes aux frontières de chunk.
+func _write_subdiv_data(data: ChunkData, ck: Vector3i, index: int,
+		block_pos: Vector3i, grid: PackedInt32Array) -> Array[Vector3i]:
 	var uniform := SubdivGrid.uniform_value(grid)
 	if not _edits.has(ck):
 		_edits[ck] = {}
@@ -772,18 +977,37 @@ func set_subdiv_grid(block_pos: Vector3i, grid: PackedInt32Array, material_id: i
 				(block_pos.z + axis.z) >> 4)
 		if neighbour != ck and not (neighbour in touched):
 			touched.append(neighbour)
-	for tck: Vector3i in touched:
-		_mark_dirty(tck)
-	_install_epoch += 1
-	for tck: Vector3i in touched:
-		if _meshes.has(tck) or _chunks.has(tck):
-			_remesh_chunk_now(tck, _install_epoch)
+	return touched
+
+
+## Sous-grille SANS remesh immédiat — le pendant de `set_block_batched`, et il
+## manquait.
+##
+## MESURÉ, ET LE CHIFFRE EST LE POINT : poser les 57 essences d'arbre du monde
+## vitrine coûtait 411 SECONDES contre 1,2 s pour les cinq cents blocs de
+## matériaux. Un arbre est rastérisé sur un réseau de 8 px et compte donc des
+## milliers de blocs subdivisés ; chacun déclenchait ici jusqu'à sept remesh
+## synchrones. Le batching ne rendait service qu'aux blocs pleins, si bien que
+## tout code écrivant des arbres en masse retombait sans le savoir sur le chemin
+## le plus cher du moteur.
+func set_subdiv_grid_batched(block_pos: Vector3i, grid: PackedInt32Array) -> bool:
+	if _delegated():
+		return false
+	if block_pos.y < WORLD_Y_MIN or block_pos.y > WORLD_Y_MAX:
+		return false
+	var ck := Vector3i(block_pos.x >> 4, block_pos.y >> 4, block_pos.z >> 4)
+	var index := (block_pos.x & 15) | ((block_pos.z & 15) << 4) | ((block_pos.y & 15) << 8)
+	var data := _get_chunk_sync(ck)
+	if data == null:
+		return false
+	for tck: Vector3i in _write_subdiv_data(data, ck, index, block_pos, grid):
+		_batch_touched[tck] = true
 	return true
 
 
 ## Sous-grille d'un bloc (lecture seule) — vide si le bloc n'est pas subdivisé.
 func subdiv_grid_at(block_pos: Vector3i) -> PackedInt32Array:
-	if active_dimension != &"overworld":
+	if _delegated():
 		return PackedInt32Array()  # Pas de subdivision en donjon (3.5 simplifié).
 	var ck := Vector3i(block_pos.x >> 4, block_pos.y >> 4, block_pos.z >> 4)
 	var data: ChunkData = _chunks.get(ck)
@@ -798,7 +1022,7 @@ func subdiv_grid_at(block_pos: Vector3i) -> PackedInt32Array:
 ## ou chunk hors cache : le niveau bloc fait alors foi). Pour la collision
 ## E.22 (« solide si >= 50 % du volume »), O(1) par requête.
 func subdiv_solid_count(block_pos: Vector3i) -> int:
-	if active_dimension != &"overworld":
+	if _delegated():
 		return -1  # Blocs de donjon toujours pleins (pas de subdivision).
 	var ck := Vector3i(block_pos.x >> 4, block_pos.y >> 4, block_pos.z >> 4)
 	var data: ChunkData = _chunks.get(ck)
@@ -806,6 +1030,21 @@ func subdiv_solid_count(block_pos: Vector3i) -> int:
 		return -1
 	var index := (block_pos.x & 15) | ((block_pos.z & 15) << 4) | ((block_pos.y & 15) << 8)
 	return int(data.subdiv_solid.get(index, -1))
+
+
+## Nombre de sommets du mesh installé d'un chunk, ou -1 s'il n'en a pas.
+##
+## POUR LA SONDE DES PLANTES, et c'est sa seule raison d'être : c'est la seule
+## façon d'observer de l'EXTÉRIEUR qu'un bloc a bien produit de la géométrie —
+## et donc d'attraper une plante qui occulterait le sol au lieu de s'y ajouter.
+func chunk_vertex_count(ck: Vector3i) -> int:
+	var instance: MeshInstance3D = _meshes.get(ck)
+	if instance == null or instance.mesh == null:
+		return 0
+	var mesh: ArrayMesh = instance.mesh
+	if mesh.get_surface_count() == 0:
+		return 0
+	return (mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
 
 
 ## Matériau de base du monde (palette + bruit par voxel) — partagé avec les
@@ -821,8 +1060,20 @@ func base_material() -> ShaderMaterial:
 var _dirty_save := {}
 
 
+## LA SAUVEGARDE PORTE SUR L'OVERWORLD, où que le joueur se trouve (E.10).
+##
+## Depuis que chaque dimension a son propre diff, `_edits` désigne celui de la
+## dimension ACTIVE : sauvegarder depuis une faille y aurait écrit les blocs de
+## la faille sous le nom du monde — et une dimension se regénère à la visite
+## suivante, donc ces éditions-là n'ont rien à faire sur le disque.
+func _overworld_field(field: String) -> Variant:
+	if active_dimension == &"overworld":
+		return get(field)
+	return (_worlds.get(&"overworld", {}) as Dictionary).get(field, {})
+
+
 func edits_for_save() -> Dictionary:
-	return _edits
+	return _overworld_field("_edits")
 
 
 ## Chunks dont les modifications ont changé DEPUIS LA DERNIÈRE ÉCRITURE, puis
@@ -835,6 +1086,11 @@ func edits_for_save() -> Dictionary:
 ## avaient bougé. Les fichiers déjà écrits restent valides sur disque : ne
 ## réécrire que le delta est exact ET borné.
 func take_dirty_save_chunks() -> Dictionary:
+	if active_dimension != &"overworld":
+		var stored: Dictionary = _worlds.get(&"overworld", {})
+		var away: Dictionary = stored.get("_dirty_save", {})
+		stored["_dirty_save"] = {}
+		return away
 	var dirty := _dirty_save
 	_dirty_save = {}
 	return dirty
@@ -851,7 +1107,7 @@ func mark_all_chunks_dirty() -> void:
 
 
 func sub_edits_for_save() -> Dictionary:
-	return _sub_edits
+	return _overworld_field("_sub_edits")
 
 
 ## Statistiques pour le HUD et le bench.
@@ -909,6 +1165,13 @@ func _build_material() -> void:
 	_material.set_shader_parameter("world_seed", float(world_seed % 65536))
 	_material.set_shader_parameter("herbe_id", int(GameData.material_runtime_ids.get("herbe", -1)))
 	_material.set_shader_parameter("eau_id", int(GameData.material_runtime_ids.get("eau", -1)))  # Seule l'eau ondule (pas la lave).
+	# ATLAS DES PLANTES : bâti ici parce que c'est ici que la palette est prête,
+	# et posé sur le matériau de base — donc hérité par les copies par chunk.
+	var atlas := PlantAtlas.build(GameData.plant_species_by_runtime)
+	GameData.plant_atlas_index = atlas["index"]
+	_material.set_shader_parameter("plant_atlas", atlas["texture"])
+	_material.set_shader_parameter("plant_atlas_columns", int(atlas["columns"]))
+	_material.set_shader_parameter("plant_atlas_rows", int(atlas["rows"]))
 
 
 ## Petite texture GRASS_TINT_GRID×GRASS_TINT_GRID de teinte d'herbe pour le
@@ -961,8 +1224,20 @@ func _on_data_reloaded() -> void:
 	DungeonTower.reset_caches()
 	_queue.clear()
 	_queue_idx = 0
+	# LES AUTRES DIMENSIONS SONT JETÉES ENTIÈREMENT. Leur terrain dérive des
+	# mêmes données rechargées (matériaux, biomes, essences) et se regénère à la
+	# visite suivante : les garder ferait cohabiter deux jeux d'ids runtime.
+	for dim: StringName in _worlds.keys():
+		if dim == active_dimension:
+			continue
+		var stored: Dictionary = _worlds[dim]
+		var root := stored.get("chunk_root") as Node3D
+		if root != null:
+			root.queue_free()
+		_worlds.erase(dim)
 	# Les tâches en vol seront jetées à l'arrivée (générations différentes).
-	generator = NoiseGenerator.new(world_seed, SaveManager.active_config.get("params", {}))
+	generator = NoiseGenerator.new(world_seed,
+			SaveManager.active_config.get("params", {}), active_dimension)
 	_build_material()
 	var center := _center
 	_center = Vector2i(1 << 30, 0)

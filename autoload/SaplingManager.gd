@@ -112,12 +112,29 @@ func _grow(pos: Vector3i) -> void:
 	if species.is_empty():
 		return
 	var tree := TreeGenerator.generate(pos, WorldManager.world_seed + int(entry["planted"]), species)
+	# ÉCRITURE EN LOT, ET C'EST UN CORRECTIF DE PERFORMANCE, pas un nettoyage.
+	# Ces deux boucles passaient par les variantes INSTANTANÉES, qui remaillent
+	# jusqu'à sept chunks PAR BLOC. Un arbre compte des centaines de blocs pleins
+	# et des milliers de blocs subdivisés : une pousse arrivée à terme figeait
+	# donc la frame. Mesuré sur le monde vitrine, qui pose les 57 essences par ce
+	# même chemin : 411 secondes en instantané contre 12,8 en lot.
+	#
+	# Le vidage est explicite ici et non laissé au tick : la croissance doit se
+	# voir dans la frame où elle a lieu, pas à la suivante.
+	#
+	# CONSÉQUENCE RÉSEAU, à dire plutôt qu'à taire : `set_block` routait en RPC,
+	# le chemin batché non. La croissance devient donc locale — ce qui est déjà
+	# le cas de tout ce qui a été écrit depuis le 2026-07-20 (les pousses ne sont
+	# répliquées nulle part ailleurs : ni le registre, ni la plantation) et ce
+	# qui reste juste tant que les deux camps partagent tick et graine. À
+	# reprendre avec le reste de la réplication, pas avant.
 	var blocks: Dictionary = tree["blocks"]
 	for block_pos: Vector3i in blocks:
-		WorldManager.set_block(block_pos, blocks[block_pos])
+		WorldManager.set_block_batched(block_pos, blocks[block_pos])
 	var subdivs: Dictionary = tree["trunk_subdivs"]
 	for block_pos: Vector3i in subdivs:
-		WorldManager.set_subdiv_grid(block_pos, subdivs[block_pos], blocks[block_pos])
+		WorldManager.set_subdiv_grid_batched(block_pos, subdivs[block_pos])
+	WorldManager.flush_batched_edits()
 	EventBus.ui_notification.emit("ui.toast.pousse_grandie")
 
 

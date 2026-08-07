@@ -58,13 +58,31 @@ PROBES="--probe-touches
 --probe-assemblage
 --probe-mains
 --probe-arbres
+--probe-plantes
+--probe-vitrine
 --probe-pousses
 --probe-foreuse
 --probe-dimensions
 --probe-triche
 --probe-village-vie
 --probe-royaumes-perf
---probe-calendrier"
+--probe-calendrier
+--probe-terrain
+--probe-mesh
+--probe-subdiv
+--probe-ore
+--probe-city
+--probe-butin
+--probe-faune
+--probe-equipement
+--probe-faim
+--probe-mort
+--probe-survie
+--probe-params
+--probe-saves
+--probe-save-incr
+--probe-invui
+--probe-refonte-donjon"
 
 while [ $# -gt 0 ]; do
 	case "$1" in

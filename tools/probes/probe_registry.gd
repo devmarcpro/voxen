@@ -52,6 +52,8 @@ const PROBES := {
 	"--probe-assemblage":     "res://tools/probes/assembly_probe.gd",
 	"--probe-mains":          "res://tools/probes/hands_probe.gd",
 	"--probe-arbres":         "res://tools/probes/tree_probe.gd",
+	"--probe-plantes":        "res://tools/probes/plant_probe.gd",
+	"--probe-vitrine":        "res://tools/probes/showcase_probe.gd",
 	"--probe-pousses":        "res://tools/probes/sapling_probe.gd",
 	"--test-arbres":          "res://tools/probes/tree_capture_probe.gd",
 	"--probe-refonte-donjon": "res://tools/probes/dungeon_rework_probe.gd",

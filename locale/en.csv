@@ -915,7 +915,7 @@ ui.loi.saisie,"Unable to pay, one of your goods is seized."
 ui.loi.gardes_hostiles,The kingdom's guards are after you.
 ui.hud.cle.lois,Laws
 ui.hud.cle.localite,Settlement
-ui.hud.souris,Left click (hold): harvest/carve/attack · Right click: place
+ui.hud.souris,Left click (hold): harvest/sculpt/attack · Right click: place · Ctrl+right click: place/pick up an item
 ui.hud.hotbar,1-9/wheel: select · Ctrl+1-9/wheel: bank
 ui.input.move_forward,walk
 ui.input.jump,jump
@@ -1244,3 +1244,73 @@ material.bois_velours.name,Bois de velours
 material.feuillage_vin.name,Feuillage lie-de-vin
 material.bois_creux.name,Bois creux
 material.feuillage_ambre.name,Feuillage ambré
+material.herbe_haute.name,Tall grass
+material.roseau.name,Reed
+material.ble.name,Wheat
+material.orge.name,Barley
+material.avoine.name,Oat
+material.riz.name,Rice
+material.mais.name,Maize
+material.plant_tomate.name,Tomato plant
+material.plant_pomme_de_terre.name,Potato plant
+material.plant_carotte.name,Carrot tops
+material.plant_chou.name,Cabbage
+material.plant_oignon.name,Onion
+material.plant_courge.name,Squash
+material.plant_fraise.name,Strawberry plant
+material.vigne_raisin.name,Grapevine
+material.safran.name,Saffron
+material.poivrier.name,Pepper plant
+material.menthe.name,Mint
+material.thym.name,Thyme
+material.basilic.name,Basil
+material.camomille.name,Chamomile
+material.sauge.name,Sage
+material.coquelicot.name,Poppy
+material.bleuet.name,Cornflower
+material.marguerite.name,Daisy
+material.lavande_fleur.name,Lavender
+material.tournesol.name,Sunflower
+material.touffe_seche.name,Dry tuft
+material.seigle.name,Rye
+material.millet.name,Millet
+material.sarrasin.name,Buckwheat
+material.quinoa.name,Quinoa
+material.haricot.name,Bean
+material.pois.name,Pea
+material.lentille.name,Lentil
+material.navet.name,Turnip
+material.betterave.name,Beet
+material.radis.name,Radish
+material.panais.name,Parsnip
+material.epinard.name,Spinach
+material.laitue.name,Lettuce
+material.poireau.name,Leek
+material.artichaut.name,Artichoke
+material.asperge.name,Asparagus
+material.aubergine.name,Eggplant
+material.poivron.name,Bell pepper
+material.concombre.name,Cucumber
+material.melon.name,Melon
+material.ail.name,Garlic
+material.persil.name,Parsley
+material.romarin.name,Rosemary
+material.origan.name,Oregano
+material.coriandre.name,Coriander
+material.ortie.name,Nettle
+material.pissenlit.name,Dandelion
+material.trefle.name,Clover
+material.chardon.name,Thistle
+material.lin_plante.name,Flax
+material.pavot.name,Poppy
+material.objet.name,Placed item
+category.objet.name,Item
+ui.toast.objet_repris,Item picked back up
+ui.toast.objet_equipe,Equipped item: unequip it before placing it
+ui.menu.vitrine,Showcase world
+ui.menu.vitrine_aide,"Flat slab laid out with every piece of content, one row per category."
+vitrine.plantes,Plants
+vitrine.arbres,Trees
+vitrine.structures,Structures
+vitrine.overworld,Overworld
+vitrine.hors_monde,Items

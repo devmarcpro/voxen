@@ -137,6 +137,47 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 	# Lumière de bloc (G.3), calculée depuis le pad : il porte exactement le
 	# chunk + son voisinage immédiat, soit toute l'occlusion nécessaire.
 	# Retourne un tableau vide (donc gratuit) pour les chunks sans source.
+	# --- 1bis. BLOCS EN CROIX : retirés du pad, mis de côté (2026-08-04) ---
+	#
+	# Une herbe, un épi de blé, une fleur ne sont pas des cubes : ils sont
+	# dessinés par `PlantMesh` en quads croisés, plus bas. Deux conséquences,
+	# toutes deux nécessaires :
+	#
+	#   — ils NE DOIVENT PAS OCCULTER. Laissés dans le pad, le sol sous un champ
+	#     de blé perdrait sa face du dessus et le champ flotterait sur un trou
+	#     carré. On les remplace donc par de l'air AVANT le balayage des faces,
+	#     coquille comprise : un blé du chunk voisin ne doit pas davantage
+	#     boucher nos faces de bordure.
+	#   — ils ne doivent pas être meshés en cubes, ce que le retrait règle aussi.
+	#
+	# On les collecte au passage : la géométrie de la plante est émise après le
+	# balayage, et il faut savoir où elles étaient.
+	var cross_mask := GameData.cross_mask
+	var cross_count := cross_mask.size()
+	# LES OBJETS POSÉS SUIVENT LA MÊME RÈGLE DE PAD que les plantes — retirés
+	# avant le balayage — mais n'émettent RIEN : leur apparence est leur vrai
+	# modèle d'objet, monté en scène par PlacedItemManager. Un cube coloré à la
+	# place d'une épée, c'est ce qu'on voyait avant.
+	var hidden_mask := GameData.hidden_mask
+	var hidden_count := hidden_mask.size()
+	var plants: Array[Vector4i] = []
+	if cross_count > 0:
+		for i in pad.size():
+			var pid := pad[i]
+			if pid > 0 and pid < hidden_count and hidden_mask[pid] == 1:
+				pad[i] = 0
+				continue
+			if pid > 0 and pid < cross_count and cross_mask[pid] == 1:
+				pad[i] = 0
+				# Seules les plantes DE CE CHUNK sont dessinées par lui : celles
+				# de la coquille appartiennent au voisin, qui les émettra.
+				var py := i / SY
+				var rest := i % SY
+				var pz := rest / SZ
+				var px := rest % SZ
+				if px >= 1 and px <= T and py >= 1 and py <= T and pz >= 1 and pz <= T:
+					plants.append(Vector4i(px - 1, py - 1, pz - 1, pid))
+
 	var light := LightField.compute_from_pad(pad)
 
 	if profiling:
@@ -457,6 +498,92 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 	if profiling:
 		phase_us["subdiv"] += Time.get_ticks_usec() - t_phase
 		profiled_chunks += 1
+
+	# --- 4. PLANTES EN 2D (2026-08-04) ---
+	#
+	# Chaque bloc en croix rend un petit paquet de quads produit par `PlantMesh`
+	# depuis sa position MONDE : deux chunks regénérés à des moments différents
+	# donnent le même champ. Le mailleur ne connaît aucune botanique — il recopie
+	# des quads, l'espèce et la silhouette vivent en données.
+	#
+	# LES DEUX FACES SONT ÉMISES. Un quad vu de dos disparaîtrait, et la moitié
+	# d'un champ s'évanouirait selon l'endroit d'où on le regarde.
+	if not plants.is_empty():
+		# Le générateur est ABSENT en donjon (structure bâtie, pas terrain) :
+		# une graine de zéro y suffit, les plantes n'y poussent pas.
+		var plant_seed := generator.world_seed if generator != null else 0
+		var species_by_id := GameData.plant_species_by_runtime
+		var plant_atlas_index: Dictionary = GameData.plant_atlas_index
+		for plant: Vector4i in plants:
+			var species: Dictionary = species_by_id.get(plant.w, {})
+			if species.is_empty():
+				continue
+			var wx := cpos.x * T + plant.x
+			var wy := cpos.y * T + plant.y
+			var wz := cpos.z * T + plant.z
+			var quads := PlantMesh.build(species, wx, wy, wz, plant_seed)
+			if quads.is_empty():
+				continue
+			# Lumière du bloc porteur : une plante prend l'éclairage de sa case.
+			var lit := 1.0
+			if not light_empty:
+				lit = float(light[(plant.y + 1) * SY + (plant.z + 1) * SZ + plant.x + 1]) * inv_light
+			# ENCODAGE : la lumière tient dans `r` (le shader ne lit que ça), donc
+			# `g`, `b` et `a` sont LIBRES. On y met l'UV du sprite et un drapeau —
+			# plutôt qu'un second canal d'UV, qui aurait coûté huit octets par
+			# sommet SUR TOUT LE MONDE, plantes ou pas, dans un jeu de voxels.
+			# `a = 0.5` dit « ce sommet est une plante » ; 1.0 est le cas normal.
+			var atlas_cell := float(int(plant_atlas_index.get(plant.w, 0)))
+			var plant_uv := Vector2(float(plant.w), atlas_cell)
+			var centre := Vector3(float(plant.x) + 0.5, float(plant.y), float(plant.z) + 0.5)
+			for quad: PackedVector3Array in quads:
+				var a := centre + quad[0]
+				var b := centre + quad[1]
+				var c2 := centre + quad[2]
+				var d2 := centre + quad[3]
+				var normal := (b - a).cross(d2 - a).normalized()
+				if normal == Vector3.ZERO:
+					continue
+				# Les quatre coins du quad, dans l'ordre où PlantMesh les pose :
+				# bas-gauche, bas-droite, haut-droite, haut-gauche.
+				# LA CELLULE D'ATLAS FAIT DEUX BLOCS DE HAUT. Une plante d'un
+				# bloc ne doit donc lire que sa MOITIÉ BASSE, sinon son sprite
+				# est comprimé de moitié et les pixels cessent d'être carrés —
+				# ce qui se voit immédiatement à côté d'un bloc de terre.
+				var v_top := 1.0 if float(species.get("hauteur_image", 0.9)) > 1.0 else 0.5
+				var corner_uv := [Vector2(0.0, 0.0), Vector2(1.0, 0.0),
+						Vector2(1.0, v_top), Vector2(0.0, v_top)]
+				for side in 2:
+					while vc + 4 > vertices.size():
+						var grown := maxi(vertices.size() * 2, 1024)
+						vertices.resize(grown)
+						normals.resize(grown)
+						uvs.resize(grown)
+						colors.resize(grown)
+					while ic + 6 > indices.size():
+						indices.resize(maxi(indices.size() * 2, 1536))
+					vertices[vc] = a
+					vertices[vc + 1] = b if side == 0 else d2
+					vertices[vc + 2] = c2
+					vertices[vc + 3] = d2 if side == 0 else b
+					var face_normal := normal if side == 0 else -normal
+					# Le DOS du quad lit le sprite en MIROIR : sans ça, une plante
+					# vue de derrière montre son image retournée, ce qui se
+					# remarque sur tout ce qui n'est pas symétrique (un épi penché).
+					var order := [0, 1, 2, 3] if side == 0 else [0, 3, 2, 1]
+					for k in 4:
+						normals[vc + k] = face_normal
+						uvs[vc + k] = plant_uv
+						var cuv: Vector2 = corner_uv[order[k]]
+						colors[vc + k] = Color(lit, cuv.x, cuv.y, 0.5)
+					indices[ic] = vc
+					indices[ic + 1] = vc + 1
+					indices[ic + 2] = vc + 2
+					indices[ic + 3] = vc
+					indices[ic + 4] = vc + 2
+					indices[ic + 5] = vc + 3
+					vc += 4
+					ic += 6
 
 	if ic == 0:
 		return []

@@ -915,7 +915,7 @@ ui.loi.saisie,支払えないため、所持品を差し押さえられた。
 ui.loi.gardes_hostiles,王国の衛兵があなたを追っている。
 ui.hud.cle.lois,法
 ui.hud.cle.localite,集落
-ui.hud.souris,左クリック（長押し）：採取/掘削/攻撃 · 右クリック：設置
+ui.hud.souris,左クリック長押し：採取・彫る・攻撃 · 右クリック：設置 · Ctrl＋右クリック：物を置く/拾う
 ui.hud.hotbar,1-9/ホイール：選択 · Ctrl+1-9/ホイール：預ける
 ui.input.move_forward,前進
 ui.input.jump,ジャンプ
@@ -1244,3 +1244,73 @@ material.bois_velours.name,Bois de velours
 material.feuillage_vin.name,Feuillage lie-de-vin
 material.bois_creux.name,Bois creux
 material.feuillage_ambre.name,Feuillage ambré
+material.herbe_haute.name,高い草
+material.roseau.name,葦
+material.ble.name,小麦
+material.orge.name,大麦
+material.avoine.name,燕麦
+material.riz.name,稲
+material.mais.name,とうもろこし
+material.plant_tomate.name,トマトの株
+material.plant_pomme_de_terre.name,ジャガイモの株
+material.plant_carotte.name,人参の葉
+material.plant_chou.name,キャベツ
+material.plant_oignon.name,玉ねぎ
+material.plant_courge.name,南瓜
+material.plant_fraise.name,苺の株
+material.vigne_raisin.name,葡萄の木
+material.safran.name,サフラン
+material.poivrier.name,胡椒の木
+material.menthe.name,薄荷
+material.thym.name,タイム
+material.basilic.name,バジル
+material.camomille.name,カモミール
+material.sauge.name,セージ
+material.coquelicot.name,雛罌粟
+material.bleuet.name,矢車菊
+material.marguerite.name,雛菊
+material.lavande_fleur.name,ラベンダー
+material.tournesol.name,向日葵
+material.touffe_seche.name,枯れ草の茂み
+material.seigle.name,ライ麦
+material.millet.name,キビ
+material.sarrasin.name,そば
+material.quinoa.name,キヌア
+material.haricot.name,インゲン豆
+material.pois.name,エンドウ
+material.lentille.name,レンズ豆
+material.navet.name,カブ
+material.betterave.name,ビート
+material.radis.name,大根
+material.panais.name,パースニップ
+material.epinard.name,ほうれん草
+material.laitue.name,レタス
+material.poireau.name,ネギ
+material.artichaut.name,アーティチョーク
+material.asperge.name,アスパラガス
+material.aubergine.name,ナス
+material.poivron.name,ピーマン
+material.concombre.name,キュウリ
+material.melon.name,メロン
+material.ail.name,ニンニク
+material.persil.name,パセリ
+material.romarin.name,ローズマリー
+material.origan.name,オレガノ
+material.coriandre.name,コリアンダー
+material.ortie.name,イラクサ
+material.pissenlit.name,タンポポ
+material.trefle.name,クローバー
+material.chardon.name,アザミ
+material.lin_plante.name,亜麻
+material.pavot.name,ケシ
+material.objet.name,設置物
+category.objet.name,物品
+ui.toast.objet_repris,回収した
+ui.toast.objet_equipe,装備中：外してから置く
+ui.menu.vitrine,展示の世界
+ui.menu.vitrine_aide,平らな地面に全ての内容を種類ごとに並べる。
+vitrine.plantes,植物
+vitrine.arbres,木
+vitrine.structures,建物
+vitrine.overworld,地上
+vitrine.hors_monde,物品

@@ -23,6 +23,14 @@ const MUTATION_INTERVAL := 0.2
 
 const CREATURE_BENCH_COUNT := 50
 
+## MONDE VITRINE. Émis quand toutes les rangées sont posées ; `showcase` porte
+## alors le rapport de construction (positions par entrée de catalogue). La
+## sonde attend ce signal — sonder pendant la construction mesurerait une
+## vitrine à moitié bâtie, ce qui est la façon la plus sûre de rendre une
+## assertion vraie ou fausse pour la mauvaise raison.
+signal showcase_built
+var showcase: RefCounted = null
+
 var bench := false
 var mutation_bench := false
 var creature_bench := false
@@ -205,6 +213,23 @@ func _capture_path(file_name: String) -> String:
 ## RenderingServer y est un DUMMY, `frame_post_draw` ne se déclenche JAMAIS —
 ## l'attendre gelait le processus indéfiniment au lieu d'échouer. Même garde que
 ## Probe.screenshot() côté sondes.
+## Construit le monde vitrine (coroutine — elle rend la main entre les rangées).
+##
+## `preload` et non le `class_name` global : le cache de classes de Godot n'est
+## pas régénéré hors éditeur, et un script tout neuf référencé par son nom de
+## classe reste introuvable jusqu'au prochain lancement de l'éditeur.
+func build_showcase() -> void:
+	var builder: RefCounted = preload("res://systems/worldgen/showcase_builder.gd").new()
+	showcase = builder
+	var started := Time.get_ticks_msec()
+	await builder.build(self)
+	print("[VITRINE] %d entrée(s) de catalogue, %d bloc(s), %d rangée(s) en %d ms (dont %d ms de remaillage, %d ms d'attente moteur)." % [
+		(builder.get("positions") as Dictionary).size(), int(builder.get("blocks_written")),
+		(builder.get("rows") as Array).size(), Time.get_ticks_msec() - started,
+		int(builder.get("flush_ms")), int(builder.get("idle_ms"))])
+	showcase_built.emit()
+
+
 func _screenshot(file_name: String) -> void:
 	if DisplayServer.get_name() == "headless":
 		push_warning("Capture « %s » ignorée : mode headless (relancer avec fenêtre)." % file_name)
@@ -223,6 +248,17 @@ func _start_world(args: Array) -> void:
 	# ça, la poignée de main ne prouverait rien, les deux valant 1337 par
 	# défaut.
 	var forced_seed := args.find("--seed")
+	# MONDE PLAT (`-- --plat`), AVANT la création du générateur, pour la même
+	# raison que la graine forcée : `initialize_world` lit les paramètres UNE
+	# fois, et un drapeau posé après ne changerait plus rien.
+	# `--probe-vitrine` l'implique : la sonde n'a rien à vérifier ailleurs que
+	# sur la dalle, et `tools/run_probes.sh` ne passe qu'un drapeau par sonde.
+	if "--plat" in args or "--probe-vitrine" in args:
+		var config: Dictionary = SaveManager.active_config
+		var flat_params: Dictionary = (config.get("params", {}) as Dictionary).duplicate(true)
+		flat_params["terrain"] = "plat"
+		config["params"] = flat_params
+		SaveManager.active_config = config
 	WorldManager.initialize_world()
 	if forced_seed >= 0 and forced_seed + 1 < args.size():
 		# `adopt_world` ET PAS une écriture de config : une sauvegarde chargée a
@@ -300,6 +336,19 @@ func _start_world(args: Array) -> void:
 	var join_index := args.find("--join")
 	if join_index >= 0 and join_index + 1 < args.size():
 		NetworkManager.join(args[join_index + 1])
+
+	# LE MONDE VITRINE. Un monde plat n'a de sens que garni : c'est la même
+	# décision, prise une seule fois, plutôt qu'un second interrupteur que le
+	# joueur devrait penser à actionner.
+	#
+	# Reconstruit à CHAQUE démarrage et non une fois pour toutes : la
+	# construction est déterministe (graine d'arbre fixée par essence), donc
+	# rejouer écrit les mêmes blocs aux mêmes endroits, et les étiquettes — qui
+	# sont des nœuds, non persistables — reviennent avec. La contrepartie est
+	# assumée : le monde vitrine écrase ce qu'on aurait modifié DANS les rangées.
+	# C'est une vitrine, pas une partie.
+	if String((SaveManager.active_config.get("params", {}) as Dictionary).get("terrain", "")) == "plat":
+		build_showcase()
 
 	# Sondes de diagnostic (--probe-*, --test-*) : dispatch par TABLE, une sonde
 	# par fichier sous tools/probes/. Si l'une prend la main, elle mène le

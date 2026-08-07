@@ -597,7 +597,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			#   reste    → pose de bloc, comportement historique.
 			# `_equipped_weapon` lit l'emplacement SÉLECTIONNÉ, pas l'équipement :
 			# le clic droit porte donc bien sur l'objet en main.
-			if not _equipped_weapon().is_empty():
+			# CTRL + CLIC DROIT : poser / reprendre un OBJET au sol, en tant que
+			# bloc (2026-08-06). Testé AVANT tout le reste, et c'est délibéré :
+			# le cas qu'on veut le plus souvent poser est justement une arme,
+			# donc l'ordre habituel (arme → garde) rendrait la commande
+			# inutilisable sur la moitié du catalogue.
+			#
+			# La condition porte sur `pressed` ET sur Ctrl, jamais sur Ctrl
+			# seul : un RELÂCHEMENT fait avec Ctrl enfoncé doit continuer de
+			# tomber dans la branche de garde, sinon une garde levée sans Ctrl
+			# puis relâchée avec resterait levée pour toujours.
+			if button.ctrl_pressed and button.pressed:
+				_try_place_or_take_object()
+			elif not _equipped_weapon().is_empty():
 				_set_guard(button.pressed)
 			elif button.pressed:
 				if not _try_consume_held():
@@ -2652,7 +2664,15 @@ func cast_assembly(skill_id: String, slot: int) -> bool:
 	# construire un sort profond serait puni.
 	for module_id: String in SpellAssembly.modules_fired(compiled):
 		known_modules[module_id] = int(known_modules.get(module_id, 0)) + 1
-	skills.gain_xp(skill_id, 6.0)
+	# L'XP VA À LA COMPÉTENCE, PAS À LA FAMILLE. Côté sorts, la famille s'appelle
+	# « sorts » et n'est PAS une compétence : `data/skills/` n'en contient aucune
+	# de ce nom (les vraies sont `controle_mana`, `magie_offensive`,
+	# `magie_defensive`). `gain_xp` se contentait d'un avertissement et rendait
+	# la main — lancer des sorts ne faisait donc monter STRICTEMENT RIEN, en
+	# silence, depuis que les deux panneaux ont été séparés. `family_skill`
+	# existait déjà et fait exactement cette traduction ; elle n'était simplement
+	# pas appelée ici.
+	skills.gain_xp(family_skill(skill_id), 6.0)
 	return true
 
 
@@ -3507,6 +3527,86 @@ func _try_place() -> void:
 		inventory.add_volume(mat_name, volume)  # Remboursé.
 		if result == "budget":
 			EventBus.ui_notification.emit("ui.toast.budget_subdivision")
+
+
+# --- Objets posés au sol (Ctrl + clic droit, 2026-08-06) ---
+#
+# UN OBJET N'EST PAS UN DROP. Une épée posée est un BLOC : elle occupe sa case,
+# on marche autour, on la voit de loin, elle survit au rechargement comme le
+# reste du monde. Le drop existe déjà et répond à un autre besoin (butin de
+# mort, expiration au bout d'un jour).
+#
+# Le bloc porte le TYPE (`objet_<item_id>`, une entrée de palette par type) et
+# `PlacedItemManager` porte l'EXEMPLAIRE. La reprise rend l'instance stockée
+# telle quelle : poser puis reprendre ne doit jamais réparer ni améliorer quoi
+# que ce soit.
+
+## Ctrl + clic droit : reprendre ce qu'on vise, sinon poser ce qu'on tient.
+##
+## LA REPRISE PASSE EN PREMIER. Sans ça, poser un objet devant soi puis vouloir
+## le reprendre reposerait le suivant par-dessus, et la seule façon de récupérer
+## le premier serait de le miner.
+func _try_place_or_take_object() -> void:
+	if _try_take_object():
+		return
+	_try_place_object()
+
+
+func _try_take_object() -> bool:
+	if not _target_valid:
+		return false
+	var instance := PlacedItemManager.take(_target)
+	if instance.is_empty():
+		return false
+	# ORDRE OBLIGATOIRE : `take` a déjà effacé l'entrée AVANT que le bloc ne
+	# tombe. `PlacedItemManager` écoute `block_destroyed` pour rendre au sol
+	# l'objet d'un bloc miné par accident ; effacer après aurait donc fait
+	# tomber une COPIE au sol en plus de celle rendue à l'inventaire.
+	WorldManager.set_block(_target, 0)
+	inventory.add_object(instance)
+	EventBus.ui_notification.emit("ui.toast.objet_repris")
+	return true
+
+
+func _try_place_object() -> bool:
+	if not (_target_valid and _target_normal != Vector3i.ZERO):
+		return false
+	# UN OBJET ÉQUIPÉ NE SE POSE PAS. L'emplacement de combat montre l'arme
+	# portée, pas une ligne d'inventaire : la retirer par ce chemin laisserait
+	# l'équipement pointer sur un objet qui n'est plus nulle part.
+	if selected_slot == COMBAT_SLOT:
+		EventBus.ui_notification.emit("ui.toast.objet_equipe")
+		return false
+	var entry := _selected_entry()
+	if entry.get("kind", "") != "object":
+		return false
+	var held: Dictionary = entry["object"]
+	var cell := _placement_cell()
+	if cell.y < WorldManager.WORLD_Y_MIN or cell.y > WorldManager.WORLD_Y_MAX:
+		return false
+	if WorldManager.block_at_world(cell) != 0:
+		return false
+	var material_id := PlacedItemManager.material_for(held)
+	var runtime_id: int = GameData.material_runtime_ids.get(material_id, 0)
+	if runtime_id == 0:
+		return false
+	# UNE SEULE UNITÉ. Une pile de dix quartiers de viande pose un quartier :
+	# poser la pile entière dans un bloc rendrait dix objets pour une reprise,
+	# ce qui est la même faille que la réparation gratuite, en plus gros.
+	var placed_instance := held.duplicate(true)
+	if placed_instance.has("count"):
+		placed_instance["count"] = 1
+	if not inventory.remove_object_units(held, 1):
+		return false
+	# Le registre AVANT le bloc : `set_block` remaille et émet ses signaux
+	# immédiatement, et un abonné qui lirait le monde entre les deux verrait un
+	# bloc d'objet dont personne ne sait quel objet il est.
+	PlacedItemManager.remember(cell, placed_instance)
+	if not WorldManager.set_block(cell, runtime_id):
+		PlacedItemManager.forget(cell)
+		inventory.add_object(placed_instance)  # Remboursé.
+		return false
+	return true
 
 
 func _try_stock_stall() -> void:
