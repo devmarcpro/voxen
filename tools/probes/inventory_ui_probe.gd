@@ -79,7 +79,36 @@ func run() -> void:
 	main.add_child(menu)
 	await main.get_tree().process_frame
 
-	var ok := ok_autofill
+	# --- BUDGET D'OUVERTURE DE L'INVENTAIRE (2026-08-07) ---
+	#
+	# CE QUI EST DÉFENDU : que rouvrir l'inventaire ne gèle plus le jeu. Il a
+	# mesuré **2 267 ms pour 210 lignes** — trois quarts passés à redessiner un
+	# cube isométrique pixel par pixel, une image par couleur, avec une cache qui
+	# cessait silencieusement de cacher passé 512 entrées.
+	#
+	# LE SEUIL PORTE SUR LE GESTE RÉEL (ouvrir l'onglet), pas sur une fonction
+	# interne : c'est ce que le joueur subit. 120 ms est large au regard des
+	# ~15 ms attendus, et calé sur le bruit de cette machine (±35 %) — il attrape
+	# un retour au régime d'avant, pas une variation.
+	menu._select_tab("inventaire")
+	await main.get_tree().process_frame
+	var t_open := Time.get_ticks_usec()
+	menu._refresh_inventory()
+	var open_ms := (Time.get_ticks_usec() - t_open) / 1000.0
+	var built: int = 0
+	if menu._inv_list != null:
+		built = menu._inv_list.get_child_count()
+	print("[INVUI] ouverture de l'inventaire : %.1f ms pour %d entrée(s), %d nœud(s) bâti(s) (seuil 120 ms)" % [
+			open_ms, menu._inv_entries.size(), built])
+	var ok_open := open_ms < 120.0
+	# ET LA LISTE DOIT ÊTRE VIRTUALISÉE. Sans cette seconde condition, le budget
+	# serait tenu le jour où quelqu'un vide la liste par erreur : rien à bâtir,
+	# zéro milliseconde, assertion verte pour la pire des raisons.
+	var virtualise: bool = built > 0 and built < menu._inv_entries.size()
+	print("[INVUI] liste virtualisée : %s (%d nœuds pour %d entrées)" % [
+			"oui" if virtualise else "NON", built, menu._inv_entries.size()])
+
+	var ok := ok_autofill and ok_open and virtualise
 	var entries: Array[Dictionary] = menu._build_inventory_entries()
 	print("[INVUI] %d lignes d'inventaire construites" % entries.size())
 	ok = ok and entries.size() > 0

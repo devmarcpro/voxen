@@ -747,7 +747,8 @@ func _material_picker(category: String, callback: Callable) -> GridContainer:
 		# et vitesse) : les afficher évite de forger à l'aveugle.
 		button.tooltip_text = "%s — dureté %.0f · densité %.0f" % [
 			tr(mat["name_key"]), float(mat["stats"]["durete"]), float(mat["stats"]["densite"])]
-		button.icon = BlockIcon.cube_texture(Color.html(mat["color"]), 28)
+		button.icon = BlockIcon.cube_mask(28)
+		BlockIcon.tint_button(button, Color.html(mat["color"]))
 		button.expand_icon = true
 		button.pressed.connect(func() -> void: callback.call(mat_id))
 		grid.add_child(button)
@@ -1112,7 +1113,10 @@ func _creative_cell(rid: int, color: Color, name_text: String, callback: Callabl
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(CREATIVE_CELL, CREATIVE_CELL)
 	b.tooltip_text = name_text
-	b.icon = BlockIcon.cube_texture(color, CREATIVE_CELL - 6)
+	# La grille créative aligne les 507 matériaux : c'est la seconde liste longue
+	# du jeu, et elle paierait le même prix que l'inventaire sans le masque.
+	b.icon = BlockIcon.cube_mask(CREATIVE_CELL - 6)
+	BlockIcon.tint_button(b, color)
 	b.expand_icon = true
 	b.pressed.connect(callback)
 	if rid >= 0:

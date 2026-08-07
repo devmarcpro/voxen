@@ -34,6 +34,17 @@ var _current_tab := "inventaire"
 var _inv_sort_option: OptionButton
 var _inv_desc := false
 var _inv_list: VBoxContainer
+## Virtualisation de la liste d'inventaire (2026-08-07).
+## `_inv_entries` est la liste TRIÉE complète ; seule une fenêtre en est bâtie.
+var _inv_scroll: ScrollContainer
+var _inv_entries: Array[Dictionary] = []
+var _inv_row_height := 0.0
+var _inv_spacer_top: Control
+var _inv_spacer_bottom: Control
+var _inv_window := Vector2i(-1, -1)
+## Lignes construites au-delà de la fenêtre visible, en haut comme en bas :
+## sans marge, un défilement à la molette montre du vide le temps d'une frame.
+const INV_OVERSCAN := 4
 ## Hotbar intégrée à l'inventaire (2026-07-27) : bande d'emplacements
 ## assignables, cible du glisser-déposer depuis la liste.
 var _inv_hotbar: HBoxContainer
@@ -741,6 +752,14 @@ func _build_inventaire() -> Control:
 	_inv_list.add_theme_constant_override("separation", 2)
 	scroll.add_child(_inv_list)
 	box.add_child(scroll)
+	_inv_scroll = scroll
+	# LISTE VIRTUALISÉE : seules les lignes VISIBLES sont construites, et elles
+	# se reconstruisent au défilement. Un inventaire complet fait des centaines
+	# de lignes ; à ~1 ms la ligne, tout bâtir gèle l'ouverture, et le gel
+	# grandit avec la partie. C'est le seul des trois correctifs qui tienne
+	# encore à deux mille objets.
+	scroll.get_v_scroll_bar().value_changed.connect(func(_v: float) -> void: _refresh_visible_rows())
+	scroll.resized.connect(_refresh_visible_rows)
 
 	# Bande de hotbar : cible du glisser-déposer, et rappel permanent de ce
 	# qui est réellement accessible en jeu.
@@ -1000,12 +1019,59 @@ func _refresh_inventory() -> void:
 		return (not less) if _inv_desc else less)
 
 	if entries.is_empty():
+		_inv_entries = []
 		var empty := Label.new()
 		empty.text = tr("ui.inv.vide")
 		_inv_list.add_child(empty)
 		return
-	for entry: Dictionary in entries:
-		_inv_list.add_child(_inventory_row(entry))
+	_inv_entries = entries
+	# HAUTEUR DE LIGNE MESURÉE SUR UNE VRAIE LIGNE, pas devinée : elle dépend de
+	# la police et des surcharges de thème, et une estimation fausse décale la
+	# fenêtre visible d'autant plus qu'on descend.
+	if _inv_row_height <= 0.0:
+		var probe := _inventory_row(entries[0])
+		_inv_list.add_child(probe)
+		_inv_row_height = probe.custom_minimum_size.y + 2.0
+		probe.queue_free()
+		_inv_list.remove_child(probe)
+	# Deux cales portent la hauteur des lignes NON construites : la barre de
+	# défilement doit annoncer la taille de la liste ENTIÈRE, sinon on ne peut
+	# atteindre que ce qui est déjà bâti.
+	_inv_spacer_top = Control.new()
+	_inv_spacer_bottom = Control.new()
+	_inv_list.add_child(_inv_spacer_top)
+	_inv_list.add_child(_inv_spacer_bottom)
+	_inv_window = Vector2i(-1, -1)
+	_refresh_visible_rows()
+
+
+## (Re)construit la fenêtre de lignes visibles. Ne fait RIEN si la fenêtre n'a
+## pas bougé — le signal de défilement se déclenche à chaque pixel, et
+## reconstruire à chaque pixel serait pire que ne pas virtualiser du tout.
+func _refresh_visible_rows() -> void:
+	if _inv_list == null or _inv_scroll == null or _inv_entries.is_empty() or _inv_row_height <= 0.0:
+		return
+	var top := _inv_scroll.scroll_vertical
+	var height := maxf(_inv_scroll.size.y, 1.0)
+	var first := maxi(0, int(floorf(float(top) / _inv_row_height)) - INV_OVERSCAN)
+	var last := mini(_inv_entries.size() - 1,
+			int(ceilf((float(top) + height) / _inv_row_height)) + INV_OVERSCAN)
+	if Vector2i(first, last) == _inv_window:
+		return
+	_inv_window = Vector2i(first, last)
+	for child in _inv_list.get_children():
+		if child != _inv_spacer_top and child != _inv_spacer_bottom:
+			_inv_list.remove_child(child)
+			child.queue_free()
+	_inv_spacer_top.custom_minimum_size = Vector2(0, float(first) * _inv_row_height)
+	_inv_spacer_bottom.custom_minimum_size = Vector2(0,
+			float(_inv_entries.size() - 1 - last) * _inv_row_height)
+	var index := 1  # Juste après la cale du haut.
+	for i in range(first, last + 1):
+		var row := _inventory_row(_inv_entries[i])
+		_inv_list.add_child(row)
+		_inv_list.move_child(row, index)
+		index += 1
 
 
 ## Ligne d'inventaire : icône de bloc en CUBE (texturée si prête, sinon couleur)
@@ -1037,7 +1103,15 @@ func _inventory_row(entry: Dictionary) -> Control:
 		var obj: Dictionary = entry["obj"]                # outil : sprite teinté
 		var item: Dictionary = GameData.items.get(obj.get("item_id", ""), {})
 		tex = WeaponPreview.item_icon(item, obj.get("materials", {}), SWATCH_SIZE)
-	swatch.texture = tex if tex != null else BlockIcon.cube_texture(entry["swatch"], SWATCH_SIZE)
+	# MASQUE + TEINTE quand il n'y a pas encore d'icône rendue. Dessiner un cube
+	# coloré par ligne coûtait 8 ms — 1735 ms pour 210 lignes, les trois quarts
+	# du gel à l'ouverture de l'inventaire. La forme ne dépend pas de la couleur :
+	# on partage une seule texture par taille et le GPU fait la multiplication.
+	if tex != null:
+		swatch.texture = tex
+	else:
+		swatch.texture = BlockIcon.cube_mask(SWATCH_SIZE)
+		BlockIcon.tint_texture_rect(swatch, entry["swatch"])
 	swatch.custom_minimum_size = Vector2(SWATCH_SIZE, SWATCH_SIZE)
 	swatch.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	swatch.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

@@ -111,6 +111,11 @@ func _refresh() -> void:
 		_keys[i].modulate = Color(1, 0.92, 0.6, 1.0) if selected else Color(1, 1, 1, 0.55)
 		# Emplacement VIDE : depuis que la hotbar est assignable (2026-07-27),
 		# un slot non lié rend un dictionnaire vide au lieu d'être absent.
+		# TEINTE REMISE À BLANC EN TÊTE DE BOUCLE. Les vignettes partagent
+		# désormais un masque coloré par `modulate` : sans cette remise à zéro,
+		# une teinte survivrait au changement d'objet et la nouvelle icône —
+		# qui, elle, est déjà colorée — sortirait multipliée par l'ancienne.
+		_icons[i].modulate = Color.WHITE
 		if i >= entries.size() or entries[i].is_empty():
 			_heads[i].color = Color(0, 0, 0, 0.25)
 			_handles[i].visible = false
@@ -129,7 +134,8 @@ func _refresh() -> void:
 			# Ressource (viande, peau) : pastille colorée d'objet — pas de
 			# sprite dédié, et surtout pas l'apparence d'un bloc.
 			if tool_tex == null and obj.has("color"):
-				tool_tex = BlockIcon.item_texture(Color.html(String(obj["color"])), SLOT_SIZE - 12)
+				tool_tex = BlockIcon.item_mask(SLOT_SIZE - 12)
+				_icons[i].modulate = Color.html(String(obj["color"]))
 			if tool_tex != null:
 				_icons[i].texture = tool_tex
 				_heads[i].color = Color.TRANSPARENT
@@ -149,7 +155,14 @@ func _refresh() -> void:
 			_handles[i].visible = false
 			var rid: int = GameData.material_runtime_ids.get(entry["id"], 0)
 			var tex: Texture2D = BlockPreview.icon(rid)
-			_icons[i].texture = tex if tex != null else BlockIcon.cube_texture(Color.html(mat["color"]), SLOT_SIZE - 12)
+			# Masque partagé + teinte, comme les lignes d'inventaire : la hotbar
+			# se reconstruit à chaque changement de sélection, et redessiner
+			# neuf cubes colorés à chaque coup de molette n'a aucun sens.
+			if tex != null:
+				_icons[i].texture = tex
+			else:
+				_icons[i].texture = BlockIcon.cube_mask(SLOT_SIZE - 12)
+				BlockIcon.tint_texture_rect(_icons[i], Color.html(mat["color"]))
 			_counts[i].text = Inventory.format_volume(float(entry.get("volume", entry.get("count", 0))))
 			_slots[i].tooltip_text = tr(mat["name_key"])
 
