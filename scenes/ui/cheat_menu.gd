@@ -694,13 +694,33 @@ func _weapons_by_class() -> Array:
 	return out
 
 
-const WEAPON_CLASS_ORDER: Array[String] = ["tranchant", "percant", "contondant", ""]
+const WEAPON_CLASS_ORDER: Array[String] = [
+	"tranchant", "percant", "contondant", "distance", "magique", "",
+]
+## Libellé par classe. Une table plutôt qu'un accord grammatical calculé : la
+## première version composait « Armes %ses » sur le nom de la compétence, ce qui
+## marchait pour « tranchantes » et n'a plus aucun sens pour le tir et la magie,
+## qui n'ont pas de compétence homonyme.
+const WEAPON_CLASS_TITLES := {
+	"tranchant": "Armes tranchantes",
+	"percant": "Armes perçantes",
+	"contondant": "Armes contondantes",
+	"distance": "Armes à distance",
+	"magique": "Armes magiques",
+	"": "Outils",
+}
 
 
 func _weapon_class_title(class_id: String) -> String:
-	if class_id == "":
-		return "Outils"
-	return "Armes %ses" % tr("skill.%s.name" % class_id).to_lower()
+	return String(WEAPON_CLASS_TITLES.get(class_id, class_id))
+
+
+## Titre d'un groupe de l'onglet Objets : le libellé d'une classe d'arme, ou le
+## type capitalisé pour le reste.
+func _group_title(key: String) -> String:
+	if WEAPON_CLASS_TITLES.has(key) and key != "":
+		return String(WEAPON_CLASS_TITLES[key])
+	return key.capitalize()
 
 
 func _add_forge_section(title_text: String) -> void:
@@ -1279,20 +1299,38 @@ func _give_material(material_id: String) -> void:
 ## gemme, qualité) : dupliquer ici des sélecteurs de matériaux aurait fait deux
 ## états à tenir synchronisés pour le même geste.
 func _build_objects_tab() -> void:
-	var by_type := {}
+	# MÊME DÉCOUPAGE QU'AILLEURS : type d'objet, et pour les armes leur CLASSE.
+	# Ce bloc rangeait les vingt et une armes en une seule grille alphabétique
+	# où l'arbalète voisinait le bâton magique — la seconde liste d'armes du
+	# menu, oubliée quand la première a été groupée. Deux affichages du même
+	# catalogue qui ne le classent pas pareil, c'est le doublon habituel.
+	var by_group := {}
 	for item_id: String in GameData.items:
-		var item_type := String((GameData.items[item_id] as Dictionary).get("type", "?"))
-		if not by_type.has(item_type):
-			by_type[item_type] = []
-		(by_type[item_type] as Array).append(item_id)
+		var item: Dictionary = GameData.items[item_id]
+		var key := String(item.get("type", "?"))
+		if key == "arme":
+			key = String(item.get("weapon_class", "arme"))
+		if not by_group.has(key):
+			by_group[key] = []
+		(by_group[key] as Array).append(item_id)
 
-	var types: Array = by_type.keys()
-	types.sort()
-	for item_type: String in types:
-		var ids: Array = by_type[item_type]
+	# Les classes d'armes d'abord, dans leur ordre fixe ; les autres types
+	# ensuite, alphabétiquement. Une clé inconnue passe en queue plutôt que de
+	# disparaître.
+	var keys: Array = []
+	for key: String in WEAPON_CLASS_ORDER:
+		if key != "" and by_group.has(key):
+			keys.append(key)
+	var rest: Array = by_group.keys()
+	rest.sort()
+	for key: String in rest:
+		if not (key in keys):
+			keys.append(key)
+	for key: String in keys:
+		var ids: Array = by_group[key]
 		ids.sort()
 		_section_in(_objects_list, "%s (%d) — forgé aux réglages de l'Atelier" % [
-				item_type.capitalize(), ids.size()])
+				_group_title(key), ids.size()])
 		_content_grid(_objects_list, ids,
 			func(id: String) -> String: return _label_of(GameData.items, id),
 			_forge_any_item)

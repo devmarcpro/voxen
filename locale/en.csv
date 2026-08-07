@@ -1319,3 +1319,5 @@ item_type.armure.name,Armour
 item_type.bouclier.name,Shields
 item_type.outil.name,Tools
 item_type.livre.name,Books
+weapon_class.distance.name,Ranged
+weapon_class.magique.name,Magical

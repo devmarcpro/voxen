@@ -20,5 +20,6 @@
     "taille_gauche",
     "taille_droite",
     "overhead"
-  ]
+  ],
+  "famille": "magique"
 }

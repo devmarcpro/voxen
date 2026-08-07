@@ -404,7 +404,8 @@ func _object_group_of(item_id: String) -> String:
 
 
 const GROUP_ORDER: Array[String] = [
-	"tranchant", "percant", "contondant", "arme", "bouclier", "armure", "outil", "livre", "divers",
+	"tranchant", "percant", "contondant", "distance", "magique",
+	"arme", "bouclier", "armure", "outil", "livre", "divers",
 ]
 ## Clé de traduction par groupe. Les trois classes de dégâts empruntent celle de
 ## la COMPÉTENCE du même nom : le jeu nomme déjà ces familles, il serait absurde
@@ -413,6 +414,10 @@ const GROUP_LABELS := {
 	"tranchant": "skill.tranchant.name",
 	"percant": "skill.percant.name",
 	"contondant": "skill.contondant.name",
+	# Ces deux-là n'ont pas de compétence homonyme : le tir a `arc`/`arbalete`,
+	# la magie a `baton_magique`. Elles ont donc leur propre libellé.
+	"distance": "weapon_class.distance.name",
+	"magique": "weapon_class.magique.name",
 	"arme": "item_type.arme.name",
 	"bouclier": "item_type.bouclier.name",
 	"armure": "item_type.armure.name",

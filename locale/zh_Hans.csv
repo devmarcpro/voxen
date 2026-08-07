@@ -1319,3 +1319,5 @@ item_type.armure.name,护甲
 item_type.bouclier.name,盾牌
 item_type.outil.name,工具
 item_type.livre.name,书
+weapon_class.distance.name,远程
+weapon_class.magique.name,魔法

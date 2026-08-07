@@ -1319,3 +1319,5 @@ item_type.armure.name,Armures
 item_type.bouclier.name,Boucliers
 item_type.outil.name,Outils
 item_type.livre.name,Livres
+weapon_class.distance.name,À distance
+weapon_class.magique.name,Magiques

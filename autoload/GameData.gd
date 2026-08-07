@@ -1058,8 +1058,7 @@ func _load_items() -> void:
 		# des compétences du même nom. Sans ce champ, tout affichage voulant
 		# grouper les armes devrait rouvrir la fiche de fonctionnalité, ou pire,
 		# maintenir sa propre table.
-		item["weapon_class"] = String(functionalities.get(
-				String(item.get("functionality", "")), {}).get("type_degats", ""))
+		item["weapon_class"] = _weapon_class_of(String(item.get("functionality", "")))
 		# RANGEMENT PAR DOSSIER, vérifié. `data/items/<type>/` et, pour les armes,
 		# `data/items/arme/<type de dégâts>/`. Le classement est ainsi une DONNÉE
 		# portée par l'arborescence — comme la catégorie des matériaux et la
@@ -1077,6 +1076,32 @@ func _load_items() -> void:
 			_blocking_error("id d'objet dupliqué « %s »" % item["id"])
 		else:
 			items[item["id"]] = item
+
+
+## Classe d'une arme : ce qui décide de la famille à laquelle elle appartient.
+##
+## L'ORDRE DES TROIS TESTS EST LA RÈGLE. Une arme magique reste magique même si
+## elle frappe en contondant, et une arme de tir reste une arme de tir même si
+## sa flèche perce : ce qui définit la famille, c'est la FAÇON DE S'EN SERVIR,
+## et le type de dégâts ne la dit que pour la mêlée ordinaire.
+##
+## LE TIR EST DÉRIVÉ, LA MAGIE EST DÉCLARÉE, et la différence est voulue :
+##   — une arme de tir a une MUNITION, c'est un fait de sa fiche que rien ne
+##     peut contredire ; la déduire interdit qu'un arc soit un jour rangé
+##     ailleurs que sa mécanique ne le place ;
+##   — rien, dans les données, ne distinguait le bâton magique d'un gourdin :
+##     même `kind`, même `type_degats`, pas de mana, pas de sort. Le déduire du
+##     NOM ou de sa tête en cristal aurait été deviner. La fiche le dit
+##     (`famille: "magique"`), et une seconde arme magique le dira aussi.
+func _weapon_class_of(functionality_id: String) -> String:
+	var fonc: Dictionary = functionalities.get(functionality_id, {})
+	if fonc.is_empty():
+		return ""
+	if String(fonc.get("famille", "")) == "magique":
+		return "magique"
+	if String(fonc.get("munition", "")) != "":
+		return "distance"
+	return String(fonc.get("type_degats", ""))
 
 
 ## Essences d'arbres (TreeGenerator) : bois/feuilles doivent exister, hauteur
