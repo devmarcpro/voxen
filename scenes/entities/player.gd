@@ -2353,6 +2353,28 @@ func _advance_attack(delta: float) -> void:
 			if best_hit.is_empty() or float(hit["t"]) < float(best_hit["t"]):
 				best_hit = hit
 				best = creature
+	# LES JOUEURS EN DUEL SONT DES CIBLES, au même titre et par le même
+	# balayage (2026-08-08). Le duel AUTORISAIT les dégâts, mais rien ne les
+	# produisait : la lame traversait l'adversaire sans rien lui retirer.
+	#
+	# Le filtre est le duel, et rien d'autre. Un joueur hors duel n'est pas une
+	# cible « qu'on rate » : il n'est pas une cible du tout, et la lame doit
+	# passer au travers comme si de rien n'était — sinon on bloquerait un coup
+	# destiné à la créature derrière lui.
+	var me := multiplayer.get_unique_id()
+	for peer_id: int in NetworkManager.remote_bodies():
+		if not DuelManager.is_dueling(me, peer_id):
+			continue
+		var body: Node3D = NetworkManager.remote_bodies()[peer_id]
+		if not is_instance_valid(body) or not body.has_method("sweep_segment"):
+			continue
+		for i in head_now.size():
+			var hit: Dictionary = body.sweep_segment(head_before[i], head_now[i])
+			if hit.is_empty():
+				continue
+			if best_hit.is_empty() or float(hit["t"]) < float(best_hit["t"]):
+				best_hit = hit
+				best = body
 	if best == null:
 		# Rien touché, mais un mur a arrêté la lame : la frappe est consommée.
 		if wall_distance < INF:
@@ -2482,7 +2504,31 @@ func _resolve_pending_hits() -> void:
 			EventBus.damage_dealt.emit(hit.get("point", Vector3.ZERO), 0, false, true)
 			continue
 		var creature: Node = hit["creature"]
-		if not is_instance_valid(creature) or creature.is_dead():
+		if not is_instance_valid(creature):
+			continue
+		# UN JOUEUR EN DUEL SE RÉSOUT ICI AUSSI, par le même calcul de dégâts.
+		# Il n'a ni `is_dead`, ni aggro, ni loi à enfreindre, ni XP de faune à
+		# donner : ce qui suit ne le concerne pas, et le faire passer par la
+		# même suite l'aurait fait planter sur la première méthode absente.
+		#
+		# LES DÉGÂTS PARTENT EN DEMANDE, jamais en application : c'est l'hôte
+		# qui décide si ce coup était permis. Un client qui blesserait
+		# directement serait un client qu'on croit sur parole.
+		var duel_peer := int(creature.get("duel_peer_id")) if creature.has_method("sweep_segment") 				and creature.get("duel_peer_id") != null else 0
+		if duel_peer > 0:
+			var duel_result := CombatResolver.resolve_hit(
+				effective_stat("dexterite"), effective_stat("force"),
+				String(weapon_stats["dice"]),
+				float(hit["hardness"]), float(hit["quality"]), false, "",
+				float(hit["mult"]) * float(hit.get("sweet", 1.0)) * float(hit.get("speed", 1.0)),
+				float(weapon_stats["penetration"]))
+			NetworkManager.rpc_request_player_damage.rpc_id(1, duel_peer,
+				float(duel_result["damage"]))
+			EventBus.damage_dealt.emit(hit["point"], int(duel_result["damage"]),
+				bool(duel_result["critical"]), false)
+			_gain_combat_xp(weapon_stats, float(duel_result["damage"]))
+			continue
+		if creature.is_dead():
 			continue
 		# Le multiplicateur de ZONE est combiné au SWEET SPOT et au BONUS DE
 		# VITESSE : viser juste, à la bonne distance, en avançant. Les trois

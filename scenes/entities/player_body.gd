@@ -519,6 +519,10 @@ func update_as_entity(feet_position: Vector3, yaw: float, viewer_position: Vecto
 ## l'orientation du regard. Le tangage est répliqué parce que sans lui on ne
 ## voit pas où l'autre vise — information vitale dans un combat directionnel.
 func apply_remote_pose(feet_position: Vector3, yaw: float, pitch: float) -> void:
+	# LA POSITION LOGIQUE SUIT LA POSE. C'est l'origine des zones de coup : si
+	# elle restait en arrière, on frapperait là où l'avatar était il y a une
+	# demi-seconde — et le joueur verrait sa lame traverser sans rien toucher.
+	logical_position = feet_position
 	global_position = feet_position
 	rotation.y = yaw
 	_pitch = pitch
@@ -948,3 +952,53 @@ func mesh_names() -> Array:
 
 func skeleton() -> Skeleton3D:
 	return _skeleton
+
+
+# --- CIBLE DE DUEL (2026-08-08) --------------------------------------------
+#
+# Un corps de joueur DISTANT doit pouvoir être touché. Il l'est par le MÊME
+# balayage que les créatures, avec le MÊME gabarit de zones (`humanoide`) et la
+# MÊME fonction de test : une seconde géométrie pour les joueurs aurait garanti
+# qu'on ne frappe pas un homme comme on frappe un bandit — au sweet spot près,
+# à la zone près, et donc aux dégâts près.
+#
+# `duel_peer_id` vaut 0 sur le corps du joueur LOCAL : on ne se frappe pas
+# soi-même, et son corps est le même nœud que celui des autres.
+
+var duel_peer_id := 0
+var _duel_hitboxes: Array = []
+## Position au SOL, comme `Creature.logical_position` : c'est l'origine dont les
+## zones du gabarit sont exprimées.
+var logical_position := Vector3.ZERO
+
+
+## Zones de coup, résolues une fois depuis le gabarit humanoïde partagé.
+func _duel_zones() -> Array:
+	# LES GABARITS SONT DÉJÀ PARSÉS par GameData (Vector3, pas Array JSON) :
+	# `Creature._resolve_hitboxes` les prend tels quels, et les repasser par
+	# `parse_zones` lisait un Vector3 comme un tableau. Deux conventions pour la
+	# même donnée, et c'est celle qui existe qui fait foi.
+	if _duel_hitboxes.is_empty():
+		_duel_hitboxes = GameData.hitbox_templates.get("humanoide", [])
+	return _duel_hitboxes
+
+
+## Même contrat que `Creature.sweep_segment` : { "id", "mult", "t", "point" } de
+## la zone la plus proche le long du segment, ou {}.
+func sweep_segment(a: Vector3, b: Vector3) -> Dictionary:
+	if duel_peer_id <= 0:
+		return {}
+	var zones := _duel_zones()
+	var direction := b - a
+	if direction.length() < 0.0001 or zones.is_empty():
+		return {}
+	var local_a := a - logical_position
+	var best := {}
+	var best_t := 2.0
+	for zone: Dictionary in zones:
+		var hit := MeleeAttack.segment_aabb(local_a, direction, zone["min"], zone["max"])
+		if hit >= 0.0 and hit < best_t:
+			best_t = hit
+			best = {"id": zone["id"], "mult": float(zone["mult"]),
+				"t": hit, "point": a + direction * hit}
+	return best

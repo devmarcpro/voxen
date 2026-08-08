@@ -325,6 +325,10 @@ func _body_for(id: int) -> Node3D:
 		# mieux vaut une boîte visible qu'un joueur invisible.
 		body.queue_free()
 		body = _fallback_marker()
+	# CE CORPS EST UNE CIBLE POSSIBLE. Il ne le devient réellement qu'en duel —
+	# c'est `DuelManager` qui tranche —, mais sans cet identifiant le balayage
+	# ne saurait même pas à qui il a affaire.
+	body.set("duel_peer_id", id)
 	_remote_bodies[id] = body
 	return body
 
@@ -490,6 +494,12 @@ func rpc_apply_player_damage(amount: float) -> void:
 ## Identifiant du joueur distant le plus proche d'un point, ou 0. Les avatars
 ## sont la seule position d'autrui que ce camp connaisse : on la lit là où elle
 ## est déjà, plutôt que d'ouvrir un second canal pour la redemander.
+## Corps des joueurs distants, par identifiant. Exposé parce que le combat doit
+## pouvoir les balayer : ce sont les seules cibles humaines qu'il connaisse.
+func remote_bodies() -> Dictionary:
+	return _remote_bodies
+
+
 func nearest_peer(from: Vector3) -> int:
 	var best := 0
 	var best_distance := INF

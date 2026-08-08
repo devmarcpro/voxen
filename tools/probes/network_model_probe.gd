@@ -271,3 +271,33 @@ func _check_duels() -> void:
 	_expect(not DuelManager.is_dueling(3, 7),
 		"un joueur qui se déconnecte emporte ses duels avec lui")
 	DuelManager.active.clear()
+
+	# LE DUEL AUTORISE, MAIS IL FAUT AUSSI QUE LE COUP TOUCHE. C'est le manque
+	# que j'ai signalé en livrant l'arbitrage : les dégâts étaient permis, et
+	# rien ne les produisait — la lame traversait l'adversaire sans rien lui
+	# retirer, parce que le balayage ne testait que les créatures.
+	var body: Node3D = preload("res://scenes/entities/player_body.gd").new()
+	main.add_child(body)
+	body.setup(false)
+	body.set("duel_peer_id", 42)
+	body.set("logical_position", Vector3(100, 60, 100))
+	# Un segment qui traverse le TORSE, à hauteur d'homme.
+	var through: Dictionary = body.call("sweep_segment",
+		Vector3(99.0, 61.0, 100.0), Vector3(101.0, 61.0, 100.0))
+	_expect(not through.is_empty(),
+		"un corps de joueur se fait toucher par le balayage d'arme%s" % (
+			"" if through.is_empty() else " (zone %s)" % through.get("id", "?")))
+	# ET IL A DES ZONES, comme une créature : sans elles, une tête et un pied
+	# vaudraient le même coup, et tout le travail de visée serait perdu.
+	_expect(float(through.get("mult", 0.0)) > 0.0,
+		"et la zone touchée porte son multiplicateur (%.2f)" % float(through.get("mult", 0.0)))
+
+	# UN JOUEUR QUI N'EST PAS UNE CIBLE NE BLOQUE RIEN. `duel_peer_id` à zéro,
+	# c'est le corps du joueur LOCAL : la lame doit passer au travers, sinon on
+	# arrêterait un coup destiné à la créature derrière.
+	body.set("duel_peer_id", 0)
+	var ignored: Dictionary = body.call("sweep_segment",
+		Vector3(99.0, 61.0, 100.0), Vector3(101.0, 61.0, 100.0))
+	_expect(ignored.is_empty(),
+		"et un corps qui n'est pas une cible laisse la lame passer")
+	body.queue_free()
