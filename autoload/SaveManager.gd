@@ -67,6 +67,14 @@ const DISABLED_ARGS: Array[String] = [
 	# `--probe-vitrine` écrit des dizaines de milliers de blocs : sans cette
 	# ligne, chaque exécution les sauvegarderait dans le monde du joueur.
 	"--probe-vitrine",
+	# `--probe-combat` ÉQUIPE ET DÉSÉQUIPE sans arrêt (épée, dague, bouclier,
+	# arc, bâton). Sans cette ligne il RELIT l'équipement laissé par l'exécution
+	# précédente : `apply_default_character` ne vide pas l'équipement, si bien
+	# qu'un bouclier oublié faisait échouer « posture une_main » — et le verdict
+	# changeait d'un lancement à l'autre pour des raisons sans aucun rapport
+	# avec le code testé. C'est la leçon déjà payée sur `--probe-save-verify` et
+	# sur `--probe-assemblage`.
+	"--probe-combat",
 ]
 
 var enabled := true

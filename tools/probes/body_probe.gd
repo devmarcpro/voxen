@@ -35,6 +35,7 @@ func run() -> void:
 	ok = _check_ik_culling(body) and ok
 	ok = _check_skin(body) and ok
 	ok = _check_gait(body) and ok
+	ok = _check_walk_versus_run(body) and ok
 	ok = _check_creature_models() and ok
 	ok = await _check_collision_untouched() and ok
 	finish(ok, TAG)
@@ -668,3 +669,40 @@ func _all_meshes(node: Node) -> Array[MeshInstance3D]:
 	for child in node.get_children():
 		out.append_array(_all_meshes(child))
 	return out
+
+
+## MARCHE ET COURSE NE SE RESSEMBLENT PAS (2026-08-08).
+##
+## Le cycle de pas était piloté par la seule DISTANCE parcourue : courir faisait
+## tourner les jambes plus vite, avec exactement la même amplitude et le même
+## lever de pied qu'au pas. Une course ressemblait à une marche accélérée. C'est
+## le genre de défaut qui se voit tout de suite en jouant et que rien ne dit
+## jamais — aucune assertion ne portait sur l'AMPLITUDE.
+##
+## On mesure donc les deux extrêmes du même corps, en ne changeant QUE la
+## vitesse : à distance parcourue égale, la foulée et le lever doivent être plus
+## amples en course. Comparer deux corps ou deux réglages ne prouverait rien.
+func _check_walk_versus_run(body: Node3D) -> bool:
+	var ok := true
+	var amplitudes: Array[float] = []
+	for speed: float in [2.0, 12.0]:
+		# On réinitialise le lissage : le facteur de course est amorti, et
+		# enchaîner les deux mesures sans laisser retomber le premier ferait
+		# mesurer un état intermédiaire.
+		body.set("_run_amount", 0.0)
+		body.set("_gait_amount", 1.0)
+		var here := body.global_position
+		for i in 60:
+			body.call("update_as_entity", here, 0.0, here + Vector3(0.0, 2.0, 6.0), 1.0 / 60.0)
+			here += Vector3.FORWARD * (speed / 60.0)
+		amplitudes.append(float(body.get("_run_amount")))
+	var marche := amplitudes[0]
+	var course := amplitudes[1]
+	print("[%s] facteur de course : marche %.2f · course %.2f (doit croître)" % [TAG, marche, course])
+	var grows := course > marche + 0.3
+	print("[%s] la course allonge la foulée, elle n'accélère pas seulement : %s" % [
+		TAG, "OK" if grows else "ÉCHEC"])
+	var walk_flat := marche < 0.2
+	print("[%s] au pas, aucune amplitude de course : %s" % [
+		TAG, "OK" if walk_flat else "ÉCHEC"])
+	return ok and grows and walk_flat

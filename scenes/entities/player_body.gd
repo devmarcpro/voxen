@@ -147,9 +147,35 @@ const STRIDE_REACH := 0.22      # amplitude avant/arrière du pied
 const STEP_LIFT := 0.16         # hauteur à laquelle le pied se lève
 ## Retour à la station debout quand on s'arrête (par appel).
 const GAIT_SETTLE_SPEED := 0.12
+## COURSE (2026-08-08). Le cycle était piloté par la seule DISTANCE parcourue :
+## courir faisait donc tourner les jambes plus vite, avec exactement la même
+## amplitude et le même lever de pied qu'au pas. Une course ressemblait à une
+## marche accélérée — ce qui est le défaut classique, et ce qui se voit tout de
+## suite en jeu même si aucun chiffre ne le dit.
+##
+## On mesure la VITESSE (m/s) et non plus seulement le déplacement, et on en
+## tire un facteur d'amplitude : au-dessus du pas de marche, la foulée s'allonge
+## et le pied monte plus haut. La cadence, elle, reste portée par la distance —
+## c'est ce qui empêche les pieds de patiner sur le sol.
+const WALK_SPEED := 4.0         # m/s : au-delà, on court
+const RUN_SPEED := 8.0          # m/s : amplitude pleine de course
+const RUN_STRIDE_GAIN := 1.9    # allongement de la foulée à pleine course
+const RUN_LIFT_GAIN := 2.4      # le genou monte bien plus qu'il ne s'allonge
+## Lissage du facteur de course : sans lui, un à-coup de vitesse ferait sauter
+## l'amplitude d'une frame à l'autre et les jambes tressauteraient.
+const RUN_SETTLE_SPEED := 0.08
+## RESPIRATION AU REPOS. À l'arrêt, l'amplitude tombe à zéro et le corps se
+## FIGE parfaitement — ce qui se lit comme un bug d'affichage plutôt que comme
+## de l'immobilité. Un très léger va-et-vient du bassin suffit à dire « vivant ».
+const IDLE_BREATH_AMPLITUDE := 0.012
+const IDLE_BREATH_PERIOD := 3.4
 
 var _gait_phase := 0.0
 var _gait_amount := 0.0         # 0 = immobile, 1 = marche pleine
+## 0 = au pas, 1 = pleine course. Lissé (voir RUN_SETTLE_SPEED).
+var _run_amount := 0.0
+## Horloge de respiration au repos, en secondes.
+var _breath_time := 0.0
 var _last_ground_position := Vector3.ZERO
 var _has_last_position := false
 var _move_direction := Vector3.FORWARD
@@ -449,6 +475,13 @@ func _advance_gait(feet_position: Vector3) -> void:
 	delta.y = 0.0
 	_last_ground_position = feet_position
 	var distance := delta.length()
+	# VITESSE, et pas seulement distance : c'est elle qui distingue la marche de
+	# la course. Le pas de temps vient du frame_delta propagé par l'appelant ;
+	# à défaut on suppose 60 fps plutôt que de diviser par zéro.
+	var step := _frame_delta if _frame_delta > 0.0001 else 1.0 / 60.0
+	var speed := distance / step
+	var wanted_run := clampf((speed - WALK_SPEED) / maxf(RUN_SPEED - WALK_SPEED, 0.001), 0.0, 1.0)
+	_run_amount = move_toward(_run_amount, wanted_run, RUN_SETTLE_SPEED)
 	# Seuil : sous quelques millimètres par frame, c'est du bruit (dérive
 	# numérique, micro-ajustements), pas de la marche.
 	if distance > 0.0015:
@@ -459,8 +492,10 @@ func _advance_gait(feet_position: Vector3) -> void:
 		# À l'arrêt : on rend l'amplitude à zéro ET on ramène la phase vers un
 		# pied à plat, sinon le personnage se fige en plein pas.
 		_gait_amount = maxf(_gait_amount - GAIT_SETTLE_SPEED, 0.0)
+		_run_amount = maxf(_run_amount - RUN_SETTLE_SPEED, 0.0)
 		if _gait_amount <= 0.0:
 			_gait_phase = 0.0
+	_breath_time += step
 
 
 ## Pilotage d'une ENTITÉ non-joueur (créature, PNJ) : pose, marche et IK en un
@@ -628,11 +663,15 @@ func solve_legs() -> void:
 		# Cycle de marche : une jambe est en avance d'un demi-cycle sur l'autre.
 		if _gait_amount > 0.0:
 			var phase: float = _gait_phase + (0.0 if side == "droite" else PI)
-			foot_world += _move_direction * (cos(phase) * STRIDE_REACH * _gait_amount)
+			# La foulée S'ALLONGE à la course, et le pied monte PLUS encore : on
+			# lève le genou en courant, on ne fait pas que tendre la jambe.
+			var stride := STRIDE_REACH * (1.0 + (RUN_STRIDE_GAIN - 1.0) * _run_amount)
+			foot_world += _move_direction * (cos(phase) * stride * _gait_amount)
 			# Le pied ne se lève que sur la moitié « en vol » du cycle ; sur
 			# l'autre moitié il reste PLAQUÉ au bloc, ce qui est justement ce
 			# que l'IK de sol garantit.
-			foot_world.y += maxf(sin(phase), 0.0) * STEP_LIFT * _gait_amount
+			var lift := STEP_LIFT * (1.0 + (RUN_LIFT_GAIN - 1.0) * _run_amount)
+			foot_world.y += maxf(sin(phase), 0.0) * lift * _gait_amount
 		# BALLANT : le pied est tiré vers sa cible par un ressort, comme la main.
 		# Sans lui les jambes se téléportent d'une pose à l'autre en franchissant
 		# une marche — c'est net, et c'est mort.
@@ -662,6 +701,12 @@ func _apply_pelvis_drop() -> void:
 		needed = maxf(needed, required - reach)
 	_pelvis_drop = move_toward(_pelvis_drop, clampf(needed, 0.0, MAX_PELVIS_DROP), PELVIS_DROP_SPEED)
 	position.y -= _pelvis_drop
+	# RESPIRATION AU REPOS. Amplitude proportionnelle à l'IMMOBILITÉ : elle
+	# s'efface dès qu'on marche, où le cycle de pas fait déjà bouger le bassin.
+	# Sans elle, un personnage arrêté est parfaitement figé, ce qui se lit comme
+	# un bug d'affichage et non comme du repos — un corps vivant ne tient jamais
+	# tout à fait immobile.
+	position.y += sin(_breath_time / IDLE_BREATH_PERIOD * TAU) 		* IDLE_BREATH_AMPLITUDE * (1.0 - _gait_amount)
 
 
 ## Résout UNE jambe vers une cible en espace squelette. Extrait pour être
