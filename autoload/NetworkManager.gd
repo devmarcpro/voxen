@@ -271,3 +271,44 @@ func rpc_creature_despawn(net_id: int) -> void:
 	var creature := CreatureManager.by_net_id(net_id)
 	if creature != null:
 		CreatureManager.despawn(creature)
+
+
+# --- REGISTRES POSITIONNELS (2026-08-08) -----------------------------------
+#
+# Objets posés, pousses, coffres, caches au sol : quatre registres de MÊME
+# FORME — une clé de position, un contenu que le bloc ne sait pas dire. Ils se
+# répliquent donc de la même façon, et c'est voulu : quatre mécaniques
+# différentes pour quatre registres identiques auraient donné quatre façons de
+# se tromper.
+#
+# CE QU'ON DIFFUSE, C'EST LE RÉSULTAT, jamais le geste. On n'envoie pas « le
+# joueur a tourné l'objet », on envoie « voici l'orientation ». Un client qui
+# rejouerait le geste devrait connaître l'état d'avant, donc l'avoir reçu, donc
+# n'avoir manqué aucun message — une hypothèse qu'aucun réseau ne tient.
+
+@rpc("authority", "reliable")
+func rpc_placed_item(position: Vector3i, instance: Dictionary, yaw: int,
+		dimension: String) -> void:
+	PlacedItemManager.apply_remote_placed(position, instance, yaw, StringName(dimension))
+
+
+@rpc("authority", "reliable")
+func rpc_placed_item_removed(position: Vector3i) -> void:
+	PlacedItemManager.apply_remote_removed(position)
+
+
+@rpc("authority", "reliable")
+func rpc_sapling(position: Vector3i, species_id: String, planted_tick: int,
+		dimension: String) -> void:
+	SaplingManager.apply_remote_sapling(position, species_id, planted_tick,
+			StringName(dimension))
+
+
+@rpc("authority", "reliable")
+func rpc_sapling_removed(position: Vector3i) -> void:
+	SaplingManager.apply_remote_removed(position)
+
+
+@rpc("authority", "reliable")
+func rpc_chest_contents(position: Vector3i, contents: Dictionary) -> void:
+	ContainerManager.apply_remote_contents(position, contents)

@@ -48,26 +48,36 @@ func _measure_routed_edit() -> void:
 	for i in count:
 		WorldManager.set_block(origin + Vector3i(i % 8, i / 64, (i / 8) % 8), dirt)
 		WorldManager.set_block(origin + Vector3i(i % 8, i / 64, (i / 8) % 8), 0)
-	var routed_us := 0
-	var direct_us := 0
+	# MÉDIANE DES ÉCARTS APPARIÉS, pas moyenne des totaux. On compare deux
+	# grandeurs de ~11 ms dont chacune porte ±35 % de bruit sur cette machine :
+	# leur différence en porte donc plus d'une milliseconde, et un seuil de
+	# 0,10 ms était SOUS LA PRÉCISION DE LA MESURE — vert lancé seul, rouge sous
+	# la charge de la suite, sans qu'aucun code n'ait changé. C'est la faute déjà
+	# payée sur le seuil de spawn des créatures.
+	#
+	# Apparier les deux chemins à chaque itération annule la dérive de la
+	# machine ; prendre la médiane annule les à-coups (un remaillage de chunk
+	# voisin, un ramasse-miettes).
+	var deltas: Array[float] = []
 	for i in count:
 		var pos := origin + Vector3i(i % 8, i / 64, (i / 8) % 8)
 		var t0 := Time.get_ticks_usec()
 		WorldManager.set_block(pos, dirt)
 		WorldManager.set_block(pos, 0)
-		routed_us += Time.get_ticks_usec() - t0
+		var routed_one := Time.get_ticks_usec() - t0
 		var t1 := Time.get_ticks_usec()
 		WorldManager._apply_block(pos, dirt)
 		WorldManager._apply_block(pos, 0)
-		direct_us += Time.get_ticks_usec() - t1
-	var routed := float(routed_us) / float(count) / 1000.0
-	var direct := float(direct_us) / float(count) / 1000.0
-	print("[%s] cycle poser+retirer : routé %.4f ms · direct %.4f ms (surcoût %.4f)" % [
-		TAG, routed, direct, routed - direct])
-	# LE SEUIL PORTE SUR LE SURCOÛT. Le total est celui du remaillage synchrone,
-	# qui n'a rien à voir avec le routage et qui varie avec le voisinage.
-	_expect(absf(routed - direct) < 0.10,
-		"router en solo ne coûte rien de mesurable (écart %.4f ms)" % (routed - direct))
+		var direct_one := Time.get_ticks_usec() - t1
+		deltas.append(float(routed_one - direct_one) / 1000.0)
+	deltas.sort()
+	var median: float = deltas[deltas.size() / 2]
+	print("[%s] surcoût du routage : médiane %.4f ms sur %d cycles (min %.3f, max %.3f)" % [
+		TAG, median, count, deltas[0], deltas[deltas.size() - 1]])
+	# LE SEUIL EST CALÉ SUR LA PRÉCISION RÉELLE, pas sur un souhait : il attrape
+	# un routage qui coûterait quelque chose, pas le bruit d'une machine chargée.
+	_expect(absf(median) < 0.30,
+		"router en solo ne coûte rien de mesurable (médiane %.4f ms)" % median)
 
 
 func run() -> void:

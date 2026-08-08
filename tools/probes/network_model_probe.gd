@@ -42,6 +42,7 @@ func run() -> void:
 	_check_client_decides_nothing()
 	_check_same_construction()
 	_check_replay()
+	_check_registries()
 	finish(_ok, TAG)
 
 
@@ -127,3 +128,52 @@ func _check_replay() -> void:
 	var ghost := CreatureManager.by_net_id(9100)
 	if ghost != null:
 		CreatureManager.despawn(ghost)
+
+
+## 5. LES REGISTRES POSITIONNELS. Objets posés, pousses, coffres : quatre
+## registres de même forme, donc une même façon de se répliquer — et une même
+## façon de se tromper si l'un s'en écarte.
+##
+## CE QU'ON DÉFEND : qu'appliquer un message distant produise EXACTEMENT l'état
+## qu'aurait produit le geste local. Si les deux divergeaient, deux joueurs
+## verraient deux mondes et le solo ne le saurait jamais.
+func _check_registries() -> void:
+	var pos := Vector3i(950, 210, 950)
+
+	# OBJET POSÉ : l'instance doit revenir INTACTE (qualité, matériaux, usure).
+	# C'est la même promesse que la reprise en main : un objet reconstruit
+	# depuis sa fiche serait un objet neuf.
+	var sword := ItemFactory.craft("epee", {"bois": "chene", "minerai": "fer"}, 0.42)
+	sword["usure"] = 0.71
+	PlacedItemManager.apply_remote_placed(pos, sword, 2, &"overworld")
+	var back := PlacedItemManager.peek(pos)
+	_expect(not back.is_empty()
+			and is_equal_approx(float(back.get("quality", -1.0)), 0.42)
+			and is_equal_approx(float(back.get("usure", -1.0)), 0.71),
+		"un objet posé annoncé à distance garde son exemplaire exact")
+	_expect(int((PlacedItemManager.placed[pos] as Dictionary).get("yaw", -1)) == 2,
+		"et son orientation, qui est diffusée en ÉTAT et non en geste")
+	PlacedItemManager.apply_remote_removed(pos)
+	_expect(PlacedItemManager.peek(pos).is_empty(), "et son retrait annoncé l'efface")
+
+	# POUSSE : la miniature est RECONSTRUITE, pas transmise — elle est
+	# déterministe par position. On vérifie que le registre la retient avec son
+	# instant de plantation, qui décide de sa croissance.
+	var species := ""
+	for id: String in GameData.trees:
+		species = id
+		break
+	SaplingManager.apply_remote_sapling(pos, species, 1234, &"overworld")
+	var sapling: Dictionary = SaplingManager.saplings.get(pos, {})
+	_expect(String(sapling.get("species", "")) == species
+			and int(sapling.get("planted", -1)) == 1234,
+		"une pousse annoncée garde son essence ET son instant de plantation")
+	SaplingManager.apply_remote_removed(pos)
+	_expect(not SaplingManager.saplings.has(pos), "et son retrait l'efface")
+
+	# COFFRE : c'est le CONTENU ENTIER qui voyage, pas le mouvement d'objet.
+	# Deux joueurs puisant dans le même coffre à la même seconde sont le cas où
+	# une grammaire incrémentale se désynchronise.
+	ContainerManager.apply_remote_contents(pos, {"or": 7})
+	_expect(int((ContainerManager.contents(pos) as Dictionary).get("or", 0)) == 7,
+		"le contenu d'un coffre s'applique tel qu'annoncé")

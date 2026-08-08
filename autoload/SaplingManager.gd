@@ -62,12 +62,22 @@ func plant(pos: Vector3i, species_id: String) -> bool:
 		"planted": TickManager.tick_index,
 		"dimension": WorldManager.active_dimension,
 	}
+	# L'INSTANT DE PLANTATION EST DIFFUSÉ, jamais relu de l'horloge locale : les
+	# deux camps partagent le tick (recalage host-autoritaire), mais un client
+	# qui inscrirait « planté maintenant » à la réception verrait sa pousse
+	# grandir plus tard que celle de l'hôte, et l'écart croîtrait à chaque
+	# plantation.
+	if NetworkManager.is_authority() and NetworkManager.has_peers():
+		NetworkManager.rpc_sapling.rpc(pos, species_id, TickManager.tick_index,
+				String(WorldManager.active_dimension))
 	return true
 
 
 ## Retire une pousse du registre (arrachée, minée, ou devenue arbre).
 func forget(pos: Vector3i) -> void:
 	saplings.erase(pos)
+	if NetworkManager.is_authority() and NetworkManager.has_peers():
+		NetworkManager.rpc_sapling_removed.rpc(pos)
 
 
 func count() -> int:
@@ -81,6 +91,16 @@ func count() -> int:
 ## village a coûté (mesuré à 62 ms en jeu), et pour la même raison — un arbre
 ## est aujourd'hui plusieurs centaines de blocs.
 func _on_tick(_tick_index: int) -> void:
+	# LES DEUX CAMPS FONT POUSSER, ET C'EST VOLONTAIRE. J'ai d'abord réservé la
+	# croissance à l'autorité, par réflexe ; c'est le mauvais modèle ici.
+	#
+	# Une pousse est de la SIMULATION, pas une décision : son résultat ne dépend
+	# que de la position, de l'instant de plantation et de la graine du monde —
+	# trois choses que les deux camps partagent (registre répliqué, horloge
+	# recalée par l'hôte, poignée de main de graine). Chacun rejoue donc le même
+	# arbre, et l'on n'envoie rien du tout. C'est exactement le raisonnement déjà
+	# retenu pour les fluides, et il vaut ici pour une raison de plus : un arbre
+	# fait des milliers de blocs, les diffuser serait ruineux.
 	if saplings.is_empty():
 		return
 	var mature := Vector3i.ZERO
@@ -122,12 +142,12 @@ func _grow(pos: Vector3i) -> void:
 	# Le vidage est explicite ici et non laissé au tick : la croissance doit se
 	# voir dans la frame où elle a lieu, pas à la suivante.
 	#
-	# CONSÉQUENCE RÉSEAU, à dire plutôt qu'à taire : `set_block` routait en RPC,
-	# le chemin batché non. La croissance devient donc locale — ce qui est déjà
-	# le cas de tout ce qui a été écrit depuis le 2026-07-20 (les pousses ne sont
-	# répliquées nulle part ailleurs : ni le registre, ni la plantation) et ce
-	# qui reste juste tant que les deux camps partagent tick et graine. À
-	# reprendre avec le reste de la réplication, pas avant.
+	# RÉSEAU : rien n'est diffusé ici, et c'est correct depuis que le REGISTRE
+	# l'est (2026-08-08). Les deux camps tiennent la même liste de pousses, la
+	# même horloge et la même graine : ils écrivent le même arbre au même tick.
+	# Diffuser les blocs en plus enverrait des milliers de messages pour une
+	# information que le client sait déjà calculer — et les deux sources
+	# pourraient se contredire.
 	var blocks: Dictionary = tree["blocks"]
 	for block_pos: Vector3i in blocks:
 		WorldManager.set_block_batched(block_pos, blocks[block_pos])
@@ -142,6 +162,32 @@ func _grow(pos: Vector3i) -> void:
 ## doivent pas être le même modèle réduit au voxel près.
 func _seed_at(pos: Vector3i) -> int:
 	return absi((pos.x * 73856093) ^ (pos.y * 19349663) ^ (pos.z * 83492791))
+
+
+# --- Réplication (2026-08-08) ---
+#
+# La POUSSE se réplique ; sa CROISSANCE non. C'est délibéré : l'arbre est écrit
+# dans le monde par des mutations de blocs, et celles-là passent déjà par
+# l'autorité. Répliquer en plus l'événement « elle a poussé » enverrait deux
+# fois la même information, et les deux pourraient se contredire.
+
+func apply_remote_sapling(pos: Vector3i, species_id: String, planted_tick: int,
+		dimension: StringName) -> void:
+	var species: Dictionary = GameData.trees.get(species_id, {})
+	if species.is_empty():
+		return
+	# LA MINIATURE EST RECONSTRUITE, PAS TRANSMISE : elle est déterministe par
+	# position (`_seed_at`), donc identique des deux côtés. L'envoyer coûterait
+	# 512 entiers par pousse pour un résultat qu'on sait déjà calculer.
+	var grid := TreeGenerator.sapling_grid(species, _seed_at(pos))
+	if not grid.is_empty():
+		WorldManager.set_subdiv_grid(pos, grid, SubdivGrid.dominant_id(grid))
+	saplings[pos] = {"species": species_id, "planted": planted_tick,
+		"dimension": dimension}
+
+
+func apply_remote_removed(pos: Vector3i) -> void:
+	saplings.erase(pos)
 
 
 # --- Sauvegarde (E.10, via SaveManager) ---

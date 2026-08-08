@@ -158,6 +158,7 @@ func store_material(pos: Vector3i, material_id: String, count: int) -> bool:
 
 
 # --- Sauvegarde (E.10, via SaveManager) ---
+	broadcast(pos)
 
 func save_state() -> Dictionary:
 	var out := {}
@@ -191,3 +192,21 @@ func restore_state(data: Dictionary) -> void:
 			"dimension": StringName(chest.get("dimension", "overworld")),
 			"material": String(chest.get("material", "coffre")),
 		}
+
+
+# --- Réplication (2026-08-08) ---
+#
+# LE CONTENU ENTIER EST DIFFUSÉ, pas le mouvement d'objet. Un coffre contient
+# quelques piles : envoyer l'état complet coûte moins qu'une grammaire de
+# « retire ceci, ajoute cela », et surtout ça ne peut pas dériver. Deux joueurs
+# qui puisent dans le même coffre à la même seconde sont exactement le cas où
+# une grammaire incrémentale se désynchronise, et où l'état complet ne le peut
+# pas.
+
+func broadcast(pos: Vector3i) -> void:
+	if NetworkManager.is_authority() and NetworkManager.has_peers():
+		NetworkManager.rpc_chest_contents.rpc(pos, contents(pos))
+
+
+func apply_remote_contents(pos: Vector3i, data: Dictionary) -> void:
+	chests[pos] = data.duplicate(true)

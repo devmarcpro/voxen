@@ -87,6 +87,7 @@ func remember(pos: Vector3i, instance: Dictionary, yaw: int = 0) -> void:
 		"yaw": posmod(yaw, QUARTER_TURNS),
 	}
 	refresh_markers()
+	_broadcast(pos)
 
 
 ## Instance posée en `pos` dans la dimension COURANTE, ou {} — sans la retirer.
@@ -110,12 +111,14 @@ func take(pos: Vector3i) -> Dictionary:
 		return {}
 	placed.erase(pos)
 	refresh_markers()
+	_broadcast_removed(pos)
 	return instance
 
 
 func forget(pos: Vector3i) -> void:
 	placed.erase(pos)
 	refresh_markers()
+	_broadcast_removed(pos)
 
 
 func count() -> int:
@@ -137,6 +140,9 @@ func rotate(pos: Vector3i) -> bool:
 	var entry: Dictionary = placed[pos]
 	entry["yaw"] = posmod(int(entry.get("yaw", 0)) + 1, QUARTER_TURNS)
 	refresh_markers()
+	# ON DIFFUSE L'ORIENTATION, PAS LE GESTE. « Il a tourné » obligerait le
+	# client à connaître l'état d'avant, donc à n'avoir manqué aucun message.
+	_broadcast(pos)
 	return true
 
 
@@ -212,6 +218,40 @@ func refresh_markers() -> void:
 		visual.in_hand = false
 		pivot.add_child(visual)
 		_markers.append(pivot)
+
+
+# --- Réplication (2026-08-08) ---
+#
+# L'autorité applique puis annonce ; le client se contente d'appliquer ce qu'on
+# lui annonce. Les fonctions `apply_remote_*` écrivent dans le MÊME registre et
+# rafraîchissent le MÊME rendu que le chemin local : il n'y a pas de « version
+# client » de l'objet posé.
+
+func _broadcast(pos: Vector3i) -> void:
+	if not (NetworkManager.is_authority() and NetworkManager.has_peers()):
+		return
+	var entry: Dictionary = placed.get(pos, {})
+	if entry.is_empty():
+		return
+	NetworkManager.rpc_placed_item.rpc(pos, entry["item"], int(entry.get("yaw", 0)),
+			String(entry.get("dimension", "overworld")))
+
+
+func _broadcast_removed(pos: Vector3i) -> void:
+	if NetworkManager.is_authority() and NetworkManager.has_peers():
+		NetworkManager.rpc_placed_item_removed.rpc(pos)
+
+
+func apply_remote_placed(pos: Vector3i, instance: Dictionary, yaw: int,
+		dimension: StringName) -> void:
+	placed[pos] = {"item": instance.duplicate(true), "dimension": dimension,
+		"yaw": posmod(yaw, QUARTER_TURNS)}
+	refresh_markers()
+
+
+func apply_remote_removed(pos: Vector3i) -> void:
+	placed.erase(pos)
+	refresh_markers()
 
 
 # --- Sauvegarde (E.10, via SaveManager) ---
