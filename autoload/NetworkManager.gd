@@ -205,6 +205,59 @@ func rpc_broadcast_pose(pos: Vector3, yaw: float, pitch: float) -> void:
 		body.global_position = pos
 
 
+# --- CE QUE L'AUTRE JOUEUR TIENT ET FAIT (2026-08-08) ----------------------
+#
+# La pose ne suffisait pas. Un joueur distant était un mannequin DÉSARMÉ, sans
+# geste : on ne voyait ni ce qu'il tenait, ni qu'il armait un coup, ni de quel
+# côté. Dans un jeu où l'on pare EN LISANT LE CORPS de l'adversaire — c'est la
+# règle de Mount & Blade, et c'est ce que tout le combat directionnel suppose —,
+# ça ne rend pas le duel imparfait : ça le rend impossible.
+#
+# DEUX MESSAGES, ET PAS UN SEUL, parce que leurs cadences n'ont rien à voir.
+# L'ARME change rarement (on dégaine, on range) : message FIABLE, envoyé au
+# changement. Le GESTE change à la frame : message NON FIABLE, envoyé avec la
+# pose — un geste perdu est remplacé par le suivant un vingtième de seconde
+# plus tard, tandis qu'une arme perdue laisserait les mains vides pour toujours.
+
+@rpc("any_peer", "reliable")
+func rpc_broadcast_weapon(item_id: String, materials: Dictionary) -> void:
+	var sender := multiplayer.get_remote_sender_id()
+	if sender == 0:
+		return
+	var body := _body_for(sender)
+	if body == null:
+		return
+	if item_id == "":
+		body.attach_weapon_model(null, 1.0)
+		return
+	# L'ASSEMBLAGE EST RECONSTRUIT LOCALEMENT, à partir de l'id et des matériaux
+	# — deux chaînes et un petit dictionnaire. Envoyer le modèle serait
+	# impensable, et le reconstruire par `WeaponPreview.assemble` garantit que
+	# l'arme vue chez l'autre est LA MÊME que celle qu'il voit dans sa main :
+	# c'est déjà la fonction que sa propre main appelle.
+	var item: Dictionary = GameData.items.get(item_id, {})
+	if item.is_empty():
+		return
+	var model := WeaponPreview.assemble(item, materials)
+	if model != null:
+		body.attach_weapon_model(model,
+			preload("res://scenes/entities/held_item.gd").PART_SCALE)
+
+
+@rpc("any_peer", "unreliable")
+func rpc_broadcast_gesture(direction: int, ratio: float, phase: String) -> void:
+	var sender := multiplayer.get_remote_sender_id()
+	if sender == 0:
+		return
+	var body := _body_for(sender)
+	# `set_combat_pose` est LA MÊME fonction que celle des créatures : ce qu'on
+	# voit d'un joueur distant est ce qu'on voit d'un PNJ, donc ce qu'on a appris
+	# à lire sur soi. Un second système d'animation pour les avatars aurait
+	# garanti que les deux divergent.
+	if body != null and body.has_method("set_combat_pose"):
+		body.set_combat_pose(direction, ratio, phase)
+
+
 func _body_for(id: int) -> Node3D:
 	if _remote_bodies.has(id):
 		return _remote_bodies[id]

@@ -43,6 +43,7 @@ func run() -> void:
 	_check_same_construction()
 	_check_replay()
 	_check_registries()
+	_check_remote_player()
 	finish(_ok, TAG)
 
 
@@ -177,3 +178,47 @@ func _check_registries() -> void:
 	ContainerManager.apply_remote_contents(pos, {"or": 7})
 	_expect(int((ContainerManager.contents(pos) as Dictionary).get("or", 0)) == 7,
 		"le contenu d'un coffre s'applique tel qu'annoncé")
+
+
+## 6. CE QU'ON VOIT D'UN AUTRE JOUEUR.
+##
+## Un joueur distant était un mannequin DÉSARMÉ et sans geste : on ne voyait ni
+## ce qu'il tenait, ni qu'il armait un coup, ni de quel côté. Dans un jeu où
+## l'on pare EN LISANT LE CORPS de l'adversaire, ça ne rend pas le duel
+## imparfait, ça le rend impossible.
+##
+## CE QU'ON DÉFEND : que le geste diffusé décrive VRAIMENT ce que le joueur
+## fait, dans le vocabulaire que le corps sait rejouer. Un dictionnaire vide ou
+## figé passerait toutes les autres assertions du réseau sans que rien ne
+## bouge à l'écran.
+func _check_remote_player() -> void:
+	var vocabulaire := ["port", "windup", "armee", "strike", "recover", "garde"]
+
+	var at_rest: Dictionary = player.combat_gesture()
+	_expect(String(at_rest.get("phase", "")) == "port",
+		"au repos, le geste annoncé est le port d'arme")
+
+	# GARDE LEVÉE : la phase doit le dire. C'est ce qui permet à l'adversaire de
+	# voir de quel côté on s'est protégé, donc de choisir l'autre.
+	player.call("_set_guard", true)
+	var guarding: Dictionary = player.combat_gesture()
+	_expect(String(guarding.get("phase", "")) == "garde",
+		"une garde levée s'annonce comme une garde, avec son côté")
+	player.call("_set_guard", false)
+
+	# ATTAQUE ENGAGÉE : la phase doit suivre la machine à états, et la direction
+	# être celle du coup qui part.
+	player.call("_begin_attack")
+	var swinging: Dictionary = player.combat_gesture()
+	_expect(String(swinging.get("phase", "")) in vocabulaire
+			and String(swinging.get("phase", "")) != "port",
+		"un coup engagé s'annonce dans une phase de combat (%s)" % swinging.get("phase", ""))
+	_expect(int(swinging.get("direction", -1)) >= 0,
+		"et il annonce SA direction, celle que l'adversaire doit lire")
+
+	# LE VOCABULAIRE EST CELUI DU CORPS. S'il en dérivait, le message
+	# arriverait et ne produirait aucune pose — un avatar figé pendant qu'on se
+	# fait frapper, sans qu'aucune assertion ne bronche.
+	var body: Node = main.get_node_or_null("PlayerBody")
+	_expect(body != null and body.has_method("set_combat_pose"),
+		"le corps sait rejouer ce vocabulaire (set_combat_pose)")

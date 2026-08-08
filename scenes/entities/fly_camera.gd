@@ -110,6 +110,9 @@ var _walk_velocity := Vector3.ZERO
 ## jamais de logique de jeu ici (E.1).
 const NETWORK_SYNC_INTERVAL := 1.0 / 15.0
 var _network_sync_timer := 0.0
+## Dernière arme annoncée aux autres. Sert à n'envoyer QUE les changements :
+## l'arme bouge une fois par minute, la pose vingt fois par seconde.
+var _last_weapon_key := "(jamais annoncee)"
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -194,6 +197,24 @@ func _process(delta: float) -> void:
 			# notre avatar chez les autres pour une raison qu'ils ne voient pas.
 			NetworkManager.rpc_broadcast_pose.rpc(global_position,
 				rotation.y - _applied_shake.y, rotation.x - _applied_shake.x)
+			# LE GESTE PART AVEC LA POSE. Sans lui, l'autre joueur est un
+			# mannequin : on ne voit ni qu'il arme, ni de quel côté, et un
+			# combat qui se pare EN LISANT LE CORPS devient impossible.
+			var player := get_node_or_null("../Player")
+			if player != null and player.has_method("combat_gesture"):
+				var gesture: Dictionary = player.combat_gesture()
+				NetworkManager.rpc_broadcast_gesture.rpc(int(gesture["direction"]),
+					float(gesture["ratio"]), String(gesture["phase"]))
+				# L'ARME, elle, ne part qu'AU CHANGEMENT : elle change quand on
+				# dégaine, la pose change à chaque frame. Les envoyer ensemble
+				# aurait fait passer une chaîne et un dictionnaire vingt fois par
+				# seconde pour une information qui bouge une fois par minute.
+				var held: Dictionary = player.call("_equipped_weapon")
+				var key := "%s|%s" % [held.get("item_id", ""), str(held.get("materials", {}))]
+				if key != _last_weapon_key:
+					_last_weapon_key = key
+					NetworkManager.rpc_broadcast_weapon.rpc(
+						String(held.get("item_id", "")), held.get("materials", {}))
 
 
 

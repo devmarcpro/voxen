@@ -3701,6 +3701,34 @@ func _is_consumable(entry: Dictionary) -> bool:
 	return false
 
 
+## CE QUE LE CORPS FAIT, pour que les autres joueurs le voient (2026-08-08).
+##
+## Retourne { direction, ratio, phase } dans le vocabulaire de
+## `PlayerBody.set_combat_pose` — la MÊME fonction que celle des créatures. Un
+## joueur distant se lit donc exactement comme un PNJ, et ce qu'on a appris à
+## lire sur l'un vaut pour l'autre. Un second vocabulaire pour les avatars
+## aurait garanti que les deux divergent.
+##
+## Les phases suivent la machine à états de l'attaque ; la garde en est une,
+## parce qu'elle se lit tout autant : voir qu'un adversaire s'est protégé, et de
+## quel côté, est ce qui permet de le punir.
+func combat_gesture() -> Dictionary:
+	if _guard_active:
+		return {"direction": _guard_direction, "ratio": 1.0, "phase": "garde"}
+	if not _attack.is_busy():
+		return {"direction": _attack.direction, "ratio": 0.0, "phase": "port"}
+	var phase := "windup"
+	match _attack.state:
+		MeleeAttack.State.ARMEE:
+			phase = "armee"
+		MeleeAttack.State.RELEASE:
+			phase = "strike"
+		MeleeAttack.State.RECOVERY:
+			phase = "recover"
+	return {"direction": _attack.strike_direction(), "ratio": _attack.phase_ratio,
+		"phase": phase}
+
+
 ## Entrée sélectionnée (API publique — vue première personne, UI).
 func held_entry() -> Dictionary:
 	return _selected_entry()
