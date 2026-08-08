@@ -596,11 +596,30 @@ func is_block_loaded(pos: Vector3i) -> bool:
 ## façon asynchrone via la diffusion du host — pas de prédiction/retour en
 ## arrière à cette étape, simplification assumée).
 func set_block(pos: Vector3i, material_id: int) -> bool:
-	if not NetworkManager.is_multiplayer_active():
-		return _apply_block(pos, material_id)
-	if NetworkManager.is_host:
-		rpc_apply_block.rpc(pos, material_id)
-		return true
+	# UN SEUL CHEMIN D'APPLICATION, EN SOLO COMME EN RÉSEAU (2026-08-08).
+	#
+	# Il y en avait deux : solo → application directe, réseau → RPC. Le chemin
+	# réseau n'était donc JAMAIS exercé — le seul code testé était celui qui ne
+	# sert pas en multijoueur, et c'est ce qui rend un « portage réseau »
+	# interminable : on découvre à deux machines ce qu'on aurait dû voir seul.
+	#
+	# LA FORME RETENUE : l'autorité APPLIQUE (`_apply_block`, la même fonction
+	# des deux côtés) et DIFFUSE seulement s'il y a quelqu'un à qui parler. Ce
+	# n'est pas un second chemin — la diffusion est un no-op quand on est seul —,
+	# et ça préserve deux choses que `call_local` faisait perdre :
+	#   — LE RETOUR. `rpc()` ne rend rien ; `set_sub_region` doit pourtant dire
+	#     « budget atteint » au joueur, et le dire tout de suite.
+	#   — LE COÛT. Un `rpc()` sur pair hors-ligne sérialise quand même : mesuré
+	#     à 0,78-0,86 ms par bloc, soit 12 % d'une édition (6,2 ms, dominés par
+	#     le remaillage synchrone). Payer ça pour parler à personne serait
+	#     absurde.
+	if NetworkManager.is_authority():
+		var applied := _apply_block(pos, material_id)
+		if applied and NetworkManager.has_peers():
+			rpc_apply_block.rpc(pos, material_id)
+		return applied
+	# Client : on DEMANDE, l'hôte décide. Le `true` dit « la demande est
+	# partie », pas « le bloc a changé » — c'est la nature d'une intention.
 	rpc_request_block.rpc_id(1, pos, material_id)
 	return true
 
@@ -794,7 +813,7 @@ func flush_batched_edits(mesh_now: bool = true) -> void:
 ## Diffusion autoritaire (E.11 : "host autoritaire... diffuse le résultat").
 ## call_local=true : s'exécute aussi localement chez le host lui-même, dans
 ## le même appel — host et clients suivent alors le même code (_apply_block).
-@rpc("authority", "call_local", "reliable")
+@rpc("authority", "reliable")
 func rpc_apply_block(pos: Vector3i, material_id: int) -> void:
 	_apply_block(pos, material_id)
 
@@ -814,11 +833,15 @@ func rpc_request_block(pos: Vector3i, material_id: int) -> void:
 ## même routage host-autoritaire que set_block (voir son commentaire) — un
 ## client reçoit "ok" de façon optimiste, la confirmation vient du host.
 func set_sub_region(block_pos: Vector3i, cell_min: Vector3i, cell_size: int, material_id: int) -> String:
-	if not NetworkManager.is_multiplayer_active():
-		return _apply_sub_region(block_pos, cell_min, cell_size, material_id)
-	if NetworkManager.is_host:
-		rpc_apply_sub_region.rpc(block_pos, cell_min, cell_size, material_id)
-		return "ok"
+	# Même forme que `set_block` : l'autorité applique et ne diffuse que s'il y a
+	# quelqu'un. C'est ce qui permet de rendre « budget » au joueur — un `rpc()`
+	# ne rend rien, et le garde-fou de subdivision (G.2) doit se dire tout de
+	# suite, pas à la frame suivante.
+	if NetworkManager.is_authority():
+		var result := _apply_sub_region(block_pos, cell_min, cell_size, material_id)
+		if result == "ok" and NetworkManager.has_peers():
+			rpc_apply_sub_region.rpc(block_pos, cell_min, cell_size, material_id)
+		return result
 	rpc_request_sub_region.rpc_id(1, block_pos, cell_min, cell_size, material_id)
 	return "ok"
 
@@ -897,7 +920,7 @@ func _apply_sub_region(block_pos: Vector3i, cell_min: Vector3i, cell_size: int, 
 	return "ok"
 
 
-@rpc("authority", "call_local", "reliable")
+@rpc("authority", "reliable")
 func rpc_apply_sub_region(block_pos: Vector3i, cell_min: Vector3i, cell_size: int, material_id: int) -> void:
 	_apply_sub_region(block_pos, cell_min, cell_size, material_id)
 

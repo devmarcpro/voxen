@@ -24,11 +24,58 @@ func _expect(condition: bool, message: String) -> void:
 		_ok = false
 
 
+## COÛT DU ROUTAGE (2026-08-08). Le solo emprunte désormais le chemin réseau :
+## l'autorité APPLIQUE puis diffuse s'il y a quelqu'un. Reste à prouver que
+## passer par là ne coûte rien quand on est seul.
+##
+## LA PREMIÈRE VERSION DE CETTE MESURE ÉTAIT FAUSSE, et de la pire façon : elle
+## alternait `set_block(pos, terre)` et `_apply_block(pos, 0)`, c'est-à-dire
+## qu'elle comparait POSER un bloc à en RETIRER un. Ce sont deux remaillages
+## très différents — poser crée des faces, retirer en détruit — et l'écart de
+## 0,78 ms qu'elle attribuait au routage était en réalité celui des deux
+## opérations. Elle a rendu le même chiffre trois fois de suite, ce qui l'a fait
+## passer pour solide.
+##
+## On mesure donc LE MÊME CYCLE des deux côtés : poser puis retirer, par le
+## chemin routé, puis poser puis retirer par le chemin direct.
+func _measure_routed_edit() -> void:
+	var dirt: int = GameData.material_runtime_ids.get("terre", 1)
+	var origin := Vector3i(600, 300, 600)
+	var count := 256
+	# Chauffe sur le volume EXACT : la première écriture dans une région génère
+	# ses chunks, ce qui n'a rien à voir avec ce qu'on mesure (6,87 ms/bloc au
+	# premier relevé contre 0,009 aux suivants).
+	for i in count:
+		WorldManager.set_block(origin + Vector3i(i % 8, i / 64, (i / 8) % 8), dirt)
+		WorldManager.set_block(origin + Vector3i(i % 8, i / 64, (i / 8) % 8), 0)
+	var routed_us := 0
+	var direct_us := 0
+	for i in count:
+		var pos := origin + Vector3i(i % 8, i / 64, (i / 8) % 8)
+		var t0 := Time.get_ticks_usec()
+		WorldManager.set_block(pos, dirt)
+		WorldManager.set_block(pos, 0)
+		routed_us += Time.get_ticks_usec() - t0
+		var t1 := Time.get_ticks_usec()
+		WorldManager._apply_block(pos, dirt)
+		WorldManager._apply_block(pos, 0)
+		direct_us += Time.get_ticks_usec() - t1
+	var routed := float(routed_us) / float(count) / 1000.0
+	var direct := float(direct_us) / float(count) / 1000.0
+	print("[%s] cycle poser+retirer : routé %.4f ms · direct %.4f ms (surcoût %.4f)" % [
+		TAG, routed, direct, routed - direct])
+	# LE SEUIL PORTE SUR LE SURCOÛT. Le total est celui du remaillage synchrone,
+	# qui n'a rien à voir avec le routage et qui varie avec le voisinage.
+	_expect(absf(routed - direct) < 0.10,
+		"router en solo ne coûte rien de mesurable (écart %.4f ms)" % (routed - direct))
+
+
 func run() -> void:
 	await wait_frame()
 	_check_catalogue()
 	await _check_areas()
 	await _check_hardness_rule()
+	_measure_routed_edit()
 	finish(_ok, TAG)
 
 

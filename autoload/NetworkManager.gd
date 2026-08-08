@@ -20,12 +20,51 @@ var is_host := false
 var is_client := false
 
 
-## NOTE : Godot assigne par défaut un OfflineMultiplayerPeer non-null à
-## `multiplayer.multiplayer_peer` — tester `!= null` est un piège (toujours
-## vrai). On se base sur nos propres drapeaux, mis à jour uniquement par
-## host()/join() ci-dessous.
+## TOUTE PARTIE EST UNE PARTIE MULTIJOUEUR (2026-08-08, décision d'architecture
+## de l'auteur : « il faut que de base le jeu gère toute partie comme une partie
+## multijoueur avec un seul joueur »).
+##
+## ---------------------------------------------------------------------------
+## LE PROBLÈME QUE ÇA RÈGLE
+## ---------------------------------------------------------------------------
+## Chaque système écrit depuis le 2026-07-20 l'a été en solo, puis aurait dû
+## être « porté » au réseau. Ça ne marche pas : porter, c'est réécrire, et on ne
+## réécrit jamais quinze systèmes. Pire, tant que le solo emprunte un chemin et
+## le réseau un autre, c'est le chemin réseau qui n'est JAMAIS exercé — donc
+## celui qui casse, et personne ne le voit avant de brancher deux machines.
+##
+## LA RÈGLE, désormais : il n'y a qu'UN chemin. Toute mutation d'état passe par
+## une fonction gardée par l'autorité, et le solo l'emprunte comme le réseau.
+## Godot fournit exactement ce qu'il faut : en l'absence d'hôte ou de client,
+## `multiplayer.multiplayer_peer` est un `OfflineMultiplayerPeer` où l'on est
+## SERVEUR (id 1) et où un `rpc()` s'exécute localement. Le solo est donc, pour
+## de bon, une partie à un joueur — pas une simulation de partie à un joueur.
+##
+## CE QU'IL FAUT ÉCRIRE POUR QU'UN NOUVEAU SYSTÈME SOIT « RÉSEAU » : rien de
+## particulier. On demande `is_authority()` avant de décider, on passe par un
+## `@rpc("authority", "call_local")` pour appliquer, et c'est tout. Si la
+## fonction marche en solo, elle marche en réseau — parce que c'est le même
+## code, exercé par toutes les sondes depuis le premier jour.
+##
+## `is_multiplayer_active()` reste, mais elle ne veut plus dire « faut-il
+## router ? » (la réponse est TOUJOURS oui) : elle veut dire « y a-t-il
+## quelqu'un d'autre ? », ce qui n'intéresse que l'affichage et les
+## diagnostics.
 func is_multiplayer_active() -> bool:
 	return is_host or is_client
+
+
+## Suis-je l'autorité sur l'état du monde ? VRAI EN SOLO — c'est tout l'objet.
+## Un client rend `false` et doit demander au lieu d'appliquer.
+func is_authority() -> bool:
+	return not is_client
+
+
+## Y a-t-il d'autres joueurs ? Pour l'affichage et les diagnostics UNIQUEMENT :
+## aucune décision de gameplay ne doit en dépendre, sinon on recrée les deux
+## chemins qu'on vient de supprimer.
+func has_peers() -> bool:
+	return is_host and not multiplayer.get_peers().is_empty()
 
 
 func host(port: int = DEFAULT_PORT) -> bool:
