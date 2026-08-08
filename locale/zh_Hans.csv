@@ -1323,3 +1323,6 @@ weapon_class.distance.name,远程
 weapon_class.magique.name,魔法
 ui.hotbar.mains_nues,空手
 ui.hotbar.assemblage,组合法术
+ui.menu.combat_entree,战斗
+ui.menu.combat_barre,快捷栏
+ui.menu.combat_barre_aide,把「战斗」或法术拖到格子，或点击放入第一个空格。战斗中按数字键即可施放，无需换武器。

@@ -10,6 +10,8 @@ extends CanvasLayer
 
 const REFRESH_INTERVAL := 0.35
 const SWATCH_SIZE := 44.0
+## Hauteur d'une ligne d'inventaire. FIXE : voir `_inventory_row`.
+const ROW_HEIGHT := 52.0
 
 ## Clés de tri disponibles (libellé localisé → champ interne de `sort`).
 const SORT_KEYS: Array = [
@@ -34,6 +36,11 @@ var _current_tab := "inventaire"
 var _inv_sort_option: OptionButton
 var _inv_desc := false
 var _inv_list: VBoxContainer
+## Toutes les bandes de hotbar affichées (inventaire, combat). Voir
+## `_build_hotbar_row`.
+var _hotbar_strips: Array[HBoxContainer] = []
+## Pastilles glissables de l'onglet Combat (entrée de combat + assemblages).
+var _combat_sources: HBoxContainer
 ## Virtualisation de la liste d'inventaire (2026-08-07).
 ## `_inv_entries` est la liste TRIÉE complète ; seule une fenêtre en est bâtie.
 var _inv_scroll: ScrollContainer
@@ -464,7 +471,68 @@ func _build_combat() -> Control:
 	_assembly_box.add_theme_constant_override("separation", 6)
 	asm_scroll.add_child(_assembly_box)
 	box.add_child(asm_scroll)
+
+	# --- ASSIGNATION À LA BARRE (2026-08-07) ---
+	# C'est ce qui manquait : les sorts étaient LIABLES depuis le 2026-08-03 et
+	# le combat l'est devenu, mais AUCUNE interface ne permettait de le faire.
+	# Elle vit ici parce que c'est ici qu'on fabrique ses sorts : les assembler
+	# puis devoir changer d'onglet pour les mettre sous un doigt était le geste
+	# manquant.
+	box.add_child(HSeparator.new())
+	var bar_title := Label.new()
+	bar_title.text = tr("ui.menu.combat_barre")
+	bar_title.add_theme_font_size_override("font_size", UITheme.FONT_HEADING)
+	box.add_child(bar_title)
+	var bar_help := UITheme.dim(tr("ui.menu.combat_barre_aide"))
+	bar_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(bar_help)
+	_combat_sources = HBoxContainer.new()
+	_combat_sources.add_theme_constant_override("separation", 6)
+	box.add_child(_combat_sources)
+	box.add_child(_build_hotbar_row())
 	return box
+
+
+## Pastilles GLISSABLES de l'onglet Combat : l'entrée « combat » et chaque
+## assemblage non vide. Reconstruites à chaque rafraîchissement — un assemblage
+## vidé doit disparaître d'ici, sinon on glisserait une case morte dans la barre.
+func _refresh_combat_sources() -> void:
+	if _combat_sources == null:
+		return
+	for child in _combat_sources.get_children():
+		child.queue_free()
+		_combat_sources.remove_child(child)
+	for entry: Dictionary in _player.all_entries():
+		var kind := String(entry.get("kind", ""))
+		if kind != "combat" and kind != "assemblage":
+			continue
+		_combat_sources.add_child(_combat_source_chip(entry))
+
+
+## Une pastille source : icône + nom, glissable vers un emplacement de la barre.
+func _combat_source_chip(entry: Dictionary) -> Control:
+	var button := Button.new()
+	button.custom_minimum_size = Vector2(0, SWATCH_SIZE + 12)
+	button.icon = _entry_icon(entry, int(SWATCH_SIZE))
+	button.text = " " + _entry_name(entry)
+	button.tooltip_text = tr("ui.menu.combat_barre_aide")
+	# Le glisser part de la pastille ; le dépôt est déjà géré par les
+	# emplacements, qui acceptent n'importe quelle entrée.
+	button.set_drag_forwarding(
+		func(_pos: Vector2) -> Variant:
+			var preview := TextureRect.new()
+			preview.texture = _entry_icon(entry, int(SWATCH_SIZE))
+			preview.custom_minimum_size = Vector2(SWATCH_SIZE, SWATCH_SIZE)
+			button.set_drag_preview(preview)
+			return {"entry": entry},
+		Callable(), Callable())
+	# CLIC = ASSIGNER AU PREMIER EMPLACEMENT LIBRE. Le glisser-déposer est
+	# précis mais laborieux ; un clic qui « range quelque part » couvre le cas
+	# courant, et c'est la même API que l'auto-remplissage utilise.
+	button.pressed.connect(func() -> void:
+		_player._bind_to_free_slot(entry)
+		_refresh_combat())
+	return button
 
 
 ## Reconstruit l'ÉDITEUR D'ASSEMBLAGE (2026-08-03, réécrit).
@@ -646,6 +714,8 @@ func _compact_ids(ids: Array) -> Array:
 
 
 func _refresh_combat() -> void:
+	_refresh_combat_sources()
+	_refresh_hotbar_strip()
 	if _combat_panel == null:
 		return
 	_combat_panel.refresh()
@@ -784,12 +854,22 @@ func _build_inventaire() -> Control:
 	hotbar_header.add_child(hint)
 	box.add_child(hotbar_header)
 
-	_inv_hotbar = HBoxContainer.new()
-	_inv_hotbar.add_theme_constant_override("separation", 6)
-	for slot in _player.HOTBAR_SLOTS:
-		_inv_hotbar.add_child(_hotbar_slot(slot))
+	_inv_hotbar = _build_hotbar_row()
 	box.add_child(_inv_hotbar)
 	return split
+
+
+## Une bande d'emplacements de hotbar. IL Y EN A PLUSIEURS (inventaire ET
+## combat) et elles sont TOUTES enregistrées ici : deux bandes rafraîchies par
+## des chemins différents finiraient par ne plus montrer la même barre, et l'une
+## des deux mentirait sur ce qui est réellement assigné.
+func _build_hotbar_row() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	for slot in _player.HOTBAR_SLOTS:
+		row.add_child(_hotbar_slot(slot))
+	_hotbar_strips.append(row)
+	return row
 
 
 func _change_bank(delta: int) -> void:
@@ -803,9 +883,15 @@ func _hotbar_slot(slot: int) -> Control:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(SWATCH_SIZE + 12, SWATCH_SIZE + 12)
 	panel.set_meta("slot", slot)
+	panel.clip_contents = true
 	var icon := TextureRect.new()
 	icon.name = "Icon"
+	# MÊME RÈGLE QUE LES LIGNES : l'icône tient dans la case, quelle que soit la
+	# résolution à laquelle elle a été rendue. `EXPAND_IGNORE_SIZE` est ce qui
+	# l'empêche d'imposer sa propre taille au conteneur.
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	panel.add_child(icon)
 	# Numéro de la touche (1-9) : la bande de l'inventaire doit se lire comme
@@ -845,24 +931,25 @@ func _on_slot_input(event: InputEvent, slot: int) -> void:
 
 ## Rafraîchit la bande de hotbar depuis les liaisons du joueur.
 func _refresh_hotbar_strip() -> void:
-	if _inv_hotbar == null:
+	if _hotbar_strips.is_empty():
 		return
 	_inv_bank = mini(_inv_bank, _player.hotbar_bank_count() - 1)
-	_inv_bank_label.text = "%d / %d" % [_inv_bank + 1, _player.hotbar_bank_count()]
+	if _inv_bank_label != null:
+		_inv_bank_label.text = "%d / %d" % [_inv_bank + 1, _player.hotbar_bank_count()]
 	var entries: Array[Dictionary] = _player.hotbar_entries(_inv_bank)
-	for slot in _inv_hotbar.get_child_count():
-		var panel := _inv_hotbar.get_child(slot) as PanelContainer
-		var icon := panel.get_node("Icon") as TextureRect
-		var entry: Dictionary = entries[slot] if slot < entries.size() else {}
-		if entry.is_empty():
-			icon.texture = null
-			panel.tooltip_text = tr("ui.menu.hotbar_vide")
+	for strip: HBoxContainer in _hotbar_strips:
+		if not is_instance_valid(strip):
 			continue
-		icon.texture = _entry_icon(entry, int(SWATCH_SIZE))
-		panel.tooltip_text = _entry_name(entry)
-
-
-# --- Rafraîchissement ---
+		for slot in strip.get_child_count():
+			var panel := strip.get_child(slot) as PanelContainer
+			var icon := panel.get_node("Icon") as TextureRect
+			var entry: Dictionary = entries[slot] if slot < entries.size() else {}
+			if entry.is_empty():
+				icon.texture = null
+				panel.tooltip_text = tr("ui.menu.hotbar_vide")
+				continue
+			icon.texture = _entry_icon(entry, int(SWATCH_SIZE))
+			panel.tooltip_text = _entry_name(entry)
 
 func _refresh() -> void:
 	if not is_open or _player == null:
@@ -1025,15 +1112,11 @@ func _refresh_inventory() -> void:
 		_inv_list.add_child(empty)
 		return
 	_inv_entries = entries
-	# HAUTEUR DE LIGNE MESURÉE SUR UNE VRAIE LIGNE, pas devinée : elle dépend de
-	# la police et des surcharges de thème, et une estimation fausse décale la
-	# fenêtre visible d'autant plus qu'on descend.
-	if _inv_row_height <= 0.0:
-		var probe := _inventory_row(entries[0])
-		_inv_list.add_child(probe)
-		_inv_row_height = probe.custom_minimum_size.y + 2.0
-		probe.queue_free()
-		_inv_list.remove_child(probe)
+	# LA HAUTEUR DE LIGNE EST UNE CONSTANTE, plus une mesure. Elle était relevée
+	# sur une ligne témoin bâtie exprès, parce qu'elle dépendait de la police et
+	# du contenu ; depuis que toutes les lignes font la même taille, la mesurer
+	# reviendrait à demander à une constante de se présenter.
+	_inv_row_height = ROW_HEIGHT + 2.0
 	# Deux cales portent la hauteur des lignes NON construites : la barre de
 	# défilement doit annoncer la taille de la liste ENTIÈRE, sinon on ne peut
 	# atteindre que ce qui est déjà bâti.
@@ -1085,8 +1168,17 @@ func _inventory_row(entry: Dictionary) -> Control:
 	# haut. Avec la police pixel, un nom en taille courante plus un détail en
 	# petite taille dépassent la vignette : à hauteur figée sur la seule
 	# vignette, chaque ligne mordait sur la suivante.
-	button.custom_minimum_size = Vector2(0,
-		maxf(SWATCH_SIZE, UITheme.FONT_BODY + UITheme.FONT_SMALL + UITheme.GAP * 3) + UITheme.GAP)
+	# HAUTEUR FIXE, LA MÊME POUR TOUTES LES LIGNES (2026-08-08, demande de
+	# l'auteur : « les cases doivent toujours être de la même taille,
+	# actuellement elles se resizent selon l'item »). Elle se calculait par un
+	# `max` entre la vignette et deux lignes de texte : un nom long, une police
+	# différente ou un objet sans sous-titre donnaient des hauteurs
+	# DIFFÉRENTES d'une ligne à l'autre, et la liste ondulait. La virtualisation
+	# l'exigeait de toute façon — elle déduit la fenêtre visible d'une hauteur
+	# de ligne unique, et des lignes inégales décalent le calcul d'autant plus
+	# qu'on descend.
+	button.custom_minimum_size = Vector2(0, ROW_HEIGHT)
+	button.clip_contents = true
 	button.pressed.connect(_open_entry_menu.bind(entry, button))
 	button.set_drag_forwarding(_drag_entry.bind(entry, button), Callable(), Callable())
 	var row := HBoxContainer.new()
@@ -1112,11 +1204,16 @@ func _inventory_row(entry: Dictionary) -> Control:
 	else:
 		swatch.texture = BlockIcon.cube_mask(SWATCH_SIZE)
 		BlockIcon.tint_texture_rect(swatch, entry["swatch"])
+	# LA VIGNETTE FAIT LA TAILLE DE SA CASE, jamais celle de sa texture. Les
+	# icônes d'objet sont rendues à des résolutions différentes selon leur
+	# source (modèle 3D, sprite, cube procédural) : sans taille MAXIMALE, une
+	# icône plus grande débordait de la ligne et mordait sur la suivante.
 	swatch.custom_minimum_size = Vector2(SWATCH_SIZE, SWATCH_SIZE)
+	swatch.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	swatch.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	swatch.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	swatch.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(swatch)
 	var texts := VBoxContainer.new()
 	texts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1171,6 +1268,20 @@ func _drag_entry(_pos: Vector2, entry: Dictionary, source: Control) -> Variant:
 
 ## Icône d'une entrée (bloc texturé, outil teinté, ou pastille de ressource).
 func _entry_icon(entry: Dictionary, size: int) -> Texture2D:
+	# COMBAT et ASSEMBLAGE ne sont ni des objets ni des matériaux : sans ces deux
+	# branches, la suite lit `entry["id"]` et plante. La hotbar en jeu avait
+	# exactement le même trou.
+	match String(entry.get("kind", "")):
+		"combat":
+			var armed: Dictionary = entry.get("object", {})
+			if not armed.is_empty():
+				var weapon: Dictionary = GameData.items.get(armed.get("item_id", ""), {})
+				var wt := WeaponPreview.item_icon(weapon, armed.get("materials", {}), size)
+				if wt != null:
+					return wt
+			return BlockIcon.item_texture(Color(0.92, 0.78, 0.62), size)  # Un poing.
+		"assemblage":
+			return BlockIcon.item_texture(Color(0.55, 0.75, 1.0), size)  # Bleu de mana.
 	if entry.get("kind", "") == "object":
 		var obj: Dictionary = entry.get("object", {})
 		var item: Dictionary = GameData.items.get(obj.get("item_id", ""), {})
@@ -1189,8 +1300,22 @@ func _entry_icon(entry: Dictionary, size: int) -> Texture2D:
 
 
 func _entry_name(entry: Dictionary) -> String:
-	if entry.get("kind", "") == "object":
-		return tr(String((entry.get("object", {}) as Dictionary).get("name_key", "?")))
+	match String(entry.get("kind", "")):
+		"combat":
+			var armed: Dictionary = entry.get("object", {})
+			if armed.is_empty():
+				return tr("ui.menu.combat_entree") + " — " + tr("ui.hotbar.mains_nues")
+			return tr("ui.menu.combat_entree") + " — " + tr(String(armed.get("name_key", "?")))
+		"assemblage":
+			var modules: Array = _player.assembly_at(String(entry.get("skill", "")),
+				int(entry.get("slot", -1)))
+			var names: Array[String] = []
+			for module_id: String in modules:
+				names.append(tr(String((GameData.modules.get(module_id, {}) as Dictionary)
+					.get("name_key", module_id))))
+			return tr("ui.hotbar.assemblage") + " — " + ", ".join(names)
+		"object":
+			return tr(String((entry.get("object", {}) as Dictionary).get("name_key", "?")))
 	return tr(String(GameData.stackable(String(entry.get("id", ""))).get("name_key", "?")))
 
 

@@ -1323,3 +1323,6 @@ weapon_class.distance.name,遠距離
 weapon_class.magique.name,魔法
 ui.hotbar.mains_nues,素手
 ui.hotbar.assemblage,組んだ呪文
+ui.menu.combat_entree,戦闘
+ui.menu.combat_barre,クイックバー
+ui.menu.combat_barre_aide,「戦闘」や呪文を枠へドラッグ、または押して空き枠へ。戦闘中は数字キーで武器を変えずに発動。

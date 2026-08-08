@@ -1323,3 +1323,6 @@ weapon_class.distance.name,À distance
 weapon_class.magique.name,Magiques
 ui.hotbar.mains_nues,Mains nues
 ui.hotbar.assemblage,Sort assemblé
+ui.menu.combat_entree,Combat
+ui.menu.combat_barre,Barre d'accès rapide
+ui.menu.combat_barre_aide,"Glissez « Combat » ou un sort vers un emplacement, ou cliquez pour le ranger au premier libre. En combat, la touche du chiffre lance le sort sans changer d'arme."

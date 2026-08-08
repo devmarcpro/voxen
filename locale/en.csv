@@ -1323,3 +1323,6 @@ weapon_class.distance.name,Ranged
 weapon_class.magique.name,Magical
 ui.hotbar.mains_nues,Bare hands
 ui.hotbar.assemblage,Assembled spell
+ui.menu.combat_entree,Combat
+ui.menu.combat_barre,Quick bar
+ui.menu.combat_barre_aide,"Drag ""Combat"" or a spell onto a slot, or click to file it in the first free one. In combat, its number key casts it without switching weapon."

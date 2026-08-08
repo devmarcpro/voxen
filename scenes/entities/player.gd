@@ -1830,6 +1830,20 @@ func hand_targets(hand_radius: float, offhand_offset: float, delta: float) -> Di
 				target = arc_end.lerp(carry, _attack.phase_ratio)
 			_:
 				target = carry
+	elif _channel_start_ms >= 0:
+		# CANALISATION D'UN SORT (2026-08-08). Charger ne se voyait NULLE PART :
+		# le bras restait au port pendant qu'on montait en puissance, donc rien
+		# ne disait au joueur où en était sa charge — ni à un adversaire qu'il
+		# allait la prendre. C'est la même leçon que la tension de l'arc, et que
+		# la télégraphie du combat directionnel : une mécanique invisible
+		# n'existe pas pour celui qui la subit.
+		#
+		# La main MONTE et s'AVANCE à mesure que la charge se remplit, paume en
+		# avant. Le geste est le même à toutes les charges, seule son amplitude
+		# change : c'est ce qui le rend lisible comme une jauge.
+		var ratio := clampf(channel_ratio(), 0.0, 1.0)
+		var cast_pose := grip 			+ _carry_direction(camera_basis) * (hand_radius * 0.55) 			+ camera_basis.y * (hand_radius * (0.30 + 0.55 * ratio))
+		target = carry.lerp(cast_pose, clampf(ratio * 2.2, 0.0, 1.0))
 	elif _ranged.is_busy():
 		# POSE DE TIR (2026-08-02). La tension ne se voyait NULLE PART : le corps
 		# restait au port pendant qu'on bandait, donc rien ne disait au joueur
@@ -2042,6 +2056,22 @@ func left_hand_busy() -> bool:
 	if _ranged.is_busy() or not offhand_weapon().is_empty():
 		return true
 	if bool(shield_profile()["present"]):
+		return true
+	# BOXER, C'EST UTILISER LES DEUX BRAS (2026-08-08, signalé en jeu : « la
+	# boxe n'est pas à deux mains, seulement une main s'affiche »). Cette
+	# fonction décide de l'AFFICHAGE des membres en première personne, et elle
+	# ne connaissait que trois façons d'occuper la main gauche : bander un arc,
+	# tenir une seconde arme, porter un bouclier. À mains nues elle rendait
+	# false, donc le bras gauche n'était pas dessiné — la mécanique envoyait
+	# bien deux coups, mais le second partait d'un bras invisible. Les poings
+	# SONT la seconde arme : c'est le seul cas où « pas d'arme » veut dire
+	# « deux armes ».
+	if _wants_combat() and _equipped_weapon().is_empty():
+		return true
+	# CANALISER SE FAIT À DEUX MAINS : la main libre monte accompagner la
+	# charge. Sans elle, le bâton se charge d'un seul bras et le geste ne se
+	# distingue pas d'un port d'arme.
+	if _channel_start_ms >= 0:
 		return true
 	var stats: Dictionary = _current_weapon_stats()
 	return int(stats.get("hands", 1)) >= 2 or not is_zero_approx(float(stats.get("hand_separation", 0.0)))
@@ -3573,6 +3603,16 @@ func _use_from_combat(slot: int) -> bool:
 		"assemblage":
 			return cast_assembly(String(entry.get("skill", "")), int(entry.get("slot", -1)))
 		"object", "material":
+			# SEUL CE QUI SE CONSOMME VRAIMENT est avalé par ce geste
+			# (2026-08-08, signalé en jeu : « en combat j'ai une pioche dans le
+			# slot 2, appuyer sur 2 ne me permet pas de passer à la pioche »).
+			# `_consume_entry` rend TRUE pour un objet non comestible — c'est
+			# volontaire de son côté, ça affiche « pas comestible » et empêche
+			# le clic droit de retomber sur la pose de bloc. Mais ici, « traité »
+			# n'est pas « consommé » : la pioche était donc mangée du point de
+			# vue de la barre, l'appui avalé, et le joueur coincé sur son arme.
+			if not _is_consumable(entry):
+				return false
 			# CONSOMMÉ DIRECTEMENT, sans passer en main. `_try_consume_held` lit
 			# l'entrée SÉLECTIONNÉE : on lui passe donc l'entrée visée, sinon on
 			# mangerait ce qu'on tient au lieu de ce qu'on a désigné.
@@ -3586,6 +3626,23 @@ func _use_from_combat(slot: int) -> bool:
 			# chiffre pointant sur de la pierre continue donc de changer de
 			# main, ce qui est la seule façon de pouvoir bâtir en combat.
 			return _consume_entry(entry)
+	return false
+
+
+## L'entrée se consomme-t-elle ? Un livre se lit, une nourriture se mange ; tout
+## le reste se tient. Question posée AVANT d'agir, plutôt que déduite du retour
+## de l'action — c'est la confusion entre « traité » et « consommé » qui rendait
+## une pioche insélectionnable en combat.
+func _is_consumable(entry: Dictionary) -> bool:
+	match String(entry.get("kind", "")):
+		"object":
+			var obj: Dictionary = entry.get("object", {})
+			if BookFactory.is_book(obj):
+				return true
+			return (obj.get("nutrition", {}) as Dictionary).has("faim")
+		"material":
+			return (GameData.stackable(String(entry.get("id", "")))
+				.get("nutrition", {}) as Dictionary).has("faim")
 	return false
 
 

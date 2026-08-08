@@ -1509,6 +1509,18 @@ func _check_magic_and_combat_slot() -> bool:
 			break
 		await wait_frame()
 	print("[%s]   charge atteinte : %.2f" % [TAG, float(player.call("channel_ratio"))])
+	# LA CHARGE SE VOIT. Une mécanique invisible n'existe pas pour celui qui la
+	# subit — c'est la leçon de la télégraphie du combat directionnel et de la
+	# tension de l'arc. La main doit avoir QUITTÉ le port, et les deux bras
+	# doivent être actifs : on canalise à deux mains.
+	var rest: Vector3 = player.call("hand_targets", 0.55, 0.28, 1.0 / 60.0).get("droite", Vector3.ZERO)
+	for i in 20:
+		rest = player.call("hand_targets", 0.55, 0.28, 1.0 / 60.0).get("droite", Vector3.ZERO)
+	var eye: Vector3 = camera.global_position
+	ok = _report("la charge se VOIT : la main a quitté le port",
+		rest.distance_to(eye) > 0.0 and bool(player.call("left_hand_busy")),
+		"main à %.2f m de l'œil, deux bras actifs=%s" % [rest.distance_to(eye),
+			bool(player.call("left_hand_busy"))]) and ok
 	var fired: bool = bool(player.call("_release_innate_spell"))
 	ok = _report("chargé puis relâché, le sort part et consomme du mana",
 		fired and float(player.mana.current) < mana_before,
@@ -1542,6 +1554,27 @@ func _check_magic_and_combat_slot() -> bool:
 		ok = _report("hors combat, le chiffre ne consomme pas : il sélectionne",
 			not bool(player.call("_use_from_combat", 6))) and ok
 		player.selected_slot = player.COMBAT_SLOT
+
+	# UN OUTIL NE SE MANGE PAS, ET NE DOIT PAS AVALER L'APPUI. Signalé en jeu :
+	# une pioche dans un emplacement rendait ce chiffre inopérant en combat, donc
+	# impossible de reprendre son outil sans sortir de la garde. `_try_eat` rend
+	# TRUE sur un objet non comestible — « traité », pas « consommé » — et le
+	# geste s'y fiait.
+	var pick := ItemFactory.craft("pioche", {"bois": "chene", "minerai": "fer"}, 1.0)
+	player.inventory.add_object(pick)
+	player.call("bind_hotbar", 3, {"kind": "object", "object": pick})
+	ok = _report("en combat, un chiffre pointant sur un OUTIL laisse changer de main",
+		not bool(player.call("_use_from_combat", 3))) and ok
+
+	# LES DEUX BRAS SONT AFFICHÉS quand on boxe. La mécanique envoyait bien deux
+	# coups, mais le bras gauche n'était pas DESSINÉ : le second partait d'un
+	# membre invisible, et le joueur ne voyait qu'une main.
+	for slot: String in ["arme_1", "arme_2"]:
+		if not (player.equipment.equipped(slot) as Dictionary).is_empty():
+			player.call("unequip_slot", slot)
+	player.selected_slot = player.COMBAT_SLOT
+	ok = _report("à mains nues, le bras gauche est bien un membre actif",
+		bool(player.call("left_hand_busy"))) and ok
 
 	# UN EMPLACEMENT VIDE NE PIÈGE PAS LE JOUEUR : l'appui doit retomber sur la
 	# sélection ordinaire, sinon on resterait coincé en combat sans en sortir.
