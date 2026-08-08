@@ -116,6 +116,20 @@ func _ready() -> void:
 		if flag in args:
 			enabled = false
 			return
+	# GRAINE FORCÉE = SESSION DE TEST, DONC AUCUNE PERSISTANCE (2026-08-08).
+	#
+	# `--seed` n'existe que pour le harnais réseau, qui doit démarrer hôte et
+	# client sur des mondes VOLONTAIREMENT différents pour prouver que la
+	# poignée de main fait quelque chose. Mais `--host` n'était pas exclu de la
+	# persistance : l'hôte de test a donc SAUVEGARDÉ son monde de graine 4242
+	# par-dessus le monde par défaut. Cinq sondes ont échoué ensuite — royaumes
+	# anecdotiques, terrain différent — pour une raison sans aucun rapport avec
+	# ce qu'elles testaient, et il a fallu remonter jusqu'ici pour le voir.
+	#
+	# Forcer une graine, c'est dire « ceci n'est pas ma partie ». On l'écoute.
+	if "--seed" in args:
+		enabled = false
+		return
 	# Chemin de test (`--save-dir`) : charge/prépare immédiatement ce dossier
 	# — les sondes n'ont pas de menu. En jeu normal, RIEN n'est chargé ici :
 	# le menu de démarrage choisit le monde (load_world_at/prepare_new_world).

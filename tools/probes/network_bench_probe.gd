@@ -106,4 +106,56 @@ func run() -> void:
 		print("[NETBENCH] ÉCHEC : aucune confirmation reçue sous 2 s.")
 		main.get_tree().quit(1)
 		return
+	# --- CE QUI A ÉTÉ RÉPLIQUÉ LE 2026-08-08 ---------------------------------
+	#
+	# Tout ce qui précède existait déjà. Ce qui suit vérifie, SUR DEUX VRAIS
+	# PROCESSUS, ce que `--probe-reseau` ne peut vérifier que par invariants dans
+	# un seul : que les créatures de l'hôte arrivent bien jusqu'ici, avec leur
+	# identité, et que ce client n'en fabrique aucune de son côté.
+	print("[NETBENCH] --- réplication des entités ---")
+	var seen := 0
+	var identified := 0
+	var waited_creatures := 0.0
+	while waited_creatures < 20.0:
+		seen = CreatureManager.creatures.size()
+		identified = 0
+		for creature in CreatureManager.creatures:
+			if is_instance_valid(creature) and int(creature.get("net_id")) > 0:
+				identified += 1
+		if identified > 0:
+			break
+		await main.get_tree().create_timer(0.5).timeout
+		waited_creatures += 0.5
+	print("[NETBENCH] créatures reçues de l'hôte : %d (dont %d avec identifiant réseau) après %.1f s" % [
+			seen, identified, waited_creatures])
+	if identified == 0:
+		print("[NETBENCH] ÉCHEC : aucune créature de l'hôte n'est arrivée.")
+		main.get_tree().quit(1)
+		return
+	# ET AUCUNE N'EST NÉE ICI. Une créature sans identifiant réseau sur un client
+	# est une créature qu'il a inventée : elle n'existe pour personne d'autre,
+	# elle a sa propre IA, et elle compterait ses dégâts en double.
+	var local_born := seen - identified
+	print("[NETBENCH] créatures nées localement sur le client : %d (attendu 0)" % local_born)
+	if local_born > 0:
+		print("[NETBENCH] ÉCHEC : le client fabrique des créatures de son côté.")
+		main.get_tree().quit(1)
+		return
+	# ET IL NE LES FAIT PAS BOUGER. L'IA appartient à l'hôte : si le client la
+	# jouait aussi, la créature avancerait ici et reculerait là à chaque message.
+	var before_positions := {}
+	for creature in CreatureManager.creatures:
+		if is_instance_valid(creature):
+			before_positions[int(creature.net_id)] = creature.logical_position
+	CreatureManager._on_tick(0)
+	var moved_by_client := 0
+	for creature in CreatureManager.creatures:
+		if is_instance_valid(creature) and before_positions.has(int(creature.net_id)) 				and creature.logical_position != before_positions[int(creature.net_id)]:
+			moved_by_client += 1
+	print("[NETBENCH] créatures déplacées par le tick du client : %d (attendu 0)" % moved_by_client)
+	if moved_by_client > 0:
+		print("[NETBENCH] ÉCHEC : le client fait tourner l'IA.")
+		main.get_tree().quit(1)
+		return
+	print("[NETBENCH] ok — les entités de l'hôte arrivent, le client n'en décide aucune.")
 	main.get_tree().quit(0)

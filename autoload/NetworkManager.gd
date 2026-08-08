@@ -122,6 +122,56 @@ func rpc_request_world() -> void:
 	rpc_world_handshake.rpc_id(asker, WorldManager.world_seed,
 			SaveManager.active_config.get("params", {}))
 	rpc_clock.rpc_id(asker, TickManager.tick_index)
+	_send_snapshot(asker)
+
+
+## L'ÉTAT DÉJÀ LÀ, envoyé à celui qui arrive (2026-08-08).
+##
+## DÉFAUT TROUVÉ PAR UNE VRAIE SESSION À DEUX, et par elle seule : la poignée de
+## main transmettait la graine et l'horloge, **et rien d'autre**. Les messages de
+## réplication ne partent qu'AU MOMENT où quelque chose se produit — une créature
+## qui naît, un objet qu'on pose. Un client qui rejoint une partie en cours ne
+## voyait donc RIEN de ce qui existait avant lui : ni les créatures, ni les objets
+## posés, ni les pousses, ni les coffres. Il aurait fallu attendre qu'un sanglier
+## naisse pour en voir un.
+##
+## Aucune assertion en processus unique ne pouvait le dire : chaque message est
+## correct, c'est leur ABSENCE au départ qui ne l'était pas. C'est exactement ce
+## qu'on ne voit qu'en branchant deux machines.
+##
+## ENVOYÉ AU SEUL DEMANDEUR (`rpc_id`), et pas diffusé : les autres l'ont déjà,
+## et un instantané complet à chaque connexion coûterait à tout le monde le prix
+## d'un nouveau venu.
+func _send_snapshot(peer_id: int) -> void:
+	var creatures := 0
+	for creature in CreatureManager.creatures:
+		if not is_instance_valid(creature) or int(creature.get("net_id")) <= 0:
+			continue
+		rpc_creature_spawn.rpc_id(peer_id, int(creature.net_id), String(creature.creature_id),
+				creature.logical_position, String(creature.dimension))
+		# LES PV SUIVENT LA NAISSANCE. Sans eux, un ours à moitié mort
+		# apparaîtrait tout neuf chez l'arrivant, et sa barre de vie mentirait
+		# jusqu'au prochain coup.
+		rpc_creature_health.rpc_id(peer_id, int(creature.net_id), float(creature.health))
+		creatures += 1
+	var placed := 0
+	for pos: Vector3i in PlacedItemManager.placed:
+		var entry: Dictionary = PlacedItemManager.placed[pos]
+		rpc_placed_item.rpc_id(peer_id, pos, entry["item"], int(entry.get("yaw", 0)),
+				String(entry.get("dimension", "overworld")))
+		placed += 1
+	var saplings := 0
+	for pos: Vector3i in SaplingManager.saplings:
+		var entry: Dictionary = SaplingManager.saplings[pos]
+		rpc_sapling.rpc_id(peer_id, pos, String(entry["species"]), int(entry["planted"]),
+				String(entry.get("dimension", "overworld")))
+		saplings += 1
+	var chests := 0
+	for pos: Vector3i in ContainerManager.chests:
+		rpc_chest_contents.rpc_id(peer_id, pos, ContainerManager.contents(pos))
+		chests += 1
+	print("[NET] Instantané envoyé au pair %d : %d créature(s), %d objet(s) posé(s), %d pousse(s), %d coffre(s)." % [
+			peer_id, creatures, placed, saplings, chests])
 
 
 ## Le monde de l'hôte, transmis à un client qui arrive.

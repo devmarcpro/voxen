@@ -356,6 +356,17 @@ func _start_world(args: Array) -> void:
 	if String((SaveManager.active_config.get("params", {}) as Dictionary).get("terrain", "")) == "plat":
 		build_showcase()
 
+	# PEUPLEMENT DE TEST (`-- --peupler-test`). Le harnais réseau a besoin que
+	# l'hôte AIT des créatures, et le spawn naturel n'en garantit aucune : il
+	# dépend du biome où l'hôte est tombé, et le bestiaire réduit aux humains
+	# laisse des régions entières sans personne. Un test qui échoue parce que la
+	# faune n'a pas voulu naître n'apprend rien sur le réseau.
+	if "--peupler-test" in args:
+		var here: Vector3 = $Player.get_position_for_ai()
+		for i in 3:
+			CreatureManager.spawn("bandit", here + Vector3(4.0 + i * 2.0, 0.0, 0.0))
+		print("[TEST] %d créature(s) plantées pour le harnais." % CreatureManager.creatures.size())
+
 	# Sondes de diagnostic (--probe-*, --test-*) : dispatch par TABLE, une sonde
 	# par fichier sous tools/probes/. Si l'une prend la main, elle mène le
 	# scénario jusqu'à get_tree().quit() — main.gd n'a plus rien à faire.
