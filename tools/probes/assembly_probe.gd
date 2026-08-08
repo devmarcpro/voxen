@@ -37,6 +37,7 @@ func run() -> void:
 	_check_statuses()
 	await _check_zones()
 	_check_behaviour()
+	await _check_every_module_does_something()
 	await _capture_editor()
 	finish(_ok, TAG)
 
@@ -520,3 +521,112 @@ func _check_player_rules() -> void:
 			roles[String(module.get("module_type", ""))] = true
 		print("[%s] côté « %s » : rôles disponibles %s" % [TAG, famille, roles.keys()])
 		_expect(roles.size() == 3, "le côté « %s » a les trois rôles" % famille)
+
+
+## CHAQUE MODULE DU CATALOGUE PRODUIT-IL QUELQUE CHOSE ? (2026-08-08)
+##
+## POURQUOI CETTE SONDE EXISTE. Les briques du système de sorts sont vérifiées
+## une à une — compilation, ordre, multi-cast, déclencheurs, coût, projectiles,
+## statuts, zones — mais RIEN ne garantissait qu'un module DONNÉ traverse la
+## chaîne jusqu'à un effet. Un module dont le tag ne correspond à aucune branche
+## d'`_apply_effect` compile parfaitement, coûte son mana, crédite son niveau…
+## et ne fait rien. C'est le mode d'échec le plus coûteux du système : il se
+## découvre en jouant, longtemps après, sur un sort qu'on croyait maîtriser.
+##
+## CE QU'ON MESURE : un effet OBSERVABLE, quel qu'il soit — dégâts sur une
+## cible, statut posé, projectile en vol, zone créée, santé rendue. Aucun n'est
+## privilégié : le but n'est pas de dire ce que le module devrait faire, mais
+## qu'il fait quelque chose. Un module qui n'en produit aucun est nommé.
+func _check_every_module_does_something() -> void:
+	var muets: Array[String] = []
+	var comptes := {}
+	for module_id: String in GameData.modules:
+		# SEULS LES EFFETS SONT INTERROGÉS ICI. Un modificateur ou un déclencheur
+		# ne produit rien PAR CONSTRUCTION : il altère l'effet qui le suit, ou
+		# porte une charge utile. Les appeler seuls, c'est les tester hors de
+		# leur grammaire — ils ont leurs propres tests (ordre, multi-cast,
+		# déclencheurs), et exiger d'eux un effet observable ne prouverait rien
+		# tout en accusant du code sain.
+		if String((GameData.modules[module_id] as Dictionary).get("module_type", "")) != "effet":
+			continue
+		# STATUTS REMIS À ZÉRO entre deux modules : deux modules peuvent poser le
+		# MÊME statut (la carapace de roche et la garde de fer donnent tous deux
+		# « peau de pierre »), et le second passerait alors pour muet.
+		for status_id: String in (player.statuses.active as Dictionary).keys():
+			player.statuses.remove(status_id)
+		var position_avant: Vector3 = player.get_position_for_ai()
+		var before := {
+			"pv": float(player.health),
+			"statuts": int((player.statuses.active as Dictionary).size()),
+			"projectiles": int((ProjectileManager.get("_flying") as Array).size()) + int((ProjectileManager.get("_pending") as Array).size()),
+			"zones": int(ZoneManager.zone_count()),
+		}
+		# UNE CIBLE FRAÎCHE À CHAQUE MODULE : sans elle, un module offensif
+		# n'aurait rien à blesser et passerait pour muet.
+		var cible := _spawn_target()
+		var pv_cible := float(cible.health) if cible != null else 0.0
+		player.health = maxf(1.0, player.health_max * 0.5)
+		player.mana.current = player.mana.max_mana()
+		player.call("_apply_effect", module_id, 10.0, {}, {}, 0,
+			player.get_position_for_ai(), 0, 1)
+		await wait_frame()
+		var effet := false
+		if not is_equal_approx(float(player.health), maxf(1.0, player.health_max * 0.5)):
+			effet = true
+		if cible != null and is_instance_valid(cible) and float(cible.health) < pv_cible:
+			effet = true
+		if int((ProjectileManager.get("_flying") as Array).size()) + int((ProjectileManager.get("_pending") as Array).size()) > int(before["projectiles"]):
+			effet = true
+		if int(ZoneManager.zone_count()) > int(before["zones"]):
+			effet = true
+		if int((player.statuses.active as Dictionary).size()) > int(before["statuts"]):
+			effet = true
+		# LA MOBILITÉ SE MESURE EN DÉPLACEMENT. Clignotement, rappel et charge
+		# d'épaule ne blessent rien, ne posent aucun statut et ne lancent aucun
+		# projectile : leur effet EST le mouvement, et ne pas le regarder les
+		# faisait passer pour muets.
+		if player.get_position_for_ai().distance_to(position_avant) > 0.05:
+			effet = true
+		# UN STATUT POSÉ SUR LA CIBLE compte aussi. Ralentir un ennemi est un
+		# effet parfaitement observable — ne regarder que les statuts du LANCEUR
+		# faisait passer les modules d'entrave pour muets.
+		if cible != null and is_instance_valid(cible) and cible.has_method("has_status") 				and bool(cible.call("has_status", "ralentissement")):
+			effet = true
+		if effet:
+			comptes[module_id] = true
+		else:
+			muets.append(module_id)
+		if cible != null and is_instance_valid(cible):
+			_despawn_target(cible)
+	var total_effets := 0
+	for module_id: String in GameData.modules:
+		if String((GameData.modules[module_id] as Dictionary).get("module_type", "")) == "effet":
+			total_effets += 1
+	print("[%s] modules d'EFFET produisant un effet observable : %d / %d" % [
+		TAG, comptes.size(), total_effets])
+	_expect(muets.is_empty(), "aucun module muet%s" % (
+		"" if muets.is_empty() else " (muets : %s)" % ", ".join(muets)))
+
+
+## Cible d'essai, plantée devant le joueur et DÉSIGNÉE comme cible visée : les
+## modules offensifs frappent `_target_creature`, pas ce qui traîne alentour.
+func _spawn_target() -> Node:
+	var spot: Vector3 = player.get_position_for_ai() + Vector3(1.2, 0.0, 0.0)
+	var creature: Node = CreatureManager.spawn("bandit", spot)
+	if creature == null:
+		return null
+	creature.logical_position = spot
+	creature.position = spot
+	player.set("_target_creature", creature)
+	return creature
+
+
+func _despawn_target(creature: Node) -> void:
+	player.set("_target_creature", null)
+	# RETIRÉE DU REGISTRE AVANT D'ÊTRE LIBÉRÉE. `queue_free` seul laisse
+	# CreatureManager avec une référence morte, et le tick suivant lit
+	# `dimension` sur un objet détruit — des dizaines d'erreurs, sans rapport
+	# apparent avec ce qu'on testait.
+	if is_instance_valid(creature):
+		CreatureManager.creatures.erase(creature)
+		creature.queue_free()

@@ -69,6 +69,12 @@ func _ready() -> void:
 	var damage_numbers: Node3D = preload("res://scenes/world/damage_numbers.gd").new()
 	damage_numbers.name = "DamageNumbers"
 	add_child(damage_numbers)
+	# ÉCLATS DE SORT : même raison d'être que les chiffres de dégâts — l'instant
+	# décisif d'une mécanique doit se voir, sinon la mécanique n'existe pas pour
+	# celui qui la joue.
+	var spell_flash: Node3D = preload("res://scenes/world/spell_flash.gd").new()
+	spell_flash.name = "SpellFlash"
+	add_child(spell_flash)
 	# Rotations posées en code (plus lisible qu'une matrice dans le .tscn).
 	# Orientation initiale seulement : le cycle jour/nuit (E.21) reprend la
 	# main dès la première frame — voir DayNightManager, seule source de

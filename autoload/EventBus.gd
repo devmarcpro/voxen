@@ -65,6 +65,13 @@ signal damage_dealt(world_position: Vector3, amount: int, critical: bool, glanci
 @warning_ignore("unused_signal")
 signal combat_impact(kind: String, world_position: Vector3, force: float)
 
+## SORT LANCÉ (2026-08-08) : lieu du départ et module qui part. Un signal, et
+## non un appel direct au rendu : le lanceur n'a pas à savoir qu'il existe un
+## système d'effets, et le jour où un PNJ lancera des sorts il sera vu sans
+## qu'on touche à son code (E.12).
+@warning_ignore("unused_signal")
+signal spell_cast(world_position: Vector3, module_id: String)
+
 ## Mort du joueur (A.10) : lieu, nombre d'objets tombés, or perdu.
 signal player_died(position: Vector3, dropped_count: int, lost_gold: int)
 

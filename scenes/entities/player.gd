@@ -917,6 +917,10 @@ func _process(delta: float) -> void:
 		_measure_velocity(delta)
 		_update_guard_direction(delta)
 		_advance_attack(delta)
+		if _cast_gesture >= 0.0:
+			_cast_gesture += delta
+			if _cast_gesture > CAST_GESTURE_S:
+				_cast_gesture = -1.0
 		_ranged.advance(delta)
 	# POSTURE DE COMBAT poussée vers la caméra (2026-08-02) : elle y pondère le
 	# jeu de jambes (recul et pas de côté ralentis, brève inertie). La caméra ne
@@ -1045,6 +1049,14 @@ const CHANNEL_MIN_MS := 250.0
 const CHANNEL_FULL_MS := 1200.0
 
 var _channel_start_ms := -1
+## GESTE DE LANCER (2026-08-08). Temps écoulé depuis le départ d'un sort, en
+## secondes ; négatif = aucun geste en cours. Le relâchement ne se voyait PAS :
+## la main revenait au port comme si de rien n'était, et le seul indice qu'un
+## sort était parti était le projectile — quand il y en avait un. Un sort de
+## soin ou de protection ne produisait rigoureusement rien à l'écran.
+var _cast_gesture := -1.0
+## Durée du geste. Bref et sec : c'est une DÉTENTE, pas une pose.
+const CAST_GESTURE_S := 0.30
 
 ## Sort inné d'une arme, ou "" — gravé sur l'exemplaire à la forge.
 func innate_spell_of(weapon: Dictionary) -> String:
@@ -1083,6 +1095,7 @@ func _release_innate_spell() -> bool:
 	if overheat > 0.0:
 		health = maxf(0.0, health - overheat)
 	_module_cooldown_ticks = 5
+	_announce_cast(module_id)
 	_execute_casts(casts)
 	for fired: String in SpellAssembly.modules_fired(compiled):
 		known_modules[fired] = int(known_modules.get(fired, 0)) + 1
@@ -1830,6 +1843,16 @@ func hand_targets(hand_radius: float, offhand_offset: float, delta: float) -> Di
 				target = arc_end.lerp(carry, _attack.phase_ratio)
 			_:
 				target = carry
+	elif _cast_gesture >= 0.0:
+		# LA DÉTENTE. La main part EN AVANT d'un coup puis revient — c'est le
+		# geste qui dit « c'est parti », et il doit se lire même quand le sort
+		# ne produit aucun projectile (soin, protection).
+		var ratio := clampf(_cast_gesture / CAST_GESTURE_S, 0.0, 1.0)
+		var punch := grip + _carry_direction(camera_basis) * (hand_radius * 1.35)
+		# Aller vif, retour amorti : un aller-retour symétrique ressemble à un
+		# tremblement, pas à une poussée.
+		var eased := (ratio / 0.25) if ratio < 0.25 else (1.0 - (ratio - 0.25) / 0.75)
+		target = carry.lerp(punch, clampf(eased, 0.0, 1.0))
 	elif _channel_start_ms >= 0:
 		# CANALISATION D'UN SORT (2026-08-08). Charger ne se voyait NULLE PART :
 		# le bras restait au port pendant qu'on montait en puissance, donc rien
@@ -2071,7 +2094,7 @@ func left_hand_busy() -> bool:
 	# CANALISER SE FAIT À DEUX MAINS : la main libre monte accompagner la
 	# charge. Sans elle, le bâton se charge d'un seul bras et le geste ne se
 	# distingue pas d'un port d'arme.
-	if _channel_start_ms >= 0:
+	if _channel_start_ms >= 0 or _cast_gesture >= 0.0:
 		return true
 	var stats: Dictionary = _current_weapon_stats()
 	return int(stats.get("hands", 1)) >= 2 or not is_zero_approx(float(stats.get("hand_separation", 0.0)))
@@ -2892,6 +2915,9 @@ func cast_assembly(skill_id: String, slot: int) -> bool:
 		health = maxf(0.0, health - overheat)
 	_module_cooldown_ticks = 5
 
+	# LE MÊME GESTE QUE LE SORT INNÉ. Les assemblages n'avaient AUCUNE animation :
+	# on lançait un sort composé de cinq modules sans que rien ne bouge à l'écran.
+	_announce_cast(String(module_ids[0]) if not module_ids.is_empty() else "")
 	_execute_casts(casts)
 
 	# MONTÉE DE NIVEAU À L'USAGE (5.1, sans plafond). Chaque module qui a
@@ -2914,12 +2940,19 @@ func cast_assembly(skill_id: String, slot: int) -> bool:
 
 ## Exécute un niveau de l'arbre compilé.
 ##
-## PORTÉE ACTUELLE, ET C'EST UNE LIMITE RÉELLE : seuls les effets qui BLESSENT
-## ou qui SOIGNENT sont simulés. Les projectiles ne volent pas encore (ils
-## touchent la cible visée immédiatement), les zones ne persistent pas, et la
-## mobilité (clignotement, charge) n'est pas appliquée. La compilation, le coût,
-## l'ordre, le multi-cast et les déclencheurs sont eux complets et testés :
-## c'est la couche de PRÉSENTATION qui manque, pas la grammaire.
+## CE COMMENTAIRE MENTAIT (corrigé le 2026-08-08). Il annonçait que « seuls les
+## effets qui blessent ou qui soignent sont simulés », que « les projectiles ne
+## volent pas encore », que « les zones ne persistent pas » et que « la mobilité
+## n'est pas appliquée » : les quatre étaient faux depuis le 2026-08-03. Les
+## projectiles volent (`_launch_spell_projectile`), les zones persistent
+## (`ZoneManager`), la mobilité et les protections passent par les statuts
+## (`_apply_non_damaging`).
+##
+## Un commentaire de limitation qu'on oublie de retirer est pire qu'aucun
+## commentaire : il décourage d'utiliser ce qui marche, et il fait chercher
+## ailleurs quand quelque chose ne marche pas. `--probe-assemblage` vérifie
+## désormais que CHAQUE module du catalogue produit un effet observable, ce qui
+## rend cette prose invérifiable inutile.
 ## `origin` : d'où part cette salve. Vaut l'œil du joueur au premier niveau, et
 ## le POINT D'IMPACT du porteur pour une charge utile de déclencheur — c'est ce
 ## qui fait qu'une explosion déclenchée éclate là où le projectile est arrivé,
@@ -2981,6 +3014,14 @@ func _apply_effect(module_id: String, power: float, mods: Dictionary = {},
 	# désormais par les STATUTS (F.4) et par un déplacement réel, au lieu de ne
 	# rien produire. La table ci-dessous est la seule chose qui relie un module à
 	# son statut — la mécanique, elle, est entièrement en données.
+	# ENTRAVE INSTANTANÉE : elle RALENTIT, elle ne remplace pas les dégâts.
+	#
+	# Elle vivait dans `_apply_non_damaging`, qui rendait `true` et coupait donc
+	# la suite : `emprise_du_gel` déclare pourtant `degats_des: 1d4`, et ce 1d4
+	# n'était JAMAIS infligé — de la donnée morte que la fiche annonçait au
+	# joueur. Un module peut parfaitement entraver ET blesser ; c'est le nom de
+	# la fonction (« non damaging ») qui décidait à sa place.
+	_apply_entrave(module, tags)
 	if _apply_non_damaging(module_id, module, power, tags):
 		_fire_payload(trigger, depth, origin)
 		return
@@ -3002,6 +3043,24 @@ func _apply_effect(module_id: String, power: float, mods: Dictionary = {},
 	if _target_creature.is_dead():
 		_creature_defeated(_target_creature)
 	_fire_payload(trigger, depth, _target_creature.logical_position)
+
+
+## Ralentit les créatures dans le rayon du module, sur-le-champ. Ne rend rien :
+## elle n'INTERROMPT pas la chaîne d'effets, elle s'y ajoute.
+func _apply_entrave(module: Dictionary, tags: Array) -> void:
+	if not ("entrave" in tags) or "zone" in tags:
+		return  # Une zone entrave par sa durée, pas par un éclair instantané.
+	var radius := float((module.get("params", {}) as Dictionary).get("rayon", 3.0))
+	var here := get_position_for_ai()
+	for creature in CreatureManager.creatures:
+		if not is_instance_valid(creature) or creature.is_dead():
+			continue
+		if creature.dimension != WorldManager.active_dimension:
+			continue
+		if creature.logical_position.distance_to(here) > radius:
+			continue
+		if creature.has_method("apply_status"):
+			creature.apply_status("ralentissement", 0, 1.0)
 
 
 ## Facteur de vitesse de déplacement, statuts compris (F.4). Interrogé par la
@@ -3059,22 +3118,6 @@ func _apply_non_damaging(module_id: String, module: Dictionary, power: float,
 				1.0 + power * 0.02,
 				Color(1.0, 0.45, 0.12, 0.35) if "feu" in tags else Color(0.45, 0.8, 1.0, 0.3),
 				self)
-		return true
-
-	# 3. ENTRAVE INSTANTANÉE AUTOUR DE SOI, pour les modules d'entrave qui ne
-	# sont pas des zones : ralentit les créatures dans le rayon, sur-le-champ.
-	if "entrave" in tags:
-		var radius := float(params.get("rayon", 3.0))
-		var here := get_position_for_ai()
-		for creature in CreatureManager.creatures:
-			if not is_instance_valid(creature) or creature.is_dead():
-				continue
-			if creature.dimension != WorldManager.active_dimension:
-				continue
-			if creature.logical_position.distance_to(here) > radius:
-				continue
-			if creature.has_method("apply_status"):
-				creature.apply_status("ralentissement", 0, 1.0)
 		return true
 
 	# 4. MOBILITÉ (clignotement, charge d'épaule) : un déplacement réel, pas un
@@ -3627,6 +3670,18 @@ func _use_from_combat(slot: int) -> bool:
 			# main, ce qui est la seule façon de pouvoir bâtir en combat.
 			return _consume_entry(entry)
 	return false
+
+
+## Déclenche le geste de lancer et l'éclat, quel que soit le chemin — sort inné
+## ou assemblage. Un seul endroit : deux copies auraient fini par ne plus
+## produire le même geste, et le joueur aurait appris que « ça dépend ».
+func _announce_cast(module_id: String) -> void:
+	_cast_gesture = 0.0
+	# LA MAIN RÉELLE si le corps en a une, sinon les yeux : en headless comme au
+	# premier lancer d'une partie, l'IK n'a encore rien résolu et une position
+	# nulle mettrait l'éclat à l'origine du monde.
+	var hand := _right_hand_actual if _has_right_hand_actual else get_position_for_ai()
+	EventBus.spell_cast.emit(hand, module_id)
 
 
 ## L'entrée se consomme-t-elle ? Un livre se lit, une nourriture se mange ; tout

@@ -1527,6 +1527,18 @@ func _check_magic_and_combat_slot() -> bool:
 		"lancé=%s, mana %.1f → %.1f, cooldown=%d" % [fired, mana_before,
 			float(player.mana.current), int(player.get("_module_cooldown_ticks"))]) and ok
 
+	# LE LANCER SE VOIT AUSSI. Un sort qui part sans que rien ne bouge à l'écran
+	# laisse le joueur incapable de distinguer « c'est parti » de « rien ne s'est
+	# passé » — sur une action qui COÛTE du mana, c'est la pire ambiguïté
+	# possible. Et ça vaut pour les sorts SANS projectile (soin, protection),
+	# qui ne produisaient rigoureusement rien.
+	var flashes: Node = main.get_node_or_null("SpellFlash")
+	var flash_before: int = int(flashes.call("count")) if flashes != null else -1
+	ok = _report("le geste de lancer est engagé après le tir",
+		float(player.get("_cast_gesture")) >= 0.0) and ok
+	ok = _report("un éclat est né au point de lancer",
+		flashes != null and flash_before > 0, "%d éclat(s)" % flash_before) and ok
+
 	# LE GESTE MMO. Un consommable dans un autre emplacement, et l'appui du
 	# chiffre correspondant : il doit être MANGÉ sans que la main change.
 	var food_id := ""
