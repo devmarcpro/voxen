@@ -60,6 +60,7 @@ PROBES="--probe-touches
 --probe-arbres
 --probe-plantes
 --probe-vitrine
+--probe-reseau
 --probe-pousses
 --probe-foreuse
 --probe-dimensions

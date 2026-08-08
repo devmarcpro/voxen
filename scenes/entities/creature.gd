@@ -25,6 +25,12 @@ var combat: Dictionary      # { functionality, modules } — vide si pacifique
 ## CreatureManager. Une créature hors de la dimension ACTIVE est gelée
 ## (pas de tick) et invisible — un boss de donjon n'existe que dedans.
 var dimension: StringName = &"overworld"
+## IDENTIFIANT RÉSEAU (2026-08-08), attribué par l'AUTORITÉ à la naissance et
+## stable jusqu'à la mort. 0 = créature purement locale (sondes, bancs). C'est
+## la seule façon pour un client de savoir de quelle créature on lui parle : ni
+## l'index dans le registre (il bouge à chaque mort) ni l'`instance_id` de Godot
+## (il diffère d'une machine à l'autre) ne conviennent.
+var net_id := 0
 
 var health_max: float
 var health: float
@@ -412,6 +418,12 @@ func tick_statuses() -> void:
 
 func take_damage(amount: float) -> void:
 	health = maxf(0.0, health - amount)
+	# LES PV SONT DIFFUSÉS, pas recalculés. Un client qui rejouerait le calcul de
+	# dégâts obtiendrait un autre nombre — jets de dés, sweet spot, parade —, et
+	# la barre de vie mentirait de plus en plus à chaque coup. L'autorité dit ce
+	# qu'il reste ; c'est tout ce que le client a besoin de savoir.
+	if net_id > 0 and NetworkManager.is_authority() and NetworkManager.has_peers():
+		NetworkManager.rpc_creature_health.rpc(net_id, health)
 	if amount <= 0.0:
 		return
 	_attack_declared = false

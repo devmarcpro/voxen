@@ -19,6 +19,19 @@ var creature_root: Node3D
 var creatures: Array[Node] = []
 ## Désactivé pendant les benchs qui gèrent leur propre population.
 var natural_spawn_enabled := true
+## RÉPLICATION (2026-08-08). Chaque créature porte un identifiant RÉSEAU stable,
+## attribué par l'AUTORITÉ. Il ne peut pas être l'index dans `creatures` (il
+## bouge à chaque mort) ni l'`instance_id` de Godot (il diffère d'une machine à
+## l'autre) : c'est un compteur, et c'est la seule chose qui permette à un
+## client de savoir de QUI on lui parle.
+##
+## Conformément à la règle posée dans `NetworkManager` : l'autorité décide et
+## applique, puis diffuse s'il y a quelqu'un. En solo, `has_peers()` est faux et
+## rien n'est émis — mais tout le reste du code est exactement celui qui tourne
+## en réseau.
+var _next_net_id := 1
+## net_id → créature, pour retrouver la cible d'un message.
+var _by_net_id := {}
 
 ## Derniere position connue du joueur, rafraichie a chaque tick. Publiee
 ## pour que les creatures s'en servent en _process (barre de vie, culling
@@ -104,14 +117,57 @@ func spawn(creature_id: String, world_position: Vector3) -> Node:
 	if not GameData.creatures.has(creature_id):
 		push_error("CreatureManager : créature inconnue « %s »." % creature_id)
 		return null
+	# SEULE L'AUTORITÉ FAIT NAÎTRE. Un client qui appellerait `spawn` créerait
+	# une créature que personne d'autre ne voit, avec sa propre IA et ses propres
+	# dégâts — deux mondes qui divergent en silence. Il ne peut que RECEVOIR.
+	if not NetworkManager.is_authority():
+		return null
+	var net_id := _next_net_id
+	_next_net_id += 1
+	var instance := _instantiate_creature(creature_id, world_position,
+			WorldManager.active_dimension, net_id)
+	if instance != null and NetworkManager.has_peers():
+		NetworkManager.rpc_creature_spawn.rpc(net_id, creature_id, world_position,
+				String(WorldManager.active_dimension))
+	return instance
+
+
+## Construction PURE d'une créature : le même code sur l'hôte et sur le client.
+## L'hôte l'appelle depuis `spawn` (il décide), le client depuis le message
+## reçu (il obéit) — mais ce qui est construit est identique, ce qui est toute
+## la raison d'avoir extrait cette fonction.
+func _instantiate_creature(creature_id: String, world_position: Vector3,
+		dimension: StringName, net_id: int) -> Node:
+	if creature_root == null:
+		return null
+	if not GameData.creatures.has(creature_id):
+		push_error("CreatureManager : créature inconnue « %s »." % creature_id)
+		return null
 	var instance := CREATURE_SCENE.instantiate()
 	creature_root.add_child(instance)
 	instance.setup(creature_id, world_position)
 	# Dimension d'appartenance (3.5) : celle active au moment du spawn — un
 	# boss spawné pendant la construction d'un donjon appartient au donjon.
-	instance.dimension = WorldManager.active_dimension
+	instance.dimension = dimension
+	instance.net_id = net_id
 	creatures.append(instance)
+	_by_net_id[net_id] = instance
 	return instance
+
+
+## Applique une naissance DÉCIDÉE AILLEURS (client). Ne décide de rien.
+func apply_remote_spawn(net_id: int, creature_id: String, world_position: Vector3,
+		dimension: StringName) -> void:
+	if _by_net_id.has(net_id):
+		return  # Déjà connue : un message en double ne doit pas la dédoubler.
+	_instantiate_creature(creature_id, world_position, dimension, net_id)
+	_next_net_id = maxi(_next_net_id, net_id + 1)
+
+
+## Créature portant cet identifiant réseau, ou null.
+func by_net_id(net_id: int) -> Node:
+	var creature: Variant = _by_net_id.get(net_id)
+	return creature if creature != null and is_instance_valid(creature) else null
 
 
 ## Bascule de dimension (WorldManager.set_active_dimension) : les créatures
@@ -134,6 +190,10 @@ func despawn_dimension(dim: StringName) -> void:
 
 func despawn(creature: Node) -> void:
 	creatures.erase(creature)
+	var net_id := int(creature.get("net_id"))
+	_by_net_id.erase(net_id)
+	if NetworkManager.is_authority() and NetworkManager.has_peers() and net_id > 0:
+		NetworkManager.rpc_creature_despawn.rpc(net_id)
 	# ON SORT AUSSI L'HABITANT DE SON VILLAGE. Sans ça, `_populated_villages`
 	# gardait une référence vers un nœud libéré dès qu'un villageois mourait ou
 	# était retiré, et le passage suivant sur cette liste plantait — c'est la
@@ -167,6 +227,12 @@ func _process(_delta: float) -> void:
 func _on_tick(_tick_index: int) -> void:
 	if WorldManager.generator == null:
 		return  # Aucun monde actif (menu de démarrage) : ni IA ni spawn.
+	# L'IA ET LE SPAWN N'APPARTIENNENT QU'À L'AUTORITÉ. Sur un client, deux IA
+	# indépendantes décideraient chacune de leur côté : la créature avancerait
+	# ici et reculerait là, et les dégâts seraient comptés deux fois. Le client
+	# ne fait que RENDRE ce qu'on lui envoie.
+	if not NetworkManager.is_authority():
+		return
 	var player := get_node_or_null("/root/Main/Player")
 	if player == null:
 		return
@@ -175,10 +241,17 @@ func _on_tick(_tick_index: int) -> void:
 	var start := Time.get_ticks_usec()
 
 	var active_dim := WorldManager.active_dimension
+	# POSES DIFFUSÉES UNE FOIS PAR TICK (10 Hz), et seulement s'il y a quelqu'un
+	# à qui parler. C'est la cadence de la simulation : émettre plus souvent
+	# n'enverrait que de l'interpolation, que le client sait déjà faire seul.
+	var broadcast_poses := NetworkManager.is_authority() and NetworkManager.has_peers()
 	var dead: Array[Node] = []
 	for creature in creatures:
 		if creature.dimension != active_dim:
 			continue  # Gelée hors de sa dimension (3.5) — ni IA ni mort résolue.
+		if broadcast_poses and int(creature.get("net_id")) > 0:
+			NetworkManager.rpc_creature_pose.rpc(int(creature.net_id),
+					creature.logical_position, creature.rotation.y)
 		if creature.is_dead():
 			dead.append(creature)
 			continue

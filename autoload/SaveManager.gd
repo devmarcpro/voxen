@@ -75,6 +75,8 @@ const DISABLED_ARGS: Array[String] = [
 	# avec le code testé. C'est la leçon déjà payée sur `--probe-save-verify` et
 	# sur `--probe-assemblage`.
 	"--probe-combat",
+	# `--probe-reseau` fait naître et mourir des créatures et écrit des blocs.
+	"--probe-reseau",
 ]
 
 var enabled := true

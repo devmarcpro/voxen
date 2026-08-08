@@ -230,3 +230,44 @@ func _fallback_marker() -> Node3D:
 	marker.material = mat
 	get_tree().current_scene.add_child(marker)
 	return marker
+
+
+# --- CRÉATURES (2026-08-08) ------------------------------------------------
+#
+# HOST AUTORITAIRE, comme le monde voxel. L'hôte seul fait naître, décide et
+# blesse ; il DIT ce qui s'est passé. Le client n'exécute aucune IA — sans quoi
+# deux simulations indépendantes divergeraient dès la première seconde, la
+# créature avançant ici et reculant là, et les dégâts seraient comptés deux fois.
+#
+# LA POSE EST « UNRELIABLE », le reste est fiable, et ce n'est pas un détail :
+# une position perdue est remplacée par la suivante un dixième de seconde plus
+# tard, alors qu'une MORT perdue laisserait un cadavre debout pour toujours.
+
+@rpc("authority", "reliable")
+func rpc_creature_spawn(net_id: int, creature_id: String, world_position: Vector3,
+		dimension: String) -> void:
+	CreatureManager.apply_remote_spawn(net_id, creature_id, world_position,
+			StringName(dimension))
+
+
+@rpc("authority", "unreliable")
+func rpc_creature_pose(net_id: int, world_position: Vector3, yaw: float) -> void:
+	var creature := CreatureManager.by_net_id(net_id)
+	if creature == null:
+		return
+	creature.logical_position = world_position
+	creature.rotation.y = yaw
+
+
+@rpc("authority", "reliable")
+func rpc_creature_health(net_id: int, health: float) -> void:
+	var creature := CreatureManager.by_net_id(net_id)
+	if creature != null:
+		creature.set("health", health)
+
+
+@rpc("authority", "reliable")
+func rpc_creature_despawn(net_id: int) -> void:
+	var creature := CreatureManager.by_net_id(net_id)
+	if creature != null:
+		CreatureManager.despawn(creature)
