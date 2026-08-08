@@ -53,6 +53,7 @@ const ACTION_HANDLERS := {
 	"toggle_claim": "_toggle_claim",
 	"cycle_claim_role": "_cycle_claim_role",
 	"stall_stock": "_try_stock_stall",
+	"duel": "_try_duel",
 }
 ## C.1 : 6 stats, base 5.
 var stats := {"force": 5, "dexterite": 5, "endurance": 5, "volonte": 5, "perception": 5, "charisme": 5}
@@ -4022,6 +4023,32 @@ func _try_place_object() -> bool:
 		inventory.add_object(placed_instance)  # Remboursé.
 		return false
 	return true
+
+
+## DUEL (2026-08-08) : une seule touche pour provoquer ET pour accepter.
+##
+## ON RÉPOND D'ABORD. Si quelqu'un vient de nous provoquer, la touche accepte —
+## sinon on provoquerait en retour la personne qu'on regarde, ce qui n'est
+## jamais ce qu'on voulait dire en appuyant après avoir vu passer une demande.
+func _try_duel() -> void:
+	if not NetworkManager.is_multiplayer_active():
+		EventBus.ui_notification.emit("ui.toast.duel_personne")
+		return
+	var me := multiplayer.get_unique_id()
+	for requester: int in DuelManager.pending.keys():
+		if int(DuelManager.pending[requester]) == me:
+			DuelManager.respond(requester, true)
+			return
+	# Personne ne nous a provoqués : on provoque le joueur le plus proche.
+	# LE PLUS PROCHE, et pas celui qu'on vise : un duel s'engage face à
+	# quelqu'un, et exiger de le tenir sous le réticule pendant qu'on cherche
+	# la touche serait une contrainte sans raison.
+	var target := NetworkManager.nearest_peer(get_position_for_ai())
+	if target <= 0:
+		EventBus.ui_notification.emit("ui.toast.duel_personne")
+		return
+	if DuelManager.request(target):
+		EventBus.ui_notification.emit("ui.toast.duel_envoye")
 
 
 func _try_stock_stall() -> void:

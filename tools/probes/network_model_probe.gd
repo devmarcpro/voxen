@@ -44,6 +44,7 @@ func run() -> void:
 	_check_replay()
 	_check_registries()
 	_check_remote_player()
+	_check_duels()
 	finish(_ok, TAG)
 
 
@@ -222,3 +223,51 @@ func _check_remote_player() -> void:
 	var body: Node = main.get_node_or_null("PlayerBody")
 	_expect(body != null and body.has_method("set_combat_pose"),
 		"le corps sait rejouer ce vocabulaire (set_combat_pose)")
+
+
+## 7. LE PVP PASSE PAR UNE DEMANDE DE DUEL (2026-08-08).
+##
+## CE QU'ON DÉFEND. Sans porte d'entrée, deux joueurs qui se croisent peuvent se
+## frapper, et l'on ne peut plus construire à côté de quelqu'un sans risquer
+## d'être tué par un coup mal placé. Le duel rend l'affrontement CONSENTI.
+##
+## L'arbitrage est le vrai sujet. Un duel n'est pas une case cochée chez chacun :
+## c'est un fait tenu par l'hôte. Si chaque camp gardait sa propre idée de « je
+## suis en duel avec untel », un message perdu suffirait à ce qu'un joueur se
+## croie en duel quand l'autre non — et le second se ferait frapper sans pouvoir
+## répondre. On vérifie donc les REFUS autant que les acceptations : c'est ce
+## qu'un système d'autorisation doit prouver, et c'est ce qu'on oublie de tester.
+func _check_duels() -> void:
+	DuelManager.pending.clear()
+	DuelManager.active.clear()
+
+	# LA PAIRE EST ORDONNÉE. Sans ça « 3 contre 7 » et « 7 contre 3 » seraient
+	# deux duels distincts, et l'un des deux joueurs pourrait frapper sans être
+	# frappé — l'asymétrie la plus injuste possible.
+	_expect(DuelManager.pair_key(3, 7) == DuelManager.pair_key(7, 3),
+		"une paire de duel se lit dans les deux sens")
+
+	# ON N'ACCEPTE PAS UN DUEL QUE PERSONNE N'A PROPOSÉ.
+	_expect(not DuelManager.open_duel(3, 7),
+		"sans demande, aucun duel ne s'ouvre (on ne se provoque pas soi-même par surprise)")
+	DuelManager.pending[3] = 7
+	_expect(DuelManager.open_duel(3, 7), "une demande acceptée ouvre le duel")
+	_expect(DuelManager.is_dueling(3, 7) and DuelManager.is_dueling(7, 3),
+		"et il vaut pour LES DEUX, dans les deux sens")
+	_expect(not DuelManager.is_dueling(3, 9),
+		"il ne vaut pas pour un tiers qui n'a rien demandé")
+	_expect(not DuelManager.is_dueling(5, 5),
+		"et personne n'est en duel avec soi-même")
+
+	# LA DEMANDE EST CONSOMMÉE : l'accepter deux fois ne rouvre rien, sinon un
+	# message rejoué ferait réapparaître un duel qu'on vient de clore.
+	_expect(not DuelManager.open_duel(3, 7),
+		"une demande déjà acceptée ne se rejoue pas")
+
+	# UN JOUEUR QUI PART EMPORTE SES DUELS. Sans ça sa paire resterait ouverte,
+	# et le prochain joueur héritant de son identifiant se retrouverait en duel
+	# sans l'avoir demandé.
+	DuelManager.forget_peer(7)
+	_expect(not DuelManager.is_dueling(3, 7),
+		"un joueur qui se déconnecte emporte ses duels avec lui")
+	DuelManager.active.clear()

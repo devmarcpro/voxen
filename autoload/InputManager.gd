@@ -54,6 +54,10 @@ const DEFAULTS := {
 	"toggle_claim":   {"keys": [KEY_V], "cat": "monde"},
 	"cycle_claim_role": {"keys": [KEY_B], "cat": "monde"},
 	"stall_stock":    {"keys": [KEY_T], "cat": "monde"},
+	# DUEL (2026-08-08) : la MÊME touche demande et accepte. Deux touches pour
+	# deux moments d'un seul échange auraient été deux choses à apprendre pour
+	# rien — on répond à une provocation par le même geste qu'on l'envoie.
+	"duel":           {"keys": [KEY_Y], "cat": "monde"},
 
 	# --- Modules de compétence (5.1) ---
 	"module_1":       {"keys": [KEY_J], "cat": "modules"},

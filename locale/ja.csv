@@ -1326,3 +1326,7 @@ ui.hotbar.assemblage,組んだ呪文
 ui.menu.combat_entree,戦闘
 ui.menu.combat_barre,クイックバー
 ui.menu.combat_barre_aide,「戦闘」や呪文を枠へドラッグ、または押して空き枠へ。戦闘中は数字キーで武器を変えずに発動。
+ui.toast.duel_demande,決闘を申し込まれた（Yで受ける）
+ui.toast.duel_engage,決闘開始
+ui.toast.duel_envoye,決闘を申し込んだ
+ui.toast.duel_personne,相手がいない

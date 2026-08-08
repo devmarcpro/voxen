@@ -220,6 +220,10 @@ func _process(delta: float) -> void:
 
 func _on_peer_disconnected(id: int) -> void:
 	print("[NET] Pair déconnecté : %d" % id)
+	# SES DUELS S'ARRÊTENT AVEC LUI. Sans ça, sa paire resterait ouverte et le
+	# prochain joueur héritant de son identifiant se retrouverait en duel sans
+	# l'avoir demandé — frappé par quelqu'un qu'il n'a jamais provoqué.
+	DuelManager.forget_peer(id)
 	peer_left.emit(id)
 	if _remote_bodies.has(id):
 		_remote_bodies[id].queue_free()
@@ -415,3 +419,90 @@ func rpc_sapling_removed(position: Vector3i) -> void:
 @rpc("authority", "reliable")
 func rpc_chest_contents(position: Vector3i, contents: Dictionary) -> void:
 	ContainerManager.apply_remote_contents(position, contents)
+
+
+# --- DUELS ET DÉGÂTS ENTRE JOUEURS (2026-08-08) ----------------------------
+#
+# LE PVP PASSE PAR UNE DEMANDE, et l'hôte arbitre. Deux joueurs ne peuvent se
+# blesser que dans un duel qu'ils ont tous deux accepté ; c'est l'hôte qui tient
+# la liste, parce qu'un état gardé chez chacun se désaccorde au premier message
+# perdu — et le joueur qui se croit hors duel se ferait frapper sans pouvoir
+# répondre.
+
+@rpc("any_peer", "reliable")
+func rpc_duel_request() -> void:
+	var asker := multiplayer.get_remote_sender_id()
+	if asker == 0:
+		return
+	DuelManager.pending[asker] = multiplayer.get_unique_id()
+	EventBus.ui_notification.emit("ui.toast.duel_demande")
+	duel_requested.emit(asker)
+
+
+## La réponse est adressée à l'AUTORITÉ, jamais au demandeur : c'est elle qui
+## ouvre le duel et qui l'annonce aux deux camps. Laisser les deux joueurs
+## s'entendre directement, c'est accepter qu'ils n'aient pas la même idée de ce
+## qui a été convenu.
+@rpc("any_peer", "reliable")
+func rpc_duel_response(requester: int, accepted: bool) -> void:
+	if not is_authority():
+		return
+	var accepter := multiplayer.get_remote_sender_id()
+	if accepter == 0:
+		accepter = multiplayer.get_unique_id()
+	if not accepted:
+		DuelManager.pending.erase(requester)
+		return
+	if not DuelManager.open_duel(requester, accepter):
+		return
+	rpc_duel_opened.rpc(requester, accepter)
+
+
+@rpc("authority", "call_local", "reliable")
+func rpc_duel_opened(a: int, b: int) -> void:
+	DuelManager.active[DuelManager.pair_key(a, b)] = true
+	EventBus.ui_notification.emit("ui.toast.duel_engage")
+	duel_opened.emit(a, b)
+
+
+## DEMANDE de dégâts entre joueurs. Elle est ARBITRÉE : l'hôte refuse tout coup
+## hors duel. C'est la seule protection qui tienne — un client qui décide
+## lui-même de blesser un autre joueur est un client qu'on croit sur parole.
+@rpc("any_peer", "reliable")
+func rpc_request_player_damage(target_peer: int, amount: float) -> void:
+	if not is_authority():
+		return
+	var attacker := multiplayer.get_remote_sender_id()
+	if attacker == 0:
+		attacker = multiplayer.get_unique_id()
+	if not DuelManager.is_dueling(attacker, target_peer):
+		return  # Hors duel : refusé, en silence. Ce n'est pas une erreur.
+	rpc_apply_player_damage.rpc_id(target_peer, amount)
+
+
+@rpc("authority", "reliable")
+func rpc_apply_player_damage(amount: float) -> void:
+	var player := get_node_or_null("/root/Main/Player")
+	if player != null and player.has_method("take_damage"):
+		player.take_damage(amount)
+
+
+## Identifiant du joueur distant le plus proche d'un point, ou 0. Les avatars
+## sont la seule position d'autrui que ce camp connaisse : on la lit là où elle
+## est déjà, plutôt que d'ouvrir un second canal pour la redemander.
+func nearest_peer(from: Vector3) -> int:
+	var best := 0
+	var best_distance := INF
+	for id: int in _remote_bodies:
+		var body: Node3D = _remote_bodies[id]
+		if not is_instance_valid(body):
+			continue
+		var distance := body.global_position.distance_to(from)
+		if distance < best_distance:
+			best_distance = distance
+			best = id
+	return best
+
+
+signal duel_requested(peer_id: int)
+signal duel_opened(a: int, b: int)

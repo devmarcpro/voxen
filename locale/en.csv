@@ -1326,3 +1326,7 @@ ui.hotbar.assemblage,Assembled spell
 ui.menu.combat_entree,Combat
 ui.menu.combat_barre,Quick bar
 ui.menu.combat_barre_aide,"Drag ""Combat"" or a spell onto a slot, or click to file it in the first free one. In combat, its number key casts it without switching weapon."
+ui.toast.duel_demande,A player challenges you to a duel (Y to accept)
+ui.toast.duel_engage,Duel begun
+ui.toast.duel_envoye,Duel request sent
+ui.toast.duel_personne,Nobody to challenge

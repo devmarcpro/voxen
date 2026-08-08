@@ -1326,3 +1326,7 @@ ui.hotbar.assemblage,Sort assemblé
 ui.menu.combat_entree,Combat
 ui.menu.combat_barre,Barre d'accès rapide
 ui.menu.combat_barre_aide,"Glissez « Combat » ou un sort vers un emplacement, ou cliquez pour le ranger au premier libre. En combat, la touche du chiffre lance le sort sans changer d'arme."
+ui.toast.duel_demande,Un joueur vous propose un duel (Y pour accepter)
+ui.toast.duel_engage,Duel engagé
+ui.toast.duel_envoye,Demande de duel envoyée
+ui.toast.duel_personne,Personne à provoquer
