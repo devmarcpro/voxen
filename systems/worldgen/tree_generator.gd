@@ -1007,6 +1007,17 @@ const LEAF_ERODE_RADIUS := 2.1
 
 ## Cache des grilles de feuillage érodé : au plus 64 par essence.
 static var _leaf_shell_cache := {}
+## PROTÈGE LE CACHE CI-DESSUS (2026-08-09, crash signal 11 en jeu réel, la
+## pile pointait la ligne du `has()`). La génération d'arbre tourne sur les
+## threads OUVRIERS du streaming, mais aussi sur le THREAD PRINCIPAL via
+## `block_at` (la pose du bassin du joueur sonde le sol sous ses pieds à
+## chaque frame). Deux threads dans un Dictionary non protégé : l'un le
+## redimensionne pendant que l'autre le lit, et le moteur tombe dans son code
+## de table de hachage. La course était théorique tant que les arbres
+## restaient loin des villages ; depuis que le village est bordé de nature,
+## le joueur marche sous des arbres qui se génèrent — trente secondes de jeu
+## suffisaient.
+static var _leaf_shell_mutex := Mutex.new()
 
 
 ## À l'intérieur d'une couronne, un bloc plein ne se voit pas : le raffiner
@@ -1055,8 +1066,12 @@ static func _bit_count(mask: int) -> int:
 ## Bloc de feuillage dont les coins exposés sont rongés, au pas de 8 px.
 static func _eroded_leaf_grid(material_id: int, mask: int) -> PackedInt32Array:
 	var key := (material_id << 8) | mask
+	_leaf_shell_mutex.lock()
 	if _leaf_shell_cache.has(key):
-		return _leaf_shell_cache[key]
+		var cached: PackedInt32Array = _leaf_shell_cache[key]
+		_leaf_shell_mutex.unlock()
+		return cached
+	_leaf_shell_mutex.unlock()
 
 	var grid := SubdivGrid.create_empty()
 	var center := (FINE_PER_BLOCK - 1) * 0.5   # 1,5 en pas fins.
@@ -1079,5 +1094,10 @@ static func _eroded_leaf_grid(material_id: int, mask: int) -> PackedInt32Array:
 				if reach <= LEAF_ERODE_RADIUS * LEAF_ERODE_RADIUS:
 					SubdivGrid.set_region(grid, q * FINE_STEP, FINE_STEP, material_id)
 
+	# Deux threads peuvent avoir calculé la même grille en parallèle : le
+	# second écrase le premier avec un résultat IDENTIQUE (pur, déterministe),
+	# ce qui est sans danger — seul l'accès concurrent à la table l'était.
+	_leaf_shell_mutex.lock()
 	_leaf_shell_cache[key] = grid
+	_leaf_shell_mutex.unlock()
 	return grid

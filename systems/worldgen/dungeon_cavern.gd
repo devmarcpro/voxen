@@ -50,11 +50,19 @@ const COLUMN_FREQ := 0.16
 const DOOR_CLEARANCE := 3
 
 static var _cache := {}
+## MEME COURSE QUE LE FEUILLAGE (2026-08-09, voir TreeGenerator._leaf_shell_mutex) :
+## cache statique atteint par les threads ouvriers ET par les requetes
+## ponctuelles du thread principal.
+static var _cache_mutex := Mutex.new()
 
 
 static func _noises(seed_value: int) -> Dictionary:
+	_cache_mutex.lock()
 	if _cache.has(seed_value):
-		return _cache[seed_value]
+		var cached: Dictionary = _cache[seed_value]
+		_cache_mutex.unlock()
+		return cached
+	_cache_mutex.unlock()
 	var shape := FastNoiseLite.new()
 	shape.noise_type = FastNoiseLite.TYPE_SIMPLEX
 	shape.seed = seed_value + 4401
@@ -77,7 +85,9 @@ static func _noises(seed_value: int) -> Dictionary:
 	column.fractal_octaves = 2
 
 	var set := {"shape": shape, "floor": floor_n, "column": column}
+	_cache_mutex.lock()
 	_cache[seed_value] = set
+	_cache_mutex.unlock()
 	return set
 
 
