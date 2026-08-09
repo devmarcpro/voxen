@@ -4644,22 +4644,39 @@ func _update_target() -> void:
 
 ## Créature la plus proche que le rayon de visée traverse (rayon 0.6, hauteur
 ## 1.2) — pas de colliders physiques, distance point-segment simple.
+## Créature visée : LE CORPS ENTIER, par ses propres zones de coup (2026-08-09).
+##
+## C'était une SPHÈRE DE 60 CM centrée au niveau du ventre. Viser la tête ou les
+## jambes de quelqu'un ne le désignait donc pas : il fallait pointer son nombril
+## pour lui parler, ce qui donne l'impression que le PNJ « ne répond pas » alors
+## qu'on ne l'a simplement jamais visé.
+##
+## On réutilise `sweep_segment`, C'EST-À-DIRE LA GÉOMÉTRIE DU COMBAT — les mêmes
+## zones (tête, torse, bras, jambes) que celles qu'une lame touche. Deux
+## conséquences, et les deux sont voulues : viser marche partout où frapper
+## marche, et les deux ne peuvent pas diverger, puisqu'il n'y a qu'une seule
+## définition du corps.
 func _raycast_creature(origin: Vector3, dir: Vector3, max_dist: float) -> Node:
 	var best: Node = null
 	var best_t := max_dist
+	var far := origin + dir * max_dist
 	for creature in CreatureManager.creatures:
 		if not is_instance_valid(creature) or creature.is_dead():
 			continue
 		if creature.dimension != WorldManager.active_dimension:
 			continue  # Jamais viser une créature gelée d'une autre dimension (3.5).
-		var center: Vector3 = creature.position + Vector3.UP * 0.6
-		var to_center := center - origin
-		var t := to_center.dot(dir)
-		if t < 0.0 or t > max_dist:
+		# REJET GROSSIER d'abord : une soustraction élimine presque tout le
+		# monde, et seules les créatures à portée paient le test de boîtes.
+		if creature.logical_position.distance_squared_to(origin) > (max_dist + 2.0) * (max_dist + 2.0):
 			continue
-		var closest := origin + dir * t
-		if closest.distance_to(center) <= 0.6 and t < best_t:
-			best_t = t
+		var hit: Dictionary = creature.sweep_segment(origin, far)
+		if hit.is_empty():
+			continue
+		# `t` est la fraction du segment : on la ramène en mètres pour comparer
+		# les candidats entre eux, et c'est le PLUS PROCHE qui gagne.
+		var distance := float(hit["t"]) * max_dist
+		if distance < best_t:
+			best_t = distance
 			best = creature
 	return best
 

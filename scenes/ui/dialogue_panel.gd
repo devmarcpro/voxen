@@ -40,6 +40,17 @@ func _ready() -> void:
 	visible = false
 
 
+## MISE EN PAGE REFAITE LE 2026-08-09 (demande de l'auteur : « la fenêtre de
+## dialogue doit faire quasiment tout l'écran mais un peu plus petit qu'on voie
+## un peu derrière sur les côtés, portrait du PNJ en haut à droite plutôt grand,
+## les infos en haut à gauche et en dessous toutes les options »).
+##
+## POURQUOI CE FORMAT ET PAS L'ANCIEN. La fenêtre faisait 560 px de large au
+## centre de l'écran : la conversation était une petite boîte posée sur le jeu,
+## et les options — six aujourd'hui, une douzaine prévues par E.23 — s'y
+## entassaient. Parler à quelqu'un est un MOMENT, pas une notification ; la
+## fenêtre prend donc l'écran, tout en laissant voir la scène sur les bords
+## pour qu'on n'oublie pas OÙ l'on est.
 func _build() -> void:
 	_root = Control.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -52,35 +63,77 @@ func _build() -> void:
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(shade)
 
+	# LA MARGE EST LE SUJET. Ancrée au plein écran puis rentrée de MARGIN de
+	# chaque côté : la fenêtre s'adapte à toutes les résolutions et laisse
+	# toujours voir la même bande de jeu — une taille fixe aurait rempli un
+	# écran de portable et flotté sur un grand moniteur.
 	var frame := PanelContainer.new()
-	frame.set_anchors_preset(Control.PRESET_CENTER)
-	frame.custom_minimum_size = Vector2(560, 0)
-	frame.position = Vector2(-280, -140)
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.offset_left = MARGIN_H
+	frame.offset_right = -MARGIN_H
+	frame.offset_top = MARGIN_V
+	frame.offset_bottom = -MARGIN_V
 	_root.add_child(frame)
 
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", UITheme.GAP)
 	frame.add_child(box)
 
-	_title = UITheme.heading("")
-	box.add_child(_title)
-	_subtitle = UITheme.dim("")
-	box.add_child(_subtitle)
-	box.add_child(UITheme.rule())
+	# --- Haut : identité à GAUCHE, portrait à DROITE ---
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", UITheme.GAP)
+	box.add_child(header)
 
-	# La réplique respire : c'est elle qu'on lit en premier, et la coller aux
-	# options la ferait passer pour un intitulé de plus.
+	var who := VBoxContainer.new()
+	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	who.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	header.add_child(who)
+	_title = UITheme.heading("")
+	who.add_child(_title)
+	_subtitle = UITheme.dim("")
+	who.add_child(_subtitle)
+	# La réplique vit sous l'identité, dans la colonne de gauche : c'est ce
+	# qu'on lit, et la mettre sous le portrait l'aurait reléguée au second rang.
 	_line_label = Label.new()
 	_line_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_line_label.custom_minimum_size = Vector2(0, 56)
+	_line_label.custom_minimum_size = Vector2(0, 72)
+	_line_label.add_theme_font_size_override("font_size", UITheme.FONT_HEADING)
 	_line_label.add_theme_color_override("font_color", UITheme.TEXT_ACCENT)
-	box.add_child(_line_label)
+	who.add_child(_line_label)
+
+	# PORTRAIT. `PanelContainer` autour du `TextureRect` : sans cadre, une
+	# silhouette de repli flotterait sans qu'on comprenne que c'est un portrait.
+	var portrait_frame := PanelContainer.new()
+	portrait_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	header.add_child(portrait_frame)
+	_portrait = TextureRect.new()
+	_portrait.custom_minimum_size = Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE)
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	portrait_frame.add_child(_portrait)
+
 	box.add_child(UITheme.rule())
 
+	# --- Bas : toutes les options, dans la place qui reste ---
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
 	_options = VBoxContainer.new()
+	_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_options.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
-	box.add_child(_options)
+	scroll.add_child(_options)
 
+
+## Bande de jeu laissée visible autour de la fenêtre. Assez pour qu'on voie où
+## l'on est, assez peu pour que la conversation reste le sujet.
+const MARGIN_H := 90.0
+const MARGIN_V := 60.0
+## Portrait « plutôt grand » : il occupe le quart droit de l'en-tête.
+const PORTRAIT_SIZE := 260.0
+
+var _portrait: TextureRect
 
 var _title: Label
 var _subtitle: Label
@@ -139,6 +192,7 @@ func _refresh(new_line: bool) -> void:
 	# étiquette d'espèce. `display_name()` retombe sur l'espèce pour une bête,
 	# qui n'a effectivement pas de nom.
 	_title.text = String(_creature.call("display_name"))
+	_refresh_portrait()
 	var tier: String = _creature.call("relation_tier")
 	# ÂGE, RÔLE ET ORIGINE sous le nom : c'est ce qui distingue deux villageois
 	# l'un de l'autre, et ce qui donne prise à une conversation.
@@ -251,3 +305,39 @@ func _on_gift() -> void:
 	_player.inventory.remove_object_units(gift, 1)
 	EventBus.ui_notification.emit("ui.dialogue.cadeau_accepte")
 	_refresh(false)
+
+
+## Remplit le portrait et le TEINTE de la couleur du personnage.
+##
+## Le rendu est GÉNÉRIQUE — tous les habitants partagent le modèle humanoïde —
+## et c'est la teinte qui distingue les gens, exactement comme dans le monde :
+## la couleur d'un PNJ y est déjà déterministe par son espèce. Rendre un
+## portrait par habitant produirait des centaines de fois la même image.
+func _refresh_portrait() -> void:
+	if _portrait == null or _creature == null:
+		return
+	var tex: Texture2D = PortraitPreview.portrait()
+	if tex != null:
+		_portrait.texture = tex
+		_portrait.modulate = _creature_tint()
+		return
+	# REPLI : une silhouette pleine, teintée pareil. Le rendu 3D échoue en
+	# headless et peut échouer si le modèle manque ; un cadre vide laisserait
+	# croire à un bug d'affichage plutôt qu'à une absence de portrait.
+	_portrait.texture = BlockIcon.item_mask(int(PORTRAIT_SIZE))
+	_portrait.modulate = _creature_tint()
+
+
+## Teinte d'un personnage : la même que celle de son corps dans le monde, donc
+## dérivée de son identité. Deux villageois différents ne doivent pas avoir le
+## même portrait, et celui qu'on voit dans la fenêtre doit être celui qu'on
+## vient de regarder.
+func _creature_tint() -> Color:
+	var key := String((_creature.identity as Dictionary).get("affichage", ""))
+	if key == "":
+		key = String(_creature.creature_id)
+	# TEINTE DISCRÈTE. À 0,35 de saturation elle REPEIGNAIT le portrait en rose :
+	# on ne voyait plus ni la peau, ni les vêtements, seulement une couleur. Elle
+	# doit distinguer deux personnes, pas les redessiner — le modèle porte déjà
+	# ses propres couleurs, et c'est lui qu'on veut voir.
+	return Color.from_hsv(float(absi(key.hash()) % 360) / 360.0, 0.10, 1.0)
