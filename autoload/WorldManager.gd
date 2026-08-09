@@ -34,11 +34,6 @@ const SUBDIV_BUDGET_PER_CHUNK := 512
 ## LOD de distance (G.2) : au-delà de N chunks, la subdivision fine n'est
 ## JAMAIS meshée — le chunk bascule sur sa variante « blocs pleins ».
 const LOD_FINE_RADIUS := 4
-## Dégradé de teinte d'herbe (2026-07-21) : résolution de la petite texture de
-## teinte par chunk — 3×3 suffit pour un dégradé lisse à l'échelle d'un chunk
-## (16 blocs) sans coût significatif (9 appels `biome_at` par chunk créé, une
-## seule fois, jamais par frame).
-const GRASS_TINT_GRID := 3
 ## IDs des styles de texture procédurale (doivent correspondre aux constantes
 ## S_* du shader voxel_material.gdshader — réécriture 2026-07-24).
 const TEXTURE_STYLE_IDS := {
@@ -1197,28 +1192,10 @@ func _build_material() -> void:
 	_material.set_shader_parameter("plant_atlas_rows", int(atlas["rows"]))
 
 
-## Petite texture GRASS_TINT_GRID×GRASS_TINT_GRID de teinte d'herbe pour le
-## chunk `key` (2026-07-21) : échantillonne le biome RÉEL (pas juste son
-## centre) à des points alignés sur les bords du chunk (0, 8, 16 blocs pour
-## une grille 3×3) — les chunks voisins échantillonnent EXACTEMENT les mêmes
-## coordonnées monde à leur bord partagé (`biome_at` est une fonction pure),
-## donc les valeurs de bord coïncident : aucune marche visible à la jointure.
-## Le filtrage linéaire du sampler (voxel_material.gdshader) interpole le
-## reste en dégradé lisse, à la charge du GPU (gratuit).
-func _grass_tint_texture(key: Vector3i) -> ImageTexture:
-	var n := GRASS_TINT_GRID
-	var img := Image.create_empty(n, n, false, Image.FORMAT_RGBAF)
-	var bx := key.x * ChunkData.SIZE
-	var bz := key.z * ChunkData.SIZE
-	for gz in n:
-		for gx in n:
-			var wx := bx + int(round(float(gx) / float(n - 1) * ChunkData.SIZE))
-			var wz := bz + int(round(float(gz) / float(n - 1) * ChunkData.SIZE))
-			var biome: Dictionary = generator.biome_at(wx, wz)
-			var tint: Array = biome.get("grass_tint", [1.0, 1.0, 1.0])
-			img.set_pixel(gx, gz, Color(tint[0], tint[1], tint[2]))
-	var tex := ImageTexture.create_from_image(img)
-	return tex
+## (2026-08-09 : l'ancienne texture de teinte d'herbe par chunk a disparu — la
+## teinte est échantillonnée par `NoiseGenerator.prepare_context` (ctx["tint"],
+## mêmes points 0/8/16 partagés entre voisins) et cuite PAR SOMMET par le
+## mesher. C'est ce qui a permis le matériau partagé, voir _install_chunk_mesh.)
 
 
 ## Hot-reload F5 : les ids runtime, couleurs, biomes et strates ont pu
@@ -1693,28 +1670,19 @@ func _install_chunk_mesh(key: Vector3i, arrays: Array, coarse_arrays: Array, epo
 	else:
 		var instance := MeshInstance3D.new()
 		instance.mesh = shown
-		# Teinte d'herbe par biome AVEC DÉGRADÉ (2026-07-21) : ShaderMaterial
-		# DUPLIQUÉ par chunk (pas un `instance uniform` — plafond matériel
-		# global de 4096 emplacements dépassé en jeu réel, voir
-		# voxel_material.gdshader) portant une petite texture de teinte
-		# GRID_SIZE×GRID_SIZE échantillonnée au biome réel (pas juste le
-		# centre du chunk) à des points alignés sur les BORDS du chunk —
-		# le filtrage linéaire du sampler produit un dégradé lisse à
-		# l'intérieur du chunk, et les points d'échantillon partagés avec
-		# les chunks voisins (mêmes coordonnées MONDE, fonction pure
-		# `biome_at`) garantissent la continuité aux jointures (pas de
-		# marche visible entre deux chunks de biomes différents).
-		# COÛT MESURÉ DE CE DUPLICATA (bench statique 2026-08-09) : ~3 ms/frame de
-		# rebinds driver (43,0 → 50,0 fps avec un matériau partagé pour ~184 draw
-		# calls). Le supprimer exige de sortir grass_tint_map et chunk_origin du
-		# matériau (teinte par sommet + origine via MODEL_MATRIX) — chantier visuel,
-		# pas fait à l'aveugle.
-		var chunk_material := _material.duplicate() as ShaderMaterial
-		chunk_material.set_shader_parameter("grass_tint_map", _grass_tint_texture(key))
-		# Origine MONDE du chunk (blocs) → texture calculée en coords locales
-		# précises (anti-tremblement loin de l'origine, 2026-07-26).
-		chunk_material.set_shader_parameter("chunk_origin", Vector3(key * ChunkData.SIZE))
-		instance.material_override = chunk_material
+		# MATÉRIAU PARTAGÉ par tous les chunks (2026-08-09). Chaque chunk portait
+		# un ShaderMaterial DUPLIQUÉ pour deux paramètres : sa texture de teinte
+		# d'herbe 3×3 et son origine monde. Coût mesuré : ~3 ms/frame de rebinds
+		# driver (~184 draw calls à matériau unique chacun, bench statique 43,0 →
+		# 50,0 fps une fois partagé) — et un bug : les uniforms d'ambiance
+		# (daylight) poussés sur le matériau SOURCE ne touchaient jamais les
+		# duplicatas déjà installés, figeant les chunks anciens à la lumière de
+		# leur pose. La teinte est désormais cuite PAR SOMMET par le mesher
+		# (COLOR.gba, grille dans ctx["tint"] — mêmes points d'échantillonnage,
+		# continuité aux jointures inchangée) et l'origine se lit dans
+		# MODEL_MATRIX : la position de l'instance, juste en dessous, EST
+		# l'origine du chunk.
+		instance.material_override = _material
 		instance.position = Vector3(key * ChunkData.SIZE)
 		chunk_root.add_child(instance)
 		_meshes[key] = instance

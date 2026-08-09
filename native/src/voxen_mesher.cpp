@@ -230,6 +230,56 @@ const std::vector<int32_t> &grid_quads(const int32_t *grid) {
 	return t_overflow;
 }
 
+// --- Teinte d'herbe par sommet (2026-08-09) --------------------------------
+// Réplique EXACTEMENT l'échantillonnage GPU de l'ancienne texture 3×3
+// filter_linear/clamp par chunk : uv = clamp(p/16, 0, 1) ; c = clamp(uv*3
+// - 0.5, 0, 2) ; interpolation entre les deux texels encadrants. Les points de
+// la grille sont partagés entre chunks voisins (offsets monde 0/8/16), donc la
+// continuité aux jointures est la même qu'avant. Seule différence assumée :
+// l'interpolation est portée par les SOMMETS du quad et non par pixel — sur un
+// grand quad traversant le point central, le dégradé perd l'échantillon du
+// milieu, invisible à l'échelle où la teinte varie (biomes).
+struct TintGrid {
+	bool active = false;
+	float r[9], g[9], b[9];
+};
+
+inline void tint_axis(float p, int &i0, float &f) {
+	float uv = p * (1.0f / 16.0f);
+	if (uv < 0.0f) uv = 0.0f;
+	if (uv > 1.0f) uv = 1.0f;
+	float c = uv * 3.0f - 0.5f;
+	if (c < 0.0f) c = 0.0f;
+	if (c > 2.0f) c = 2.0f;
+	i0 = (int)c;
+	if (i0 > 1) i0 = 1;
+	f = c - (float)i0;
+}
+
+// COLOR d'un sommet de terrain : r = lumière de bloc, gba = teinte d'herbe
+// interpolée à (x, z) locaux. `set_pixel(gx, gz)` de l'ancienne texture →
+// index gz*3+gx, u sur l'axe X.
+inline Color tint_color(const TintGrid &t, float light, float x, float z) {
+	if (!t.active) {
+		return Color(light, 1.0f, 1.0f, 1.0f);
+	}
+	int ix, iz;
+	float fx, fz;
+	tint_axis(x, ix, fx);
+	tint_axis(z, iz, fz);
+	const int i00 = iz * 3 + ix;
+	const int i10 = i00 + 1;
+	const int i01 = i00 + 3;
+	const int i11 = i01 + 1;
+	const float rr = (t.r[i00] + (t.r[i10] - t.r[i00]) * fx) * (1.0f - fz) +
+			(t.r[i01] + (t.r[i11] - t.r[i01]) * fx) * fz;
+	const float gg = (t.g[i00] + (t.g[i10] - t.g[i00]) * fx) * (1.0f - fz) +
+			(t.g[i01] + (t.g[i11] - t.g[i01]) * fx) * fz;
+	const float bb = (t.b[i00] + (t.b[i10] - t.b[i00]) * fx) * (1.0f - fz) +
+			(t.b[i01] + (t.b[i11] - t.b[i01]) * fx) * fz;
+	return Color(light, rr, gg, bb);
+}
+
 // Sortie à curseurs — jamais d'append par sommet côté Packed*, tout passe par
 // des std::vector contigus puis une copie unique en fin de fonction.
 struct MeshOut {
@@ -241,7 +291,7 @@ struct MeshOut {
 
 	void emit_quad(const Vector3 &a, const Vector3 &b, const Vector3 &c,
 			const Vector3 &d, const Vector3 &normal, const Vector2 &uv,
-			const Color &color) {
+			const Color &ca, const Color &cb, const Color &cc, const Color &cd) {
 		const int32_t vc = (int32_t)vertices.size();
 		vertices.push_back(a);
 		vertices.push_back(b);
@@ -250,8 +300,11 @@ struct MeshOut {
 		for (int k = 0; k < 4; k++) {
 			normals.push_back(normal);
 			uvs.push_back(uv);
-			colors.push_back(color);
 		}
+		colors.push_back(ca);
+		colors.push_back(cb);
+		colors.push_back(cc);
+		colors.push_back(cd);
 		indices.push_back(vc);
 		indices.push_back(vc + 1);
 		indices.push_back(vc + 2);
@@ -267,7 +320,7 @@ void VoxenNative::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("mesh_core", "pad", "blocks", "uniform",
 								 "uniform_id", "fine", "subdivs", "block_host",
 								 "cross_mask", "hidden_mask", "liquid_mask",
-								 "emission", "transmits", "profiling"),
+								 "emission", "transmits", "tint9", "profiling"),
 			&VoxenNative::mesh_core);
 }
 
@@ -276,9 +329,21 @@ Array VoxenNative::mesh_core(const PackedInt32Array &pad_in,
 		const Dictionary &subdivs, const Dictionary &block_host,
 		const PackedByteArray &cross_mask, const PackedByteArray &hidden_mask,
 		const PackedByteArray &liquid_mask, const PackedByteArray &emission,
-		const PackedByteArray &transmits, bool profiling) {
+		const PackedByteArray &transmits, const PackedColorArray &tint9,
+		bool profiling) {
 	int64_t t_phase = profiling ? now_us() : 0;
 	int64_t us_interieur = 0, us_greedy = 0, us_subdiv = 0;
+
+	TintGrid tint;
+	if (tint9.size() >= 9) {
+		tint.active = true;
+		for (int i = 0; i < 9; i++) {
+			const Color c = tint9[i];
+			tint.r[i] = c.r;
+			tint.g[i] = c.g;
+			tint.b[i] = c.b;
+		}
+	}
 
 	// Copie de travail du pad : l'intérieur y est écrit (COW → une copie).
 	PackedInt32Array pad_copy = pad_in;
@@ -531,8 +596,13 @@ Array VoxenNative::mesh_core(const PackedInt32Array &pad_in,
 						}
 						level = (float)light[lit_index] * inv_light;
 					}
+					// Teinte évaluée PAR COIN (x, z locaux — la chute d'eau ne
+					// touche que y, les coordonnées de teinte sont intactes).
 					out.emit_quad(q0, q1, q2, q3, normal, uv,
-							Color(level, level, level, 1.0f));
+							tint_color(tint, level, q0.x, q0.z),
+							tint_color(tint, level, q1.x, q1.z),
+							tint_color(tint, level, q2.x, q2.z),
+							tint_color(tint, level, q3.x, q3.z));
 					for (int jj = 0; jj < h; jj++) {
 						for (int kk = 0; kk < w; kk++) {
 							mask[(j + jj) * T + i + kk] = 0;
@@ -570,7 +640,6 @@ Array VoxenNative::mesh_core(const PackedInt32Array &pad_in,
 				sub_level = (float)light[(bx + 1) * SX + (bz + 1) * SZ + (by + 1) * SY] *
 						inv_light;
 			}
-			const Color sub_color(sub_level, sub_level, sub_level, 1.0f);
 			size_t q = 0;
 			while (q < quads.size()) {
 				const int d = quads[q];
@@ -605,8 +674,15 @@ Array VoxenNative::mesh_core(const PackedInt32Array &pad_in,
 					dv = tmp;
 				}
 				const int cid = c > 0 ? c : -c;
-				out.emit_quad(origin, origin + du, origin + du + dv, origin + dv,
-						normal, Vector2((float)cid, 0.0f), sub_color);
+				const Vector3 p1 = origin + du;
+				const Vector3 p2 = origin + du + dv;
+				const Vector3 p3 = origin + dv;
+				out.emit_quad(origin, p1, p2, p3,
+						normal, Vector2((float)cid, 0.0f),
+						tint_color(tint, sub_level, origin.x, origin.z),
+						tint_color(tint, sub_level, p1.x, p1.z),
+						tint_color(tint, sub_level, p2.x, p2.z),
+						tint_color(tint, sub_level, p3.x, p3.z));
 			}
 		}
 	}

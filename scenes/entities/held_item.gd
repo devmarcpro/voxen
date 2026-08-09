@@ -373,10 +373,9 @@ func _block_material() -> ShaderMaterial:
 	if WorldManager._material == null:
 		return null
 	_cached_block_material = WorldManager._material.duplicate() as ShaderMaterial
-	var white := Image.create(1, 1, false, Image.FORMAT_RGB8)
-	white.fill(Color.WHITE)
-	_cached_block_material.set_shader_parameter("grass_tint_map", ImageTexture.create_from_image(white))
-	_cached_block_material.set_shader_parameter("chunk_origin", Vector3.ZERO)
+	# Teinte neutre garantie SANS rien poser (2026-08-09) : la teinte d'herbe
+	# vit par sommet (COLOR.gba) et ce mesh ne fournit pas de tableau COLOR —
+	# blanc par défaut. L'origine du chunk se lit dans MODEL_MATRIX.
 	return _cached_block_material
 
 

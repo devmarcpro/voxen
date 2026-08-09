@@ -141,7 +141,7 @@ disparu.
 | Éclairage (G.3) | lumière de bloc 0-15 propagée depuis la `luminosite` des matériaux (torche 14, lave 14, gemmes), cuite dans la couleur de sommet, lue par le shader — s'ajoute au jour au lieu de le remplacer |
 | Carte du monde | **une seule carte** (l'onglet du menu ouvre celle de la touche M) ; déplacement **case par case en ZQSD** qui fait réellement s'écouler le temps (2× le coût de la marche), avatar du joueur comme marqueur, horloge et jauges affichées — on peut s'épuiser, voire mourir, en traversant le monde |
 | Termitière de donjon (3.5) | masse organique **à l'échelle de la cellule** (rayon 56), sculptée au bruit : flancs irréguliers, **pics démoniaques** (bruit crêté), **cavités et tunnels « alien »** (bruit 3D), palette de 5 matériaux sombres marbrés, tous **incassables** ; on entre en s'enfonçant dans une cavité |
-| Cycle jour/nuit (E.21) | `DayNightManager` : 4 phases, course du soleil, **assombrissement réel du terrain par uniform de shader** (G.3), faune nocturne distincte, densité de spawn ×2 et portée d'agression réduite la nuit — sonde `--probe-survie` |
+| Cycle jour/nuit (E.21) | `DayNightManager` : 4 phases, course du soleil, **assombrissement réel du terrain par uniform de shader** (G.3), faune nocturne distincte, densité de spawn ×2 et portée d'agression réduite la nuit — sonde `--probe-survie`. **Bug réparé le 2026-08-09** : l'uniform `daylight` n'atteignait que le matériau source alors que chaque chunk portait un duplicata figé à l'installation — les chunks anciens gardaient la lumière de leur pose. Le matériau est désormais PARTAGÉ par tous les chunks (la teinte d'herbe est cuite par sommet, l'origine lue dans MODEL_MATRIX) : l'heure touche tout le monde, et ~3 ms/frame de rebinds driver ont disparu |
 | Sommeil & fatigue (E.21) | lit craftable (1er meuble F.6), saut de nuit avec temps réellement simulé, buff « Reposé » (+5 % XP), jauge de **fatigue** (amendement auteur) à effets progressifs jamais létaux |
 | Cuisine (7.7, A.9.1, 6.4) | fourneau + compétence Cuisine + 4 plats ; un plat **cuisiné** rend la nutrition pleine et **crédite le potentiel de stat** — manger cru n'en donne aucun |
 | Mort et pénalité (A.10) | **la famine peut tuer** (A.9 amendé sur décision auteur — plus de plancher à 1 PV) ; respawn au dernier lit ou claim, -10 % d'or, 10 % de perte par objet, équipement conservé, aucune perte d'XP ; caches au sol récupérables 1 jour in-game (`DropManager`) — sonde `--probe-mort` |
@@ -184,7 +184,7 @@ vérifié plusieurs fois.
 | 50 créatures actives (D.3 étape 6) | < 8 ms | **16,9 ms** de moyenne | ❌ — voir ci-dessous |
 | Maillage d'un chunk (D.3 étape 4) | < 4 ms | **2,55 ms** (mesher natif) | ✅ **tenu pour la première fois** |
 | Mutation visible chez l'autre joueur (étape 8) | < 100 ms | **112-168 ms** | ❌, mais voir ci-dessous |
-| Bench statique (rayon 8) | 60 fps | **62,0 fps** (33,8 % de frames > 16,7 ms) | ~ |
+| Bench statique (rayon 8) | 60 fps | **64,3 fps** (34 % de frames > 16,7 ms) | ~ |
 | Bench de vol (rayon 8) | 60 fps | **34,0 fps** (37 % de frames lentes) | ❌, était à 8,0 |
 
 ### Le maillage, critère enfin vert — le mesher est passé en C++ (2026-08-09)

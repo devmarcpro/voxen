@@ -2881,11 +2881,25 @@ func prepare_context(col: Vector2i) -> Dictionary:
 		for pos: Vector3i in overlay:
 			top_max = maxi(top_max, pos.y)
 
+	# Teinte d'herbe du biome (2026-08-09) : grille 3×3 échantillonnée aux MÊMES
+	# points monde que l'ancienne texture par chunk (offsets 0/8/16, partagés
+	# avec les colonnes voisines — la continuité aux jointures en dépend). Le
+	# mesher la cuit PAR SOMMET dans COLOR.gba, ce qui a permis le matériau
+	# partagé entre tous les chunks (plus de duplicata ni de rebind par draw).
+	var tint := PackedColorArray()
+	tint.resize(9)
+	for gz in 3:
+		for gx in 3:
+			var twx := col.x * ChunkData.SIZE + int(round(float(gx) / 2.0 * ChunkData.SIZE))
+			var twz := col.y * ChunkData.SIZE + int(round(float(gz) / 2.0 * ChunkData.SIZE))
+			var tb: Array = biome_at(twx, twz).get("grass_tint", [1.0, 1.0, 1.0])
+			tint[gz * 3 + gx] = Color(tb[0], tb[1], tb[2])
+
 	return {
 		"h": heights, "surf": surfaces, "sub": subsurfaces, "trans": transitions,
 		"acc": accents, "overlay": overlay,
 		"trees": trees, "plants": plants, "cultures": cultures, "hmin": h_min, "hmax": top_max,
-		"local_water": local_water, "city": city,
+		"local_water": local_water, "city": city, "tint": tint,
 	}
 
 
