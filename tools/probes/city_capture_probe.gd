@@ -62,6 +62,24 @@ func run() -> void:
 		await screenshot("dialogue.png")
 		print("[CITYCAP] capture : dialogue.png (%s)" % tr(villager.display_name_key))
 		panel.call("close")
+	# LE COMMERCE SE VOIT (2026-08-09) : un marchand, volet d'achat OUVERT —
+	# c'est la seule preuve que l'étal, les prix et la bourse s'affichent.
+	var merchant: Node = null
+	for creature in CreatureManager.creatures:
+		if creature != null and is_instance_valid(creature) 				and String((creature.identity as Dictionary).get("role", "")) in ["marchand", "forgeron"]:
+			merchant = creature
+			break
+	if panel != null and merchant != null:
+		player.set("gold", 120)
+		panel.call("open_with", merchant)
+		panel.set("_trade_open", true)
+		panel.call("_refresh", false)
+		await wait_seconds(0.4)
+		await screenshot("dialogue_marchand.png")
+		print("[CITYCAP] capture : dialogue_marchand.png (%s)" % tr(merchant.display_name_key))
+		panel.call("close")
+	else:
+		print("[CITYCAP] aucun marchand actif dans le village — capture commerce sautée")
 	else:
 		print("[CITYCAP] aucun habitant à qui parler (panneau=%s)" % (panel != null))
 	main.get_tree().quit(0)

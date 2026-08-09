@@ -39,6 +39,7 @@ SETUP="--probe-save"
 PROBES="--probe-touches
 --probe-police
 --probe-noms
+--probe-services
 --probe-heure
 --probe-tour
 --probe-etages

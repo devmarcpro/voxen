@@ -30,7 +30,8 @@
   "inventory_table": null,
   "ai_profile": "civil",
   "jobs_compatible": [
-    "herboriste"
+    "herboriste",
+    "pretre"
   ],
   "housing_default": "normal",
   "recruitable": {

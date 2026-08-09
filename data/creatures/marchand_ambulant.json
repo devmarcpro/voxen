@@ -31,7 +31,9 @@
   "ai_profile": "civil",
   "jobs_compatible": [
     "vendeur",
-    "transporteur"
+    "transporteur",
+    "marchand",
+    "croupier"
   ],
   "housing_default": "normal",
   "recruitable": {

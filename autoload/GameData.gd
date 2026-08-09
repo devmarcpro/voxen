@@ -35,6 +35,7 @@ const PATH_NAME_CULTURES := "res://data/name_cultures"
 const PATH_RACES := "res://data/races"
 const PATH_CLASSES := "res://data/classes"
 const PATH_AI_PROFILES := "res://data/ai_profiles"
+const PATH_QUEST_TEMPLATES := "res://data/quest_templates"
 const PATH_TRANSFORMATIONS := "res://data/transformations"
 const PATH_PLATS := "res://data/plats"
 const PATH_MUNITIONS := "res://data/munitions"
@@ -215,6 +216,8 @@ var classes: Dictionary = {}
 ## ce qui vivait en dur dans `creature.gd` : agressivité, portée d'agression
 ## et perception. Une créature nomme le sien par `ai_profile`.
 var ai_profiles: Dictionary = {}
+## Gabarits de quete de guilde (B.7) — data/quest_templates/*.json.
+var quest_templates: Dictionary = {}
 ## Transformations à station (4.2/C.8) : minerai→lingot, etc. (data/transformations).
 var transformations: Dictionary = {}
 ## PLATS cuisinés (7.7) : consommables d'inventaire produits à la station
@@ -311,6 +314,7 @@ func load_all() -> bool:
 	_load_races()
 	_load_classes()
 	_load_ai_profiles()
+	_load_quest_templates()
 	_load_transformations()
 	_load_plats()
 	_load_munitions()
@@ -1494,6 +1498,21 @@ func _load_races() -> void:
 ## l'id venant du nom du fichier. Une créature qui nomme un profil inconnu est
 ## une ERREUR BLOQUANTE — le silence donnerait une créature inerte que rien ne
 ## signale, et c'est précisément le genre de panne qu'on découvre en jouant.
+## Gabarits de quete (B.7). Une guilde = les gabarits qui la nomment : il n y a
+## PAS de fichier de guilde, la liste des guildes EST l ensemble des champs
+## `guild` — ajouter une guilde, c est ecrire son premier gabarit.
+func _load_quest_templates() -> void:
+	quest_templates.clear()
+	for path in _list_json_recursive(PATH_QUEST_TEMPLATES):
+		var raw: Variant = _load_json(path)
+		if not (raw is Dictionary):
+			continue
+		var template: Dictionary = raw
+		var id := String(template.get("id", path.get_file().get_basename()))
+		template["id"] = id
+		quest_templates[id] = template
+
+
 func _load_ai_profiles() -> void:
 	ai_profiles.clear()
 	for path in _list_json_recursive(PATH_AI_PROFILES):

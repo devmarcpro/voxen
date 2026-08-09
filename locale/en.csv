@@ -1337,3 +1337,47 @@ culture.hellenique.name,Hellenic
 culture.persane.name,Persian
 culture.bantoue.name,Bantu
 culture.andine.name,Andean
+ui.dialogue.repas,"Meal ({prix} gold)"
+ui.dialogue.nuit,"Night at the inn ({prix} gold)"
+ui.dialogue.soins,"Healing ({prix} gold)"
+ui.dialogue.benediction,"Blessing — mana ({prix} gold)"
+ui.dialogue.pas_assez_or,Not enough gold
+ui.dialogue.deja_soigne,You are in perfect health
+ui.dialogue.acheter_ligne,"Buy {objet} — {prix} gold ({reste} left)"
+ui.dialogue.vendre_ligne,"Sell {objet} — {prix} gold"
+ui.dialogue.bourse_marchand,"Merchant's purse: {or} gold · yours: {joueur} gold"
+ui.dialogue.caisse_maison,"House bank: {or} gold"
+ui.dialogue.maison_a_sec,The house is broke
+ui.dialogue.jeu_des,"Dice — 2d6 against the dealer, win x2 (bet {mise})"
+ui.dialogue.jeu_pile,"Coin flip — win x2 (bet {mise})"
+ui.dialogue.jeu_roue,"The Wheel — 1 in 6, win x5 (bet {mise})"
+ui.dialogue.guilde_titre,"{guilde} — {rang} ({xp} XP)"
+ui.dialogue.pas_membre,not a member yet
+ui.dialogue.inscrire,Join the guild (free)
+ui.dialogue.contrat_accepter,"Accept the contract ({or} gold)"
+ui.dialogue.contrat_rendre,"Turn in the contract ({or} gold)"
+ui.dialogue.contrat_en_cours,Contract in progress
+ui.toast.achete,Bought.
+ui.toast.vendu,Sold.
+ui.toast.troc_fait,"Barter done: you walk away with {objet}."
+ui.toast.marchand_a_sec,"The merchant has no gold left, and nothing to barter."
+ui.toast.repas_pris,You are well fed.
+ui.toast.soins_recus,Your wounds close.
+ui.toast.benediction,Your mana overflows.
+ui.toast.gagne,"You win! +{or} gold"
+ui.toast.perdu,You lose...
+ui.toast.des_tires,"Your dice: {moi} — theirs: {lui}"
+ui.toast.inscrit_guilde,You are now a guild member.
+ui.toast.contrat_accepte,Contract accepted.
+ui.toast.contrat_rendu,"Contract turned in: +{or} gold"
+ui.guilde.progression,"Contract: {fait}/{total}"
+guilde.guerriers.name,Warriors' Guild
+guilde.prospecteurs.name,Prospectors' Guild
+guilde.rang.novice,Novice
+guilde.rang.compagnon,Journeyman
+guilde.rang.adepte,Adept
+guilde.rang.expert,Expert
+guilde.rang.maitre,Master
+quest.chasse_prime.text,"Eliminate {count} {target} plaguing the region."
+quest.purge_betes.text,"Put down {count} {target} prowling near the farms."
+quest.prospection.text,"Prove a deposit: extract {count} blocks of {target}."

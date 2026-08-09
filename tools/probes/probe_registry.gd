@@ -36,6 +36,7 @@ const PROBES := {
 	"--probe-royaumes":       "res://tools/probes/kingdom_probe.gd",
 	"--probe-royaumes-perf":  "res://tools/probes/kingdom_perf_probe.gd",
 	"--probe-pnj":            "res://tools/probes/npc_probe.gd",
+	"--probe-services":       "res://tools/probes/services_probe.gd",
 	"--probe-villages":       "res://tools/probes/village_census_probe.gd",
 	"--probe-village-vie":    "res://tools/probes/village_life_probe.gd",
 	"--probe-collection":     "res://tools/probes/collection_probe.gd",

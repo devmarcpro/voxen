@@ -35,6 +35,21 @@ const JOBS: Array[String] = [
 ## Métier de repli quand aucune créature civile ne déclare de poste compatible.
 const JOB_NONE := ""
 
+## POSTE TENU PAR CHAQUE SERVICE DU PLAN (2026-08-09). Le layout declare ses
+## batiments de service (marchand, taverne, guilde...) ; ce tableau dit QUI y
+## travaille. Les premiers habitants adultes du roster prennent ces postes — un
+## village dont le batiment de guilde n a pas de maitre de guilde n est qu un
+## decor, et c etait exactement l etat des lieux.
+const SERVICE_JOBS := {
+	"marchand": "marchand",
+	"forge": "forgeron",
+	"taverne": "tavernier",
+	"guilde": "maitre_guilde",
+	"casino": "croupier",
+	"temple": "pretre",
+	# La halle est un lieu commun, pas un commerce : personne n y est poste.
+}
+
 
 ## Roster d'un village : une liste d'habitants, groupés en FOYERS.
 ##
@@ -90,12 +105,38 @@ static func roster(cell: Vector2i, world_seed: int, plan: Dictionary,
 	var village_name := NameGenerator.town_name(culture,
 			NoiseGenerator.pcg_hash(cell.x, cell.y, world_seed))
 
+	# LES POSTES DE SERVICE D ABORD (2026-08-09) : le plan declare ses batiments
+	# de service, et chacun recoit son travailleur — dans l ordre des tuiles,
+	# pour que le tirage soit deterministe. Le reste du village prend les
+	# metiers ordinaires comme avant.
+	var service_plots: Array = (plan.get("services", {}) as Dictionary).keys()
+	service_plots.sort()
 	var jobs := _jobs_for(population, rng)
+	var service_of_index := {}
+	var service_slot := 0
+	for index in population:
+		# UN ADULTE PAR SERVICE. Le rang 1 d un foyer peut etre un enfant (voir
+		# plus bas) : on ne poste que les rangs 0, toujours adultes — un casino
+		# tenu par un gamin de neuf ans serait du plus mauvais effet.
+		if service_slot < service_plots.size() and index % RESIDENTS_PER_HOUSE == 0:
+			var plot_idx: int = service_plots[service_slot]
+			var service := String((plan["services"] as Dictionary)[plot_idx])
+			if SERVICE_JOBS.has(service):
+				jobs[index] = String(SERVICE_JOBS[service])
+				service_of_index[index] = {"service": service, "plot": plot_idx}
+			service_slot += 1
 	for index in population:
 		var job: String = jobs[index]
 		var creature_id := _creature_for_job(job, rng)
 		if creature_id == "":
-			continue
+			# UN POSTE SANS TITULAIRE NE VIDE PAS LE FOYER. Si aucune fiche ne
+			# declare ce poste (donnees incompletes), l habitant existe quand
+			# meme, en villageois ordinaire — un trou dans le village serait
+			# pire qu un poste generique.
+			job = "vendeur"
+			creature_id = _creature_for_job(job, rng)
+			if creature_id == "":
+				continue
 		@warning_ignore("integer_division")
 		var household: int = index / RESIDENTS_PER_HOUSE
 		var plot: int = buildings[household]
@@ -120,8 +161,14 @@ static func roster(cell: Vector2i, world_seed: int, plan: Dictionary,
 			spouse = index - 1 if rank == 1 else index + 1
 			if spouse >= population:
 				spouse = -1  # Un veuf : le foyer n'a qu'un occupant.
+		var service_info: Dictionary = service_of_index.get(index, {})
 		out.append({
 			"creature_id": creature_id,
+			# SERVICE TENU, ou "". C est ce champ qui relie l habitant a son
+			# batiment : le marchand travaille DANS l echoppe du plan, pas sur
+			# la place comme tout le monde.
+			"service": String(service_info.get("service", "")),
+			"service_plot": int(service_info.get("plot", -1)),
 			# UN ENFANT N'A PAS DE MÉTIER. Lui en donner un ferait tenir la forge
 			# par un gamin de neuf ans, et fausserait le compte des postes.
 			"job": "" if is_child else job,
@@ -283,6 +330,13 @@ static func candidates_for_job(job: String) -> Array[String]:
 
 ## Position monde du DOMICILE d'un habitant : le centre de sa tuile de bâtiment.
 static func home_position(cell: Vector2i, plan: Dictionary, plot: int) -> Vector3i:
+	return tile_position(cell, plan, plot)
+
+
+## Position monde du centre d une tuile du plan, a la hauteur de SON palier.
+## `plateau_y` etait la hauteur de tout le village avant les terrasses ; un
+## habitant du haut du village apparaissait sinon six blocs sous son plancher.
+static func tile_position(cell: Vector2i, plan: Dictionary, plot: int) -> Vector3i:
 	var t: int = plan["T"]
 	var tx := plot % t
 	@warning_ignore("integer_division")
@@ -291,7 +345,20 @@ static func home_position(cell: Vector2i, plan: Dictionary, plot: int) -> Vector
 		+ (int(plan["offset"]) + tx) * 16 + 8
 	var wz := cell.y * CityGenerator.TILES_PER_CELL * 16 \
 		+ (int(plan.get("offset_z", plan["offset"])) + tz) * 16 + 8
-	return Vector3i(wx, int(plan.get("plateau_y", 0)) + 1, wz)
+	var terraces: PackedInt32Array = plan.get("terraces", PackedInt32Array())
+	var y := int(plan.get("plateau_y", 0))
+	if plot >= 0 and plot < terraces.size():
+		y = terraces[plot]
+	return Vector3i(wx, y + 1, wz)
+
+
+## Poste de travail d UNE entree du roster : son batiment de service si elle en
+## tient un, la place commune sinon.
+static func work_position_for(cell: Vector2i, plan: Dictionary, entry: Dictionary) -> Vector3i:
+	var plot := int(entry.get("service_plot", -1))
+	if plot >= 0:
+		return tile_position(cell, plan, plot)
+	return work_position(cell, plan)
 
 
 ## Position monde du POSTE DE TRAVAIL : la place centrale du village.

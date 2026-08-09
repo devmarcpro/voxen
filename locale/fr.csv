@@ -1337,3 +1337,47 @@ culture.hellenique.name,Hellénique
 culture.persane.name,Persane
 culture.bantoue.name,Bantoue
 culture.andine.name,Andine
+ui.dialogue.repas,"Repas ({prix} or)"
+ui.dialogue.nuit,"Nuit à l'auberge ({prix} or)"
+ui.dialogue.soins,"Soins ({prix} or)"
+ui.dialogue.benediction,"Bénédiction — mana ({prix} or)"
+ui.dialogue.pas_assez_or,Pas assez d'or
+ui.dialogue.deja_soigne,Vous êtes en pleine santé
+ui.dialogue.acheter_ligne,"Acheter {objet} — {prix} or (reste {reste})"
+ui.dialogue.vendre_ligne,"Vendre {objet} — {prix} or"
+ui.dialogue.bourse_marchand,"Bourse du marchand : {or} or · la vôtre : {joueur} or"
+ui.dialogue.caisse_maison,"Caisse de la maison : {or} or"
+ui.dialogue.maison_a_sec,La maison est à sec
+ui.dialogue.jeu_des,"Dés — 2d6 contre le croupier, gain x2 (mise {mise})"
+ui.dialogue.jeu_pile,"Pile ou face — gain x2 (mise {mise})"
+ui.dialogue.jeu_roue,"La Roue — 1 chance sur 6, gain x5 (mise {mise})"
+ui.dialogue.guilde_titre,"{guilde} — {rang} ({xp} XP)"
+ui.dialogue.pas_membre,pas encore membre
+ui.dialogue.inscrire,S'inscrire à la guilde (gratuit)
+ui.dialogue.contrat_accepter,"Accepter le contrat ({or} or)"
+ui.dialogue.contrat_rendre,"Rendre le contrat ({or} or)"
+ui.dialogue.contrat_en_cours,Contrat en cours
+ui.toast.achete,Acheté.
+ui.toast.vendu,Vendu.
+ui.toast.troc_fait,"Troc conclu : vous repartez avec {objet}."
+ui.toast.marchand_a_sec,"Le marchand n'a plus d'or, et rien à troquer."
+ui.toast.repas_pris,Vous voilà rassasié.
+ui.toast.soins_recus,Vos blessures se referment.
+ui.toast.benediction,Votre mana déborde.
+ui.toast.gagne,"Gagné ! +{or} or"
+ui.toast.perdu,Perdu...
+ui.toast.des_tires,"Vos dés : {moi} — les siens : {lui}"
+ui.toast.inscrit_guilde,Vous voilà membre de la guilde.
+ui.toast.contrat_accepte,Contrat accepté.
+ui.toast.contrat_rendu,"Contrat rendu : +{or} or"
+ui.guilde.progression,"Contrat : {fait}/{total}"
+guilde.guerriers.name,Guilde des Guerriers
+guilde.prospecteurs.name,Guilde des Prospecteurs
+guilde.rang.novice,Novice
+guilde.rang.compagnon,Compagnon
+guilde.rang.adepte,Adepte
+guilde.rang.expert,Expert
+guilde.rang.maitre,Maître
+quest.chasse_prime.text,"Éliminez {count} {target} qui écument la région."
+quest.purge_betes.text,"Abattez {count} {target} qui rôdent trop près des fermes."
+quest.prospection.text,"Prouvez un gisement : extrayez {count} blocs de {target}."

@@ -148,6 +148,11 @@ var mana: ManaPool
 ## Monnaie unique (or, 7.1) — aucun concept de portefeuille PNJ/taxes/
 ## entretien (A.8.1) n'est implémenté, seul le joueur en a un pour l'instant.
 var gold: int = 0
+## Rangs et XP de guilde (7.3) : {guild_id: {"rank", "xp"}}. Progression
+## PERSONNELLE, comme les competences — chaque pair a la sienne.
+var guild_state := {}
+## Contrat en cours par guilde : {guild_id: quete instanciee (B.7)}.
+var active_quests := {}
 var selected_slot := 0
 ## Banque de hotbar active (Ctrl+molette ou Ctrl+1-9).
 var active_hotbar := 0
@@ -418,6 +423,8 @@ func save_state() -> Dictionary:
 		"stats": stats.duplicate(),
 		"xp_modifier": skills.xp_modifier,
 		"gold": gold,
+		"guildes": guild_state.duplicate(true),
+		"contrats": active_quests.duplicate(true),
 		"health": health,
 		"hunger": hunger,
 		"fatigue": fatigue,
@@ -451,6 +458,8 @@ func restore_state(data: Dictionary) -> void:
 	for stat_id in stats:
 		stats[stat_id] = int(saved_stats.get(stat_id, stats[stat_id]))
 	gold = int(data.get("gold", 0))
+	guild_state = (data.get("guildes", {}) as Dictionary).duplicate(true)
+	active_quests = (data.get("contrats", {}) as Dictionary).duplicate(true)
 	selected_slot = int(data.get("selected_slot", 0))
 	active_hotbar = int(data.get("active_hotbar", 0))
 	var res := int(data.get("active_res", 32))
@@ -4184,7 +4193,14 @@ func _try_sleep() -> void:
 	if not DayNightManager.is_night():
 		EventBus.ui_notification.emit("ui.toast.pas_la_nuit")
 		return
+	sleep_until_dawn()
 
+
+## Dormir jusqu a l aube — le coeur de la nuit, SANS la condition de lit.
+## Extrait de `_try_sleep` le 2026-08-09 : la taverne loue un lit qu on ne vise
+## pas au reticule, et deux copies de la nuit auraient diverge au premier
+## reglage de regeneration.
+func sleep_until_dawn() -> void:
 	var ticks := DayNightManager.ticks_until(DayNightManager.HOUR_DAWN)
 	# Le lit sert aussi d'ancre de résurrection (A.10 : « dernier lit ou
 	# claim activé ») — c'est le lit qui prime, il est plus précis.

@@ -756,7 +756,10 @@ func _populate_village(cell: Vector2i, plan: Dictionary) -> void:
 			"job": String(entry["job"]),
 			"kingdom_id": kingdom_id,
 			"home": Vector3(home),
-			"work": Vector3(VillagePopulation.work_position(cell, plan)),
+			# CHACUN TRAVAILLE CHEZ LUI (2026-08-09) : le marchand dans son
+			# echoppe, le pretre dans son temple. La place commune reste le
+			# poste des metiers sans batiment.
+			"work": Vector3(VillagePopulation.work_position_for(cell, plan, entry)),
 			# L'IDENTITÉ VOYAGE AVEC L'HABITANT. Le roster la connaissait, la
 			# créature l'ignorait : un villageois croisé en jeu n'avait ni nom,
 			# ni âge, ni origine — toute la démographie existait sur le papier et
