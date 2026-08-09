@@ -694,6 +694,56 @@ func _init(seed_value: int, params: Dictionary = {}, dimension_id: StringName = 
 	_compile_dimension()
 	_compile_tree_reach()
 	_compile_biomes()
+	_configure_native_shell()
+
+
+## COQUILLE NATIVE (GDExtension voxen_native, 2026-08-09). Une instance PAR
+## GÉNÉRATEUR (chaque dimension a ses bruits et ses réglages), configurée UNE
+## fois ici — thread principal — puis lue seule par les workers. TOUTES les
+## constantes partent d'ici : la source unique reste ce fichier, le C++ n'en
+## recopie aucune (une dérive se paierait en parois fantômes aux frontières).
+## La bascule d'exécution est `ChunkMesher.use_native` : la sonde de parité
+## (--probe-mesh-parite) couvre donc AUSSI ce port en basculant le mesher.
+var _native_shell: Object = null
+
+
+func _configure_native_shell() -> void:
+	if not (ClassDB.class_exists(&"VoxenNative") and ClassDB.can_instantiate(&"VoxenNative")):
+		return
+	_native_shell = ClassDB.instantiate(&"VoxenNative")
+	_native_shell.configure_shell({
+		"is_overworld": _is_overworld,
+		"water_id": _water_id,
+		"subsurface_thickness": SUBSURFACE_THICKNESS,
+		"dim_crust": _dim_crust,
+		"world_seed": world_seed,
+		"strata_ids": _strata_ids,
+		"strata_end": _strata_end,
+		"strata_trans": _strata_trans,
+		"p_caves": _p_caves,
+		"cave_min_depth": CAVE_MIN_DEPTH,
+		"cave_max_depth": CAVE_MAX_DEPTH,
+		"world_floor": WORLD_FLOOR,
+		"cave_max_depth_from_floor": CAVE_MAX_DEPTH_FROM_FLOOR,
+		"cave_cell_shift": CAVE_CELL_SHIFT,
+		"cave_cell_accept": CAVE_CELL_ACCEPT,
+		"seed_cave_cell": SEED_CAVE_CELL,
+		"cave_tunnel_threshold": CAVE_TUNNEL_THRESHOLD,
+		"cave_cavern_threshold": CAVE_CAVERN_THRESHOLD,
+		"dim_cave_cell_shift": DIM_CAVE_CELL_SHIFT,
+		"dim_ore_cell_shift": DIM_ORE_CELL_SHIFT,
+		"dim_cave_cell_accept": DIM_CAVE_CELL_ACCEPT,
+		"dim_ore_cell_accept": DIM_ORE_CELL_ACCEPT,
+		"seed_dim_cave_cell": SEED_DIM_CAVE_CELL,
+		"seed_dim_ore_cell": SEED_DIM_ORE_CELL,
+		"dim_cave_threshold": _dim_cave_threshold,
+		"dim_ore_vein_threshold": DIM_ORE_VEIN_THRESHOLD,
+		"cave_a": _cave_a,
+		"cave_b": _cave_b,
+		"cavern": _cavern,
+		"dim_cave": _dim_cave,
+		"dim_ore": _dim_ore,
+	})
 
 
 ## Les bruits et les réglages d'une dimension, lus UNE FOIS de sa fiche.
@@ -3313,11 +3363,41 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 	return data
 
 
-## Remplit la coquille de voisinage (6 dalles) du tableau padded du mesher
-## depuis le contexte de colonne — boucles inline, aucun appel de méthode
-## par bloc (leçon du bench étape 1 : verrous GDScript inter-threads).
-## Retourne true si la coquille contient au moins un bloc d'air.
-func fill_shell(cpos: Vector3i, pad: PackedInt32Array, ctx: Dictionary) -> bool:
+## Construit la coquille de voisinage (6 dalles) du tableau padded du mesher
+## depuis le contexte de colonne. Retourne `[pad, air]` — le pad est ALLOUÉ ici
+## (2026-08-09 : le chemin natif ne peut pas muter un paramètre à travers la
+## frontière GDExtension, copie-sur-écriture oblige ; rendre le tableau est le
+## seul contrat qui vaille pour les deux chemins).
+##
+## Le TERRAIN des dalles (surface/sous-surface/strates/cavernes) part en C++
+## (`fill_shell_terrain`, miroir strict) quand la DLL est là ET que
+## `ChunkMesher.use_native` est vrai — même bascule que le mesher, pour que la
+## sonde --probe-mesh-parite couvre les DEUX ports d'un seul A/B. Les
+## SURCOUCHES (arbres, plantes, features de dimension, bâtiments) restent en
+## GDScript ci-dessous, partagées par les deux chemins.
+func fill_shell(cpos: Vector3i, ctx: Dictionary) -> Array:
+	var pad := PackedInt32Array()
+	var air := false
+
+	if _native_shell != null and ChunkMesher.use_native:
+		var out: Array = _native_shell.fill_shell_terrain(cpos, ctx["h"],
+				ctx["surf"], ctx["sub"], ctx["trans"], ctx["local_water"], ctx["acc"])
+		pad = out[0]
+		air = out[1]
+	else:
+		pad.resize(18 * 18 * 18)
+		air = _fill_shell_terrain_gd(cpos, pad, ctx)
+
+	_apply_shell_overlays(cpos, pad, ctx)
+	return [pad, air]
+
+
+## Chemin GDScript de RÉFÉRENCE du terrain de coquille — boucles inline, aucun
+## appel de méthode par bloc (leçon du bench étape 1 : verrous GDScript
+## inter-threads). MIROIR de VoxenNative.fill_shell_terrain : toute divergence
+## se paie en parois fantômes aux frontières de chunk, et c'est la sonde de
+## parité qui la détecte.
+func _fill_shell_terrain_gd(cpos: Vector3i, pad: PackedInt32Array, ctx: Dictionary) -> bool:
 	var t := ChunkData.SIZE
 	var y0 := cpos.y * t
 	var heights: PackedInt32Array = ctx["h"]
@@ -3406,7 +3486,16 @@ func fill_shell(cpos: Vector3i, pad: PackedInt32Array, ctx: Dictionary) -> bool:
 				else:
 					air = true
 				pad[row + x + 1] = v
+	return air
 
+
+## SURCOUCHES de la coquille — arbres, plantes, features de dimension,
+## bâtiments de ville — partagées par les chemins natif et GDScript du terrain
+## (elles écrivent le pad EN PLACE, en GDScript : petits dictionnaires épars,
+## rien à gagner à les porter, tout à perdre en surface de divergence).
+func _apply_shell_overlays(cpos: Vector3i, pad: PackedInt32Array, ctx: Dictionary) -> void:
+	var t := ChunkData.SIZE
+	var y0 := cpos.y * t
 	# Survol des arbres sur la coquille : ne recouvre jamais un bloc plein
 	# déjà posé (terrain), seulement de l'air (même règle qu'en génération).
 	var bx := cpos.x * t
@@ -3468,7 +3557,6 @@ func fill_shell(cpos: Vector3i, pad: PackedInt32Array, ctx: Dictionary) -> bool:
 					var bid := _city_block_at(bx + x, wy, bz + z, city)
 					if bid != 0:
 						pad[row + x + 1] = bid
-	return air
 
 
 ## Résolution d'un bloc depuis les données de colonne (surface/sous-surface/
