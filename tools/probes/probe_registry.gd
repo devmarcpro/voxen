@@ -50,6 +50,7 @@ const PROBES := {
 	"--probe-triche":         "res://tools/probes/cheat_coverage_probe.gd",
 	"--probe-butin":          "res://tools/probes/loot_probe.gd",
 	"--probe-mesh":           "res://tools/probes/mesh_profile_probe.gd",
+	"--probe-mesh-parite":    "res://tools/probes/mesh_parity_probe.gd",
 	"--probe-assemblage":     "res://tools/probes/assembly_probe.gd",
 	"--probe-mains":          "res://tools/probes/hands_probe.gd",
 	"--probe-arbres":         "res://tools/probes/tree_probe.gd",

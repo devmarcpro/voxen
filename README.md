@@ -17,7 +17,10 @@ le 2026-08-02 : la géométrie décide du toucher, plus aucun jet de 1d20).
   de parse trompeuses.
 - **Python 3** uniquement pour les générateurs de contenu (`tools/*.py`), jamais
   pour jouer.
-- Rien d'autre : pas de dépendance externe, pas d'extension à compiler.
+- **Optionnel mais fortement recommandé : l'extension native** (`native/`),
+  le cœur du mesher en C++ (voir « Le mesher natif » plus bas). Sans elle le
+  jeu fonctionne à l'identique sur le chemin GDScript de référence — juste
+  6 à 7× plus lentement au maillage.
 
 ### Lancer
 
@@ -73,6 +76,30 @@ en mode headless le serveur de rendu est un mannequin, `frame_post_draw` ne se
 déclenche jamais, et les images ne sont pas écrites. Elles atterrissent dans
 `debug/`, qui est ignoré par git.
 
+### Le mesher natif (GDExtension `native/`)
+
+Le cœur du meshing (intérieur, greedy, subdivision, lumière) existe en **deux
+exemplaires miroirs** : [chunk_mesher.gd](systems/voxel/chunk_mesher.gd) (la
+référence, toujours fonctionnelle) et
+[native/src/voxen_mesher.cpp](native/src/voxen_mesher.cpp) (port C++ fidèle).
+Si la DLL est présente, elle est utilisée ; sinon le GDScript prend le relais
+sans rien casser. Mesuré sur la machine cible : **17,1 → 2,55 ms/chunk**, bench
+de vol **8 → 34 fps** — le gain vient autant du C++ que de la disparition des
+verrous de VM GDScript côté threads workers.
+
+```bash
+# Toolchain SANS Visual Studio ni droits admin (détail : native/SConstruct) :
+#   MinGW-w64 portable (winlibs) + `pip install --user scons` + godot-cpp 4.5
+cd native
+python -m SCons platform=windows use_mingw=yes target=template_debug -j8
+# puis enregistrer l'extension :
+godot --headless --path .. --editor --quit
+```
+
+**Toute modification d'un des deux mesher doit passer `--probe-mesh-parite`** :
+la sonde maille les mêmes chunks réels par les deux chemins et compare les
+tableaux élément par élément. C'est elle qui garde les miroirs honnêtes.
+
 ### Pièges connus de l'environnement
 
 - **`debug/` est `.gdignore`** : Godot n'y voit aucun script. Un outil rangé là
@@ -108,7 +135,7 @@ disparu.
 | Noms culturels (12.5, E.31, B.11, C.9) | **Fait le 2026-08-02** — le GDD le listait comme « à écrire » (§16). 10 cultures de nommage en données (`data/name_cultures/`), chacune avec ses pools préfixe/suffixe pour prénoms, noms de famille et villes, plus ses titres pour les 6 gouvernances. `NameGenerator` : tirage déterministe, héritage du nom de famille, `name_order` par culture (le sino nomme famille avant prénom), titres genrés. **Culture ≠ race** : un royaume humain peut sonner latin, sino, slave ou nordique ; les trois races originales ont chacune une culture exclusive. Les royaumes reçoivent une culture, leurs villages et habitants en héritent — sonde `--probe-noms` |
 | Localisation (10.1) | **Les quatre locales portent les 981 clés** (mesuré le 2026-08-02) : `fr` / `en` font référence et sont validées clé par clé ; `ja` et `zh_Hans` sont à **978 / 981**, le boot les rapporte à 100 % arrondi. Elles restent déclarées dans `PARTIAL_LOCALES` — le repli sur l'anglais reste donc actif, à retirer une fois les dernières clés traduites. **Police CJK (2026-08-01)** : aucun caractère chinois ou japonais ne s'affichait — le repli de police pointait sur la police intégrée de Godot, latine elle aussi. Les 1327 idéogrammes des traductions sont désormais rastérisés en cellules 12×12 depuis Noto Sans SC (SIL OFL) par `tools/generate_pixel_font.py`, sans embarquer de `.ttf` (+45 Ko). Jeu de glyphes figé sur les traductions du jour, gardé par `--probe-police` |
 | Génération du monde (E.2) | continents/océans, rivières & littoraux, strates, filons, grottes, biomes, arbres, plantes, POI, villes (coques de bâtiments), noms de monde |
-| Voxel (4, G.2) | chunks multithreadés, meshing greedy, subdivision 32→16→8→4, LOD, ombrage voxel maison, édition instantanée |
+| Voxel (4, G.2) | chunks multithreadés, meshing greedy, subdivision 32→16→8→4, LOD, ombrage voxel maison, édition instantanée. **Cœur du mesher en GDExtension C++ depuis le 2026-08-09** (`native/`, 2,55 ms/chunk, budget E.14 tenu), chemin GDScript conservé en référence/repli, parité verrouillée par `--probe-mesh-parite` |
 | Joueur | déplacement, raycast bloc + sous-bloc, casser/poser/sculpter, récolte + XP, inventaire volumétrique, hotbar multi-banques, PV, mana |
 | Équipement (6.2, A.4.2) | 13 emplacements, 5 pièces d'armure, dés de réduction réels en combat, poids porté, persistance — sonde `--probe-equipement` |
 | Éclairage (G.3) | lumière de bloc 0-15 propagée depuis la `luminosite` des matériaux (torche 14, lave 14, gemmes), cuite dans la couleur de sommet, lue par le shader — s'ajoute au jour au lieu de le remplacer |
@@ -144,7 +171,7 @@ disparu.
 
 ---
 
-## Performance — état mesuré au 2026-08-04
+## Performance — état mesuré au 2026-08-09
 
 Les chiffres ci-dessous sont **mesurés**, pas estimés, sur la machine cible
 (Intel UHD 620, `gl_compatibility`). Ils bougent de ±35 % d'une exécution à
@@ -153,10 +180,34 @@ vérifié plusieurs fois.
 
 | Critère (G.8 / E.14) | Cible | Mesuré | Verdict |
 |---|---|---|---|
-| Tick de simulation (E.1) | < 16 ms | **aucun dépassement** en survol de village | ✅ |
-| 50 créatures actives (D.3 étape 6) | < 8 ms | **0,67 ms** de moyenne, 1,62 ms au pire | ✅ |
-| Maillage d'un chunk (D.3 étape 4) | < 4 ms | **8,1 ms** | ❌ |
+| Tick de simulation (E.1) | < 16 ms | ≤ 2,9 ms au bench statique | ✅ |
+| 50 créatures actives (D.3 étape 6) | < 8 ms | **16,9 ms** de moyenne | ❌ — voir ci-dessous |
+| Maillage d'un chunk (D.3 étape 4) | < 4 ms | **2,55 ms** (mesher natif) | ✅ **tenu pour la première fois** |
 | Mutation visible chez l'autre joueur (étape 8) | < 100 ms | **112-168 ms** | ❌, mais voir ci-dessous |
+| Bench statique (rayon 8) | 60 fps | **62,0 fps** (33,8 % de frames > 16,7 ms) | ~ |
+| Bench de vol (rayon 8) | 60 fps | **34,0 fps** (37 % de frames lentes) | ❌, était à 8,0 |
+
+### Le maillage, critère enfin vert — le mesher est passé en C++ (2026-08-09)
+
+Ce que l'annexe E.14 prescrivait (*« si le meshing GDScript est trop lent,
+passer cette partie — et elle seule — en GDExtension »*) est fait : voir la
+section « Le mesher natif » plus haut. 17,1 → **2,55 ms/chunk**, parité
+294/294 chunks vérifiée par `--probe-mesh-parite`, benchs statique 43 → 62 fps
+et vol 8 → 34 fps. Il reste la **coquille** (`fill_shell`, 1,86 ms/chunk, 79 %
+du coût de maillage restant), non portée : elle entraîne `_deep_block`,
+`_ore_at` et `_is_cave_at`, et une divergence là se paie en parois fantômes
+aux frontières de chunk — chantier séparé, avec la sonde de parité en filet.
+
+### Les 50 créatures, critère repassé au rouge — et pourquoi c'est assumé
+
+Le 0,67 ms d'antan mesurait des créatures qui **traversaient les murs**. La
+collision murale du 2026-08-09 rend chaque déplacement 5 à 8× plus cher, et
+trois optimisations du même jour (colonnes dédoublonnées, grille spatiale
+remplaçant les paires O(n²) de séparation, cache d'allonge d'arme) ont ramené
+le tick de 29,4 à **16,9 ms** — encore 2× le budget. Le reliquat est étalé
+(~0,34 ms/créature de frais généraux GDScript par créature engagée) : les
+prochains gains passeront par une IA à niveaux de détail (E.18) ou un portage
+natif, pas par du micro-GDScript.
 
 ### Le budget de tick, assaini
 
@@ -350,7 +401,7 @@ Tous corrigés le 2026-07-27, tous couverts par une sonde.
 - **Régénération de santé** : le GDD ne la chiffre nulle part (A.5.1 ne donne que le maximum, A.9 se contente de la moduler). Valeur par défaut posée dans [player.gd](scenes/entities/player.gd) — 1 PV / 10 s, calquée sur la cadence du mana (A.5) : **à trancher et équilibrer**.
 - ~~Logs de bench et screenshots de debug à la racine~~ — **fait (2026-07-26)** : tout est dans `debug/`, hors du versionné (`.gitignore`) et hors de l'import Godot (`.gdignore`) ; les captures y sont écrites via `_capture_path()` dans [main.gd](scenes/main.gd).
 - **Rendu de la génération de monde** : les briques techniques sont validées, mais le rendu et la distribution visuelle sont à retravailler.
-- **Meshing au-dessus du budget E.14** : mesuré à **13,9 ms/chunk** pour une cible de **< 4 ms**. La sonde `--probe-mesh` donne la répartition — **greedy 72 %**, coquille 20 %, subdivision ~0 %. Un saut rapide supplémentaire (deux niveaux pleins adjacents ne portent aucune face) a rendu **11,6 %** sur le greedy ; le reste demande soit une réécriture en meshing binaire (masques de bits par colonne), soit ce que le GDD prescrit lui-même en E.14 : *« si le meshing GDScript est trop lent, passer cette partie — et elle seule — en GDExtension/Rust, décision au profilage »*. Le profilage est maintenant fait.
+- ~~**Meshing au-dessus du budget E.14**~~ — **résolu le 2026-08-09** par ce que le GDD prescrivait lui-même en E.14 : le cœur du mesher est passé en GDExtension C++ (`native/`), 17,1 → **2,55 ms/chunk**, budget < 4 ms tenu. Voir « Le mesher natif » et la section Performance.
 - Budgets de perf G.8 à re-vérifier après chaque ajout de système simulé.
 
 ### Limites arbitraires levées
