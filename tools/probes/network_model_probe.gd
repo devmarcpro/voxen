@@ -46,6 +46,7 @@ func run() -> void:
 	_check_remote_player()
 	_check_duels()
 	_check_combat_effects()
+	_check_loot()
 	finish(_ok, TAG)
 
 
@@ -350,3 +351,39 @@ func _check_combat_effects() -> void:
 		_expect(bool(victim.call("has_status", "ralentissement")),
 			"un statut annoncé se pose sur la bonne créature")
 		CreatureManager.despawn(victim)
+
+
+## 9. LE BUTIN AU SOL (2026-08-09).
+##
+## LA DUPLICATION LA PLUS FACILE À PROVOQUER d'un jeu multijoueur : deux joueurs
+## courent vers le même mort, chacun voit le tas chez lui, chacun le ramasse, et
+## l'objet existe en double. Il suffit d'une cache qui ne disparaît pas partout.
+##
+## On vérifie donc l'identité (une cache annoncée est LA MÊME, pas une copie),
+## le rejeu (un message répété ne dédouble pas le tas) et le retrait.
+func _check_loot() -> void:
+	DropManager.caches.clear()
+	var spot: Vector3 = player.get_position_for_ai() + Vector3(11, 0, 0)
+	var sword := ItemFactory.craft("epee", {"bois": "chene", "minerai": "fer"}, 0.9)
+
+	DropManager.apply_remote_drop(7001, spot, [sword], 12, &"overworld", "cache")
+	_expect(DropManager.index_of_net_id(7001) >= 0,
+		"une cache annoncée par l'hôte apparaît chez le client")
+
+	DropManager.apply_remote_drop(7001, spot, [sword], 12, &"overworld", "cache")
+	_expect(DropManager.caches.size() == 1,
+		"et l'annoncer deux fois ne dédouble pas le tas")
+
+	# LE RETRAIT EST CE QUI COMPTE VRAIMENT. Une cache ramassée ailleurs doit
+	# disparaître ici, sinon on la ramasse une seconde fois.
+	DropManager.apply_remote_removed(7001)
+	_expect(DropManager.index_of_net_id(7001) < 0 and DropManager.caches.is_empty(),
+		"et le retrait annoncé la fait disparaître — pas de second ramassage")
+
+	# UNE CACHE NÉE ICI PORTE UN IDENTIFIANT, sans quoi on ne pourrait jamais
+	# annoncer son retrait et elle resterait pour toujours chez les autres.
+	DropManager.drop(spot, [sword], 3)
+	var born: Dictionary = DropManager.caches[0] if not DropManager.caches.is_empty() else {}
+	_expect(int(born.get("net_id", 0)) > 0,
+		"une cache née localement reçoit un identifiant réseau (%d)" % int(born.get("net_id", 0)))
+	DropManager.caches.clear()

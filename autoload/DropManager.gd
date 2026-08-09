@@ -44,6 +44,12 @@ const DUNGEON_LIFETIME_TICKS := 1 << 40
 ## déclare pas, et la ressource doit exister avant le premier dépôt.
 const HELD_ITEM_SCRIPT := preload("res://scenes/entities/held_item.gd")
 
+## Identifiant réseau d'une cache, attribué par l'AUTORITÉ. Comme pour les
+## créatures, l'INDEX ne peut pas servir : il change dès qu'une cache est
+## ramassée, et deux camps se retrouveraient à parler de deux tas différents en
+## croyant désigner le même.
+var _next_net_id := 1
+
 var _marker_root: Node3D
 var _markers: Array[Node3D] = []
 var _purge_counter := 0
@@ -67,6 +73,8 @@ func drop(position: Vector3, objects: Array, gold: int = 0, kind: String = "cach
 		if obj is Dictionary:
 			typed.append(obj)
 	var in_dungeon := WorldManager.active_dimension != &"overworld"
+	var net_id := _next_net_id
+	_next_net_id += 1
 	caches.append({
 		"position": position,
 		"objects": typed,
@@ -74,8 +82,12 @@ func drop(position: Vector3, objects: Array, gold: int = 0, kind: String = "cach
 		"expire_tick": TickManager.tick_index + (DUNGEON_LIFETIME_TICKS if in_dungeon else LIFETIME_TICKS),
 		"dimension": WorldManager.active_dimension,
 		"kind": kind,
+		"net_id": net_id,
 	})
 	_refresh_markers()
+	if NetworkManager.is_authority() and NetworkManager.has_peers():
+		NetworkManager.rpc_drop.rpc(net_id, position, typed, gold,
+				String(WorldManager.active_dimension), kind)
 
 
 ## Dépose une cache de MATÉRIAUX en vrac (lâcher volontaire depuis
@@ -135,9 +147,50 @@ func collect(index: int, inventory: Inventory) -> int:
 	for material_id: String in (cache.get("materials", {}) as Dictionary):
 		inventory.add_material(material_id, int(cache["materials"][material_id]))
 	var gold := int(cache["gold"])
+	var net_id := int(cache.get("net_id", 0))
 	caches.remove_at(index)
 	_refresh_markers()
+	# UNE CACHE RAMASSÉE DISPARAÎT POUR TOUT LE MONDE. Sans cette annonce, deux
+	# joueurs pourraient ramasser le MÊME tas — chacun le voyant encore chez lui
+	# — et l'objet serait dupliqué. C'est la duplication la plus facile à
+	# provoquer d'un jeu multijoueur, et il suffit de courir à deux vers un mort.
+	if net_id > 0 and NetworkManager.is_authority() and NetworkManager.has_peers():
+		NetworkManager.rpc_drop_removed.rpc(net_id)
 	return gold
+
+
+## Cache portant cet identifiant réseau, ou -1.
+func index_of_net_id(net_id: int) -> int:
+	for i in caches.size():
+		if int((caches[i] as Dictionary).get("net_id", 0)) == net_id:
+			return i
+	return -1
+
+
+## Applique une cache ANNONCÉE par l'autorité. Le client ne décide d'aucun
+## butin : il l'affiche.
+func apply_remote_drop(net_id: int, position: Vector3, objects: Array, gold: int,
+		dimension: StringName, kind: String) -> void:
+	if index_of_net_id(net_id) >= 0:
+		return  # Déjà connue : un message rejoué ne doit pas dédoubler le tas.
+	var typed: Array[Dictionary] = []
+	for obj: Variant in objects:
+		if obj is Dictionary:
+			typed.append(obj)
+	caches.append({
+		"position": position, "objects": typed, "gold": gold,
+		"expire_tick": TickManager.tick_index + LIFETIME_TICKS,
+		"dimension": dimension, "kind": kind, "net_id": net_id,
+	})
+	_next_net_id = maxi(_next_net_id, net_id + 1)
+	_refresh_markers()
+
+
+func apply_remote_removed(net_id: int) -> void:
+	var index := index_of_net_id(net_id)
+	if index >= 0:
+		caches.remove_at(index)
+		_refresh_markers()
 
 
 func _on_tick(_tick_index: int) -> void:

@@ -170,8 +170,16 @@ func _send_snapshot(peer_id: int) -> void:
 	for pos: Vector3i in ContainerManager.chests:
 		rpc_chest_contents.rpc_id(peer_id, pos, ContainerManager.contents(pos))
 		chests += 1
-	print("[NET] Instantané envoyé au pair %d : %d créature(s), %d objet(s) posé(s), %d pousse(s), %d coffre(s)." % [
-			peer_id, creatures, placed, saplings, chests])
+	var drops := 0
+	for cache: Dictionary in DropManager.caches:
+		if int(cache.get("net_id", 0)) <= 0:
+			continue
+		rpc_drop.rpc_id(peer_id, int(cache["net_id"]), cache["position"],
+				cache["objects"], int(cache["gold"]),
+				String(cache.get("dimension", "overworld")), String(cache.get("kind", "cache")))
+		drops += 1
+	print("[NET] Instantané envoyé au pair %d : %d créature(s), %d objet(s) posé(s), %d pousse(s), %d coffre(s), %d cache(s)." % [
+			peer_id, creatures, placed, saplings, chests, drops])
 
 
 ## Le monde de l'hôte, transmis à un client qui arrive.
@@ -560,3 +568,22 @@ func rpc_creature_status(net_id: int, status_id: String, ticks: int, power: floa
 	var creature := CreatureManager.by_net_id(net_id)
 	if creature != null and creature.has_method("apply_status"):
 		creature.apply_status(status_id, ticks, power)
+
+
+# --- BUTIN AU SOL (2026-08-09) ---------------------------------------------
+#
+# Une cache ramassée doit disparaître POUR TOUT LE MONDE. Sans ça, deux joueurs
+# ramassent le même tas — chacun le voyant encore chez lui — et l'objet est
+# dupliqué. C'est la duplication la plus facile à provoquer d'un jeu
+# multijoueur : il suffit de courir à deux vers un mort.
+
+@rpc("authority", "reliable")
+func rpc_drop(net_id: int, position: Vector3, objects: Array, gold: int,
+		dimension: String, kind: String) -> void:
+	DropManager.apply_remote_drop(net_id, position, objects, gold,
+			StringName(dimension), kind)
+
+
+@rpc("authority", "reliable")
+func rpc_drop_removed(net_id: int) -> void:
+	DropManager.apply_remote_removed(net_id)
