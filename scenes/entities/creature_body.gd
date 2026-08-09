@@ -528,8 +528,18 @@ func _surface_under(position: Vector3) -> float:
 	var bx := floori(position.x)
 	var bz := floori(position.z)
 	var start := floori(position.y)
+	# Ligne NON CHARGÉE = air, SANS interroger le générateur. Cette fonction
+	# court PAR PATTE ET PAR FRAME ; sur un chunk pas encore streamé, chaque
+	# lecture reconstruirait la colonne entière (le coût qui a porté l'IA à
+	# 300-600 ms par tick au bench du 2026-08-09, ici en pire : à la frame).
+	# Le test est PAR LIGNE et non en tête de fonction : la hanche vit souvent
+	# dans le chunk d'air au-dessus de la bande stockée (jamais en mémoire),
+	# alors que le sol en dessous, lui, est bien chargé.
 	for wy in range(start, start - GROUND_SEARCH - 1, -1):
-		if WorldManager.block_at_world(Vector3i(bx, wy, bz)) != 0:
+		var pos := Vector3i(bx, wy, bz)
+		if not WorldManager.is_block_loaded(pos):
+			continue
+		if WorldManager.block_at_world(pos) != 0:
 			return float(wy + 1)   # sommet du bloc, comme la collision
 	return NAN
 

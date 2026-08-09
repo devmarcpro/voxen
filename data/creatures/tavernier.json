@@ -31,7 +31,9 @@
   "ai_profile": "civil",
   "jobs_compatible": [
     "vendeur",
-    "cuisinier"
+    "cuisinier",
+    "tavernier",
+    "croupier"
   ],
   "housing_default": "normal",
   "recruitable": {

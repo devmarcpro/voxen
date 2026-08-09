@@ -87,13 +87,22 @@ const COURSE_SPACING := 12
 static var _noise_cache := {}
 static var _pool_cache := PackedStringArray()
 static var _palette_cache := {}
+## MEME COURSE QUE LE FEUILLAGE (2026-08-09, voir TreeGenerator._leaf_shell_mutex) :
+## ces caches statiques sont lus par `block_at` depuis le THREAD PRINCIPAL et
+## remplis par les threads ouvriers du streaming. Un seul verrou pour les
+## trois : ils se remplissent ensemble, au premier contact d'une tour.
+static var _cache_mutex := Mutex.new()
 static var _palette_mutex := Mutex.new()
 
 
 ## Jeu de bruits pour une graine donnée (créés une fois).
 static func _noises_for(world_seed: int) -> Dictionary:
+	_cache_mutex.lock()
 	if _noise_cache.has(world_seed):
-		return _noise_cache[world_seed]
+		var cached: Variant = _noise_cache[world_seed]
+		_cache_mutex.unlock()
+		return cached
+	_cache_mutex.unlock()
 	# Usure : altère légèrement le rayon et ronge les créneaux. Une tour
 	# parfaitement régulière lit comme un objet posé ; quelques pierres
 	# manquantes suffisent à la faire lire comme une ruine habitée.
@@ -114,7 +123,9 @@ static func _noises_for(world_seed: int) -> Dictionary:
 	bond.fractal_octaves = 2
 
 	var set := {"wear": wear, "bond": bond}
+	_cache_mutex.lock()
 	_noise_cache[world_seed] = set
+	_cache_mutex.unlock()
 	return set
 
 
@@ -125,16 +136,23 @@ static func _noises_for(world_seed: int) -> Dictionary:
 ## des fichiers — trier garantit que la même graine donne la même tour d'une
 ## machine à l'autre).
 static func stone_pool() -> PackedStringArray:
+	_cache_mutex.lock()
 	if not _pool_cache.is_empty():
-		return _pool_cache
+		var cached_pool := _pool_cache
+		_cache_mutex.unlock()
+		return cached_pool
+	_cache_mutex.unlock()
 	var ids: Array[String] = []
 	for id: String in GameData.materials:
 		var mat: Dictionary = GameData.materials[id]
 		if "pierre_taillee" in (mat.get("tags", []) as Array):
 			ids.append(id)
 	ids.sort()
+	_cache_mutex.lock()
 	_pool_cache = PackedStringArray(ids)
-	return _pool_cache
+	var out := _pool_cache
+	_cache_mutex.unlock()
+	return out
 
 
 ## Palette d'une cellule : [maçonnerie principale, accent des moulures].

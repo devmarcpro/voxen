@@ -1704,6 +1704,11 @@ func _install_chunk_mesh(key: Vector3i, arrays: Array, coarse_arrays: Array, epo
 		# les chunks voisins (mêmes coordonnées MONDE, fonction pure
 		# `biome_at`) garantissent la continuité aux jointures (pas de
 		# marche visible entre deux chunks de biomes différents).
+		# COÛT MESURÉ DE CE DUPLICATA (bench statique 2026-08-09) : ~3 ms/frame de
+		# rebinds driver (43,0 → 50,0 fps avec un matériau partagé pour ~184 draw
+		# calls). Le supprimer exige de sortir grass_tint_map et chunk_origin du
+		# matériau (teinte par sommet + origine via MODEL_MATRIX) — chantier visuel,
+		# pas fait à l'aveugle.
 		var chunk_material := _material.duplicate() as ShaderMaterial
 		chunk_material.set_shader_parameter("grass_tint_map", _grass_tint_texture(key))
 		# Origine MONDE du chunk (blocs) → texture calculée en coords locales
@@ -1777,3 +1782,41 @@ func wait_for_in_flight() -> void:
 
 func _exit_tree() -> void:
 	wait_for_in_flight()
+
+
+## UN CORPS PEUT-IL OCCUPER CE BLOC ? Règle de solidité PARTAGÉE par tout ce qui
+## se déplace : le joueur, les créatures, et ce qu'on ajoutera ensuite.
+##
+## Elle vivait dans `fly_camera.gd` et n'y servait qu'au joueur ; les créatures
+## traversaient donc les murs. Elle porte trois savoirs payés cher, qu'aucune
+## copie ne devait risquer de perdre : les sous-voxels d'abord (un bloc
+## majoritairement air peut contenir un mur fin), les plantes ensuite (un champ
+## de blé n'est pas une palissade), l'eau enfin (on y nage).
+func is_body_blocking(pos: Vector3i, loaded_only: bool = false) -> bool:
+	if generator == null:
+		return false
+	# Bloc SUBDIVISÉ : tester les sous-cellules AVANT l'id dominant (un bloc
+	# majoritairement air a un dominant=0 mais peut contenir une construction
+	# fine solide — bug de collision corrigé 2026-07-26). Seuil abaissé à 1/8
+	# pour que les murs/structures fins bloquent.
+	var solid := subdiv_solid_count(pos)
+	if solid >= 0:
+		return solid >= SubdivGrid.CELLS / 8
+	# `loaded_only` : hors chunk chargé, répondre « rien ne bloque » SANS
+	# interroger le générateur. `block_at_world` reconstruit sinon la colonne
+	# entière (villes, arbres, grottes) — mesuré au bench de vol du 2026-08-09 :
+	# la collision murale des créatures (jusqu'à 40 lectures par créature et par
+	# tick) portait le tick d'IA à 300-600 ms dès que les créatures restaient
+	# dans des chunks évincés. Même famille que le repli de _ground_height.
+	if loaded_only and not is_block_loaded(pos):
+		return false
+	var id := block_at_world(pos)
+	if id == 0:
+		return false
+	# ON TRAVERSE LES PLANTES (2026-08-04, demande explicite « pas de hitbox »).
+	# Sans ça, un champ de blé est un mur de cubes invisibles qu'il faut sauter
+	# un par un — et c'est le même défaut que les cultures en sous-voxels avaient
+	# déjà causé avant leur correction par le seuil des 50 %.
+	if id < GameData.cross_mask.size() and GameData.cross_mask[id] == 1:
+		return false
+	return id != GameData.material_runtime_ids.get("eau", -1)

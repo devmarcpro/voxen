@@ -216,11 +216,36 @@ func _refresh(new_line: bool) -> void:
 	_add_option(tr("ui.dialogue.parler"), _can_talk(), _reason_talk(), _on_talk)
 	_add_option(tr("ui.dialogue.offrir"), _best_gift() != {},
 		tr("ui.dialogue.rien_a_offrir"), _on_gift)
-	# Options prévues par E.23 dont le système n'existe pas encore. Elles sont
-	# affichées désactivées PLUTÔT QUE MASQUÉES : c'est ce qui apprend au joueur
-	# ce qu'un PNJ pourra offrir, et ce qui rend visible ce qui manque au jeu.
-	_add_option(tr("ui.dialogue.commercer"), false, tr("ui.dialogue.pas_marchand"), Callable())
-	_add_option(tr("ui.dialogue.quetes"), false, tr("ui.dialogue.pas_de_quetes"), Callable())
+	# LES SERVICES SONT RÉELS DEPUIS LE 2026-08-09 : le métier du PNJ décide de
+	# ce qu'il propose. Un PNJ sans service garde ses options grisées — toujours
+	# affichées plutôt que masquées, pour qu'on voie ce qu'un village peut offrir.
+	var role := String((_creature.identity as Dictionary).get("role", ""))
+	match role:
+		"marchand", "forgeron":
+			_add_option(tr("ui.dialogue.commercer"), true, "", _toggle_trade)
+			if _trade_open:
+				_build_trade_section()
+		"tavernier":
+			_add_option(tr("ui.dialogue.repas").format({"prix": str(MEAL_PRICE)}),
+				_player.gold >= MEAL_PRICE, tr("ui.dialogue.pas_assez_or"), _on_meal)
+			_add_option(tr("ui.dialogue.nuit").format({"prix": str(NIGHT_PRICE)}),
+				_player.gold >= NIGHT_PRICE and DayNightManager.is_night(),
+				tr("ui.toast.pas_la_nuit") if _player.gold >= NIGHT_PRICE
+					else tr("ui.dialogue.pas_assez_or"), _on_night)
+		"pretre":
+			_add_option(tr("ui.dialogue.soins").format({"prix": str(HEAL_PRICE)}),
+				_player.gold >= HEAL_PRICE and _player.health < _player.health_max,
+				tr("ui.dialogue.deja_soigne") if _player.health >= _player.health_max
+					else tr("ui.dialogue.pas_assez_or"), _on_heal)
+			_add_option(tr("ui.dialogue.benediction").format({"prix": str(BLESS_PRICE)}),
+				_player.gold >= BLESS_PRICE, tr("ui.dialogue.pas_assez_or"), _on_bless)
+		"croupier":
+			_build_casino_section()
+		"maitre_guilde":
+			_build_guild_section()
+		_:
+			_add_option(tr("ui.dialogue.commercer"), false, tr("ui.dialogue.pas_marchand"), Callable())
+			_add_option(tr("ui.dialogue.quetes"), false, tr("ui.dialogue.pas_de_quetes"), Callable())
 	_add_option(tr("ui.dialogue.recruter"), false, tr("ui.dialogue.pas_recrutable"), Callable())
 	_add_option(tr("ui.dialogue.fermer"), true, "", close)
 
@@ -343,3 +368,272 @@ func _creature_tint() -> Color:
 	# doit distinguer deux personnes, pas les redessiner — le modèle porte déjà
 	# ses propres couleurs, et c'est lui qu'on veut voir.
 	return Color.from_hsv(float(absi(key.hash()) % 360) / 360.0, 0.10, 1.0)
+
+
+# --- SERVICES DE VILLAGE (2026-08-09) ----------------------------------------
+#
+# Chaque service vit ICI, dans le panneau, parce que tous s'expriment de la même
+# façon : des OPTIONS de dialogue. Pas de fenêtre dédiée par commerce — la
+# fenêtre de dialogue est déjà quasi plein écran (demande du 2026-08-09), et une
+# UI par service aurait fait cinq fenêtres pour cinq boutons.
+#
+# LES PRIX FIXES (repas, nuit, soins, mises) sont des réglages assumés : le GDD
+# fixe les formules du COMMERCE (A.8/A.8.1) mais pas le menu de la taverne.
+
+const MEAL_PRICE := 8
+const NIGHT_PRICE := 15
+const HEAL_PRICE := 25
+const BLESS_PRICE := 10
+const BET := 20
+
+## Le commerce est un VOLET qu'on ouvre, pas une avalanche permanente : sans ce
+## drapeau, chaque marchand afficherait d'office seize lignes d'étal et les
+## options de conversation disparaîtraient sous l'inventaire.
+var _trade_open := false
+
+
+func _toggle_trade() -> void:
+	_trade_open = not _trade_open
+	_refresh(false)
+
+
+func _build_trade_section() -> void:
+	var stock: Array = EconomyManager.merchant_stock(_creature)
+	var wallet := EconomyManager.wallet_gold(_creature)
+	_add_note(tr("ui.dialogue.bourse_marchand").format({
+		"or": str(wallet), "joueur": str(_player.gold)}))
+	# ACHETER : l'étal de la semaine, prix A.8.
+	for line: Dictionary in stock:
+		if int(line["count"]) <= 0:
+			continue
+		var mat: Dictionary = GameData.stackable(String(line["material_id"]))
+		var label := tr("ui.dialogue.acheter_ligne").format({
+			"objet": tr(String(mat.get("name_key", line["material_id"]))),
+			"prix": str(line["price"]), "reste": str(line["count"])})
+		_add_option(label, _player.gold >= int(line["price"]),
+			tr("ui.dialogue.pas_assez_or"), _on_buy.bind(line))
+	# VENDRE : ce que le joueur porte et que la formule A.8 sait chiffrer.
+	var shown := 0
+	for material_id: String in _player.inventory.material_stacks:
+		if shown >= 8:
+			break
+		if int(_player.inventory.material_stacks[material_id]) < 1:
+			continue
+		var price := maxi(1, int(round(ShopManager.suggested_price(material_id)
+			* EconomyManager.BUYBACK_RATIO)))
+		var mat: Dictionary = GameData.stackable(material_id)
+		_add_option(tr("ui.dialogue.vendre_ligne").format({
+			"objet": tr(String(mat.get("name_key", material_id))),
+			"prix": str(price)}), true, "", _on_sell.bind(material_id))
+		shown += 1
+
+
+func _on_buy(line: Dictionary) -> void:
+	if EconomyManager.buy_from_merchant(_creature, line, _player):
+		EventBus.ui_notification.emit("ui.toast.achete")
+	_refresh(false)
+
+
+func _on_sell(material_id: String) -> void:
+	var result: Dictionary = EconomyManager.sell_to_merchant(_creature, material_id, _player)
+	match String(result.get("issue", "")):
+		"vendu":
+			EventBus.ui_notification.emit("ui.toast.vendu")
+		"troc":
+			# A.8.1 : le marchand à sec PROPOSE, il ne refuse pas sec. L'échange
+			# est appliqué directement — l'offre affichée est l'acceptation.
+			var line: Dictionary = result["contre"]
+			if EconomyManager.barter_with_merchant(_creature, material_id, line, _player):
+				var mat: Dictionary = GameData.stackable(String(line["material_id"]))
+				EventBus.ui_notification.emit(tr("ui.toast.troc_fait").format({
+					"objet": tr(String(mat.get("name_key", "")))}))
+		"refus_sec":
+			EventBus.ui_notification.emit("ui.toast.marchand_a_sec")
+	_refresh(false)
+
+
+func _on_meal() -> void:
+	if _player.gold < MEAL_PRICE:
+		return
+	_player.gold -= MEAL_PRICE
+	EconomyManager.adjust_wallet(_creature, MEAL_PRICE)
+	_player.hunger = _player.hunger_max
+	EventBus.ui_notification.emit("ui.toast.repas_pris")
+	_refresh(false)
+
+
+func _on_night() -> void:
+	if _player.gold < NIGHT_PRICE or not DayNightManager.is_night():
+		return
+	_player.gold -= NIGHT_PRICE
+	EconomyManager.adjust_wallet(_creature, NIGHT_PRICE)
+	close()
+	# La nuit d'auberge EST la nuit du lit : même fonction, même régénération,
+	# même ancre de réapparition. Deux sommeils auraient divergé au premier
+	# réglage.
+	_player.sleep_until_dawn()
+
+
+func _on_heal() -> void:
+	if _player.gold < HEAL_PRICE:
+		return
+	_player.gold -= HEAL_PRICE
+	EconomyManager.adjust_wallet(_creature, HEAL_PRICE)
+	_player.health = _player.health_max
+	EventBus.ui_notification.emit("ui.toast.soins_recus")
+	_refresh(false)
+
+
+func _on_bless() -> void:
+	if _player.gold < BLESS_PRICE:
+		return
+	_player.gold -= BLESS_PRICE
+	EconomyManager.adjust_wallet(_creature, BLESS_PRICE)
+	_player.mana.current = _player.mana.max_mana()
+	EventBus.ui_notification.emit("ui.toast.benediction")
+	_refresh(false)
+
+
+# --- CASINO -------------------------------------------------------------------
+#
+# TROIS JEUX, TROIS PROFILS DE RISQUE, et les cotes se lisent dans le libellé :
+#   - DÉS : 2d6 contre le croupier, égalité rejouée — quasi 50/50, gain x2 ;
+#   - PILE OU FACE : 50/50 exact, gain x2 ;
+#   - LA ROUE : 1 chance sur 6, gain x5 — le jeu du désespoir.
+# L'avantage de la maison est dans la ROUE (espérance 5/6) et dans l'égalité
+# des dés rejouée sans frais. LA MAISON PEUT SAUTER : les gains sortent du
+# portefeuille du croupier (A.8.1), et quand il est à sec, la table ferme
+# jusqu'à la recharge hebdomadaire. C'est une RÈGLE, pas une panne.
+
+func _build_casino_section() -> void:
+	var house := EconomyManager.wallet_gold(_creature)
+	_add_note(tr("ui.dialogue.caisse_maison").format({"or": str(house)}))
+	var can_bet: bool = _player.gold >= BET
+	var house_open := house >= BET
+	var reason := tr("ui.dialogue.maison_a_sec") if not house_open 		else tr("ui.dialogue.pas_assez_or")
+	_add_option(tr("ui.dialogue.jeu_des").format({"mise": str(BET)}),
+		can_bet and house_open, reason, _on_dice)
+	_add_option(tr("ui.dialogue.jeu_pile").format({"mise": str(BET)}),
+		can_bet and house_open, reason, _on_coin)
+	_add_option(tr("ui.dialogue.jeu_roue").format({"mise": str(BET)}),
+		can_bet and house >= BET * 4, tr("ui.dialogue.maison_a_sec")
+			if house < BET * 4 else tr("ui.dialogue.pas_assez_or"), _on_wheel)
+
+
+func _resolve_bet(won: bool, gain: int) -> void:
+	if won:
+		_player.gold += gain
+		EconomyManager.adjust_wallet(_creature, -gain)
+		EventBus.ui_notification.emit(tr("ui.toast.gagne").format({"or": str(gain)}))
+	else:
+		_player.gold -= BET
+		EconomyManager.adjust_wallet(_creature, BET)
+		EventBus.ui_notification.emit("ui.toast.perdu")
+	_refresh(false)
+
+
+func _on_dice() -> void:
+	# Égalité REJOUÉE, pas rendue : c'est là que vit l'avantage de la maison.
+	var mine := 0
+	var house := 0
+	while mine == house:
+		mine = randi_range(1, 6) + randi_range(1, 6)
+		house = randi_range(1, 6) + randi_range(1, 6)
+	EventBus.ui_notification.emit(tr("ui.toast.des_tires").format({
+		"moi": str(mine), "lui": str(house)}))
+	_resolve_bet(mine > house, BET)
+
+
+func _on_coin() -> void:
+	_resolve_bet(randi() % 2 == 0, BET)
+
+
+func _on_wheel() -> void:
+	_resolve_bet(randi_range(1, 6) == 6, BET * 4)
+
+
+# --- GUILDE (7.3 / B.7) --------------------------------------------------------
+
+## Guilde tenue par CE maître : dérivée du village, déterministe. Le bâtiment ne
+## déclare pas sa guilde en données — quand il le fera, ce tirage tombera.
+func _guild_of_creature() -> String:
+	var guilds: Array = GuildManager.known_guilds()
+	if guilds.is_empty():
+		return ""
+	guilds.sort()
+	var cell := Vector2i(_creature.village_cell)
+	return String(guilds[absi(NoiseGenerator.pcg_hash(cell.x, cell.y,
+		WorldManager.world_seed + 4242)) % guilds.size()])
+
+
+func _build_guild_section() -> void:
+	var guild_id := _guild_of_creature()
+	if guild_id == "":
+		_add_option(tr("ui.dialogue.quetes"), false, tr("ui.dialogue.pas_de_quetes"), Callable())
+		return
+	var rank := GuildManager.rank_of(_player, guild_id)
+	_add_note(tr("ui.dialogue.guilde_titre").format({
+		"guilde": tr("guilde.%s.name" % guild_id),
+		"rang": tr("guilde.rang.%s" % GuildManager.rank_name(rank)) if rank > 0
+			else tr("ui.dialogue.pas_membre"),
+		"xp": str(GuildManager.xp_of(_player, guild_id))}))
+	if rank == 0:
+		_add_option(tr("ui.dialogue.inscrire"), true, "",
+			_on_enroll.bind(guild_id))
+		return
+	var active: Dictionary = GuildManager.active_quest(_player, guild_id)
+	if active.is_empty():
+		var offered: Dictionary = GuildManager.offered_quest(_player, guild_id)
+		if offered.is_empty():
+			_add_option(tr("ui.dialogue.quetes"), false, tr("ui.dialogue.pas_de_quetes"), Callable())
+			return
+		_add_note(_quest_text(offered))
+		_add_option(tr("ui.dialogue.contrat_accepter").format({
+			"or": str(offered["gold"])}), true, "",
+			_on_accept_quest.bind(guild_id, offered))
+	else:
+		_add_note(_quest_text(active) + " — %d/%d" % [int(active["done"]), int(active["count"])])
+		_add_option(tr("ui.dialogue.contrat_rendre").format({"or": str(active["gold"])}),
+			int(active["done"]) >= int(active["count"]),
+			tr("ui.dialogue.contrat_en_cours"), _on_turn_in.bind(guild_id))
+
+
+## Texte du contrat, via le gabarit localisé B.7 (« jamais de concaténation de
+## morceaux de phrases — l'ordre des mots varie selon les langues »).
+func _quest_text(quest: Dictionary) -> String:
+	var target_key := ""
+	if String(quest["pattern"]) == "tuer":
+		target_key = String((GameData.creatures.get(String(quest["target"]), {}) as Dictionary)
+			.get("name_key", quest["target"]))
+	else:
+		target_key = String(GameData.stackable(String(quest["target"])).get("name_key", quest["target"]))
+	return tr(String(quest["text_key"])).format({
+		"count": str(quest["count"]), "target": tr(target_key)})
+
+
+func _on_enroll(guild_id: String) -> void:
+	GuildManager.enroll(_player, guild_id)
+	EventBus.ui_notification.emit("ui.toast.inscrit_guilde")
+	_refresh(false)
+
+
+func _on_accept_quest(guild_id: String, quest: Dictionary) -> void:
+	GuildManager.accept(_player, guild_id, quest)
+	EventBus.ui_notification.emit("ui.toast.contrat_accepte")
+	_refresh(false)
+
+
+func _on_turn_in(guild_id: String) -> void:
+	var done: Dictionary = GuildManager.turn_in(_player, guild_id)
+	if not done.is_empty():
+		EventBus.ui_notification.emit(tr("ui.toast.contrat_rendu").format({
+			"or": str(done["gold"])}))
+	_refresh(false)
+
+
+## Ligne d'information dans la colonne des options : même famille visuelle que
+## les motifs de refus, mais sans bouton.
+func _add_note(text: String) -> void:
+	var note := UITheme.dim(text)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_options.add_child(note)

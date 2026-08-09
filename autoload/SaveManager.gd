@@ -423,6 +423,7 @@ func _gather_state() -> Dictionary:
 		"villages": VillageManager.save_state(),
 		"exploration": ExplorationManager.save_state(),
 		"shops": ShopManager.save_state(),
+		"economie": EconomyManager.save_state(),
 		"dungeons": DungeonManager.save_state(),
 		"drops": DropManager.save_state(),
 		"chests": ContainerManager.save_state(),
@@ -673,6 +674,7 @@ func apply_pending_state() -> void:
 	VillageManager.restore_state(_pending_state.get("villages", {}))
 	ExplorationManager.restore_state(_pending_state.get("exploration", []))
 	ShopManager.restore_state(_pending_state.get("shops", {}))
+	EconomyManager.restore_state(_pending_state.get("economie", {}))
 	DungeonManager.restore_state(_pending_state.get("dungeons", {}))
 	DropManager.restore_state(_pending_state.get("drops", []))
 	ContainerManager.restore_state(_pending_state.get("chests", {}))

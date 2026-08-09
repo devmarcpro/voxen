@@ -1,0 +1,21 @@
+{
+  "id": "prospection",
+  "_commentaire": "Guilde des Prospecteurs (B.7 : pattern « localiser »). On prouve le gisement en extrayant N blocs du minerai demande — le jeu n a pas encore de geste « signaler un filon », miner EST la preuve, et c est assume.",
+  "guild": "prospecteurs",
+  "rank_min": 1,
+  "pattern": "localiser",
+  "target_selector": {
+    "category_any": [
+      "minerai"
+    ]
+  },
+  "count_range": [
+    5,
+    12
+  ],
+  "reward": {
+    "gold_flat": 80,
+    "guild_xp": 10
+  },
+  "text_key": "quest.prospection.text"
+}

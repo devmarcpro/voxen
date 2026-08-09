@@ -4,11 +4,13 @@
   "name_key": "ai.civil.name",
   "attaque_a_vue": false,
   "riposte": true,
-  "fuit": true,
+  "fuit": false,
   "patrouille": false,
   "intercepte": false,
   "vision": 10.0,
   "vision_nuit": 0.5,
   "poids_lumiere": 0.7,
-  "poids_discretion": 0.7
+  "poids_discretion": 0.7,
+  "fuit_si_menace": true,
+  "_fuite": "Un civil ne fuit pas a vue : il fuit quand on l'attaque. `fuit` a nu voulait dire « detale des qu'il vous voit », et tout un village se vidait a l'approche du joueur."
 }

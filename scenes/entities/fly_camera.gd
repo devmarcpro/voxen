@@ -314,26 +314,11 @@ func teleport_to(pos: Vector3, yaw_degrees: float = NAN) -> void:
 ## comptait comme un bloc plein — traverser un champ obligeait à sauter sur
 ## chaque touffe.
 func _is_blocking(wx: int, wy: int, wz: int) -> bool:
-	if WorldManager.generator == null:
-		return false
-	var pos := Vector3i(wx, wy, wz)
-	# Bloc SUBDIVISÉ : tester les sous-cellules AVANT l'id dominant (un bloc
-	# majoritairement air a un dominant=0 mais peut contenir une construction
-	# fine solide — bug de collision corrigé 2026-07-26). Seuil abaissé à 1/8
-	# pour que les murs/structures fins bloquent le joueur.
-	var solid := WorldManager.subdiv_solid_count(pos)
-	if solid >= 0:
-		return solid >= SubdivGrid.CELLS / 8
-	var id := WorldManager.block_at_world(pos)
-	if id == 0:
-		return false
-	# ON TRAVERSE LES PLANTES (2026-08-04, demande explicite « pas de hitbox »).
-	# Sans ça, un champ de blé est un mur de cubes invisibles qu'il faut sauter
-	# un par un — et c'est le même défaut que les cultures en sous-voxels avaient
-	# déjà causé avant leur correction par le seuil des 50 %.
-	if id < GameData.cross_mask.size() and GameData.cross_mask[id] == 1:
-		return false
-	return id != GameData.material_runtime_ids.get("eau", -1)
+	# DÉLÉGUÉ À WorldManager (2026-08-09). La règle a déménagé le jour où les
+	# créatures ont dû cesser de traverser les murs : deux copies auraient
+	# divergé au premier matériau traversable ajouté, et l'on se serait retrouvé
+	# avec un blé que le joueur franchit et qu'un villageois contourne.
+	return WorldManager.is_body_blocking(Vector3i(wx, wy, wz))
 
 
 ## Un bloc plein occupe-t-il l'un des 4 coins de l'emprise horizontale du

@@ -56,6 +56,64 @@ var last_tick_us: int = 0
 var _sum_tick_us: int = 0
 var _tick_samples: int = 0
 
+## GRILLE SPATIALE des créatures vivantes de la dimension active, reconstruite
+## une fois par tick AVANT l'IA (bench créatures 2026-08-09 : `_separation` et
+## `_push_out_of_bodies` parcouraient TOUTES les créatures pour chacune, soit
+## 2×50×50 = 5 000 itérations de paires par tick — l'essentiel des 25 ms d'IA
+## restants après l'optimisation de `_wall_at`). Cellules de 2 blocs : une
+## requête de voisinage (rayon ≤ 1,15) couvre au plus 2×2 cellules.
+##
+## La grille fige l'APPARTENANCE aux cellules en début de tick ; les positions
+## lues par les requêtes restent, elles, à jour (références). Une créature qui
+## change de cellule EN COURS de tick peut manquer/garder un voisin à ±0,1 bloc
+## près — même ordre d'approximation que les décisions à 10 Hz, assumé.
+const SPATIAL_CELL := 2.0
+var _spatial := {}
+
+
+func _rebuild_spatial(active_dim: StringName) -> void:
+	_spatial.clear()
+	for creature in creatures:
+		if not is_instance_valid(creature) or creature.is_dead():
+			continue
+		if creature.dimension != active_dim:
+			continue
+		var p: Vector3 = creature.logical_position
+		var key := Vector2i(floori(p.x / SPATIAL_CELL), floori(p.z / SPATIAL_CELL))
+		var bucket: Variant = _spatial.get(key)
+		if bucket == null:
+			_spatial[key] = [creature]
+		else:
+			(bucket as Array).append(creature)
+
+
+func _spatial_insert(creature: Node) -> void:
+	if creature.dimension != WorldManager.active_dimension:
+		return
+	var p: Vector3 = creature.logical_position
+	var key := Vector2i(floori(p.x / SPATIAL_CELL), floori(p.z / SPATIAL_CELL))
+	var bucket: Variant = _spatial.get(key)
+	if bucket == null:
+		_spatial[key] = [creature]
+	else:
+		(bucket as Array).append(creature)
+
+
+## Créatures candidates dans le disque (pos, radius) — SURENSEMBLE : l'appelant
+## refait son test de distance précis, comme il le faisait sur la liste entière.
+func neighbours_within(pos: Vector3, radius: float) -> Array:
+	var out := []
+	var cx0 := floori((pos.x - radius) / SPATIAL_CELL)
+	var cx1 := floori((pos.x + radius) / SPATIAL_CELL)
+	var cz0 := floori((pos.z - radius) / SPATIAL_CELL)
+	var cz1 := floori((pos.z + radius) / SPATIAL_CELL)
+	for cx in range(cx0, cx1 + 1):
+		for cz in range(cz0, cz1 + 1):
+			var bucket: Variant = _spatial.get(Vector2i(cx, cz))
+			if bucket != null:
+				out.append_array(bucket)
+	return out
+
 
 ## Modèles de créature PRÉCHARGÉS au démarrage (2026-07-28). Le tout premier
 ## spawn payait sinon la lecture disque + le parsing du `.glb` EN PLEIN TICK :
@@ -151,6 +209,13 @@ func _instantiate_creature(creature_id: String, world_position: Vector3,
 	instance.dimension = dimension
 	instance.net_id = net_id
 	creatures.append(instance)
+	# INSCRITE DANS LA GRILLE SPATIALE DES LA NAISSANCE. La grille n est
+	# reconstruite qu en debut de tick : sans cette ligne, une creature apparue
+	# depuis est INVISIBLE aux requetes de voisinage jusqu au tick suivant — et
+	# quand deux voisines sont fraiches (peuplement d un village, 1 spawn/tick),
+	# plus personne ne se repousse. Vu en sonde : « deux creatures superposees
+	# s ecartent : ecart 0.00 », vert ou rouge selon l instant du tirage.
+	_spatial_insert(instance)
 	_by_net_id[net_id] = instance
 	return instance
 
@@ -241,6 +306,7 @@ func _on_tick(_tick_index: int) -> void:
 	var start := Time.get_ticks_usec()
 
 	var active_dim := WorldManager.active_dimension
+	_rebuild_spatial(active_dim)
 	# POSES DIFFUSÉES UNE FOIS PAR TICK (10 Hz), et seulement s'il y a quelqu'un
 	# à qui parler. C'est la cadence de la simulation : émettre plus souvent
 	# n'enverrait que de l'interpolation, que le client sait déjà faire seul.
@@ -756,7 +822,10 @@ func _populate_village(cell: Vector2i, plan: Dictionary) -> void:
 			"job": String(entry["job"]),
 			"kingdom_id": kingdom_id,
 			"home": Vector3(home),
-			"work": Vector3(VillagePopulation.work_position(cell, plan)),
+			# CHACUN TRAVAILLE CHEZ LUI (2026-08-09) : le marchand dans son
+			# echoppe, le pretre dans son temple. La place commune reste le
+			# poste des metiers sans batiment.
+			"work": Vector3(VillagePopulation.work_position_for(cell, plan, entry)),
 			# L'IDENTITÉ VOYAGE AVEC L'HABITANT. Le roster la connaissait, la
 			# créature l'ignorait : un villageois croisé en jeu n'avait ni nom,
 			# ni âge, ni origine — toute la démographie existait sur le papier et

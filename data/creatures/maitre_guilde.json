@@ -30,7 +30,8 @@
   "inventory_table": null,
   "ai_profile": "civil",
   "jobs_compatible": [
-    "vendeur"
+    "vendeur",
+    "maitre_guilde"
   ],
   "housing_default": "normal",
   "recruitable": {

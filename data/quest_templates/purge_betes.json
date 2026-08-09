@@ -1,0 +1,25 @@
+{
+  "id": "purge_betes",
+  "_commentaire": "Variante Guerriers : les betes sauvages qui rodent.",
+  "guild": "guerriers",
+  "rank_min": 1,
+  "pattern": "tuer",
+  "target_selector": {
+    "tags_any": [
+      "bete_sauvage"
+    ],
+    "combat_level_range_around_player": [
+      0.4,
+      1.6
+    ]
+  },
+  "count_range": [
+    2,
+    5
+  ],
+  "reward": {
+    "gold_per_target_level": 12,
+    "guild_xp": 8
+  },
+  "text_key": "quest.purge_betes.text"
+}

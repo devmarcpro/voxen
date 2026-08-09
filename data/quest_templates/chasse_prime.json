@@ -1,0 +1,25 @@
+{
+  "id": "chasse_prime",
+  "_commentaire": "Gabarit B.7, guilde des Guerriers. La cible est tiree parmi les creatures hostiles au niveau du joueur (combat_level_range_around_player), le compte et la recompense suivent le schema du GDD a la lettre.",
+  "guild": "guerriers",
+  "rank_min": 1,
+  "pattern": "tuer",
+  "target_selector": {
+    "tags_any": [
+      "hostile"
+    ],
+    "combat_level_range_around_player": [
+      0.5,
+      2.0
+    ]
+  },
+  "count_range": [
+    3,
+    8
+  ],
+  "reward": {
+    "gold_per_target_level": 15,
+    "guild_xp": 10
+  },
+  "text_key": "quest.chasse_prime.text"
+}

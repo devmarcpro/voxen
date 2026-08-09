@@ -433,6 +433,35 @@ func rpc_chest_contents(position: Vector3i, contents: Dictionary) -> void:
 	ContainerManager.apply_remote_contents(position, contents)
 
 
+# ECONOMIE PNJ (2026-08-09). L or d un PNJ est un etat PARTAGE — deux joueurs
+# peuvent vider le meme marchand — donc il suit exactement le chemin des
+# coffres : l hote applique, tout le monde recoit le RESULTAT. L or du JOUEUR,
+# lui, ne passe jamais ici : chaque pair est l autorite de sa propre bourse.
+
+@rpc("authority", "reliable")
+func rpc_npc_wallet(key: String, gold: int, week: int) -> void:
+	EconomyManager.apply_remote_wallet(key, gold, week)
+
+
+@rpc("any_peer", "reliable")
+func request_npc_wallet(key: String, delta: int, cap: int) -> void:
+	if not is_authority():
+		return
+	EconomyManager.apply_wallet_request(key, delta, cap)
+
+
+@rpc("authority", "reliable")
+func rpc_npc_stock(week_key: String, taken: Dictionary) -> void:
+	EconomyManager.apply_remote_stock(week_key, taken)
+
+
+@rpc("any_peer", "reliable")
+func request_npc_stock(week_key: String, line: int) -> void:
+	if not is_authority():
+		return
+	EconomyManager.apply_stock_request(week_key, line)
+
+
 # --- DUELS ET DÉGÂTS ENTRE JOUEURS (2026-08-08) ----------------------------
 #
 # LE PVP PASSE PAR UNE DEMANDE, et l'hôte arbitre. Deux joueurs ne peuvent se

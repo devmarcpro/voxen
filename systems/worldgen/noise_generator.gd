@@ -385,7 +385,13 @@ const CITY_CELL_BLOCKS := 128
 ## Rejet des sites en pente : écart de hauteur max toléré sur les 4 coins du
 ## footprint (au-delà, pas de village — sélection de site plat, le joueur
 ## voulait « raser les montagnes », résolu par le CHOIX du site + terrassement).
-const CITY_MAX_SLOPE := 20
+## Dénivelé maximal d'un site, en blocs. RELEVÉ de 20 à 40 le 2026-08-09 : avec
+## un plateau unique, tout ce qui dépassait produisait une falaise artificielle
+## et devait être refusé. Les paliers absorbent maintenant la pente, et le
+## critère redevient ce qu'il devrait être — « peut-on bâtir ici ? » et non
+## « le terrain est-il déjà plat ? ». Un tiers des sites étaient rejetés pour
+## cette raison seule.
+const CITY_MAX_SLOPE := 40
 
 # Strates précompilées (G.9) : ids runtime, profondeur de fin, transition.
 var _strata_ids := PackedInt32Array()
@@ -1883,6 +1889,24 @@ func _city_cell_of(wx: int, wz: int) -> Vector2i:
 	return Vector2i(floori(float(wx) / CITY_CELL_BLOCKS), floori(float(wz) / CITY_CELL_BLOCKS))
 
 
+## VILLE COUVRANT LA COLONNE (wx, wz), ou {} — c est CETTE fonction que les
+## chemins de terrain doivent appeler depuis que les capitales debordent de leur
+## cellule. La colonne peut etre couverte par le layout de sa propre cellule, ou
+## par celui d une ancre en -x/-z/-xz dont la fenetre s etend jusqu ici. Quatre
+## sondages de cache au pire, et la fenetre monde tranche.
+func city_covering(wx: int, wz: int) -> Dictionary:
+	var cell := _city_cell_of(wx, wz)
+	for delta: Vector2i in [Vector2i.ZERO, Vector2i(-1, 0), Vector2i(0, -1), Vector2i(-1, -1)]:
+		var layout := _city_layout(cell + delta)
+		if layout.is_empty():
+			continue
+		var origin: Vector2i = layout["origin"]
+		var span: int = layout["span_blocks"]
+		if wx >= origin.x and wx < origin.x + span and wz >= origin.y and wz < origin.y + span:
+			return layout
+	return {}
+
+
 ## Layout de ville d'une cellule (caché) — {} si aucun village constructible.
 func _city_layout(cell: Vector2i) -> Dictionary:
 	# Les villes sont un système de l'OVERWORLD (E.2/3.4). Une dimension n'en a
@@ -1926,10 +1950,14 @@ func _city_layout(cell: Vector2i) -> Dictionary:
 ## adjacentes portant chacune un village représentent moins d'un cas sur mille,
 ## et on payait ce cas rarissime en refusant les trois quarts des villages.
 const CITY_SAMPLES := 4
+## Graine DEDIEE au decor. Une graine partagee avec le plan ferait bouger tout le
+## village des qu on ajoute une torche : les mondes deja explores changeraient de
+## forme a la premiere retouche de decoration.
+const SEED_DECOR := 61881
 
 
-func _best_city_site(cell: Vector2i, t: int) -> Dictionary:
-	var max_offset := CityGenerator.TILES_PER_CELL - t
+func _best_city_site(cell: Vector2i, t: int, span_cells: int = 1) -> Dictionary:
+	var max_offset := CityGenerator.TILES_PER_CELL * span_cells - t
 	var best := {}
 	var best_spread := 1 << 30
 	for oz in range(max_offset + 1):
@@ -1973,6 +2001,39 @@ func _best_city_site(cell: Vector2i, t: int) -> Dictionary:
 	return best
 
 
+## Site de repli d une capitale : le plus plat, SANS critere d eau ni de pente.
+## N est appele que quand la recherche normale n a rien rendu.
+func _any_city_site(cell: Vector2i, t: int, span_cells: int) -> Dictionary:
+	var max_offset := CityGenerator.TILES_PER_CELL * span_cells - t
+	var best := {}
+	var best_spread := 1 << 30
+	for oz in range(max_offset + 1):
+		for ox in range(max_offset + 1):
+			var base_x := cell.x * CITY_CELL_BLOCKS + ox * 16
+			var base_z := cell.y * CITY_CELL_BLOCKS + oz * 16
+			var span := t * 16 - 1
+			var hmin := 1 << 30
+			var hmax := -(1 << 30)
+			var heights: Array[int] = []
+			for sz in CITY_SAMPLES:
+				for sx in CITY_SAMPLES:
+					@warning_ignore("integer_division")
+					var px := base_x + sx * span / (CITY_SAMPLES - 1)
+					@warning_ignore("integer_division")
+					var pz := base_z + sz * span / (CITY_SAMPLES - 1)
+					var h := int(floorf(_height(float(px), float(pz))))
+					heights.append(h)
+					hmin = mini(hmin, h)
+					hmax = maxi(hmax, h)
+			if hmax - hmin < best_spread:
+				best_spread = hmax - hmin
+				heights.sort()
+				@warning_ignore("integer_division")
+				best = {"offset": ox, "offset_z": oz,
+					"plateau": maxi(heights[heights.size() / 2], water_level + 2)}
+	return best
+
+
 func _compute_city_layout(cell: Vector2i) -> Dictionary:
 	@warning_ignore("integer_division")
 	var cx := cell.x * CITY_CELL_BLOCKS + CITY_CELL_BLOCKS / 2
@@ -1981,10 +2042,30 @@ func _compute_city_layout(cell: Vector2i) -> Dictionary:
 	var biome := biome_at(cx, cz)
 	if biome.is_empty() or not biome.has("village_palette"):
 		return {}
-	if "village" not in POIGenerator.pois_at_cell(cell, world_seed, biome):
-		return {}
 
-	var category := CityGenerator.size_category(cell, world_seed)
+	# LA TAILLE SUIT LE ROYAUME (2026-08-09, decision de l auteur). La capitale
+	# d un royaume assez grand (cite-etat et plus) devient une VILLE sur 2x2
+	# cellules ; celle d un hameau-etat reste un village. Une capitale ne passe
+	# PAS par la loterie des POI : un royaume dont la capitale n existerait pas
+	# serait un royaume fantome — son identite, ses lois et sa culture pointent
+	# deja vers cette cellule.
+	var capital_kind := KingdomGenerator.capital_kind_at(cell, world_seed, self)
+	var category := ""
+	if capital_kind != "":
+		category = "capitale" if capital_kind != "hameau_etat" else "village"
+	else:
+		# UNE CELLULE COUVERTE PAR UNE CAPITALE VOISINE SE TAIT. L ancre est la
+		# cellule de la capitale ; sa fenetre s etend vers +x/+z. Sans cette
+		# suppression, un village POI pousserait DANS la capitale et les deux
+		# s ecriraient l un sur l autre.
+		for delta: Vector2i in [Vector2i(-1, 0), Vector2i(0, -1), Vector2i(-1, -1)]:
+			var neighbour_kind := KingdomGenerator.capital_kind_at(
+				cell + delta, world_seed, self)
+			if neighbour_kind != "" and neighbour_kind != "hameau_etat":
+				return {}
+		if "village" not in POIGenerator.pois_at_cell(cell, world_seed, biome):
+			return {}
+		category = CityGenerator.size_category(cell, world_seed)
 	var plan := CityGenerator.tile_plan(cell, world_seed, category)
 	var t: int = plan["T"]
 
@@ -2000,7 +2081,14 @@ func _compute_city_layout(cell: Vector2i) -> Dictionary:
 	# la plus plate parmi celles qui sont au sec. C'est aussi meilleur en soi :
 	# un village s'installe sur le replat, il ne se plante pas au milieu d'une
 	# pente parce qu'un algorithme l'a décidé.
-	var site := _best_city_site(cell, t)
+	var span_cells := int(plan.get("span_cells", 1))
+	var site := _best_city_site(cell, t, span_cells)
+	if site.is_empty() and category == "capitale":
+		# UNE CAPITALE NE PEUT PAS NE PAS EXISTER : son royaume est deja nomme,
+		# ses lois deja tirees. Si aucun site ne passe les criteres (tout est
+		# trop pentu ou trop mouille), on prend le moins mauvais — les paliers
+		# absorbent la pente, et les terrasses se calent au-dessus de l eau.
+		site = _any_city_site(cell, t, span_cells)
 	if site.is_empty():
 		return {}
 	var plateau: int = site["plateau"]
@@ -2021,45 +2109,224 @@ func _compute_city_layout(cell: Vector2i) -> Dictionary:
 		"pave": GameData.material_runtime_ids.get(vp.get("pave", "pierre_taillee"),
 			GameData.material_runtime_ids.get(vp["sol"], _road_id)),
 		"champ": GameData.material_runtime_ids.get("terre", _road_id),
+		# DE QUOI DECORER (2026-08-09). La palette ne portait que la matiere des
+		# batiments ; hors des murs, un village etait de la matiere nue. Ces ids
+		# sont resolus ICI, une seule fois par cellule, et pas dans le decor
+		# lui-meme : une recherche de dictionnaire par bloc pose couterait cher
+		# sur les milliers de blocs qu un village represente.
+		"torche": GameData.material_runtime_ids.get("torche", 0),
+		"eau": GameData.material_runtime_ids.get("eau", 0),
+		"buisson": GameData.material_runtime_ids.get("buisson", 0),
+		# LA CULTURE VIENT DU BIOME. Un village de toundra qui cultiverait la
+		# vigne serait un contresens que personne ne raterait ; la fiche de biome
+		# porte deja ce qui pousse chez elle.
+		"culture": GameData.material_runtime_ids.get(
+			String(vp.get("culture", "ble")), 0),
+		"tronc": GameData.material_runtime_ids.get(vp.get("tronc", "chene"), 0),
+		"feuillage": GameData.material_runtime_ids.get(
+			vp.get("feuillage", "feuilles_chene"), 0),
 	}
 	var building_blocks := {}
 	for idx: int in plan["doors"]:
+		# VARIANTE DE HAUTEUR, tiree par batiment. La graine melange la cellule ET
+		# l index de tuile : deux maisons voisines tirent des hauteurs
+		# independantes, alors qu une graine par cellule les aurait toutes
+		# alignees sur la meme.
+		var variant := int(NoiseGenerator.pcg_hash(cell.x * 131 + idx, cell.y,
+			world_seed + SEED_DECOR) % 5) - 1
 		building_blocks[idx] = CityGenerator.building_blocks(plan["doors"][idx], palette,
-			String((plan["archetypes"] as Dictionary).get(idx, "maison")))
+			String((plan["archetypes"] as Dictionary).get(idx, "maison")), variant)
+	# DECOR des tuiles NON baties : place, rues, champs. Meme chemin que les
+	# batiments — un dictionnaire local par tuile, calcule une fois, cache avec
+	# le layout et pose par le meme passage dans generate_chunk.
+	var decor_blocks := {}
+	var types_all: PackedByteArray = plan["types"]
+	for idx in types_all.size():
+		var kind := int(types_all[idx])
+		if kind == CityGenerator.Tile.BATIMENT or kind == CityGenerator.Tile.VIDE:
+			continue
+		var decor := CityGenerator.decor_blocks(kind, palette,
+			String((plan["services"] as Dictionary).get(idx, "")),
+			NoiseGenerator.pcg_hash(cell.x * 97 + idx, cell.y, world_seed + SEED_DECOR))
+		if not decor.is_empty():
+			decor_blocks[idx] = decor
 	plan["cell"] = cell
+	# FENETRE MONDE du village : min inclus, exclusif au-dela. C est elle qui
+	# fait foi pour « cette colonne est-elle dans ce village ? » — le calcul par
+	# cellule ne suffit plus depuis qu une capitale deborde de la sienne.
+	plan["origin"] = Vector2i(cell.x * CITY_CELL_BLOCKS + int(plan["offset"]) * 16,
+		cell.y * CITY_CELL_BLOCKS + int(plan["offset_z"]) * 16)
+	plan["span_blocks"] = int(plan["T"]) * 16
 	plan["plateau_y"] = plateau
+	plan["terraces"] = _terraces_for(cell, plan, plateau)
 	plan["palette"] = palette
 	plan["building_blocks"] = building_blocks
+	plan["decor_blocks"] = decor_blocks
 	return plan
+
+
+## Écart maximal entre deux paliers de village voisins, en blocs. Le nom porte
+## `CITY_` : `TERRACE_STEP` désigne déjà les falaises et mesas du relief (E.2),
+## qui n'ont rien à voir — 40 blocs là-bas, un seul ici.
+##
+## UN BLOC, ET C'EST UN CHOIX DE JOUABILITÉ, pas d'esthétique. Le joueur franchit
+## une marche d'un bloc sans sauter (STEP_HEIGHT), et les créatures depuis
+## aujourd'hui aussi. À un bloc, TOUT le village reste navigable sans qu'on ait à
+## générer le moindre escalier ni la moindre rampe : la contrainte fabrique la
+## praticabilité au lieu de la promettre.
+const CITY_TERRACE_STEP := 1
+
+
+## PALIER DE CHAQUE TUILE (2026-08-09, demande de l'auteur : « une génération
+## plus organique qui s'adapte au relief du terrain »).
+##
+## Un village était UN plateau unique : la colline était rasée, et le village
+## s'annonçait de loin par une falaise artificielle sur son pourtour. Il est
+## maintenant une suite de PALIERS, un par tuile, chacun calé sur le terrain
+## qu'il recouvre — un village de coteau descend enfin sa pente.
+##
+## Ça ne coûte RIEN de plus au monde : le terrassement reste une valeur rendue
+## par la fonction de hauteur, jamais des éditions de blocs. On calcule t×t
+## médianes une seule fois par cellule, et le résultat est caché avec le layout.
+func _terraces_for(cell: Vector2i, plan: Dictionary, fallback: int) -> PackedInt32Array:
+	var t: int = plan["T"]
+	var ox: int = int(plan["offset"])
+	var oz: int = int(plan.get("offset_z", plan["offset"]))
+	var out := PackedInt32Array()
+	out.resize(t * t)
+	# 1. Hauteur BRUTE de chaque tuile : la médiane de quatre sondages. La
+	#    médiane et non la moyenne — un rocher isolé dans un coin ne doit pas
+	#    soulever la maison entière.
+	for tz in t:
+		for tx in t:
+			var base_x := cell.x * CITY_CELL_BLOCKS + (ox + tx) * 16
+			var base_z := cell.y * CITY_CELL_BLOCKS + (oz + tz) * 16
+			var samples: Array[int] = []
+			for sz in [4, 12]:
+				for sx in [4, 12]:
+					samples.append(int(floorf(_height(float(base_x + sx), float(base_z + sz)))))
+			samples.sort()
+			out[tz * t + tx] = maxi(samples[2], water_level + 1)
+	# 2. RELAXATION : on rapproche les voisines jusqu'à ce qu'aucune paire ne
+	#    dépasse la marche franchissable. Sans elle, deux tuiles mitoyennes
+	#    peuvent différer de dix blocs et le village devient une falaise à
+	#    escalader. On borne les passes : la convergence est garantie, mais une
+	#    boucle non bornée dans la génération de terrain est un risque qu'on ne
+	#    prend pas.
+	for _pass in t * 2:
+		var changed := false
+		for tz in t:
+			for tx in t:
+				var idx := tz * t + tx
+				for step: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var nx := tx + step.x
+					var nz := tz + step.y
+					if nx < 0 or nx >= t or nz < 0 or nz >= t:
+						continue
+					var other := out[nz * t + nx]
+					if out[idx] - other > CITY_TERRACE_STEP:
+						out[idx] = other + CITY_TERRACE_STEP
+						changed = true
+		if not changed:
+			break
+	if out.is_empty():
+		out.append(fallback)
+	return out
+
+
+## LA COLONNE EST-ELLE TERRASSEE ? (2026-08-09, demande de l auteur : « je veux
+## des rues etroites et que chaque batiment ait son plateau, les rues connectent
+## tout et s adaptent au terrain »).
+##
+## CE QUE C ETAIT. Toute tuile du village etait aplanie a son palier, sur ses
+## seize blocs de cote. Un village restait donc une mosaique de DALLES CARREES,
+## paliers ou pas : c est ce qui lui donnait son air de maquette.
+##
+## CE QUE C EST. Seul ce qui a besoin d etre plat l est :
+##   - le PLATEAU D UN BATIMENT, a son emprise plus un bloc de seuil ;
+##   - la PLACE, qui est un sol pave et se doit d etre de niveau ;
+##   - les CHAMPS, qu on laboure a plat comme partout ou l on cultive.
+## Les RUES, elles, SUIVENT LE TERRAIN : elles montent et descendent avec lui.
+## C est le point qui change tout — une rue de niveau force le terrain a l etre,
+## et de proche en proche c est le village entier qui s aplatit.
+##
+## Tout le reste — les abords des maisons, les interstices — reste du terrain
+## naturel, avec son herbe et ses irregularites.
+func _city_terraforms(city: Dictionary, tile: Dictionary, wx: int, wz: int) -> bool:
+	var kind := int(tile["type"])
+	var lx := wx & 15
+	var lz := wz & 15
+	match kind:
+		CityGenerator.Tile.BATIMENT:
+			var archetype := String((city["archetypes"] as Dictionary).get(
+				int(tile["idx"]), "maison"))
+			return CityGenerator.on_building_pad(lx, lz, archetype)
+		CityGenerator.Tile.PLACE:
+			return true
+		CityGenerator.Tile.CHAMP:
+			return true
+	return false
+
+
+## La colonne est-elle sur la CHAUSSEE d une rue ? Sert au seul choix du
+## materiau de surface : la rue ne terrasse rien, elle se contente de couvrir le
+## sol de gravier la ou elle passe.
+func _city_on_street(city: Dictionary, tile: Dictionary, wx: int, wz: int) -> bool:
+	var kind := int(tile["type"])
+	if kind != CityGenerator.Tile.ROUTE and kind != CityGenerator.Tile.PLACE:
+		return false
+	var links := int((city.get("links", {}) as Dictionary).get(int(tile["idx"]), 15))
+	return CityGenerator.on_street(wx & 15, wz & 15, links)
+
+
+## Palier de la tuile `idx`, ou le plateau de repli. Le repli existe pour les
+## layouts d'AVANT les terrasses qu'une sauvegarde pourrait encore porter : un
+## village à demi terrassé serait pire que pas de terrasses du tout.
+func _terrace_of(city: Dictionary, idx: int) -> int:
+	var terraces: PackedInt32Array = city.get("terraces", PackedInt32Array())
+	if idx < 0 or idx >= terraces.size():
+		return int(city["plateau_y"])
+	return terraces[idx]
 
 
 ## Type de tuile de ville au bloc (wx,wz) dans un layout donné :
 ## { "in": bool, "type": int (0 place, 1 route, 2 bâtiment), "idx": int }.
 func _city_tile_type(wx: int, wz: int, city: Dictionary) -> Dictionary:
-	var cell: Vector2i = city["cell"]
-	var lx := wx - cell.x * CITY_CELL_BLOCKS
-	var lz := wz - cell.y * CITY_CELL_BLOCKS
-	if lx < 0 or lx >= CITY_CELL_BLOCKS or lz < 0 or lz >= CITY_CELL_BLOCKS:
+	# La FENETRE MONDE fait foi (2026-08-09) : le test par cellule refusait toute
+	# colonne hors de la cellule d ancrage, ce qui aurait coupe une capitale au
+	# bord de sa premiere cellule.
+	var origin: Vector2i = city["origin"]
+	var lx := wx - origin.x
+	var lz := wz - origin.y
+	var span: int = city["span_blocks"]
+	if lx < 0 or lx >= span or lz < 0 or lz >= span:
 		return {"in": false}
-	var ftx := (lx >> 4) - int(city["offset"])
-	var ftz := (lz >> 4) - int(city.get("offset_z", city["offset"]))
+	var ftx := lx >> 4
+	var ftz := lz >> 4
 	var t: int = city["T"]
-	if ftx < 0 or ftx >= t or ftz < 0 or ftz >= t:
-		return {"in": false}
 	var idx := ftz * t + ftx
-	return {"in": true, "type": int((city["types"] as PackedByteArray)[idx]), "idx": idx}
+	var kind := int((city["types"] as PackedByteArray)[idx])
+	# HORS = la tuile est dans la boite englobante mais PAS dans le village
+	# (2026-08-09, forme organique). Le terrain y reste intact : ni terrassement,
+	# ni interdiction d arbres. C est ce qui fait qu un village est BORDE de
+	# nature au lieu d etre pose sur une dalle carree.
+	if kind == CityGenerator.Tile.HORS:
+		return {"in": false}
+	return {"in": true, "type": kind, "idx": idx}
 
 
 ## Bloc de bâtiment au monde (wx,wy,wz), 0 si aucun — pour la coquille du
 ## mesher et les requêtes ponctuelles (block_at).
 func _city_block_at(wx: int, wy: int, wz: int, city: Dictionary) -> int:
 	var tile := _city_tile_type(wx, wz, city)
-	if not tile.get("in", false) or tile["type"] != 2:
+	if not tile.get("in", false):
 		return 0
 	var bb: Dictionary = (city["building_blocks"] as Dictionary).get(tile["idx"], {})
 	if bb.is_empty():
+		bb = (city.get("decor_blocks", {}) as Dictionary).get(tile["idx"], {})
+	if bb.is_empty():
 		return 0
-	var local := Vector3i(wx & 15, wy - int(city["plateau_y"]), wz & 15)
+	var local := Vector3i(wx & 15, wy - _terrace_of(city, int(tile["idx"])), wz & 15)
 	return int(bb.get(local, 0))
 
 
@@ -2328,7 +2595,7 @@ func _river_carve_at(wx: float, wz: float, rivers: Array[Dictionary]) -> int:
 ## premier poste de coût de la construction de la carte, devant le terrain
 ## lui-même.
 func sample_surface(wx: int, wz: int, city: Variant = null) -> Dictionary:
-	var layout: Dictionary = city if city is Dictionary 		else _city_layout(_city_cell_of(wx, wz))
+	var layout: Dictionary = city if city is Dictionary else city_covering(wx, wz)
 	return _sample_column(wx, wz, layout)
 
 
@@ -2370,8 +2637,8 @@ func _sample_column(wx: int, wz: int, city: Dictionary = {}) -> Dictionary:
 	# le footprint. Les murs/toits sont un overlay (voir generate_chunk).
 	if not city.is_empty():
 		var tile := _city_tile_type(wx, wz, city)
-		if tile.get("in", false):
-			h = int(city["plateau_y"])
+		if tile.get("in", false) and _city_terraforms(city, tile, wx, wz):
+			h = _terrace_of(city, int(tile["idx"]))
 			var palette: Dictionary = city["palette"]
 			# UN MATÉRIAU PAR RÔLE. Tout le footprint partageait auparavant le
 			# même sol de terre : rues, cours, champs et places se confondaient
@@ -2384,7 +2651,17 @@ func _sample_column(wx: int, wz: int, city: Dictionary = {}) -> Dictionary:
 					surface = int(palette["pave"])
 				CityGenerator.Tile.CHAMP:
 					surface = int(palette["champ"])
-			return {"h": h, "surf": surface, "sub": int(palette["sol"]), "trans": trans, "acc": 0}
+			# LE VILLAGE NE COUVRE PLUS TOUT SON FOOTPRINT (2026-08-09). Une rue
+			# est une bande etroite, un plateau ne fait que l emprise de sa
+			# maison : hors de ces surfaces, la colonne redevient du TERRAIN
+			# NATUREL, avec son herbe et son relief. C est ce qui remplace la
+			# mosaique de dalles carrees par un village pose dans un paysage.
+			if _city_on_street(city, tile, wx, wz):
+				return {"h": h, "surf": _road_id, "sub": int(palette["sol"]),
+					"trans": trans, "acc": 0}
+			if _city_terraforms(city, tile, wx, wz):
+				return {"h": h, "surf": surface, "sub": int(palette["sol"]),
+					"trans": trans, "acc": 0}
 
 	# `acc` : matériau d'accent du biome retenu — le cristal/minerai que les
 	# dimensions déposent en veines. Zéro dans l'overworld, qui tire ses filons
@@ -2492,7 +2769,14 @@ func prepare_context(col: Vector2i) -> Dictionary:
 	# fois (mutex) et partagé par les 18×18 colonnes. Le footprint étant centré
 	# avec ≥1 tuile de marge, une colonne de coquille ne tombe jamais dans le
 	# footprint d'une AUTRE cellule → utiliser ce layout pour toutes est correct.
-	var city := _city_layout(_city_cell_of(col.x * ChunkData.SIZE, col.y * ChunkData.SIZE))
+	# `city_covering` et non le layout de la cellule : une CAPITALE peut
+	# recouvrir ce chunk depuis une cellule voisine (2026-08-09). Un chunk-
+	# colonne = une tuile, donc UN seul layout vaut pour ses 16x16 colonnes ; la
+	# COQUILLE (le rang de bordure) peut en toute rigueur relever d un autre
+	# layout au bord exact d une cellule — cas deja rarissime avant les
+	# capitales, et la couture qui en resulterait est bornee a un bloc de
+	# hauteur sur la ligne de partage. Assumé, documente, mesurable.
+	var city := city_covering(col.x * ChunkData.SIZE, col.y * ChunkData.SIZE)
 	var h_min := 1 << 30
 	var h_max := -(1 << 30)
 	var i := 0
@@ -2570,7 +2854,13 @@ func prepare_context(col: Vector2i) -> Dictionary:
 	# Les bâtiments montent au-dessus du plateau (B_HEIGHT+2) : élargir hmax
 	# pour que leur chunk aérien ne soit pas sauté par le chemin rapide (G.2).
 	if not city.is_empty():
-		top_max = maxi(top_max, int(city["plateau_y"]) + CityGenerator.MAX_BUILD_HEIGHT + 2)
+		# LE PLUS HAUT DES PALIERS, pas le plateau moyen : sous-estimer cette
+		# borne TRONQUE les toits du haut du village, ce qui ne se voit qu'en jeu
+		# et de loin.
+		var highest: int = int(city["plateau_y"])
+		for terrace: int in (city.get("terraces", PackedInt32Array()) as PackedInt32Array):
+			highest = maxi(highest, terrace)
+		top_max = maxi(top_max, highest + CityGenerator.MAX_BUILD_HEIGHT + 2)
 
 	# Termitière de donjon (2026-07-28) : même raison que les bâtiments de ville
 	# juste au-dessus — sa masse dépasse largement le relief, et `hmax` pilote la
@@ -2931,9 +3221,15 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 	var city: Dictionary = ctx.get("city", {})
 	if not city.is_empty():
 		var tile := _city_tile_type(chunk_bx, chunk_bz, city)
-		if tile.get("in", false) and int(tile["type"]) == 2:
+		if tile.get("in", false):
+			# Batiment OU decor : les deux se posent pareil, en surcouche
+			# au-dessus du palier terrasse. Le decor n existe que sur les tuiles
+			# non baties, les deux dictionnaires ne se marchent donc jamais
+			# dessus.
 			var bb: Dictionary = (city["building_blocks"] as Dictionary).get(tile["idx"], {})
-			var plateau: int = int(city["plateau_y"])
+			if bb.is_empty():
+				bb = (city.get("decor_blocks", {}) as Dictionary).get(tile["idx"], {})
+			var plateau := _terrace_of(city, int(tile["idx"]))
 			for local_pos: Vector3i in bb:
 				var wy := plateau + local_pos.y
 				if wy < y0 or wy > y1:
@@ -3212,7 +3508,7 @@ func _block_from_column(wy: int, h: int, surface: int, subsurface: int, trans: i
 ## un éventuel survol d'arbre (requête ponctuelle, hors chemin chaud — la
 ## visée/mining passe par le cache de chunks la plupart du temps).
 func block_at(wx: int, wy: int, wz: int) -> int:
-	var city := _city_layout(_city_cell_of(wx, wz))
+	var city := city_covering(wx, wz)
 	var r := _sample_column(wx, wz, city)
 	# Bâtiment de ville : au-dessus du plateau terrassé (terrain = air ici).
 	if not city.is_empty():

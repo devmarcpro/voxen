@@ -38,6 +38,7 @@ var _creature_tick_max_us := 0
 var _creature_tick_sum_us := 0
 var _creature_tick_samples := 0
 var _bench_time := 0.0
+var _time_process_sum := 0.0
 var _measure_time := 0.0
 var _deltas := PackedFloat32Array()
 var _bench_done := false
@@ -467,6 +468,11 @@ func _process(delta: float) -> void:
 			print("[BENCH] échauffement terminé à %.1f s — mesure lancée." % _bench_time)
 		return
 	_deltas.append(delta)
+	# CPU du thread principal, par frame (moniteur moteur). C'est la seule
+	# donnée qui départage « la frame est longue parce que le CPU principal
+	# travaille » de « le GPU est saturé » — sans elle, le bench statique du
+	# 2026-08-09 (43 fps, ticks à 3 ms) ne désignait aucun coupable.
+	_time_process_sum += Performance.get_monitor(Performance.TIME_PROCESS)
 	_measure_time += delta
 	if mutation_bench:
 		_mutation_timer += delta
@@ -549,6 +555,17 @@ func _finish_bench() -> void:
 	print("[BENCH] tick pire=%.2f ms — entités %.2f | monde %.2f | flush %.2f | post %.2f (budget %.0f ms)" % [
 		t["max_ms"], t["entities_ms"], t["world_ms"], t["flush_ms"], t["post_ms"],
 		TickManager.TICK_BUDGET_US / 1000.0])
+	# CPU principal vs GPU. ATTENTION : TIME_PROCESS SUR-RAPPORTE dans ce build
+	# (mesuré 2026-08-09 : 38,5 ms « de process » pour des frames de 23,3 ms,
+	# physiquement impossible) — ne comparer ce chiffre qu'à LUI-MÊME entre deux
+	# benchs. Le partage CPU/pixels fiable est le bench à résolution réduite
+	# (--resolution 640x360) : la part de frame qui ne bouge pas n'est pas du
+	# remplissage. Les compteurs de rendu, eux, sont cohérents.
+	print("[BENCH] process_moyen=%.2f ms | draw_calls=%d objets=%d primitives=%d" % [
+		1000.0 * _time_process_sum / maxi(frames, 1),
+		int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+		int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)),
+		int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))])
 	await _screenshot("bench_screenshot.png")
 	var path := _capture_path("bench_screenshot.png")
 	print("[BENCH] capture : " + path)
