@@ -34,6 +34,7 @@ func run() -> void:
 	_check_dialogue()
 	_check_decimation()
 	_check_decimation_is_wired()
+	_check_identity()
 	finish(_ok, TAG)
 
 
@@ -419,3 +420,114 @@ func _check_decimation_is_wired() -> void:
 
 	CreatureManager.call("_release_village", cell)
 	VillageManager.casualties.clear()
+
+
+## L'IDENTITÉ D'UN HABITANT (2026-08-09, demande de l'auteur : « il faut que
+## chaque famille ait un nom et un prénom, un lieu d'origine, une généalogie, un
+## âge, un habitat, une race, une classe, un rôle, un inventaire, un
+## équipement »).
+##
+## CE QUI EST DÉFENDU, et rien de tout ça ne se voit en lisant le code :
+##
+## 1. LE FOYER EST UNE FAMILLE. Deux personnes sous le même toit portaient deux
+##    noms de famille différents — un village n'était pas une communauté, mais
+##    une liste de gens qui se trouvaient là. C'est l'assertion centrale.
+## 2. TOUT EST RENSEIGNÉ. Un champ vide ne lève aucune erreur : il affiche un
+##    blanc dans une fiche, et on le découvre six mois plus tard.
+## 3. C'EST REPRODUCTIBLE. Rien n'est persisté : deux appels doivent rendre le
+##    MÊME village, sinon s'éloigner et revenir changerait les habitants.
+func _check_identity() -> void:
+	var generator: NoiseGenerator = WorldManager.generator
+	if generator == null:
+		return
+	var found := Vector2i(1 << 30, 1 << 30)
+	var plan := {}
+	for radius in 12:
+		for dx in range(-radius, radius + 1):
+			for dz in range(-radius, radius + 1):
+				var candidate: Dictionary = generator.city_at_cell(Vector2i(dx, dz))
+				if not candidate.is_empty() and int(candidate.get("population", 0)) >= 4:
+					found = Vector2i(dx, dz)
+					plan = candidate
+					break
+			if not plan.is_empty():
+				break
+		if not plan.is_empty():
+			break
+	if plan.is_empty():
+		print("[%s] aucun village peuplé trouvé — test d'identité sauté." % TAG)
+		return
+
+	var roster := VillagePopulation.roster(found, generator.world_seed, plan)
+	_check("un village peuplé pour examiner ses habitants", roster.size() >= 2,
+		"%d habitant(s)" % roster.size())
+	if roster.size() < 2:
+		return
+
+	# 1. LE FOYER EST UNE FAMILLE : même toit, même nom, même race, et des liens.
+	var households := {}
+	for entry: Dictionary in roster:
+		var key := int(entry["foyer"])
+		if not households.has(key):
+			households[key] = []
+		(households[key] as Array).append(entry)
+	var shared := true
+	var shared_race := true
+	var linked := false
+	for key: int in households:
+		var members: Array = households[key]
+		var first: Dictionary = members[0]
+		for member: Dictionary in members:
+			if String(member["nom_famille"]) != String(first["nom_famille"]):
+				shared = false
+			if String(member["race"]) != String(first["race"]):
+				shared_race = false
+			if int(member.get("conjoint", -1)) >= 0 or not (member.get("parents", []) as Array).is_empty():
+				linked = true
+	_check("les membres d'un foyer portent LE MÊME nom de famille", shared)
+	_check("et la même race — un foyer n'est pas une auberge", shared_race)
+	_check("et ils sont LIÉS : conjoints, ou parent et enfant", linked)
+
+	# 2. TOUT EST RENSEIGNÉ, et on NOMME le champ manquant : « identité
+	# incomplète » n'apprend rien, c'est LEQUEL qui désigne le maillon coupé.
+	var required := ["prenom", "nom_famille", "genre", "affichage", "race",
+		"classe", "origine", "culture"]
+	var missing: Array[String] = []
+	for entry: Dictionary in roster:
+		for field: String in required:
+			if String(entry.get(field, "")) == "" and not (field in missing):
+				missing.append(field)
+	_check("chaque habitant a une identité complète", missing.is_empty(),
+		"manquants : %s" % ", ".join(missing) if not missing.is_empty() else "")
+
+	# L'ÂGE EST PLAUSIBLE. Un village d'adultes de trente ans n'a ni passé ni
+	# avenir — et l'âge sert au dialogue comme à la succession.
+	var youngest := 999
+	var oldest := 0
+	for entry: Dictionary in roster:
+		youngest = mini(youngest, int(entry["age"]))
+		oldest = maxi(oldest, int(entry["age"]))
+	_check("les âges sont plausibles", youngest >= 7 and oldest <= 95,
+		"de %d à %d ans" % [youngest, oldest])
+
+	# UN ENFANT NE TIENT PAS LA FORGE. Lui donner un métier fausserait le compte
+	# des postes du village autant que la scène qu'on y verrait.
+	var working_child := false
+	for entry: Dictionary in roster:
+		if int(entry["age"]) < 18 and String(entry["job"]) != "":
+			working_child = true
+	_check("aucun enfant n'occupe un poste", not working_child)
+
+	# 3. REPRODUCTIBLE.
+	var again := VillagePopulation.roster(found, generator.world_seed, plan)
+	var same := again.size() == roster.size()
+	if same:
+		for i in roster.size():
+			if String(again[i]["affichage"]) != String(roster[i]["affichage"]) 					or int(again[i]["age"]) != int(roster[i]["age"]):
+				same = false
+	_check("deux appels rendent le MÊME village — dérivé, jamais tiré", same)
+
+	var sample: Dictionary = roster[0]
+	print("[%s] exemple : %s, %d ans, %s/%s, rôle « %s », de %s, %d objet(s)" % [
+		TAG, sample["affichage"], int(sample["age"]), sample["race"], sample["classe"],
+		sample["role"], sample["origine"], (sample["equipement"] as Array).size()])
