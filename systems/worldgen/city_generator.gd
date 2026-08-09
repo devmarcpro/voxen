@@ -35,7 +35,11 @@ const SEED_CITY_SIZE := 61880
 
 ## Rôles de tuile. Le générateur de terrain lit ces valeurs pour choisir le
 ## matériau de surface : ce ne sont donc pas de simples étiquettes.
-enum Tile { VIDE, ROUTE, BATIMENT, CHAMP, PLACE }
+## HORS est ajoute EN FIN d enum a dessein : les valeurs precedentes sont
+## ecrites telles quelles dans les layouts caches et lues par le generateur de
+## terrain. Les renumeroter transformerait silencieusement toutes les routes des
+## mondes deja explores en batiments.
+enum Tile { VIDE, ROUTE, BATIMENT, CHAMP, PLACE, HORS }
 
 ## Footprint (tuiles de côté) par catégorie. TOUJOURS ≤ 6 : avec un décalage
 ## d'au moins 1, le plateau ne touche jamais le bord de cellule, donc aucune
@@ -84,85 +88,93 @@ static func size_category(cell: Vector2i, world_seed: int) -> String:
 ## Retourne { "T", "offset", "types" (PackedByteArray, valeurs de Tile),
 ## "doors" (idx → direction de la route), "archetypes" (idx → nom),
 ## "population", "buildings" }.
+## UN VILLAGE N EST PLUS UN CARRE (2026-08-09, demande de l auteur : « il faut
+## que ca ait une forme organique, pas juste un carre dans la cellule ; le
+## village peut se faire n importe comment tant que c est contenu dans la
+## cellule »).
+##
+## CE QUE C ETAIT. Un carre plein de t x t tuiles, t fixe par categorie. Deux
+## consequences egalement mauvaises : la silhouette etait un timbre-poste pose
+## sur le paysage, et la taille ne disait rien du lieu — une bourgade de 34 ames
+## avait exactement la meme emprise qu une de 20, si bien qu elle etouffait.
+##
+## CE QUE C EST. La population est tiree D ABORD, puis on en DEDUIT la place
+## necessaire, puis on fait POUSSER la forme depuis le centre, tuile par tuile,
+## en s accrochant a ce qui existe deja. La boite englobante n est plus la forme
+## du village : c est juste la fenetre dans laquelle il a pousse. Tout ce qui
+## reste hors de la forme redevient du terrain normal — arbres compris, ce qui
+## fait que le village est BORDE de nature au lieu d etre pose sur une dalle.
 static func tile_plan(cell: Vector2i, world_seed: int, category: String) -> Dictionary:
-	var t: int = FOOTPRINT.get(category, 6)
-	@warning_ignore("integer_division")
-	var offset := (TILES_PER_CELL - t) / 2
-	var types := PackedByteArray()
-	types.resize(t * t)
-	types.fill(Tile.VIDE)
-
 	var rng := RandomNumberGenerator.new()
 	rng.seed = NoiseGenerator.pcg_hash(cell.x, cell.y, world_seed + SEED_CITY)
 
+	var pop_range: Array = POP_RANGE.get(category, [8, 20])
+	var population := rng.randi_range(int(pop_range[0]), int(pop_range[1]))
+	var homes_needed := ceili(float(population) / float(RESIDENTS_PER_BUILDING))
+	var services: Array = _services_for(category, population, rng)
+
+	# LA PLACE NECESSAIRE SE CALCULE, elle ne se decrete plus. Batiments +
+	# services, puis la voirie et les champs qui vont avec : sans cette marge, on
+	# obtenait un village ou les rues devoraient les parcelles.
+	var built_tiles := homes_needed + services.size()
+	var wanted := int(ceil(float(built_tiles) * TILES_PER_BUILT)) + 1
+	var t: int = clampi(int(ceil(sqrt(float(wanted)))) + 2, 4, TILES_PER_CELL)
+	wanted = mini(wanted, t * t - 2)
+	@warning_ignore("integer_division")
+	var offset := (TILES_PER_CELL - t) / 2
 	@warning_ignore("integer_division")
 	var center := t / 2
+
+	var types := PackedByteArray()
+	types.resize(t * t)
+	types.fill(Tile.HORS)
+
+	var shape := _grow_shape(t, center, wanted, rng)
+	for idx: int in shape:
+		types[idx] = Tile.VIDE
+
 	_trace_streets(types, t, center, rng)
 	types[center * t + center] = Tile.PLACE
 
-	# --- ZONAGE : le bati au coeur, les champs a la PERIPHERIE ---------------
+	# --- ZONAGE : le bati au coeur, les champs sur le POURTOUR DE LA FORME ---
 	#
-	# LES CHAMPS ETAIENT LES RESTES (2026-08-09, demande de l auteur : « en
-	# peripherie des champs »). Tout ce qui n avait pas ete bati devenait champ,
-	# ou qu il soit : on labourait entre deux maisons et l on batissait au bout
-	# du monde. Un village a une forme — on habite serre autour de la place, on
-	# cultive dehors. L anneau exterieur est donc AGRICOLE par principe, et le
-	# reste constructible.
+	# Le bord n est plus celui de la boite englobante mais celui du village
+	# lui-meme : une tuile qui touche l exterieur est agricole. C est ce qui
+	# donne la ceinture de champs quelle que soit la forme.
 	var plots: Array[int] = []
 	var outskirts: Array[int] = []
-	for tz in t:
-		for tx in t:
-			var idx := tz * t + tx
-			if types[idx] != Tile.VIDE:
-				continue
-			# LA PERIPHERIE, C EST LE BORD — pas tout ce qui n est pas le centre.
-			# Vu sur capture le 2026-08-09 : la regle « anneau >= centre » prenait
-			# les DEUX tiers d un hameau (t=4, centre=2), et le village se
-			# resumait a trois maisons noyees dans le ble. Le bord du footprint
-			# est la seule definition qui tienne quelle que soit la taille.
-			var on_border := tx == 0 or tz == 0 or tx == t - 1 or tz == t - 1
-			var served := _adjacent_road_dir(types, t, tx, tz) != Vector3i.ZERO
-			if on_border or not served:
-				outskirts.append(idx)
-			else:
-				plots.append(idx)
+	for idx: int in shape:
+		if types[idx] != Tile.VIDE:
+			continue
+		@warning_ignore("integer_division")
+		var served := _adjacent_road_dir(types, t, idx % t, idx / t) != Vector3i.ZERO
+		if _touches_outside(types, t, idx) or not served:
+			outskirts.append(idx)
+		else:
+			plots.append(idx)
 
-	# Les parcelles se remplissent DU CENTRE VERS LE DEHORS : la place se borde
-	# d abord, et un village a moitie peuple reste un village dense entoure de
-	# champs plutot qu un semis de maisons isolees.
 	plots.sort_custom(func(a: int, b: int) -> bool:
 		return _ring_of(a, t, center) < _ring_of(b, t, center))
-	# UN HAMEAU RESTE UN HAMEAU, mais il ne doit pas etre QUE des champs : si le
-	# bord a tout mange, on rend les parcelles desservies les plus proches du
-	# centre. Sans ce rattrapage, une petite implantation n a nulle part ou
-	# loger les services, et le marchand disparait avec la taverne.
-	if plots.size() < 3:
+	# Si le pourtour a tout mange, on rend les parcelles desservies : un village
+	# sans parcelle n a nulle part ou loger son marchand.
+	if plots.size() < built_tiles:
 		var rescued: Array[int] = []
 		for idx: int in outskirts:
+			if plots.size() + rescued.size() >= built_tiles:
+				break
 			@warning_ignore("integer_division")
-			if _adjacent_road_dir(types, t, idx % t, idx / t) != Vector3i.ZERO 					and _ring_of(idx, t, center) < center:
+			if _adjacent_road_dir(types, t, idx % t, idx / t) != Vector3i.ZERO 					and not _touches_outside(types, t, idx):
 				rescued.append(idx)
 		for idx: int in rescued:
 			outskirts.erase(idx)
 			plots.append(idx)
 
-	var pop_range: Array = POP_RANGE.get(category, [8, 20])
-	var population := rng.randi_range(int(pop_range[0]), int(pop_range[1]))
-	var homes_needed := ceili(float(population) / float(RESIDENTS_PER_BUILDING))
-
 	var doors := {}
 	var archetypes := {}
-	var services := {}
+	var service_at := {}
 	var built := 0
 
-	# --- LES BATIMENTS DE SERVICE D ABORD, sur les meilleures parcelles ------
-	#
-	# UN VILLAGE N EST PAS UN DORTOIR (demande de l auteur : « des habitations,
-	# marchands, guildes, casino »). Il n existait que du logement et une halle :
-	# aucun commerce, aucun metier, rien a faire d un village sinon le traverser.
-	# Les services prennent les parcelles qui bordent la place — c est la qu on
-	# les cherche, et c est ce qui fait un centre plutot qu un simple carrefour.
-	for service: Array in _services_for(category, population, rng):
+	for service: Array in services:
 		if plots.is_empty():
 			break
 		var idx: int = plots.pop_front()
@@ -170,10 +182,9 @@ static func tile_plan(cell: Vector2i, world_seed: int, category: String) -> Dict
 		@warning_ignore("integer_division")
 		doors[idx] = _adjacent_road_dir(types, t, idx % t, idx / t)
 		archetypes[idx] = String(service[1])
-		services[idx] = String(service[0])
+		service_at[idx] = String(service[0])
 		built += 1
 
-	# --- PUIS LE LOGEMENT ----------------------------------------------------
 	var homes := 0
 	for idx: int in plots.duplicate():
 		if homes >= homes_needed:
@@ -186,16 +197,176 @@ static func tile_plan(cell: Vector2i, world_seed: int, category: String) -> Dict
 		homes += 1
 		built += 1
 
-	# --- Ce qui reste : des CHAMPS, jamais du vide ---------------------------
 	for idx: int in plots:
 		if types[idx] == Tile.VIDE:
 			types[idx] = Tile.CHAMP
 	for idx: int in outskirts:
 		types[idx] = Tile.CHAMP
 
+	# DIRECTIONS DESSERVIES PAR CHAQUE RUE. La chaussee n occupe plus toute la
+	# tuile (2026-08-09, demande de l auteur : « je veux des rues etroites ») :
+	# c est une bande de quelques blocs. Une bande a besoin de savoir OU elle va,
+	# sinon un carrefour se dessine comme un troncon et la rue se coupe en deux.
+	var links := {}
+	for idx in types.size():
+		if types[idx] != Tile.ROUTE and types[idx] != Tile.PLACE:
+			continue
+		links[idx] = _road_links(types, t, idx)
+
 	return {"T": t, "offset": offset, "types": types, "doors": doors,
-		"archetypes": archetypes, "services": services,
+		"archetypes": archetypes, "services": service_at, "links": links,
 		"population": population, "buildings": built}
+
+
+## Bits de direction vers les tuiles circulables voisines : 1 est, 2 ouest,
+## 4 sud, 8 nord. Une place compte comme circulable — c est un carrefour.
+static func _road_links(types: PackedByteArray, t: int, idx: int) -> int:
+	var tx := idx % t
+	@warning_ignore("integer_division")
+	var tz := idx / t
+	var mask := 0
+	var steps: Array = [[Vector2i(1, 0), 1], [Vector2i(-1, 0), 2],
+		[Vector2i(0, 1), 4], [Vector2i(0, -1), 8]]
+	for entry: Array in steps:
+		var step: Vector2i = entry[0]
+		var nx := tx + step.x
+		var nz := tz + step.y
+		if nx < 0 or nx >= t or nz < 0 or nz >= t:
+			# UNE RUE QUI SORT DU VILLAGE DOIT ATTEINDRE LE BORD : c est une
+			# entree. La couper au ras de la derniere tuile ferait une impasse.
+			mask |= int(entry[1])
+			continue
+		var kind := types[nz * t + nx]
+		if kind == Tile.ROUTE or kind == Tile.PLACE or kind == Tile.HORS:
+			mask |= int(entry[1])
+	return mask
+
+
+## Demi-largeur de la chaussee, en blocs. Trois donne une rue de sept blocs :
+## deux charrettes s y croisent, on y voit les facades des deux cotes, et elle ne
+## devore pas les parcelles comme le faisait la tuile entiere de seize.
+const STREET_HALF := 3
+
+
+## La colonne (lx, lz) d une tuile de rue est-elle SUR la chaussee ?
+##
+## La bande est tracee vers chaque direction desservie, et le carrefour central
+## est toujours pave : sans lui, deux bandes perpendiculaires se croiseraient
+## sans se toucher aux angles et la rue aurait des trous.
+static func on_street(lx: int, lz: int, links: int) -> bool:
+	var dx := lx - 8
+	var dz := lz - 8
+	if absi(dx) <= STREET_HALF and absi(dz) <= STREET_HALF:
+		return true
+	if absi(dz) <= STREET_HALF:
+		if dx > 0 and (links & 1) != 0:
+			return true
+		if dx < 0 and (links & 2) != 0:
+			return true
+	if absi(dx) <= STREET_HALF:
+		if dz > 0 and (links & 4) != 0:
+			return true
+		if dz < 0 and (links & 8) != 0:
+			return true
+	return false
+
+
+## Emprise du PLATEAU d un batiment : son emprise batie, plus un bloc de
+## pourtour (le seuil de la porte, le pied du mur).
+##
+## CHAQUE BATIMENT A SON PLATEAU (2026-08-09, demande de l auteur). Terrasser la
+## tuile ENTIERE aplanissait 16x16 blocs pour une maison qui en occupe 8 : le
+## village restait une succession de dalles carrees, et c est ce qui lui donnait
+## son air de maquette malgre les paliers.
+static func on_building_pad(lx: int, lz: int, archetype: String) -> bool:
+	var spec: Dictionary = ARCHETYPES.get(archetype, ARCHETYPES["maison"])
+	var margin := int(spec["marge"]) - 1
+	return lx >= margin and lx <= 15 - margin and lz >= margin and lz <= 15 - margin
+
+
+## Tuiles occupees par tuile BATIE, voirie et champs compris. Mesure sur les
+## plans obtenus : au-dessous de 2, les rues n ont plus la place de desservir les
+## parcelles et le village s etouffe.
+const TILES_PER_BUILT := 2.2
+
+
+## CROISSANCE DE LA FORME. On part du centre et l on agrege, une par une, des
+## tuiles voisines de ce qui existe deja.
+##
+## Le tirage est BIAISE VERS LE CENTRE (on essaie plusieurs candidates et l on
+## garde la plus proche) : une croissance uniforme produit des tentacules et des
+## villages en etoile de mer. Ce biais donne une masse compacte mais irreguliere
+## — ce qu on appelle « organique » quand on regarde un village d en haut.
+##
+## La forme est CONTENUE DANS LA BOITE par construction : aucune candidate hors
+## bornes n est jamais retenue. C est la garantie que le village tient dans sa
+## cellule, exigee par l auteur.
+static func _grow_shape(t: int, center: int, wanted: int, rng: RandomNumberGenerator) -> Array[int]:
+	var shape: Array[int] = [center * t + center]
+	var inside := {}
+	inside[shape[0]] = true
+	var frontier: Array[int] = []
+	_push_neighbours(frontier, inside, t, shape[0])
+	while shape.size() < wanted and not frontier.is_empty():
+		# TROIS CANDIDATES, LA PLUS CENTRALE GAGNE. Une seule candidate au hasard
+		# donne des bras ; toutes triees donnerait un disque parfait, donc un
+		# carre aux coins arrondis. Trois est le reglage qui laisse des golfes et
+		# des caps sans partir en filaments.
+		var best := -1
+		var best_score := 1 << 30
+		for _try in 3:
+			if frontier.is_empty():
+				break
+			var pick := rng.randi_range(0, frontier.size() - 1)
+			var candidate: int = frontier[pick]
+			@warning_ignore("integer_division")
+			var score := absi(candidate % t - center) + absi(candidate / t - center)
+			score = score * 4 + rng.randi_range(0, 3)
+			if score < best_score:
+				if best >= 0:
+					frontier.append(best)
+				best_score = score
+				best = candidate
+			frontier.remove_at(pick)
+		if best < 0:
+			break
+		if inside.has(best):
+			continue
+		inside[best] = true
+		shape.append(best)
+		_push_neighbours(frontier, inside, t, best)
+	return shape
+
+
+static func _push_neighbours(frontier: Array[int], inside: Dictionary, t: int, idx: int) -> void:
+	var tx := idx % t
+	@warning_ignore("integer_division")
+	var tz := idx / t
+	for step: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var nx := tx + step.x
+		var nz := tz + step.y
+		if nx < 0 or nx >= t or nz < 0 or nz >= t:
+			continue
+		var n := nz * t + nx
+		if not inside.has(n):
+			frontier.append(n)
+
+
+## La tuile touche-t-elle le dehors ? Sert au zonage : c est le pourtour de la
+## FORME qui est agricole, et non le bord de la boite englobante — sans quoi un
+## village en croissant aurait ses champs du mauvais cote.
+static func _touches_outside(types: PackedByteArray, t: int, idx: int) -> bool:
+	var tx := idx % t
+	@warning_ignore("integer_division")
+	var tz := idx / t
+	for step: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var nx := tx + step.x
+		var nz := tz + step.y
+		if nx < 0 or nx >= t or nz < 0 or nz >= t:
+			return true
+		if types[nz * t + nx] == Tile.HORS:
+			return true
+	return false
 
 
 static func _ring_of(idx: int, t: int, center: int) -> int:
@@ -245,7 +416,13 @@ static func _trace_streets(types: PackedByteArray, t: int, center: int,
 	var horizontal := rng.randf() < 0.5
 	var line := center
 	for step in t:
-		types[(line * t + step) if horizontal else (step * t + line)] = Tile.ROUTE
+		# UNE RUE NE SORT PAS DU VILLAGE. La forme n est plus un carre plein :
+		# tracer en aveugle poserait du gravier en pleine campagne, et le village
+		# retrouverait la silhouette carree qu on vient de lui enlever.
+		var at := (line * t + step) if horizontal else (step * t + line)
+		if types[at] == Tile.HORS:
+			continue
+		types[at] = Tile.ROUTE
 		# Le decrochage se fait EN DEHORS des bords : une artere qui devie sur sa
 		# derniere tuile sortirait du footprint ou raterait son entree.
 		if step > 0 and step < t - 1 and rng.randf() < 0.35:
@@ -253,8 +430,10 @@ static func _trace_streets(types: PackedByteArray, t: int, center: int,
 			if drift > 0 and drift < t - 1:
 				# On pose le COUDE avant de changer de voie, sinon la rue est
 				# coupee en deux troncons qui ne se touchent pas.
-				types[(drift * t + step) if horizontal else (step * t + drift)] = Tile.ROUTE
-				line = drift
+				var elbow := (drift * t + step) if horizontal else (step * t + drift)
+				if types[elbow] != Tile.HORS:
+					types[elbow] = Tile.ROUTE
+					line = drift
 	# RUELLES. Elles partent de l artere et filent jusqu au bord.
 	@warning_ignore("integer_division")
 	var branches := maxi(2, t / 2)
@@ -266,7 +445,12 @@ static func _trace_streets(types: PackedByteArray, t: int, center: int,
 		var direction := 1 if toward_high else -1
 		var lane := cross + direction
 		while (lane <= to) if toward_high else (lane >= to):
-			types[(lane * t + at) if horizontal else (at * t + lane)] = Tile.ROUTE
+			var here := (lane * t + at) if horizontal else (at * t + lane)
+			# La ruelle S ARRETE au bord du village. Elle a rempli son office :
+			# atteindre le pourtour, donc offrir une entree.
+			if types[here] == Tile.HORS:
+				break
+			types[here] = Tile.ROUTE
 			lane += direction
 
 
@@ -558,7 +742,12 @@ static func decor_blocks(tile_type: int, palette: Dictionary, service: String,
 		Tile.PLACE:
 			_decor_square(blocks, palette, service, rng)
 		Tile.ROUTE:
-			_decor_street(blocks, palette, rng)
+			# PLUS DE DECOR DE RUE (2026-08-09). Une rue ne repose plus sur un
+			# palier : elle suit le terrain. Un decor pose a une hauteur relative
+			# au palier flotterait au-dessus de la chaussee ou serait enterre
+			# dessous. Les torches ont demenage au pied des batiments, ou le
+			# plateau existe encore et ou la hauteur est donc connue.
+			pass
 		Tile.CHAMP:
 			_decor_field(blocks, palette, rng)
 	return blocks

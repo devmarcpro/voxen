@@ -45,13 +45,24 @@ func run() -> void:
 			roads += 1
 		elif v == 2:
 			buildings += 1
-	# Sorties = tuiles route sur le bord du footprint (la croix en donne 4).
+	# SORTIES. Le village n est plus un carre plein (forme organique du
+	# 2026-08-09) : compter les rues sur le bord de la BOITE ENGLOBANTE rend
+	# desormais zero sur un village parfaitement desservi, puisque la forme
+	# n atteint plus les bords de sa fenetre. Une sortie, c est une rue qui
+	# DEBOUCHE SUR LE DEHORS — donc dont une voisine est hors du village.
 	var exits := 0
-	for k in t:
-		if types[0 * t + k] == 1 or types[(t - 1) * t + k] == 1:
-			exits += 1
-		if types[k * t + 0] == 1 or types[k * t + (t - 1)] == 1:
-			exits += 1
+	for idx in types.size():
+		if types[idx] != CityGenerator.Tile.ROUTE:
+			continue
+		var tx := idx % t
+		@warning_ignore("integer_division")
+		var tz := idx / t
+		for step: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var nx := tx + step.x
+			var nz := tz + step.y
+			if nx < 0 or nx >= t or nz < 0 or nz >= t 					or types[nz * t + nx] == CityGenerator.Tile.HORS:
+				exits += 1
+				break
 	print("[CITYPROBE] T=%d routes=%d bâtiments=%d population=%d sorties=%d (attendu ≥2)" % [
 		t, roads, buildings, layout["population"], exits])
 
@@ -64,8 +75,15 @@ func run() -> void:
 	var offset: int = layout["offset"]
 	var offset_z: int = layout.get("offset_z", offset)
 	var plateau: int = layout["plateau_y"]
-	var footprint_wx := cell.x * 128 + offset * 16 + 8
-	var footprint_wz := cell.y * 128 + offset_z * 16 + 8
+	# ON SONDE LA PLACE, pas le coin de la boite. Hors du village la colonne est
+	# du terrain naturel — et depuis que les rues suivent le relief, une bonne
+	# part du village ne l est plus non plus. La place, elle, est pavee et de
+	# niveau par definition : c est le seul point dont le palier fasse foi.
+	var square_idx := _square_index(types, t)
+	@warning_ignore("integer_division")
+	var footprint_wx := cell.x * 128 + (offset + square_idx % t) * 16 + 8
+	@warning_ignore("integer_division")
+	var footprint_wz := cell.y * 128 + (offset_z + square_idx / t) * 16 + 8
 	var surf := g.sample_surface(footprint_wx, footprint_wz)
 	# TERRASSEMENT EN PALIERS (2026-08-09). Le village n a plus UN plateau mais
 	# un palier par tuile : comparer la surface au `plateau_y` global n a plus de
@@ -73,22 +91,31 @@ func run() -> void:
 	# un plateau median de 19). Ce qui doit rester vrai, c est que la colonne
 	# soit posee sur SON palier — et que les paliers restent franchissables.
 	var terraces: PackedInt32Array = layout.get("terraces", PackedInt32Array())
-	var terrace_ok := int(surf["h"]) == _terrace_at(layout, 0, 0)
+	@warning_ignore("integer_division")
+	var terrace_ok := int(surf["h"]) == _terrace_at(layout, square_idx % t, square_idx / t)
 	var step_ok := true
 	var worst := 0
 	for tz2 in t:
 		for tx2 in t:
+			if types[tz2 * t + tx2] == CityGenerator.Tile.HORS:
+				continue
 			for delta: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
 				var nx := tx2 + delta.x
 				var nz := tz2 + delta.y
 				if nx >= t or nz >= t:
 					continue
+				# Deux tuiles du VILLAGE. Comparer un palier a celui d une tuile
+				# hors du village n a aucun sens : dehors, le terrain est reste
+				# naturel et son palier n a jamais ete applique.
+				if types[nz * t + nx] == CityGenerator.Tile.HORS:
+					continue
 				var gap: int = absi(_terrace_at(layout, tx2, tz2) - _terrace_at(layout, nx, nz))
 				worst = maxi(worst, gap)
 				if gap > NoiseGenerator.CITY_TERRACE_STEP:
 					step_ok = false
-	print("[CITYPROBE] terrassement : h=%d (palier attendu=%d) paliers=%d" % [
-		surf["h"], _terrace_at(layout, 0, 0), terraces.size()])
+	@warning_ignore("integer_division")
+	print("[CITYPROBE] terrassement de la place : h=%d (palier attendu=%d) paliers=%d" % [
+		surf["h"], _terrace_at(layout, square_idx % t, square_idx / t), terraces.size()])
 	# UN VILLAGE OU L ON NE PEUT PAS MARCHER N EST PAS UN VILLAGE. La marche d un
 	# bloc se franchit sans sauter ; au-dela il faudrait des escaliers, que
 	# personne ne genere. C est l assertion qui rend la refonte du relief sure.
@@ -206,9 +233,17 @@ func _capture_village(layout: Dictionary) -> void:
 	var offset := int(layout["offset"])
 	var offset_z := int(layout.get("offset_z", offset))
 	var span := t * 16
-	var mid_x := float(cell.x * 128 + offset * 16 + span / 2)
-	var mid_z := float(cell.y * 128 + offset_z * 16 + span / 2)
-	var plateau := float(layout["plateau_y"])
+	# ON VISE LA PLACE, pas le centre de la boite englobante. Depuis que la forme
+	# est organique, le village pousse ou il peut dans sa fenetre : viser le
+	# milieu de la fenetre a photographie une foret de baobabs a cote du village.
+	var types_shot: PackedByteArray = layout["types"]
+	var square := _square_index(types_shot, t)
+	@warning_ignore("integer_division")
+	var mid_x := float(cell.x * 128 + (offset + square % t) * 16 + 8)
+	@warning_ignore("integer_division")
+	var mid_z := float(cell.y * 128 + (offset_z + square / t) * 16 + 8)
+	@warning_ignore("integer_division")
+	var plateau := float(_terrace_at(layout, square % t, square / t))
 	# EN VOL, ENTREES VERROUILLEES. `FlyCamera` applique la GRAVITE : une
 	# position posee de l exterieur est ecrasee des la frame suivante, et la
 	# camera retombe au sol. La premiere version de cette capture a photographie
@@ -273,3 +308,14 @@ func _measured_wall_height(g: Object, layout: Dictionary, tx: int, tz: int, marg
 			break
 		height = y
 	return maxi(height - 1, 3)
+
+
+## Index de la PLACE, ou du centre a defaut. Une sonde qui echantillonne en dur
+## le coin de la boite englobante ne mesure plus rien depuis que le village a
+## une forme.
+func _square_index(types: PackedByteArray, t: int) -> int:
+	for idx in types.size():
+		if types[idx] == CityGenerator.Tile.PLACE:
+			return idx
+	@warning_ignore("integer_division")
+	return (t / 2) * t + t / 2

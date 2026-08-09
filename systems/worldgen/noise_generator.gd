@@ -2150,6 +2150,51 @@ func _terraces_for(cell: Vector2i, plan: Dictionary, fallback: int) -> PackedInt
 	return out
 
 
+## LA COLONNE EST-ELLE TERRASSEE ? (2026-08-09, demande de l auteur : « je veux
+## des rues etroites et que chaque batiment ait son plateau, les rues connectent
+## tout et s adaptent au terrain »).
+##
+## CE QUE C ETAIT. Toute tuile du village etait aplanie a son palier, sur ses
+## seize blocs de cote. Un village restait donc une mosaique de DALLES CARREES,
+## paliers ou pas : c est ce qui lui donnait son air de maquette.
+##
+## CE QUE C EST. Seul ce qui a besoin d etre plat l est :
+##   - le PLATEAU D UN BATIMENT, a son emprise plus un bloc de seuil ;
+##   - la PLACE, qui est un sol pave et se doit d etre de niveau ;
+##   - les CHAMPS, qu on laboure a plat comme partout ou l on cultive.
+## Les RUES, elles, SUIVENT LE TERRAIN : elles montent et descendent avec lui.
+## C est le point qui change tout — une rue de niveau force le terrain a l etre,
+## et de proche en proche c est le village entier qui s aplatit.
+##
+## Tout le reste — les abords des maisons, les interstices — reste du terrain
+## naturel, avec son herbe et ses irregularites.
+func _city_terraforms(city: Dictionary, tile: Dictionary, wx: int, wz: int) -> bool:
+	var kind := int(tile["type"])
+	var lx := wx & 15
+	var lz := wz & 15
+	match kind:
+		CityGenerator.Tile.BATIMENT:
+			var archetype := String((city["archetypes"] as Dictionary).get(
+				int(tile["idx"]), "maison"))
+			return CityGenerator.on_building_pad(lx, lz, archetype)
+		CityGenerator.Tile.PLACE:
+			return true
+		CityGenerator.Tile.CHAMP:
+			return true
+	return false
+
+
+## La colonne est-elle sur la CHAUSSEE d une rue ? Sert au seul choix du
+## materiau de surface : la rue ne terrasse rien, elle se contente de couvrir le
+## sol de gravier la ou elle passe.
+func _city_on_street(city: Dictionary, tile: Dictionary, wx: int, wz: int) -> bool:
+	var kind := int(tile["type"])
+	if kind != CityGenerator.Tile.ROUTE and kind != CityGenerator.Tile.PLACE:
+		return false
+	var links := int((city.get("links", {}) as Dictionary).get(int(tile["idx"]), 15))
+	return CityGenerator.on_street(wx & 15, wz & 15, links)
+
+
 ## Palier de la tuile `idx`, ou le plateau de repli. Le repli existe pour les
 ## layouts d'AVANT les terrasses qu'une sauvegarde pourrait encore porter : un
 ## village à demi terrassé serait pire que pas de terrasses du tout.
@@ -2174,7 +2219,14 @@ func _city_tile_type(wx: int, wz: int, city: Dictionary) -> Dictionary:
 	if ftx < 0 or ftx >= t or ftz < 0 or ftz >= t:
 		return {"in": false}
 	var idx := ftz * t + ftx
-	return {"in": true, "type": int((city["types"] as PackedByteArray)[idx]), "idx": idx}
+	var kind := int((city["types"] as PackedByteArray)[idx])
+	# HORS = la tuile est dans la boite englobante mais PAS dans le village
+	# (2026-08-09, forme organique). Le terrain y reste intact : ni terrassement,
+	# ni interdiction d arbres. C est ce qui fait qu un village est BORDE de
+	# nature au lieu d etre pose sur une dalle carree.
+	if kind == CityGenerator.Tile.HORS:
+		return {"in": false}
+	return {"in": true, "type": kind, "idx": idx}
 
 
 ## Bloc de bâtiment au monde (wx,wy,wz), 0 si aucun — pour la coquille du
@@ -2499,7 +2551,7 @@ func _sample_column(wx: int, wz: int, city: Dictionary = {}) -> Dictionary:
 	# le footprint. Les murs/toits sont un overlay (voir generate_chunk).
 	if not city.is_empty():
 		var tile := _city_tile_type(wx, wz, city)
-		if tile.get("in", false):
+		if tile.get("in", false) and _city_terraforms(city, tile, wx, wz):
 			h = _terrace_of(city, int(tile["idx"]))
 			var palette: Dictionary = city["palette"]
 			# UN MATÉRIAU PAR RÔLE. Tout le footprint partageait auparavant le
@@ -2513,7 +2565,17 @@ func _sample_column(wx: int, wz: int, city: Dictionary = {}) -> Dictionary:
 					surface = int(palette["pave"])
 				CityGenerator.Tile.CHAMP:
 					surface = int(palette["champ"])
-			return {"h": h, "surf": surface, "sub": int(palette["sol"]), "trans": trans, "acc": 0}
+			# LE VILLAGE NE COUVRE PLUS TOUT SON FOOTPRINT (2026-08-09). Une rue
+			# est une bande etroite, un plateau ne fait que l emprise de sa
+			# maison : hors de ces surfaces, la colonne redevient du TERRAIN
+			# NATUREL, avec son herbe et son relief. C est ce qui remplace la
+			# mosaique de dalles carrees par un village pose dans un paysage.
+			if _city_on_street(city, tile, wx, wz):
+				return {"h": h, "surf": _road_id, "sub": int(palette["sol"]),
+					"trans": trans, "acc": 0}
+			if _city_terraforms(city, tile, wx, wz):
+				return {"h": h, "surf": surface, "sub": int(palette["sol"]),
+					"trans": trans, "acc": 0}
 
 	# `acc` : matériau d'accent du biome retenu — le cristal/minerai que les
 	# dimensions déposent en veines. Zéro dans l'overworld, qui tire ses filons
