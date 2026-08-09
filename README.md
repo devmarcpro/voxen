@@ -83,9 +83,14 @@ exemplaires miroirs** : [chunk_mesher.gd](systems/voxel/chunk_mesher.gd) (la
 référence, toujours fonctionnelle) et
 [native/src/voxen_mesher.cpp](native/src/voxen_mesher.cpp) (port C++ fidèle).
 Si la DLL est présente, elle est utilisée ; sinon le GDScript prend le relais
-sans rien casser. Mesuré sur la machine cible : **17,1 → 2,55 ms/chunk**, bench
-de vol **8 → 34 fps** — le gain vient autant du C++ que de la disparition des
-verrous de VM GDScript côté threads workers.
+sans rien casser. Depuis le port de la **coquille** (`fill_shell_terrain`,
+strates + cavernes + dimensions — les surcouches arbres/villes restent en
+GDScript partagé), le périmètre natif couvre tout le maillage : mesuré sur la
+machine cible, **17,1 → 1,61 ms/chunk (×10,6)** — le gain vient autant du C++
+que de la disparition des verrous de VM GDScript côté threads workers. Le
+hachage de cellules y est reproduit en entier 64 bits signé au bit près, et
+TOUTES les constantes viennent du GDScript (`configure_shell`) : le C++ n'en
+recopie aucune.
 
 ```bash
 # Toolchain SANS Visual Studio ni droits admin (détail : native/SConstruct) :
@@ -182,21 +187,23 @@ vérifié plusieurs fois.
 |---|---|---|---|
 | Tick de simulation (E.1) | < 16 ms | ≤ 2,9 ms au bench statique | ✅ |
 | 50 créatures actives (D.3 étape 6) | < 8 ms | **16,9 ms** de moyenne | ❌ — voir ci-dessous |
-| Maillage d'un chunk (D.3 étape 4) | < 4 ms | **2,55 ms** (mesher natif) | ✅ **tenu pour la première fois** |
+| Maillage d'un chunk (D.3 étape 4) | < 4 ms | **1,61 ms** (mesher + coquille natifs) | ✅ **tenu, marge ×2,5** |
 | Mutation visible chez l'autre joueur (étape 8) | < 100 ms | **112-168 ms** | ❌, mais voir ci-dessous |
 | Bench statique (rayon 8) | 60 fps | **64,3 fps** (34 % de frames > 16,7 ms) | ~ |
 | Bench de vol (rayon 8) | 60 fps | **34,0 fps** (37 % de frames lentes) | ❌, était à 8,0 |
 
-### Le maillage, critère enfin vert — le mesher est passé en C++ (2026-08-09)
+### Le maillage, critère enfin vert — mesher ET coquille en C++ (2026-08-09)
 
 Ce que l'annexe E.14 prescrivait (*« si le meshing GDScript est trop lent,
-passer cette partie — et elle seule — en GDExtension »*) est fait : voir la
-section « Le mesher natif » plus haut. 17,1 → **2,55 ms/chunk**, parité
-294/294 chunks vérifiée par `--probe-mesh-parite`, benchs statique 43 → 62 fps
-et vol 8 → 34 fps. Il reste la **coquille** (`fill_shell`, 1,86 ms/chunk, 79 %
-du coût de maillage restant), non portée : elle entraîne `_deep_block`,
-`_ore_at` et `_is_cave_at`, et une divergence là se paie en parois fantômes
-aux frontières de chunk — chantier séparé, avec la sonde de parité en filet.
+passer cette partie — et elle seule — en GDExtension »*) est fait, en deux
+temps : le cœur du mesher (17,1 → 2,55 ms/chunk), puis la **coquille**
+(`fill_shell_terrain` : strates, cavernes, branche dimension — la partie dont
+une divergence se paie en parois fantômes aux frontières) → **1,61 ms/chunk**
+au total. Parité 294/294 chunks vérifiée par `--probe-mesh-parite`, qui
+bascule les DEUX ports d'un seul A/B. Le prochain plafond du vol est la
+**génération** GDScript (`prepare_context`/`generate_chunk`, ~11 ms/chunk
+mesurés par `--probe-mesh`) — même recette applicable, dépendances bien plus
+larges (arbres, villes, rivières).
 
 ### Les 50 créatures, critère repassé au rouge — et pourquoi c'est assumé
 

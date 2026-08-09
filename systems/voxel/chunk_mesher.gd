@@ -119,14 +119,20 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 	if uniform and data.uniform_id == 0:
 		return []
 
-	# --- 1. Copie padded : coquille de voisinage D'ABORD ---
+	# --- 1. Coquille de voisinage D'ABORD ---
 	# (permet de rejeter un chunk uniforme enterré sans remplir l'intérieur)
-	var pad := PackedInt32Array()
-	pad.resize(P * P * P)
+	# Le pad est ALLOUÉ par fill_shell (2026-08-09 : contrat de retour commun
+	# aux chemins natif et GDScript de la coquille — voir NoiseGenerator).
 	var t_phase := Time.get_ticks_usec() if profiling else 0
+	var pad: PackedInt32Array
 	var shell_air := true  # Dimension vide : la coquille (pad zéroé) est d'air.
 	if generator != null:
-		shell_air = generator.fill_shell(cpos, pad, ctx)
+		var sh: Array = generator.fill_shell(cpos, ctx)
+		pad = sh[0]
+		shell_air = sh[1]
+	else:
+		pad = PackedInt32Array()
+		pad.resize(P * P * P)
 	if not neighbor_edits.is_empty():
 		# Les modifications voisines peuvent creuser de l'air dans la
 		# coquille : le OU est conservateur (jamais de face manquée).
