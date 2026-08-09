@@ -404,6 +404,39 @@ static func kingdom_at_cached(cell: Vector2i, world_seed: int,
 
 ## Le secteur est-il déjà calculé ? Sert au PRÉCHAUFFAGE : c'est ce qui permet
 ## de payer le coût hors du tick, avant que quiconque en ait besoin.
+## CACHE LEGER DES CELLULES-CAPITALES, avec SON mutex.
+##
+## POURQUOI UN SECOND CACHE. `_capitals_cached` calcule le territoire et
+## l identite en meme temps que les capitales — c est lourd, et surtout il n est
+## PAS protege : il n est appele que du thread principal. Or la generation de
+## terrain (threads ouvriers) doit maintenant savoir si une cellule est une
+## capitale pour dimensionner sa ville (2026-08-09, « la taille des villes suit
+## les stats du royaume »). Lui faire partager le gros cache aurait impose un
+## verrou sur tout le chemin royaume du thread principal ; ce petit cache ne
+## porte que « quelles cellules du secteur sont des capitales, et de quelle
+## taille », et son mutex ne protege que lui.
+static var _capital_cells_cache := {}
+static var _capital_cells_mutex := Mutex.new()
+
+
+## Taille du royaume dont `cell` est la capitale, ou "" si elle n en est pas
+## une. Thread-safe, borne, et sans calcul de territoire.
+static func capital_kind_at(cell: Vector2i, world_seed: int,
+		generator: NoiseGenerator) -> String:
+	var sector := sector_of(cell)
+	_capital_cells_mutex.lock()
+	if not _capital_cells_cache.has(sector):
+		if _capital_cells_cache.size() > 512:
+			_capital_cells_cache.clear()
+		var kinds := {}
+		for capital: Dictionary in capitals_in_sector(sector, world_seed, generator):
+			kinds[capital["cell"]] = String(capital["size"])
+		_capital_cells_cache[sector] = kinds
+	var kind := String((_capital_cells_cache[sector] as Dictionary).get(cell, ""))
+	_capital_cells_mutex.unlock()
+	return kind
+
+
 static func sector_ready(sector: Vector2i) -> bool:
 	return _sector_cache.has(sector)
 

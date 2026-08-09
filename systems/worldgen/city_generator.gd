@@ -55,6 +55,18 @@ enum Tile { VIDE, ROUTE, BATIMENT, CHAMP, PLACE, HORS }
 ## n oblige plus a rester petit. Toujours <= 7 : il faut au moins une position
 ## de repli dans la cellule pour chercher un site correct.
 const FOOTPRINT := {"hameau": 4, "village": 6, "ville": 7}
+
+## UNE CAPITALE DEBORDE DE SA CELLULE (2026-08-09, demande de l auteur : « une
+## ville peut utiliser plusieurs cellules ; la taille suit les stats du
+## royaume »). La fenetre d une capitale s etend sur 2x2 cellules — l ancre plus
+## ses voisines +x/+z/+xz — soit 16 tuiles de cote. Seule la capitale d un
+## royaume d une certaine taille y a droit : la capitale d un hameau-etat reste
+## un village d une cellule, celle d une cite-etat ou plus devient une vraie
+## ville. C est la POLITIQUE du monde qui se lit dans la taille des lieux.
+const CAPITAL_SPAN_CELLS := 2
+## Population d une capitale (au-dela du « ville » 20-40 du GDD 3.4 : c est le
+## siege d un royaume, pas une bourgade de plus).
+const CAPITAL_POP_RANGE := [40, 90]
 const POP_RANGE := {"hameau": [4, 8], "village": [8, 20], "ville": [20, 40]}
 
 ## Habitants par bâtiment d'habitation. 2 et non 3 : à 3, un village de 8 âmes
@@ -108,7 +120,11 @@ static func tile_plan(cell: Vector2i, world_seed: int, category: String) -> Dict
 	var rng := RandomNumberGenerator.new()
 	rng.seed = NoiseGenerator.pcg_hash(cell.x, cell.y, world_seed + SEED_CITY)
 
+	var span_tiles := TILES_PER_CELL
 	var pop_range: Array = POP_RANGE.get(category, [8, 20])
+	if category == "capitale":
+		span_tiles = TILES_PER_CELL * CAPITAL_SPAN_CELLS
+		pop_range = CAPITAL_POP_RANGE
 	var population := rng.randi_range(int(pop_range[0]), int(pop_range[1]))
 	var homes_needed := ceili(float(population) / float(RESIDENTS_PER_BUILDING))
 	var services: Array = _services_for(category, population, rng)
@@ -118,10 +134,10 @@ static func tile_plan(cell: Vector2i, world_seed: int, category: String) -> Dict
 	# obtenait un village ou les rues devoraient les parcelles.
 	var built_tiles := homes_needed + services.size()
 	var wanted := int(ceil(float(built_tiles) * TILES_PER_BUILT)) + 1
-	var t: int = clampi(int(ceil(sqrt(float(wanted)))) + 2, 4, TILES_PER_CELL)
+	var t: int = clampi(int(ceil(sqrt(float(wanted)))) + 2, 4, span_tiles)
 	wanted = mini(wanted, t * t - 2)
 	@warning_ignore("integer_division")
-	var offset := (TILES_PER_CELL - t) / 2
+	var offset := (span_tiles - t) / 2
 	@warning_ignore("integer_division")
 	var center := t / 2
 
@@ -215,7 +231,9 @@ static func tile_plan(cell: Vector2i, world_seed: int, category: String) -> Dict
 
 	return {"T": t, "offset": offset, "types": types, "doors": doors,
 		"archetypes": archetypes, "services": service_at, "links": links,
-		"population": population, "buildings": built}
+		"population": population, "buildings": built,
+		"span_cells": CAPITAL_SPAN_CELLS if category == "capitale" else 1,
+		"category": category}
 
 
 ## Bits de direction vers les tuiles circulables voisines : 1 est, 2 ouest,
@@ -389,9 +407,16 @@ static func _services_for(category: String, population: int, rng: RandomNumberGe
 		out.append(["forge", "atelier"])
 	if category == "ville" or (category == "village" and rng.randf() < 0.5):
 		out.append(["guilde", "halle"])
-	if category == "ville":
+	if category == "ville" or category == "capitale":
 		out.append(["casino", "maison_etage"])
 		out.append(["temple", "halle"])
+	if category == "capitale":
+		# LE SIEGE DU ROYAUME. La guilde y est toujours, et le commerce double :
+		# une capitale de quatre-vingts ames avec un seul marchand ferait la
+		# queue devant l echoppe.
+		out.append(["guilde", "halle"])
+		out.append(["marchand", "atelier"])
+		out.append(["taverne", "maison_etage"])
 	return out
 
 

@@ -1889,6 +1889,24 @@ func _city_cell_of(wx: int, wz: int) -> Vector2i:
 	return Vector2i(floori(float(wx) / CITY_CELL_BLOCKS), floori(float(wz) / CITY_CELL_BLOCKS))
 
 
+## VILLE COUVRANT LA COLONNE (wx, wz), ou {} — c est CETTE fonction que les
+## chemins de terrain doivent appeler depuis que les capitales debordent de leur
+## cellule. La colonne peut etre couverte par le layout de sa propre cellule, ou
+## par celui d une ancre en -x/-z/-xz dont la fenetre s etend jusqu ici. Quatre
+## sondages de cache au pire, et la fenetre monde tranche.
+func city_covering(wx: int, wz: int) -> Dictionary:
+	var cell := _city_cell_of(wx, wz)
+	for delta: Vector2i in [Vector2i.ZERO, Vector2i(-1, 0), Vector2i(0, -1), Vector2i(-1, -1)]:
+		var layout := _city_layout(cell + delta)
+		if layout.is_empty():
+			continue
+		var origin: Vector2i = layout["origin"]
+		var span: int = layout["span_blocks"]
+		if wx >= origin.x and wx < origin.x + span and wz >= origin.y and wz < origin.y + span:
+			return layout
+	return {}
+
+
 ## Layout de ville d'une cellule (caché) — {} si aucun village constructible.
 func _city_layout(cell: Vector2i) -> Dictionary:
 	# Les villes sont un système de l'OVERWORLD (E.2/3.4). Une dimension n'en a
@@ -1938,8 +1956,8 @@ const CITY_SAMPLES := 4
 const SEED_DECOR := 61881
 
 
-func _best_city_site(cell: Vector2i, t: int) -> Dictionary:
-	var max_offset := CityGenerator.TILES_PER_CELL - t
+func _best_city_site(cell: Vector2i, t: int, span_cells: int = 1) -> Dictionary:
+	var max_offset := CityGenerator.TILES_PER_CELL * span_cells - t
 	var best := {}
 	var best_spread := 1 << 30
 	for oz in range(max_offset + 1):
@@ -1983,6 +2001,39 @@ func _best_city_site(cell: Vector2i, t: int) -> Dictionary:
 	return best
 
 
+## Site de repli d une capitale : le plus plat, SANS critere d eau ni de pente.
+## N est appele que quand la recherche normale n a rien rendu.
+func _any_city_site(cell: Vector2i, t: int, span_cells: int) -> Dictionary:
+	var max_offset := CityGenerator.TILES_PER_CELL * span_cells - t
+	var best := {}
+	var best_spread := 1 << 30
+	for oz in range(max_offset + 1):
+		for ox in range(max_offset + 1):
+			var base_x := cell.x * CITY_CELL_BLOCKS + ox * 16
+			var base_z := cell.y * CITY_CELL_BLOCKS + oz * 16
+			var span := t * 16 - 1
+			var hmin := 1 << 30
+			var hmax := -(1 << 30)
+			var heights: Array[int] = []
+			for sz in CITY_SAMPLES:
+				for sx in CITY_SAMPLES:
+					@warning_ignore("integer_division")
+					var px := base_x + sx * span / (CITY_SAMPLES - 1)
+					@warning_ignore("integer_division")
+					var pz := base_z + sz * span / (CITY_SAMPLES - 1)
+					var h := int(floorf(_height(float(px), float(pz))))
+					heights.append(h)
+					hmin = mini(hmin, h)
+					hmax = maxi(hmax, h)
+			if hmax - hmin < best_spread:
+				best_spread = hmax - hmin
+				heights.sort()
+				@warning_ignore("integer_division")
+				best = {"offset": ox, "offset_z": oz,
+					"plateau": maxi(heights[heights.size() / 2], water_level + 2)}
+	return best
+
+
 func _compute_city_layout(cell: Vector2i) -> Dictionary:
 	@warning_ignore("integer_division")
 	var cx := cell.x * CITY_CELL_BLOCKS + CITY_CELL_BLOCKS / 2
@@ -1991,10 +2042,30 @@ func _compute_city_layout(cell: Vector2i) -> Dictionary:
 	var biome := biome_at(cx, cz)
 	if biome.is_empty() or not biome.has("village_palette"):
 		return {}
-	if "village" not in POIGenerator.pois_at_cell(cell, world_seed, biome):
-		return {}
 
-	var category := CityGenerator.size_category(cell, world_seed)
+	# LA TAILLE SUIT LE ROYAUME (2026-08-09, decision de l auteur). La capitale
+	# d un royaume assez grand (cite-etat et plus) devient une VILLE sur 2x2
+	# cellules ; celle d un hameau-etat reste un village. Une capitale ne passe
+	# PAS par la loterie des POI : un royaume dont la capitale n existerait pas
+	# serait un royaume fantome — son identite, ses lois et sa culture pointent
+	# deja vers cette cellule.
+	var capital_kind := KingdomGenerator.capital_kind_at(cell, world_seed, self)
+	var category := ""
+	if capital_kind != "":
+		category = "capitale" if capital_kind != "hameau_etat" else "village"
+	else:
+		# UNE CELLULE COUVERTE PAR UNE CAPITALE VOISINE SE TAIT. L ancre est la
+		# cellule de la capitale ; sa fenetre s etend vers +x/+z. Sans cette
+		# suppression, un village POI pousserait DANS la capitale et les deux
+		# s ecriraient l un sur l autre.
+		for delta: Vector2i in [Vector2i(-1, 0), Vector2i(0, -1), Vector2i(-1, -1)]:
+			var neighbour_kind := KingdomGenerator.capital_kind_at(
+				cell + delta, world_seed, self)
+			if neighbour_kind != "" and neighbour_kind != "hameau_etat":
+				return {}
+		if "village" not in POIGenerator.pois_at_cell(cell, world_seed, biome):
+			return {}
+		category = CityGenerator.size_category(cell, world_seed)
 	var plan := CityGenerator.tile_plan(cell, world_seed, category)
 	var t: int = plan["T"]
 
@@ -2010,7 +2081,14 @@ func _compute_city_layout(cell: Vector2i) -> Dictionary:
 	# la plus plate parmi celles qui sont au sec. C'est aussi meilleur en soi :
 	# un village s'installe sur le replat, il ne se plante pas au milieu d'une
 	# pente parce qu'un algorithme l'a décidé.
-	var site := _best_city_site(cell, t)
+	var span_cells := int(plan.get("span_cells", 1))
+	var site := _best_city_site(cell, t, span_cells)
+	if site.is_empty() and category == "capitale":
+		# UNE CAPITALE NE PEUT PAS NE PAS EXISTER : son royaume est deja nomme,
+		# ses lois deja tirees. Si aucun site ne passe les criteres (tout est
+		# trop pentu ou trop mouille), on prend le moins mauvais — les paliers
+		# absorbent la pente, et les terrasses se calent au-dessus de l eau.
+		site = _any_city_site(cell, t, span_cells)
 	if site.is_empty():
 		return {}
 	var plateau: int = site["plateau"]
@@ -2073,6 +2151,12 @@ func _compute_city_layout(cell: Vector2i) -> Dictionary:
 		if not decor.is_empty():
 			decor_blocks[idx] = decor
 	plan["cell"] = cell
+	# FENETRE MONDE du village : min inclus, exclusif au-dela. C est elle qui
+	# fait foi pour « cette colonne est-elle dans ce village ? » — le calcul par
+	# cellule ne suffit plus depuis qu une capitale deborde de la sienne.
+	plan["origin"] = Vector2i(cell.x * CITY_CELL_BLOCKS + int(plan["offset"]) * 16,
+		cell.y * CITY_CELL_BLOCKS + int(plan["offset_z"]) * 16)
+	plan["span_blocks"] = int(plan["T"]) * 16
 	plan["plateau_y"] = plateau
 	plan["terraces"] = _terraces_for(cell, plan, plateau)
 	plan["palette"] = palette
@@ -2208,16 +2292,18 @@ func _terrace_of(city: Dictionary, idx: int) -> int:
 ## Type de tuile de ville au bloc (wx,wz) dans un layout donné :
 ## { "in": bool, "type": int (0 place, 1 route, 2 bâtiment), "idx": int }.
 func _city_tile_type(wx: int, wz: int, city: Dictionary) -> Dictionary:
-	var cell: Vector2i = city["cell"]
-	var lx := wx - cell.x * CITY_CELL_BLOCKS
-	var lz := wz - cell.y * CITY_CELL_BLOCKS
-	if lx < 0 or lx >= CITY_CELL_BLOCKS or lz < 0 or lz >= CITY_CELL_BLOCKS:
+	# La FENETRE MONDE fait foi (2026-08-09) : le test par cellule refusait toute
+	# colonne hors de la cellule d ancrage, ce qui aurait coupe une capitale au
+	# bord de sa premiere cellule.
+	var origin: Vector2i = city["origin"]
+	var lx := wx - origin.x
+	var lz := wz - origin.y
+	var span: int = city["span_blocks"]
+	if lx < 0 or lx >= span or lz < 0 or lz >= span:
 		return {"in": false}
-	var ftx := (lx >> 4) - int(city["offset"])
-	var ftz := (lz >> 4) - int(city.get("offset_z", city["offset"]))
+	var ftx := lx >> 4
+	var ftz := lz >> 4
 	var t: int = city["T"]
-	if ftx < 0 or ftx >= t or ftz < 0 or ftz >= t:
-		return {"in": false}
 	var idx := ftz * t + ftx
 	var kind := int((city["types"] as PackedByteArray)[idx])
 	# HORS = la tuile est dans la boite englobante mais PAS dans le village
@@ -2509,7 +2595,7 @@ func _river_carve_at(wx: float, wz: float, rivers: Array[Dictionary]) -> int:
 ## premier poste de coût de la construction de la carte, devant le terrain
 ## lui-même.
 func sample_surface(wx: int, wz: int, city: Variant = null) -> Dictionary:
-	var layout: Dictionary = city if city is Dictionary 		else _city_layout(_city_cell_of(wx, wz))
+	var layout: Dictionary = city if city is Dictionary else city_covering(wx, wz)
 	return _sample_column(wx, wz, layout)
 
 
@@ -2683,7 +2769,14 @@ func prepare_context(col: Vector2i) -> Dictionary:
 	# fois (mutex) et partagé par les 18×18 colonnes. Le footprint étant centré
 	# avec ≥1 tuile de marge, une colonne de coquille ne tombe jamais dans le
 	# footprint d'une AUTRE cellule → utiliser ce layout pour toutes est correct.
-	var city := _city_layout(_city_cell_of(col.x * ChunkData.SIZE, col.y * ChunkData.SIZE))
+	# `city_covering` et non le layout de la cellule : une CAPITALE peut
+	# recouvrir ce chunk depuis une cellule voisine (2026-08-09). Un chunk-
+	# colonne = une tuile, donc UN seul layout vaut pour ses 16x16 colonnes ; la
+	# COQUILLE (le rang de bordure) peut en toute rigueur relever d un autre
+	# layout au bord exact d une cellule — cas deja rarissime avant les
+	# capitales, et la couture qui en resulterait est bornee a un bloc de
+	# hauteur sur la ligne de partage. Assumé, documente, mesurable.
+	var city := city_covering(col.x * ChunkData.SIZE, col.y * ChunkData.SIZE)
 	var h_min := 1 << 30
 	var h_max := -(1 << 30)
 	var i := 0
@@ -3415,7 +3508,7 @@ func _block_from_column(wy: int, h: int, surface: int, subsurface: int, trans: i
 ## un éventuel survol d'arbre (requête ponctuelle, hors chemin chaud — la
 ## visée/mining passe par le cache de chunks la plupart du temps).
 func block_at(wx: int, wy: int, wz: int) -> int:
-	var city := _city_layout(_city_cell_of(wx, wz))
+	var city := city_covering(wx, wz)
 	var r := _sample_column(wx, wz, city)
 	# Bâtiment de ville : au-dessus du plateau terrassé (terrain = air ici).
 	if not city.is_empty():

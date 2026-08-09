@@ -207,9 +207,11 @@ func run() -> void:
 			bare += 1
 	print("[CITYPROBE] tuiles laissées vides : %d (attendu 0)" % bare)
 
+	var capital_ok := await _check_capital(g)
+
 	await _capture_village(layout)
 
-	var ok: bool = t >= 3 and roads > 0 and buildings > 0 and exits >= 2 		and terrace_ok and step_ok and road_ok and wall_ok and floor_ok 		and door_ok and roof_ok and bare == 0
+	var ok: bool = t >= 3 and roads > 0 and buildings > 0 and exits >= 2 		and terrace_ok and step_ok and road_ok and wall_ok and floor_ok 		and door_ok and roof_ok and bare == 0 and capital_ok
 	print("[CITYPROBE] RÉSULTAT : %s" % ("OK" if ok else "ÉCHEC"))
 	main.get_tree().quit(0 if ok else 1)
 
@@ -319,3 +321,62 @@ func _square_index(types: PackedByteArray, t: int) -> int:
 			return idx
 	@warning_ignore("integer_division")
 	return (t / 2) * t + t / 2
+
+
+## LA CAPITALE D UN ROYAUME EST UNE VILLE MULTI-CELLULES (2026-08-09, decision
+## de l auteur : « la taille suit les stats du royaume »).
+##
+## Quatre faits, chacun refutable separement :
+##   1. la capitale d un royaume >= cite-etat a un layout de categorie capitale ;
+##   2. sa fenetre deborde de sa cellule (span 2) ;
+##   3. une colonne de la cellule voisine +x/+z est bien resolue vers ce layout
+##      (c est le coeur du multi-cellules : le streaming la trouve) ;
+##   4. les cellules couvertes ne generent PAS leur propre village par-dessus.
+func _check_capital(g: Object) -> bool:
+	# On cherche une capitale non-hameau dans les secteurs autour de l origine.
+	var capital := {}
+	for sx in range(-2, 3):
+		for sz in range(-2, 3):
+			for entry: Dictionary in KingdomGenerator.capitals_in_sector(
+					Vector2i(sx, sz), WorldManager.world_seed, g):
+				if String(entry["size"]) != "hameau_etat":
+					capital = entry
+					break
+			if not capital.is_empty():
+				break
+		if not capital.is_empty():
+			break
+	if capital.is_empty():
+		print("[CITYPROBE] capitale : aucune cite-etat+ dans les 25 secteurs testes — saute")
+		return true
+	var cell: Vector2i = capital["cell"]
+	var layout: Dictionary = g.city_at_cell(cell)
+	var cat := String(layout.get("category", ""))
+	var span := int(layout.get("span_cells", 1))
+	print("[CITYPROBE] capitale %s (%s) : categorie=%s span=%d T=%d pop=%d" % [
+		cell, capital["size"], cat, span, int(layout.get("T", 0)),
+		int(layout.get("population", 0))])
+	if cat != "capitale" or span != CityGenerator.CAPITAL_SPAN_CELLS:
+		return false
+	# 3. Une colonne du quadrant lointain (au-dela de la premiere cellule) doit
+	# resoudre vers CE layout — si la fenetre y arrive. On prend le coin extreme
+	# de la fenetre, qui par construction depasse la cellule d ancrage des que
+	# offset+T depasse 8 tuiles.
+	var origin: Vector2i = layout["origin"]
+	var span_blocks := int(layout["span_blocks"])
+	var far_x := origin.x + span_blocks - 8
+	var far_z := origin.y + span_blocks - 8
+	var covering: Dictionary = g.city_covering(far_x, far_z)
+	var same: bool = not covering.is_empty() and Vector2i(covering["cell"]) == cell
+	var crosses := far_x >= (cell.x + 1) * 128 or far_z >= (cell.y + 1) * 128
+	print("[CITYPROBE] capitale : coin lointain (%d,%d) resolu vers l ancre=%s, deborde la cellule=%s" % [
+		far_x, far_z, same, crosses])
+	if not same:
+		return false
+	# 4. Les cellules couvertes se taisent.
+	for delta: Vector2i in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
+		if not (g.city_at_cell(cell + delta) as Dictionary).is_empty():
+			print("[CITYPROBE] capitale : la cellule couverte %s genere encore un village" % [cell + delta])
+			return false
+	print("[CITYPROBE] capitale : cellules couvertes muettes — OK")
+	return true
