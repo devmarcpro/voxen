@@ -19,6 +19,26 @@ static var profiling := false
 static var phase_us := {"coquille": 0, "interieur": 0, "greedy": 0, "subdiv": 0}
 static var profiled_chunks := 0
 
+## PONT NATIF (GDExtension voxen_native, 2026-08-09). Le cœur du meshing
+## (intérieur / greedy / subdiv / lumière) existe en DEUX exemplaires : ce
+## fichier (la RÉFÉRENCE, toujours fonctionnelle) et native/src/voxen_mesher.cpp
+## (port fidèle, mesuré bien plus rapide, et surtout SANS verrou de VM GDScript
+## depuis les threads workers — c'est la contention de ces verrous qui affamait
+## le thread principal pendant le streaming, bench de vol du 2026-08-09).
+## Si la DLL n'est pas bâtie (voir native/SConstruct), `_native` reste null et
+## tout passe par le GDScript. `use_native` est une bascule de diagnostic pour
+## comparer les deux chemins (sondes A/B).
+static var use_native := true
+static var _native: Object = _make_native()
+
+
+static func _make_native() -> Object:
+	# `class_exists` D'ABORD : `can_instantiate` seul pousse une ERROR au journal
+	# quand la classe est absente (DLL non bâtie), ce qui n'est pas une erreur ici.
+	if ClassDB.class_exists(&"VoxenNative") and ClassDB.can_instantiate(&"VoxenNative"):
+		return ClassDB.instantiate(&"VoxenNative")
+	return null
+
 
 static func reset_profile() -> void:
 	phase_us = {"coquille": 0, "interieur": 0, "greedy": 0, "subdiv": 0}
@@ -101,6 +121,13 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 		if profiling:
 			profiled_chunks += 1
 		return []
+
+	# --- CHEMIN NATIF : tout ce qui suit (intérieur, croix, lumière, greedy,
+	# subdiv) part en C++ ; seules les PLANTES reviennent ici (PlantMesh est
+	# de la donnée GDScript, et elles sont rares). Le reste de cette fonction
+	# est le chemin de RÉFÉRENCE, exécuté quand la DLL n'est pas là.
+	if use_native and _native != null:
+		return _mesh_chunk_native(cpos, data, generator, pad, uniform, fine)
 
 	# Intérieur + nombre de blocs solides par niveau Y (pour les sauts rapides).
 	var level_solid := PackedInt32Array()
@@ -499,95 +526,177 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 		phase_us["subdiv"] += Time.get_ticks_usec() - t_phase
 		profiled_chunks += 1
 
-	# --- 4. PLANTES EN 2D (2026-08-04) ---
-	#
-	# Chaque bloc en croix rend un petit paquet de quads produit par `PlantMesh`
-	# depuis sa position MONDE : deux chunks regénérés à des moments différents
-	# donnent le même champ. Le mailleur ne connaît aucune botanique — il recopie
-	# des quads, l'espèce et la silhouette vivent en données.
-	#
-	# LES DEUX FACES SONT ÉMISES. Un quad vu de dos disparaîtrait, et la moitié
-	# d'un champ s'évanouirait selon l'endroit d'où on le regarde.
+	# --- 4. PLANTES EN 2D — code PARTAGÉ avec le chemin natif (_append_plants).
 	if not plants.is_empty():
-		# Le générateur est ABSENT en donjon (structure bâtie, pas terrain) :
-		# une graine de zéro y suffit, les plantes n'y poussent pas.
-		var plant_seed := generator.world_seed if generator != null else 0
-		var species_by_id := GameData.plant_species_by_runtime
-		var plant_atlas_index: Dictionary = GameData.plant_atlas_index
-		for plant: Vector4i in plants:
-			var species: Dictionary = species_by_id.get(plant.w, {})
-			if species.is_empty():
-				continue
-			var wx := cpos.x * T + plant.x
-			var wy := cpos.y * T + plant.y
-			var wz := cpos.z * T + plant.z
-			var quads := PlantMesh.build(species, wx, wy, wz, plant_seed)
-			if quads.is_empty():
-				continue
-			# Lumière du bloc porteur : une plante prend l'éclairage de sa case.
-			var lit := 1.0
-			if not light_empty:
-				lit = float(light[(plant.y + 1) * SY + (plant.z + 1) * SZ + plant.x + 1]) * inv_light
-			# ENCODAGE : la lumière tient dans `r` (le shader ne lit que ça), donc
-			# `g`, `b` et `a` sont LIBRES. On y met l'UV du sprite et un drapeau —
-			# plutôt qu'un second canal d'UV, qui aurait coûté huit octets par
-			# sommet SUR TOUT LE MONDE, plantes ou pas, dans un jeu de voxels.
-			# `a = 0.5` dit « ce sommet est une plante » ; 1.0 est le cas normal.
-			var atlas_cell := float(int(plant_atlas_index.get(plant.w, 0)))
-			var plant_uv := Vector2(float(plant.w), atlas_cell)
-			var centre := Vector3(float(plant.x) + 0.5, float(plant.y), float(plant.z) + 0.5)
-			for quad: PackedVector3Array in quads:
-				var a := centre + quad[0]
-				var b := centre + quad[1]
-				var c2 := centre + quad[2]
-				var d2 := centre + quad[3]
-				var normal := (b - a).cross(d2 - a).normalized()
-				if normal == Vector3.ZERO:
-					continue
-				# Les quatre coins du quad, dans l'ordre où PlantMesh les pose :
-				# bas-gauche, bas-droite, haut-droite, haut-gauche.
-				# LA CELLULE D'ATLAS FAIT DEUX BLOCS DE HAUT. Une plante d'un
-				# bloc ne doit donc lire que sa MOITIÉ BASSE, sinon son sprite
-				# est comprimé de moitié et les pixels cessent d'être carrés —
-				# ce qui se voit immédiatement à côté d'un bloc de terre.
-				var v_top := 1.0 if float(species.get("hauteur_image", 0.9)) > 1.0 else 0.5
-				var corner_uv := [Vector2(0.0, 0.0), Vector2(1.0, 0.0),
-						Vector2(1.0, v_top), Vector2(0.0, v_top)]
-				for side in 2:
-					while vc + 4 > vertices.size():
-						var grown := maxi(vertices.size() * 2, 1024)
-						vertices.resize(grown)
-						normals.resize(grown)
-						uvs.resize(grown)
-						colors.resize(grown)
-					while ic + 6 > indices.size():
-						indices.resize(maxi(indices.size() * 2, 1536))
-					vertices[vc] = a
-					vertices[vc + 1] = b if side == 0 else d2
-					vertices[vc + 2] = c2
-					vertices[vc + 3] = d2 if side == 0 else b
-					var face_normal := normal if side == 0 else -normal
-					# Le DOS du quad lit le sprite en MIROIR : sans ça, une plante
-					# vue de derrière montre son image retournée, ce qui se
-					# remarque sur tout ce qui n'est pas symétrique (un épi penché).
-					var order := [0, 1, 2, 3] if side == 0 else [0, 3, 2, 1]
-					for k in 4:
-						normals[vc + k] = face_normal
-						uvs[vc + k] = plant_uv
-						var cuv: Vector2 = corner_uv[order[k]]
-						colors[vc + k] = Color(lit, cuv.x, cuv.y, 0.5)
-					indices[ic] = vc
-					indices[ic + 1] = vc + 1
-					indices[ic + 2] = vc + 2
-					indices[ic + 3] = vc
-					indices[ic + 4] = vc + 2
-					indices[ic + 5] = vc + 3
-					vc += 4
-					ic += 6
+		var arrs := [vertices, normals, uvs, colors, indices]
+		var cursors := _append_plants(arrs, vc, ic, plants, cpos, generator, light)
+		vertices = arrs[0]
+		normals = arrs[1]
+		uvs = arrs[2]
+		colors = arrs[3]
+		indices = arrs[4]
+		vc = cursors.x
+		ic = cursors.y
 
 	if ic == 0:
 		return []
+	return _assemble(vertices, normals, uvs, colors, indices, vc, ic)
 
+
+## Enveloppe du chemin natif : appelle VoxenNative.mesh_core (C++) pour les
+## phases intérieur/croix/lumière/greedy/subdiv, puis rejoint le MÊME code de
+## plantes et d'assemblage que le chemin GDScript. Le pad arrive avec sa
+## coquille déjà remplie (la phase « coquille » reste mesurée par l'appelant).
+static func _mesh_chunk_native(cpos: Vector3i, data: ChunkData, generator: NoiseGenerator, pad: PackedInt32Array, uniform: bool, fine: bool) -> Array:
+	var out: Array = _native.mesh_core(
+		pad,
+		PackedByteArray() if uniform else data.blocks,
+		uniform, data.uniform_id, fine,
+		data.subdivs, data.block_host,
+		GameData.cross_mask, GameData.hidden_mask, GameData.liquid_mask,
+		GameData.emission_by_runtime, GameData.transmits_by_runtime,
+		profiling)
+	var vertices: PackedVector3Array = out[0]
+	var normals: PackedVector3Array = out[1]
+	var uvs: PackedVector2Array = out[2]
+	var colors: PackedColorArray = out[3]
+	var indices: PackedInt32Array = out[4]
+	var plant_data: PackedInt32Array = out[5]
+	var light: PackedByteArray = out[6]
+	if profiling:
+		var ph: PackedInt64Array = out[7]
+		phase_us["interieur"] += int(ph[0])
+		phase_us["greedy"] += int(ph[1])
+		phase_us["subdiv"] += int(ph[2])
+		profiled_chunks += 1
+	var vc := vertices.size()
+	var ic := indices.size()
+	if not plant_data.is_empty():
+		var plants: Array[Vector4i] = []
+		for i in range(0, plant_data.size(), 4):
+			plants.append(Vector4i(plant_data[i], plant_data[i + 1],
+					plant_data[i + 2], plant_data[i + 3]))
+		var arrs := [vertices, normals, uvs, colors, indices]
+		var cursors := _append_plants(arrs, vc, ic, plants, cpos, generator, light)
+		vertices = arrs[0]
+		normals = arrs[1]
+		uvs = arrs[2]
+		colors = arrs[3]
+		indices = arrs[4]
+		vc = cursors.x
+		ic = cursors.y
+	if ic == 0:
+		return []
+	return _assemble(vertices, normals, uvs, colors, indices, vc, ic)
+
+
+## PLANTES EN 2D (2026-08-04) — extrait en fonction pour être partagé par les
+## chemins GDScript et natif (une seule vérité botanique).
+##
+## Chaque bloc en croix rend un petit paquet de quads produit par `PlantMesh`
+## depuis sa position MONDE : deux chunks regénérés à des moments différents
+## donnent le même champ. Le mailleur ne connaît aucune botanique — il recopie
+## des quads, l'espèce et la silhouette vivent en données.
+##
+## LES DEUX FACES SONT ÉMISES. Un quad vu de dos disparaîtrait, et la moitié
+## d'un champ s'évanouirait selon l'endroit d'où on le regarde.
+##
+## `arrs` = [vertices, normals, uvs, colors, indices] : les PackedArrays sont
+## copiés-à-l'écriture en GDScript, les mutations sont donc RÉÉCRITES dans le
+## conteneur avant de rendre les curseurs (x = vc, y = ic).
+static func _append_plants(arrs: Array, vc: int, ic: int, plants: Array[Vector4i], cpos: Vector3i, generator: NoiseGenerator, light: PackedByteArray) -> Vector2i:
+	var vertices: PackedVector3Array = arrs[0]
+	var normals: PackedVector3Array = arrs[1]
+	var uvs: PackedVector2Array = arrs[2]
+	var colors: PackedColorArray = arrs[3]
+	var indices: PackedInt32Array = arrs[4]
+	var light_empty := light.is_empty()
+	var inv_light := 1.0 / float(LightField.MAX_LEVEL)
+	# Le générateur est ABSENT en donjon (structure bâtie, pas terrain) :
+	# une graine de zéro y suffit, les plantes n'y poussent pas.
+	var plant_seed := generator.world_seed if generator != null else 0
+	var species_by_id := GameData.plant_species_by_runtime
+	var plant_atlas_index: Dictionary = GameData.plant_atlas_index
+	for plant: Vector4i in plants:
+		var species: Dictionary = species_by_id.get(plant.w, {})
+		if species.is_empty():
+			continue
+		var wx := cpos.x * T + plant.x
+		var wy := cpos.y * T + plant.y
+		var wz := cpos.z * T + plant.z
+		var quads := PlantMesh.build(species, wx, wy, wz, plant_seed)
+		if quads.is_empty():
+			continue
+		# Lumière du bloc porteur : une plante prend l'éclairage de sa case.
+		var lit := 1.0
+		if not light_empty:
+			lit = float(light[(plant.y + 1) * SY + (plant.z + 1) * SZ + plant.x + 1]) * inv_light
+		# ENCODAGE : la lumière tient dans `r` (le shader ne lit que ça), donc
+		# `g`, `b` et `a` sont LIBRES. On y met l'UV du sprite et un drapeau —
+		# plutôt qu'un second canal d'UV, qui aurait coûté huit octets par
+		# sommet SUR TOUT LE MONDE, plantes ou pas, dans un jeu de voxels.
+		# `a = 0.5` dit « ce sommet est une plante » ; 1.0 est le cas normal.
+		var atlas_cell := float(int(plant_atlas_index.get(plant.w, 0)))
+		var plant_uv := Vector2(float(plant.w), atlas_cell)
+		var centre := Vector3(float(plant.x) + 0.5, float(plant.y), float(plant.z) + 0.5)
+		for quad: PackedVector3Array in quads:
+			var a := centre + quad[0]
+			var b := centre + quad[1]
+			var c2 := centre + quad[2]
+			var d2 := centre + quad[3]
+			var normal := (b - a).cross(d2 - a).normalized()
+			if normal == Vector3.ZERO:
+				continue
+			# Les quatre coins du quad, dans l'ordre où PlantMesh les pose :
+			# bas-gauche, bas-droite, haut-droite, haut-gauche.
+			# LA CELLULE D'ATLAS FAIT DEUX BLOCS DE HAUT. Une plante d'un
+			# bloc ne doit donc lire que sa MOITIÉ BASSE, sinon son sprite
+			# est comprimé de moitié et les pixels cessent d'être carrés —
+			# ce qui se voit immédiatement à côté d'un bloc de terre.
+			var v_top := 1.0 if float(species.get("hauteur_image", 0.9)) > 1.0 else 0.5
+			var corner_uv := [Vector2(0.0, 0.0), Vector2(1.0, 0.0),
+					Vector2(1.0, v_top), Vector2(0.0, v_top)]
+			for side in 2:
+				while vc + 4 > vertices.size():
+					var grown := maxi(vertices.size() * 2, 1024)
+					vertices.resize(grown)
+					normals.resize(grown)
+					uvs.resize(grown)
+					colors.resize(grown)
+				while ic + 6 > indices.size():
+					indices.resize(maxi(indices.size() * 2, 1536))
+				vertices[vc] = a
+				vertices[vc + 1] = b if side == 0 else d2
+				vertices[vc + 2] = c2
+				vertices[vc + 3] = d2 if side == 0 else b
+				var face_normal := normal if side == 0 else -normal
+				# Le DOS du quad lit le sprite en MIROIR : sans ça, une plante
+				# vue de derrière montre son image retournée, ce qui se
+				# remarque sur tout ce qui n'est pas symétrique (un épi penché).
+				var order := [0, 1, 2, 3] if side == 0 else [0, 3, 2, 1]
+				for k in 4:
+					normals[vc + k] = face_normal
+					uvs[vc + k] = plant_uv
+					var cuv: Vector2 = corner_uv[order[k]]
+					colors[vc + k] = Color(lit, cuv.x, cuv.y, 0.5)
+				indices[ic] = vc
+				indices[ic + 1] = vc + 1
+				indices[ic + 2] = vc + 2
+				indices[ic + 3] = vc
+				indices[ic + 4] = vc + 2
+				indices[ic + 5] = vc + 3
+				vc += 4
+				ic += 6
+	arrs[0] = vertices
+	arrs[1] = normals
+	arrs[2] = uvs
+	arrs[3] = colors
+	arrs[4] = indices
+	return Vector2i(vc, ic)
+
+
+## Taille finale + tableau de surface — partagé par les deux chemins.
+static func _assemble(vertices: PackedVector3Array, normals: PackedVector3Array, uvs: PackedVector2Array, colors: PackedColorArray, indices: PackedInt32Array, vc: int, ic: int) -> Array:
 	vertices.resize(vc)
 	normals.resize(vc)
 	uvs.resize(vc)

@@ -71,6 +71,7 @@ PROBES="--probe-touches
 --probe-calendrier
 --probe-terrain
 --probe-mesh
+--probe-mesh-parite
 --probe-subdiv
 --probe-ore
 --probe-city
