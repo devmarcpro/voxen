@@ -558,7 +558,12 @@ func _check_every_module_does_something() -> void:
 		var before := {
 			"pv": float(player.health),
 			"statuts": int((player.statuses.active as Dictionary).size()),
-			"projectiles": int((ProjectileManager.get("_flying") as Array).size()) + int((ProjectileManager.get("_pending") as Array).size()),
+			# COMPTEUR CUMULATIF, pas les projectiles EN VOL : une flèche de
+			# courte portée naît et meurt dans la même frame, et le compte
+			# retombe avant qu'on le lise. Deux exécutions ont accusé
+			# `drain_vital` puis `trait_de_mana` — deux modules sains — pour
+			# cette seule raison, et le coupable changeait à chaque fois.
+			"projectiles": int(ProjectileManager.launched_total),
 			"zones": int(ZoneManager.zone_count()),
 		}
 		# UNE CIBLE FRAÎCHE À CHAQUE MODULE : sans elle, un module offensif
@@ -575,7 +580,7 @@ func _check_every_module_does_something() -> void:
 			effet = true
 		if cible != null and is_instance_valid(cible) and float(cible.health) < pv_cible:
 			effet = true
-		if int((ProjectileManager.get("_flying") as Array).size()) + int((ProjectileManager.get("_pending") as Array).size()) > int(before["projectiles"]):
+		if int(ProjectileManager.launched_total) > int(before["projectiles"]):
 			effet = true
 		if int(ZoneManager.zone_count()) > int(before["zones"]):
 			effet = true

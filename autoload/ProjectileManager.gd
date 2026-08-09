@@ -25,6 +25,13 @@ const MIN_SPEED := 4.0
 
 ## Projectiles en vol. Chacun : { "position", "velocity", "shooter", "stats",
 ## "hardness", "quality", "skill", "age", "node" }.
+## Tirs lancés depuis le démarrage. CUMULATIF et jamais remis à zéro : compter
+## les projectiles EN VOL pour savoir si un tir a eu lieu est une course perdue
+## d'avance — une flèche de courte portée peut naître et mourir dans la même
+## frame, et le compteur retombe à zéro avant qu'on le lise. Deux sondes s'y
+## sont fait prendre, en accusant des modules parfaitement sains.
+var launched_total := 0
+
 var _flying: Array[Dictionary] = []
 ## Impacts constatés à la frame, drainés par le tick.
 var _pending: Array[Dictionary] = []
@@ -69,6 +76,7 @@ func launch(origin: Vector3, direction: Vector3, stats: Dictionary,
 		hardness: float, quality: float, shooter: Node, options: Dictionary = {}) -> void:
 	var speed := float(stats.get("vitesse_projectile", 46.0))
 	_flying_dimension = WorldManager.active_dimension
+	launched_total += 1
 	var arrow := _build_arrow(options.get("color", Color(0.55, 0.42, 0.25)))
 	_flying.append({
 		"position": origin,
@@ -86,7 +94,20 @@ func launch(origin: Vector3, direction: Vector3, stats: Dictionary,
 		"homing": float(options.get("homing", 0.0)),
 		"bounces": int(options.get("bounces", 0)),
 		"on_end": options.get("on_end", Callable()),
+		# INERTE : un projectile reçu d'un autre joueur. Il vole, il se voit, il
+		# ne blesse personne. Sans ce drapeau, chaque camp résoudrait l'impact de
+		# la même flèche et la cible prendrait les dégâts autant de fois qu'il y
+		# a de joueurs connectés.
+		"inerte": bool(options.get("inerte", false)),
 	})
+	# ON ANNONCE LE TIR, pas sa trajectoire : elle ne dépend que de l'origine, de
+	# la direction et de la vitesse, que chacun rejoue. Envoyer des positions
+	# vingt fois par seconde et par flèche serait ruineux pour un résultat que
+	# le calcul donne exactement.
+	if not bool(options.get("inerte", false)) and NetworkManager.is_multiplayer_active():
+		NetworkManager.rpc_projectile.rpc(origin, direction.normalized(), speed,
+				options.get("color", Color(0.55, 0.42, 0.25)),
+				float(options.get("range", 0.0)))
 	if arrow != null:
 		arrow.global_position = origin
 
@@ -274,6 +295,11 @@ func _nearest_creature(from: Vector3, radius: float) -> Node:
 ## CONSTATE un impact. Aucun dégât ici — le tick est la seule autorité, comme
 ## pour la mêlée.
 func _note_impact(shot: Dictionary, victim: Node, hit: Dictionary) -> void:
+	# UN PROJECTILE INERTE NE BLESSE PAS. C'est la copie visuelle du tir d'un
+	# autre joueur : lui laisser résoudre son impact ferait encaisser à la cible
+	# autant de fois qu'il y a de camps connectés.
+	if bool(shot.get("inerte", false)):
+		return
 	var stats: Dictionary = shot["stats"]
 	# LA VITESSE À L'IMPACT DÉCIDE. Une flèche ralentit ; touchée à bout portant
 	# elle porte toute son énergie, à quatre-vingts mètres elle est molle. C'est

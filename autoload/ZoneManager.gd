@@ -65,9 +65,21 @@ func spawn(position: Vector3, radius: float, duration_ticks: int,
 		"owner": owner,
 		"node": _build_marker(position, radius, color),
 	})
+	# LA ZONE SE DIFFUSE À SA NAISSANCE. Elle DURE : un client qui la manquerait
+	# marcherait dans un feu invisible, et perdrait des points de vie sans rien
+	# voir. Ses pulsations, elles, restent résolues par l'autorité seule (voir
+	# `_on_tick`) — sinon chaque camp appliquerait les mêmes dégâts.
+	if owner != null and NetworkManager.is_authority() and NetworkManager.has_peers():
+		NetworkManager.rpc_zone.rpc(position, radius, duration_ticks, status_id,
+				degats_des, power, color)
 
 
 func _on_tick(_tick_index: int) -> void:
+	# SEULE L'AUTORITÉ FAIT BATTRE LES ZONES. Elles se voient partout, mais
+	# c'est elle qui décide qui brûle : deux camps qui pulseraient la même nappe
+	# infligeraient les dégâts en double.
+	if not NetworkManager.is_authority():
+		return
 	if zones.is_empty():
 		return
 	for index in range(zones.size() - 1, -1, -1):

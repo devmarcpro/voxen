@@ -516,3 +516,47 @@ func nearest_peer(from: Vector3) -> int:
 
 signal duel_requested(peer_id: int)
 signal duel_opened(a: int, b: int)
+
+
+# --- EFFETS DE COMBAT (2026-08-09) -----------------------------------------
+#
+# Projectiles, zones, statuts. Ils étaient LOCAUX : une boule de feu partait
+# chez soi et n'existait pour personne d'autre — en duel, l'adversaire voyait
+# un joueur immobile et perdait des points de vie sans rien comprendre.
+#
+# LE PARTAGE EST DIFFÉRENT POUR CHACUN, et ce n'est pas un caprice :
+#
+#   — LE PROJECTILE se SIMULE des deux côtés. Sa trajectoire ne dépend que de
+#     son origine, de sa direction et de ses stats : chacun la rejoue, personne
+#     n'envoie de position. C'est le raisonnement des pousses et des fluides.
+#     Mais SEULE L'AUTORITÉ résout l'impact — un client qui compterait les
+#     dégâts de sa propre flèche serait un client qu'on croit sur parole.
+#   — LA ZONE se DIFFUSE à sa naissance : elle dure, et un client qui la
+#     manquerait marcherait dans un feu invisible. Ses pulsations, elles, sont
+#     résolues par l'autorité seule.
+#   — LE STATUT se DIFFUSE tel quel : il est le résultat d'un jet, pas d'une
+#     règle qu'on peut rejouer.
+
+@rpc("any_peer", "reliable")
+func rpc_projectile(origin: Vector3, direction: Vector3, speed: float,
+		color: Color, range_blocks: float) -> void:
+	# VISUEL SEUL chez celui qui reçoit : `shooter` est null et les stats sont
+	# vides, donc rien ne peut blesser. L'impact appartient à celui qui a tiré,
+	# et l'arbitrage à l'hôte.
+	ProjectileManager.launch(origin, direction,
+			{"vitesse_projectile": speed}, 0.0, 0.0, null,
+			{"color": color, "range": range_blocks, "inerte": true})
+
+
+@rpc("authority", "reliable")
+func rpc_zone(position: Vector3, radius: float, duration_ticks: int,
+		status_id: String, degats_des: String, power: float, color: Color) -> void:
+	ZoneManager.spawn(position, radius, duration_ticks, status_id, degats_des,
+			power, color, null)
+
+
+@rpc("authority", "reliable")
+func rpc_creature_status(net_id: int, status_id: String, ticks: int, power: float) -> void:
+	var creature := CreatureManager.by_net_id(net_id)
+	if creature != null and creature.has_method("apply_status"):
+		creature.apply_status(status_id, ticks, power)

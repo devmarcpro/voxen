@@ -45,6 +45,7 @@ func run() -> void:
 	_check_registries()
 	_check_remote_player()
 	_check_duels()
+	_check_combat_effects()
 	finish(_ok, TAG)
 
 
@@ -301,3 +302,51 @@ func _check_duels() -> void:
 	_expect(ignored.is_empty(),
 		"et un corps qui n'est pas une cible laisse la lame passer")
 	body.queue_free()
+
+
+## 8. LES EFFETS DE COMBAT (2026-08-09) : projectiles, zones, statuts.
+##
+## Ils étaient LOCAUX : une boule de feu partait chez soi et n'existait pour
+## personne d'autre. En duel, l'adversaire voyait un joueur immobile et perdait
+## des points de vie sans rien comprendre.
+##
+## LE PARTAGE DIFFÈRE POUR CHACUN, et c'est ce qu'on vérifie ici — pas qu'un
+## message part, mais que la RÈGLE est la bonne :
+##   — un projectile REÇU ne blesse pas (sinon la cible encaisserait autant de
+##     fois qu'il y a de camps) ;
+##   — une zone REÇUE existe (elle dure, la manquer c'est brûler dans le vide) ;
+##   — les zones ne battent que chez l'autorité.
+func _check_combat_effects() -> void:
+	var before := int(ProjectileManager.launched_total)
+	# UN PROJECTILE REÇU EST INERTE. On le lance par le chemin d'un message
+	# entrant et on vérifie qu'il vole — et surtout qu'il porte le drapeau qui
+	# l'empêche de résoudre son impact.
+	NetworkManager.rpc_projectile(player.get_position_for_ai() + Vector3(0, 1, 0),
+			Vector3.FORWARD, 20.0, Color.WHITE, 12.0)
+	_expect(int(ProjectileManager.launched_total) > before,
+		"un projectile annoncé par un autre joueur vole bien ici")
+	var inert := false
+	for shot: Dictionary in (ProjectileManager.get("_flying") as Array):
+		if bool(shot.get("inerte", false)):
+			inert = true
+	_expect(inert, "et il est INERTE : il ne peut pas blesser une seconde fois")
+
+	# UNE ZONE ANNONCÉE EXISTE. Elle dure : un client qui la manquerait
+	# marcherait dans un feu invisible.
+	var zones_before := ZoneManager.zone_count()
+	NetworkManager.rpc_zone(player.get_position_for_ai(), 3.0, 40,
+			"brulure", "1d6", 1.0, Color(1, 0.5, 0.1, 0.3))
+	_expect(ZoneManager.zone_count() > zones_before,
+		"une zone annoncée par l'hôte apparaît chez le client")
+	ZoneManager.clear_all()
+
+	# ET LE STATUT D'UNE CRÉATURE SE POSE TEL QU'ANNONCÉ, sans être rejoué : il
+	# résulte d'un jet que le client n'a aucune raison d'avoir suivi.
+	var spot: Vector3 = player.get_position_for_ai() + Vector3(9, 0, 0)
+	CreatureManager.apply_remote_spawn(9200, "bandit", spot, &"overworld")
+	var victim := CreatureManager.by_net_id(9200)
+	if victim != null:
+		NetworkManager.rpc_creature_status(9200, "ralentissement", 20, 1.0)
+		_expect(bool(victim.call("has_status", "ralentissement")),
+			"un statut annoncé se pose sur la bonne créature")
+		CreatureManager.despawn(victim)

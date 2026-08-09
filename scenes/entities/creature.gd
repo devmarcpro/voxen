@@ -395,7 +395,12 @@ func is_skittish() -> bool:
 var _statuses: StatusTracker = null
 
 
+## LE STATUT EST DIFFUSÉ TEL QUEL, jamais rejoué : il résulte d'un jet et de
+## règles que le client n'a pas de raison d'avoir suivies. Sans ça, un ennemi
+## ralenti chez l'hôte courrait normalement chez l'autre joueur.
 func apply_status(status_id: String, duration_ticks: int = 0, power: float = 1.0) -> void:
+	if net_id > 0 and NetworkManager.is_authority() and NetworkManager.has_peers():
+		NetworkManager.rpc_creature_status.rpc(net_id, status_id, duration_ticks, power)
 	if _statuses == null:
 		_statuses = StatusTracker.new()
 		_statuses.setup(self, StatModifiers.new())
