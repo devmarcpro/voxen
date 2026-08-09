@@ -1139,8 +1139,7 @@ func tick_step(player_position: Vector3, player_ref: Node) -> Dictionary:
 		# poursuite — une bête terrestre ne s'envole pas pour fuir).
 		if dist_flat > 0.01:
 			var away := -to_player_flat.normalized() * (float(stats.get("vitesse", 5)) * 0.03)
-			logical_position += away
-			logical_position.y = _ground_height()
+			_move_by(away)
 			_wander_target = logical_position
 	else:
 		_wander(player_position)
@@ -1179,7 +1178,7 @@ func _wander(_player_position: Vector3) -> void:
 	var step := (_wander_target - logical_position)
 	step.y = 0.0
 	if step.length() > 0.05:
-		logical_position += step.normalized() * (float(stats.get("vitesse", 5)) * 0.006)
+		_move_by(step.normalized() * (float(stats.get("vitesse", 5)) * 0.006))
 	# RATTRAPAGE : si l'ancre a changé (bascule jour/nuit), la cible de
 	# déambulation peut être restée près de l'ancienne. On la repose dès que
 	# l'écart devient absurde, sinon un habitant mettrait la nuit entière à
@@ -1441,8 +1440,7 @@ func _step_footwork(to_player_flat: Vector3, dist_flat: float, reach: float) -> 
 	if intent.length_squared() < 0.000001:
 		return
 	var speed := float(stats.get("vitesse", 5)) * 0.02
-	logical_position += intent.normalized() * speed
-	logical_position.y = _ground_height()
+	_move_by(intent.normalized() * speed)
 
 
 ## Tire une nouvelle intention, biaisée par la distance courante. On ne recule
@@ -1475,6 +1473,85 @@ func _choose_footwork(dist_flat: float, reach: float) -> void:
 ## Vecteur d'écartement des autres créatures proches. Purement local : chacune
 ## regarde ses voisines, personne n'orchestre. C'est ce qui fait que la
 ## formation se défait et se refait toute seule quand le joueur se déplace.
+## RAYON D'ENCOMBREMENT d'un corps, en blocs. Plus petit que `PERSONAL_SPACE`
+## (1.15) exprès : la séparation douce garde les gens à distance de courtoisie,
+## celui-ci n'intervient qu'au CONTACT, quand la première a échoué.
+const BODY_RADIUS := 0.38
+
+
+## DÉPLACEMENT D'UNE CRÉATURE — POINT DE PASSAGE UNIQUE (2026-08-09).
+##
+## Les trois sites qui écrivaient `logical_position +=` — poursuite, fuite,
+## déambulation — passent par ici. Sans ce goulot, la règle « on ne se traverse
+## pas » aurait été à recopier trois fois, et la quatrième façon de bouger
+## qu'on ajoutera l'aurait oubliée. C'est le pendant exact de
+## `_body_blocked_at` côté joueur.
+##
+## On POUSSE DEHORS plutôt qu'on ne BLOQUE, à l'inverse du joueur. Un joueur
+## bloqué comprend qu'il bute sur quelqu'un et contourne ; une créature bloquée
+## resterait collée à l'obstacle sans jamais le contourner, puisque son
+## intention est recalculée à 10 Hz seulement. La poussée, elle, fait glisser
+## les corps l'un contre l'autre — c'est ce qui donne une foule qui s'écarte au
+## lieu d'une file qui se fige.
+func _move_by(step: Vector3) -> void:
+	logical_position += step
+	_push_out_of_bodies()
+	logical_position.y = _ground_height()
+
+
+## Écarte des corps qui se chevauchent : les autres créatures, et LE JOUEUR.
+##
+## Le joueur, lui, est bloqué net par `_body_blocked_at` et ne bouge donc pas
+## d'ici ; c'est la créature qui cède. C'est le bon sens de la correction : le
+## joueur ne doit jamais être déplacé par une décision qu'il n'a pas prise.
+func _push_out_of_bodies() -> void:
+	var here := logical_position
+	for other in CreatureManager.creatures:
+		if other == self or not is_instance_valid(other) or other.is_dead():
+			continue
+		if other.dimension != dimension:
+			continue
+		here = _pushed_out(here, other.logical_position, BODY_RADIUS * 2.0)
+	# LES JOUEURS OCCUPENT DE LA PLACE EUX AUSSI. Sans ça, une créature
+	# traverserait le joueur alors qu'il ne la traverse plus — et pouvait venir
+	# s'arrêter DANS son corps, ce qui l'aurait emmuré si `_body_blocked_at`
+	# n'avait pas sa règle d'évasion.
+	#
+	# Le joueur local n'est présent que dans la dimension active ; ailleurs, il
+	# n'occupe rien. Les joueurs DISTANTS comptent au même titre : une partie
+	# solo est une partie multijoueur à un joueur, et une règle qui ne vaudrait
+	# que pour l'hôte serait à réécrire au premier invité.
+	if dimension == WorldManager.active_dimension:
+		here = _pushed_out(here, CreatureManager.last_player_position, BODY_RADIUS * 2.0)
+	for peer_body: Node3D in NetworkManager.remote_bodies().values():
+		if is_instance_valid(peer_body):
+			here = _pushed_out(here, peer_body.global_position, BODY_RADIUS * 2.0)
+	logical_position = here
+
+
+## `point` écarté de `body` jusqu'à `min_gap`, à plat. Rien à faire s'ils ne se
+## chevauchent pas — et le cas EXACTEMENT SUPERPOSÉ (gap nul) reçoit une
+## direction arbitraire mais stable, faute de quoi la normalisation rendrait NAN
+## et la créature disparaîtrait du monde.
+func _pushed_out(point: Vector3, body: Vector3, min_gap: float) -> Vector3:
+	var away := point - body
+	away.y = 0.0
+	var gap := away.length()
+	if gap >= min_gap:
+		return point
+	if gap < 0.0001:
+		# EXACTEMENT SUPERPOSÉS : aucune direction ne se déduit de la géométrie,
+		# on en invente une — stable, dérivée de l'identité réseau, pour que
+		# deux machines écartent le même corps du même côté.
+		#
+		# On sort ICI plutôt que de retomber dans la formule commune. Une
+		# première version posait `gap = 1.0` puis appliquait `min_gap - gap` :
+		# la poussée valait -0.24 m et RAPPROCHAIT les corps. Le chiffre était
+		# reproductible, ce qui l'a fait passer pour un effet du décor.
+		return point + Vector3(cos(float(net_id)), 0.0, sin(float(net_id))) * min_gap
+	return point + (away / gap) * (min_gap - gap)
+
+
 func _separation() -> Vector3:
 	var push := Vector3.ZERO
 	# Ne parcourt QUE les créatures de la dimension active : les autres sont

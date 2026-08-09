@@ -36,6 +36,7 @@ func run() -> void:
 	_check_decimation_is_wired()
 	_check_identity()
 	_check_collision()
+	await _check_bodies_separate()
 	finish(_ok, TAG)
 
 
@@ -603,3 +604,55 @@ func _check_collision() -> void:
 	camera.position = was
 	_check("collision PNJ : le déplacement la consulte",
 			bool(camera.call("_body_blocked_at", body.x, body.z, feet)))
+
+
+## LES CORPS NE SE SUPERPOSENT PAS NON PLUS ENTRE EUX (2026-08-09).
+##
+## Le premier correctif n'allait que dans un sens : le joueur ne traversait plus
+## les PNJ, mais les PNJ se traversaient entre eux et traversaient le joueur.
+##
+## Le test PROVOQUE le chevauchement — deux créatures posées au même endroit —
+## au lieu d'espérer le rencontrer. Une sonde qui se contenterait d'observer un
+## village passerait tant que le hasard des déambulations ne colle personne, et
+## serait donc verte sans rien prouver.
+func _check_bodies_separate() -> void:
+	var living: Array = []
+	for c in CreatureManager.creatures:
+		if is_instance_valid(c) and not c.is_dead() and c.dimension == WorldManager.active_dimension:
+			living.append(c)
+		if living.size() == 2:
+			break
+	if living.size() < 2:
+		_check("séparation des corps", false, "moins de deux créatures vivantes")
+		return
+	var a: Node = living[0]
+	var b: Node = living[1]
+	# EXACTEMENT SUPERPOSÉS : c'est le cas dégénéré, celui où une direction de
+	# poussée doit être inventée. Une division par zéro y rendrait NAN et la
+	# créature quitterait le monde sans que rien ne le signale.
+	b.logical_position = a.logical_position
+	a.call("_move_by", Vector3.ZERO)
+	b.call("_move_by", Vector3.ZERO)
+	var gap: float = Vector2(a.logical_position.x - b.logical_position.x,
+			a.logical_position.z - b.logical_position.z).length()
+	_check("séparation des corps : deux créatures superposées s'écartent",
+			gap >= a.BODY_RADIUS * 2.0 - 0.01, "écart %.2f m" % gap)
+	_check("séparation des corps : aucune position NAN",
+			not (is_nan(b.logical_position.x) or is_nan(b.logical_position.z)))
+	# LA CRÉATURE CÈDE DEVANT LE JOUEUR, jamais l'inverse : il ne doit pas être
+	# déplacé par une décision qu'il n'a pas prise.
+	# ON POSE LE JOUEUR SOI-MÊME, LOIN DE TOUT. `last_player_position` n'est
+	# rafraîchie qu'au TICK et vaut l'origine tant qu'aucun n'a tourné : la
+	# première version de ce test mesurait donc l'écart à un joueur imaginaire
+	# posé en (0,0,0), et le 0.24 m obtenu venait en réalité de l'autre
+	# créature. Un chiffre reproductible qui ne mesurait pas ce qu'il annonçait.
+	var player_pos: Vector3 = a.logical_position + Vector3(50.0, 0.0, 50.0)
+	CreatureManager.last_player_position = player_pos
+	b.logical_position = player_pos
+	b.call("_move_by", Vector3.ZERO)
+	var from_player: float = Vector2(b.logical_position.x - player_pos.x,
+			b.logical_position.z - player_pos.z).length()
+	_check("séparation des corps : une créature sort du joueur",
+			from_player >= b.BODY_RADIUS * 2.0 - 0.01, "écart %.2f m" % from_player)
+	_check("séparation des corps : le joueur n'a pas bougé",
+			CreatureManager.last_player_position.is_equal_approx(player_pos))
