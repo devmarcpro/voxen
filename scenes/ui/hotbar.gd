@@ -140,6 +140,10 @@ func _refresh() -> void:
 				_slots[i].tooltip_text = tr("ui.hotbar.mains_nues")
 			else:
 				var item: Dictionary = GameData.items.get(armed.get("item_id", ""), {})
+				# TEINTE REMISE À BLANC : la branche « mains nues » ci-dessus
+				# pose une teinte de peau, et une case réutilisée la gardait —
+				# l'arme s'affichait alors couleur chair.
+				_icons[i].modulate = Color.WHITE
 				_icons[i].texture = WeaponPreview.item_icon(item, armed.get("materials", {}), SLOT_SIZE)
 				_slots[i].tooltip_text = tr(String(armed.get("name_key", "")))
 			continue

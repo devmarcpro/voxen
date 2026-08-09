@@ -29,6 +29,8 @@ func run() -> void:
 	_check_two_handed()
 	_check_one_handed()
 	_check_thrust()
+	_check_two_handed_exclusivity()
+	_check_combat_slot_shows_weapon()
 	await _capture()
 	finish(_ok, TAG)
 
@@ -235,3 +237,101 @@ func _capture() -> void:
 	await wait_seconds(1.0)
 	await screenshot("mains.png")
 	print("[%s] capture : debug/mains.png" % TAG)
+
+
+## UNE ARME À DEUX MAINS OCCUPE LES DEUX (2026-08-09, signalé en jeu : « on peut
+## équiper 2 armes à 2 mains, ce qui est un problème évidemment »).
+##
+## `resolve_slot` ne regardait que les emplacements LIBRES : une arme à deux
+## mains en arme_1 laissait arme_2 vide, donc disponible. On équipait ainsi deux
+## espadons — quatre mains — sans que rien ne le signale.
+##
+## L'assertion porte sur ce qui compte VRAIMENT : non pas « le second équipement
+## a été refusé », mais « il n'y a jamais deux armes portées quand l'une prend
+## les deux mains », ET « celle qu'on déloge est revenue dans le sac ». Un refus
+## qui ferait disparaître le bouclier passerait le premier test tout seul.
+func _check_two_handed_exclusivity() -> void:
+	var mats := {"bois": "chene", "minerai": "fer", "textile": "lin"}
+	player.equipment.slots.clear()
+	player.inventory.objects.clear()
+	var two_handed_id := _two_handed_item_id()
+	if two_handed_id == "":
+		_expect(false, "aucune arme à deux mains dans le catalogue")
+		return
+	var first: Dictionary = ItemFactory.craft(two_handed_id, mats, 1.0)
+	var second: Dictionary = ItemFactory.craft(two_handed_id, mats, 1.0)
+	player.inventory.add_object(first)
+	player.inventory.add_object(second)
+	player.equip_instance(first)
+	player.equip_instance(second)
+	_expect(not player.equipment.equipped("arme_2").has("item_id"),
+			"deux armes à deux mains : la main gauche reste libre (%s)"
+			% [player.equipment.equipped("arme_2").get("item_id", "vide")])
+	_expect(player.equipment.equipped("arme_1").has("item_id"),
+			"la main forte tient bien une arme")
+	# RIEN NE SE PERD : l'arme délogée est retournée au sac.
+	_expect(player.inventory.objects.size() == 1,
+			"l'arme délogée est revenue dans le sac (%d objet(s))"
+			% player.inventory.objects.size())
+	# ET RÉCIPROQUEMENT : un bouclier ne s'ajoute pas sur une main déjà prise.
+	# ET RÉCIPROQUEMENT, un bouclier et une arme à deux mains ne COHABITENT pas.
+	# L'assertion ne dit pas lequel des deux l'emporte — c'est un choix de
+	# conception, et le figer ici interdirait de le changer sans casser la
+	# sonde. Elle dit ce qui ne doit JAMAIS arriver : trois pièces pour deux
+	# mains. (Le jeu fait céder l'arme : on garde le geste qu'on vient de faire.)
+	var shield: Dictionary = ItemFactory.craft("ecu", mats, 1.0)
+	if not shield.is_empty():
+		player.inventory.add_object(shield)
+		player.equip_instance(shield)
+		var main_hand: Dictionary = player.equipment.equipped("arme_1")
+		var off_hand: Dictionary = player.equipment.equipped("arme_2")
+		_expect(not (Equipment.is_two_handed(main_hand) and not off_hand.is_empty()),
+				"bouclier + arme à deux mains ne cohabitent pas (%s / %s)"
+				% [main_hand.get("item_id", "vide"), off_hand.get("item_id", "vide")])
+
+
+func _two_handed_item_id() -> String:
+	for id: String in GameData.items:
+		var item: Dictionary = GameData.items[id]
+		if String(item.get("equip_slot", "")) == "arme" and int(item.get("hands", 1)) >= 2:
+			return id
+	return ""
+
+
+## LE SLOT DE COMBAT MONTRE L'ARME ÉQUIPÉE (2026-08-09, signalé en jeu : « le
+## slot combat est toujours à mains nues même quand on a des armes équipées »).
+##
+## L'assertion porte sur ce que l'AFFICHAGE reçoit — `HeldItem._source_entry` —
+## et non sur `_equipped_weapon()`, qui était déjà correct : c'est précisément
+## parce que la mécanique allait bien que le défaut a survécu. Vérifier la
+## mécanique ici serait une assertion vraie pour la mauvaise raison.
+func _check_combat_slot_shows_weapon() -> void:
+	var held: Node = _find_held_item()
+	if held == null:
+		_expect(false, "HeldItem introuvable")
+		return
+	player.equipment.slots.clear()
+	# Le slot de combat est sélectionné : c'est la posture qu'on teste.
+	player.hotbar_bindings[player.COMBAT_SLOT] = {"kind": "combat"}
+	player.active_hotbar = 0
+	player.selected_slot = player.COMBAT_SLOT
+	var bare: Dictionary = held.call("_source_entry")
+	_expect(bare.is_empty(), "mains nues : rien en main (%s)" % [bare.get("kind", "vide")])
+	var sword: Dictionary = ItemFactory.craft("epee_courte",
+			{"bois": "chene", "minerai": "fer", "textile": "lin"}, 1.0)
+	if sword.is_empty():
+		_expect(false, "epee_courte introuvable")
+		return
+	player.equipment.slots["arme_1"] = sword
+	var armed: Dictionary = held.call("_source_entry")
+	_expect(String(armed.get("kind", "")) == "object"
+			and String((armed.get("object", {}) as Dictionary).get("item_id", "")) == "epee_courte",
+			"arme équipée : le modèle en main est l'épée (%s)"
+			% [(armed.get("object", {}) as Dictionary).get("item_id", armed.get("kind", "vide"))])
+
+
+func _find_held_item() -> Node:
+	for node in main.find_children("HeldItem", "", true, false):
+		if String(node.get("source")) == "hotbar":
+			return node
+	return null

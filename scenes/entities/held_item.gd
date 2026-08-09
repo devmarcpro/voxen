@@ -126,7 +126,27 @@ func _source_entry() -> Dictionary:
 			return {"kind": "object", "object": shield}
 		var offhand: Dictionary = _player.offhand_weapon()
 		return {} if offhand.is_empty() else {"kind": "object", "object": offhand}
-	return _player.held_entry()
+	var entry: Dictionary = _player.held_entry()
+	# L'ENTRÉE DE COMBAT MONTRE L'ARME ÉQUIPÉE (2026-08-09, signalé en jeu : « le
+	# slot combat est toujours à mains nues même quand on a une arme équipée »).
+	#
+	# Le genre "combat" ne tombait dans AUCUNE branche d'affichage : ni le calcul
+	# de clé ni `_rebuild` ne le connaissaient, si bien que la main restait vide
+	# et que la clé valait "" — la même que « rien en main ». Deux conséquences,
+	# et la seconde est la pire : non seulement l'arme ne s'affichait pas, mais
+	# passer du combat à une case vide ne changeait pas la clé, donc ne
+	# reconstruisait rien. La mécanique, elle, tenait bon — portée et dégâts
+	# venaient bien de l'arme équipée. Seul le MODÈLE manquait, ce qui est
+	# exactement le genre de panne qui ne se voit qu'en jouant.
+	#
+	# On traduit ICI et pas dans `held_entry()` : le reste du jeu a besoin de
+	# savoir qu'on est en POSTURE de combat, ce que « un objet en main » ne dit
+	# pas. Seul l'affichage veut voir une arme.
+	if String(entry.get("kind", "")) == "combat":
+		var armed: Dictionary = entry.get("object", {})
+		# Mains nues : rien à dessiner. Ce sont les bras du corps qui parlent.
+		return {} if armed.is_empty() else {"kind": "object", "object": armed}
+	return entry
 
 
 func _rebuild(entry: Dictionary) -> void:

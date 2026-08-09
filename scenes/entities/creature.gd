@@ -359,8 +359,45 @@ func is_dead() -> bool:
 ##   "fuit"          : ne se bat jamais, s'écarte du joueur (cerf, renne...) ;
 ##   "civil"/"garde" : pacifiques ici (la vie de village, 3.4/E.25, n'existe
 ##                     pas encore — ils ne spawnent pas naturellement).
+## Fiche du profil d'IA de cette créature (E.16), ou {} si le profil manque.
+## Lue à chaque appel plutôt que copiée : `F5` recharge les données à chaud, et
+## un profil copié à la naissance résisterait au rechargement.
+func profile() -> Dictionary:
+	return GameData.ai_profiles.get(ai_profile, {})
+
+
+## Portée de PERCEPTION, en blocs — ce qui était `AGGRO_RANGE` en dur.
+##
+## E.16 : « vision = cône de distance f(Perception) modulé par la lumière locale
+## et la Discrétion de la cible ». On tient les deux modulations, en données :
+## un profil déclare combien la lumière et la discrétion pèsent pour lui. Une
+## bête sent plus qu'elle ne voit et s'en soucie peu ; un villageois ne
+## remarquera personne dans le noir.
+func perception_range(target_stealth: float = 0.0) -> float:
+	var fiche := profile()
+	var range_blocks := float(fiche.get("vision", AGGRO_RANGE))
+	if DayNightManager.is_night():
+		range_blocks *= float(fiche.get("vision_nuit", AGGRO_NIGHT_FACTOR))
+	# LUMIÈRE LOCALE : `daylight()` vaut 1 en plein jour, 0 la nuit noire. Le
+	# poids décide de ce qu'on perd dans l'ombre — à poids nul, on voit pareil.
+	var light_weight := float(fiche.get("poids_lumiere", 0.0))
+	if light_weight > 0.0:
+		var light := clampf(DayNightManager.daylight(), 0.0, 1.0)
+		range_blocks *= 1.0 - light_weight * (1.0 - light)
+	# DISCRÉTION DE LA CIBLE : sans ce terme, la compétence n'avait AUCUN effet
+	# sur les créatures — on pouvait monter Discrétion à 100 sans que rien ne
+	# change, ce qui est pire qu'une compétence absente.
+	var stealth_weight := float(fiche.get("poids_discretion", 0.0))
+	if stealth_weight > 0.0 and target_stealth > 0.0:
+		range_blocks *= maxf(0.2, 1.0 - stealth_weight * clampf(target_stealth / 100.0, 0.0, 1.0))
+	return maxf(range_blocks, 1.0)
+
+
 func is_hostile() -> bool:
-	if ai_profile == "hostile" or (ai_profile == "bete_sauvage" and _provoked):
+	var fiche := profile()
+	if bool(fiche.get("attaque_a_vue", false)):
+		return true
+	if bool(fiche.get("riposte", false)) and _provoked:
 		return true
 	# HOSTILE À VUE sous −50 (GDD 7.2). C'est ce qui donne un poids réel aux
 	# méfaits : un joueur qui massacre des villageois finit par ne plus pouvoir
@@ -437,7 +474,9 @@ func relation_tier() -> String:
 ## était déjà une notion du code, la terreur ne fait que l'activer
 ## temporairement au lieu d'inventer un second chemin de fuite.
 func is_skittish() -> bool:
-	return ai_profile == "fuit" or has_status("terreur")
+	# LE PROFIL LE DIT, plus une comparaison de chaîne : c'est la donnée qui
+	# décide, comme pour l'agressivité et la perception.
+	return bool(profile().get("fuit", false)) or has_status("terreur")
 
 
 ## Encaisse `amount` points de dégâts. UN SEUL POINT D'ENTRÉE, pour que le
@@ -1033,10 +1072,14 @@ func tick_step(player_position: Vector3, player_ref: Node) -> Dictionary:
 	to_player_flat.y = 0.0
 	var dist_flat := to_player_flat.length()
 
-	var aggro_range := AGGRO_RANGE
-	if DayNightManager.is_night():
-		aggro_range *= AGGRO_NIGHT_FACTOR
-	_engaged = is_hostile() and dist3d <= aggro_range
+	# PORTÉE LUE DANS LE PROFIL, et modulée par la lumière et la DISCRÉTION du
+	# joueur. Elle était une constante en dur, si bien que monter Discrétion ne
+	# changeait rigoureusement rien : la compétence existait, aucun ennemi ne
+	# s'en apercevait.
+	var stealth := 0.0
+	if player_ref != null and player_ref.has_method("skill_level"):
+		stealth = float(player_ref.call("skill_level", "discretion"))
+	_engaged = is_hostile() and dist3d <= perception_range(stealth)
 	if _engaged:
 		var functionality := combat_functionality()
 		# ALLONGE RÉELLE, celle de la lame (2026-08-02). Le code lisait le champ

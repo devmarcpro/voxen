@@ -35,6 +35,7 @@ func run() -> void:
 	_check_decimation()
 	_check_decimation_is_wired()
 	_check_identity()
+	_check_collision()
 	finish(_ok, TAG)
 
 
@@ -555,3 +556,50 @@ func _check_identity() -> void:
 				String(beast.call("display_name")) != "" and String(beast.call("identity_line")) == "")
 			CreatureManager.despawn(beast)
 		CreatureManager.despawn(probe)
+
+
+## ON NE TRAVERSE PLUS LES PNJ (2026-08-09, demande de l'auteur : « fais en sorte
+## que les PNJ aient des collisions, qu'on ne puisse pas passer à travers »).
+##
+## L'assertion interroge `_body_blocked_at` — le POINT DE PASSAGE UNIQUE du
+## déplacement, consulté par les deux axes et par l'auto-step. Tester la position
+## finale du joueur après un pas mesurerait aussi le terrain sous ses pieds et
+## rendrait un verdict vrai pour la mauvaise raison.
+##
+## Trois faits, pas un : on est bloqué DANS le corps, LIBRE à côté, et LIBRE
+## au-dessus. Le seul premier passerait avec une fonction qui rend toujours true.
+func _check_collision() -> void:
+	var creature: Node = null
+	for c in CreatureManager.creatures:
+		if is_instance_valid(c) and not c.is_dead() and c.dimension == WorldManager.active_dimension:
+			creature = c
+			break
+	if creature == null:
+		_check("collision", false, "aucune créature vivante à tester")
+		return
+	var body: Vector3 = creature.logical_position
+	var feet := body.y
+	# LES TROIS FAITS SE LISENT SUR `_creature_blocked_at` : `_body_blocked_at`
+	# répond aussi du TERRAIN, et un « on passe » y échouerait dès que la
+	# créature se tient sous un toit — un verdict rouge qui ne dirait rien des
+	# collisions de PNJ. (Constaté : le test « six mètres plus haut » tombait sur
+	# le plafond de la maison du villageois.)
+	var inside: bool = camera.call("_creature_blocked_at", body.x, body.z, feet)
+	var beside: bool = camera.call("_creature_blocked_at", body.x + 2.0, body.z, feet)
+	var above: bool = camera.call("_creature_blocked_at", body.x, body.z, feet + 6.0)
+	_check("collision PNJ : le corps bloque", inside, creature.display_name())
+	_check("collision PNJ : deux mètres à côté, on passe", not beside)
+	_check("collision PNJ : six mètres plus haut, on passe", not above)
+	# ET C'EST BIEN BRANCHÉ SUR LE DÉPLACEMENT. Sans cette ligne, les trois
+	# précédentes décriraient une fonction que personne n'appelle.
+	# ON NE RESTE PAS PRISONNIER D'UN CORPS. Les créatures traversent le joueur :
+	# l'une d'elles peut s'arrêter sur lui, et si le blocage était inconditionnel
+	# toutes les directions se fermeraient d'un coup. Depuis L'INTÉRIEUR du
+	# cylindre, plus rien ne doit bloquer.
+	var was := camera.position
+	camera.position = Vector3(body.x, was.y, body.z)
+	_check("collision PNJ : depuis l'intérieur, on peut sortir",
+			not bool(camera.call("_creature_blocked_at", body.x, body.z, feet)))
+	camera.position = was
+	_check("collision PNJ : le déplacement la consulte",
+			bool(camera.call("_body_blocked_at", body.x, body.z, feet)))

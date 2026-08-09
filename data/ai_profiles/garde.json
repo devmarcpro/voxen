@@ -1,0 +1,15 @@
+{
+  "id": "garde",
+  "_commentaire": "Profil de comportement (GDD E.16). Le GDD veut que « créer ou modifier un comportement = éditer un JSON, zéro code » ; ces fiches sont le premier pas dans cette direction. Elles portent aujourd'hui ce qui était en dur dans creature.gd : agressivité, portée d'agression et PERCEPTION. Le scoring d'actions viendra s'y brancher.",
+  "name_key": "ai.garde.name",
+  "attaque_a_vue": false,
+  "riposte": true,
+  "fuit": false,
+  "patrouille": true,
+  "intercepte": true,
+  "vision": 16.0,
+  "vision_nuit": 0.75,
+  "poids_lumiere": 0.4,
+  "poids_discretion": 0.5,
+  "patrouille_rayon": 9.0
+}

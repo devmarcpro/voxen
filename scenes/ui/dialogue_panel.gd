@@ -42,8 +42,8 @@ func _ready() -> void:
 
 ## MISE EN PAGE REFAITE LE 2026-08-09 (demande de l'auteur : « la fenêtre de
 ## dialogue doit faire quasiment tout l'écran mais un peu plus petit qu'on voie
-## un peu derrière sur les côtés, portrait du PNJ en haut à droite plutôt grand,
-## les infos en haut à gauche et en dessous toutes les options »).
+## un peu derrière sur les côtés, portrait du PNJ plutôt grand — placé à GAUCHE
+## à sa demande du 2026-08-09 — les infos à côté et en dessous toutes les options.
 ##
 ## POURQUOI CE FORMAT ET PAS L'ANCIEN. La fenêtre faisait 560 px de large au
 ## centre de l'écran : la conversation était une petite boîte posée sur le jeu,
@@ -79,10 +79,24 @@ func _build() -> void:
 	box.add_theme_constant_override("separation", UITheme.GAP)
 	frame.add_child(box)
 
-	# --- Haut : identité à GAUCHE, portrait à DROITE ---
+	# --- Haut : PORTRAIT À GAUCHE, identité à sa droite ---
+	# L'ordre d'ajout EST la mise en page dans une HBox : le portrait entre en
+	# premier, donc il occupe le bord gauche et le texte coule à sa droite.
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", UITheme.GAP)
 	box.add_child(header)
+
+	# PORTRAIT. `PanelContainer` autour du `TextureRect` : sans cadre, une
+	# silhouette de repli flotterait sans qu'on comprenne que c'est un portrait.
+	var portrait_frame := PanelContainer.new()
+	portrait_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	header.add_child(portrait_frame)
+	_portrait = TextureRect.new()
+	_portrait.custom_minimum_size = Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE)
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	portrait_frame.add_child(_portrait)
 
 	var who := VBoxContainer.new()
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -100,18 +114,6 @@ func _build() -> void:
 	_line_label.add_theme_font_size_override("font_size", UITheme.FONT_HEADING)
 	_line_label.add_theme_color_override("font_color", UITheme.TEXT_ACCENT)
 	who.add_child(_line_label)
-
-	# PORTRAIT. `PanelContainer` autour du `TextureRect` : sans cadre, une
-	# silhouette de repli flotterait sans qu'on comprenne que c'est un portrait.
-	var portrait_frame := PanelContainer.new()
-	portrait_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	header.add_child(portrait_frame)
-	_portrait = TextureRect.new()
-	_portrait.custom_minimum_size = Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE)
-	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	portrait_frame.add_child(_portrait)
 
 	box.add_child(UITheme.rule())
 

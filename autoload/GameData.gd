@@ -34,6 +34,7 @@ const PATH_DUNGEON_CONNECTORS := "res://data/dungeon_connectors"
 const PATH_NAME_CULTURES := "res://data/name_cultures"
 const PATH_RACES := "res://data/races"
 const PATH_CLASSES := "res://data/classes"
+const PATH_AI_PROFILES := "res://data/ai_profiles"
 const PATH_TRANSFORMATIONS := "res://data/transformations"
 const PATH_PLATS := "res://data/plats"
 const PATH_MUNITIONS := "res://data/munitions"
@@ -209,6 +210,11 @@ var name_cultures: Dictionary = {}
 ## Races (C.2) et classes (C.3) de création de personnage (6.1).
 var races: Dictionary = {}
 var classes: Dictionary = {}
+## PROFILS D'IA (E.16) — data/ai_profiles/*.json. Le GDD veut que « créer ou
+## modifier un comportement = éditer un JSON, zéro code » ; ces fiches portent
+## ce qui vivait en dur dans `creature.gd` : agressivité, portée d'agression
+## et perception. Une créature nomme le sien par `ai_profile`.
+var ai_profiles: Dictionary = {}
 ## Transformations à station (4.2/C.8) : minerai→lingot, etc. (data/transformations).
 var transformations: Dictionary = {}
 ## PLATS cuisinés (7.7) : consommables d'inventaire produits à la station
@@ -304,6 +310,7 @@ func load_all() -> bool:
 	_load_dungeon_connectors()
 	_load_races()
 	_load_classes()
+	_load_ai_profiles()
 	_load_transformations()
 	_load_plats()
 	_load_munitions()
@@ -1483,6 +1490,24 @@ func _load_races() -> void:
 
 ## Classes (C.3) : bonus de stats, compétences/objets/matériaux de départ
 ## référençant du contenu existant.
+## Profils d'IA (E.16). Chargés comme tout le reste : un fichier par profil,
+## l'id venant du nom du fichier. Une créature qui nomme un profil inconnu est
+## une ERREUR BLOQUANTE — le silence donnerait une créature inerte que rien ne
+## signale, et c'est précisément le genre de panne qu'on découvre en jouant.
+func _load_ai_profiles() -> void:
+	ai_profiles.clear()
+	for path in _list_json_recursive(PATH_AI_PROFILES):
+		var raw: Variant = _load_json(path)
+		if not (raw is Dictionary):
+			continue
+		var profile: Dictionary = raw
+		var id := String(profile.get("id", path.get_file().get_basename()))
+		profile["id"] = id
+		ai_profiles[id] = profile
+	if ai_profiles.is_empty():
+		_blocking_error("aucun profil d'IA dans %s" % PATH_AI_PROFILES)
+
+
 func _load_classes() -> void:
 	classes.clear()
 	for path in _list_json_recursive(PATH_CLASSES):

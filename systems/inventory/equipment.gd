@@ -56,10 +56,49 @@ const SLOT_ARMOR_FACTOR := {
 ## slot -> instance d'objet (dictionnaire ItemFactory). Emplacement vide = absent.
 var slots := {}
 
+## Pièces SORTIES EN PLUS lors du dernier `equip` — aujourd'hui la main gauche
+## libérée par une arme à deux mains. `equip` ne peut en rendre qu'une, et
+## l'oublier ici la ferait DISPARAÎTRE : elle n'est plus équipée, et personne ne
+## l'a remise dans l'inventaire.
+var displaced: Array = []
+
 
 ## Emplacement CONCRET libre pour un `equip_slot` de données (B.3), ou "" si
 ## l'emplacement est inconnu. Un groupe plein retourne son PREMIER emplacement
 ## (l'appelant y remplace la pièce déjà portée).
+## Une arme à DEUX MAINS occupe-t-elle déjà les deux ? (2026-08-09, signalé en
+## jeu : « on peut équiper 2 armes à 2 mains, ce qui est un problème »).
+##
+## `resolve_slot` ne raisonnait que sur les emplacements LIBRES : une espadon en
+## arme_1 laissait arme_2 vide, donc disponible, et l'on se retrouvait avec deux
+## armes à deux mains — quatre mains au total. Le refus existait déjà pour le
+## glisser-déposer précis (`equip_instance_in_slot`), mais pas pour l'équipement
+## automatique, qui est le chemin ordinaire.
+static func is_two_handed(instance: Dictionary) -> bool:
+	if instance.is_empty():
+		return false
+	var item: Dictionary = GameData.items.get(instance.get("item_id", ""), {})
+	return int(item.get("hands", 1)) >= 2
+
+
+## Emplacements d'arme RÉELLEMENT libres, une fois la règle des deux mains
+## appliquée. Retourne [] si la pièce ne peut aller nulle part.
+func free_weapon_slots(two_handed: bool) -> Array:
+	# Une arme à deux mains DÉJÀ portée mobilise les deux emplacements : plus
+	# rien ne peut s'y ajouter, ni seconde arme ni bouclier.
+	if is_two_handed(slots.get("arme_1", {})):
+		return []
+	if two_handed:
+		# La nouvelle arme réclame les deux mains : elle ne peut prendre que la
+		# main forte, et seulement si la gauche est libre.
+		return [] if slots.has("arme_2") else ["arme_1"]
+	var free: Array = []
+	for slot: String in ["arme_1", "arme_2"]:
+		if not slots.has(slot):
+			free.append(slot)
+	return free
+
+
 func resolve_slot(equip_slot: String) -> String:
 	if SLOT_GROUPS.has(equip_slot):
 		var group: Array = SLOT_GROUPS[equip_slot]
@@ -75,7 +114,34 @@ func resolve_slot(equip_slot: String) -> String:
 ## responsable de sortir l'instance de l'inventaire et d'y remettre le retour.
 func equip(instance: Dictionary) -> Dictionary:
 	var item: Dictionary = GameData.items.get(instance.get("item_id", ""), {})
-	var slot := resolve_slot(String(item.get("equip_slot", "")))
+	var equip_slot := String(item.get("equip_slot", ""))
+	var slot := resolve_slot(equip_slot)
+	# RÈGLE DES DEUX MAINS (voir `free_weapon_slots`). Elle s'applique aux armes
+	# ET aux boucliers : les deux visent la main gauche, qu'une arme à deux
+	# mains a déjà prise.
+	displaced.clear()
+	# UNE ARME À DEUX MAINS OCCUPE LES DEUX. `resolve_slot` ne raisonne que sur
+	# les emplacements LIBRES : une espadon en arme_1 laissait arme_2 vide, donc
+	# disponible, et l'on portait deux armes à deux mains — quatre mains.
+	#
+	# On corrige ICI et pas dans `resolve_slot`, qui rend le premier emplacement
+	# libre d'un GROUPE et ne connaît rien des règles de prise. Surtout, on n'y
+	# touche pas au cas du bouclier : son groupe vaut ["arme_2"] exprès — sans
+	# quoi un écu pouvait atterrir en main forte et l'on frappait avec.
+	if equip_slot == "arme":
+		if is_two_handed(instance):
+			# Elle réclame les deux mains : main forte, et la gauche se vide.
+			slot = "arme_1"
+			if slots.has("arme_2"):
+				displaced.append(unequip("arme_2"))
+		elif is_two_handed(slots.get("arme_1", {})):
+			# La main forte tient déjà un espadon : les deux mains sont prises,
+			# la nouvelle arme la REMPLACE plutôt que de se poser à côté.
+			slot = "arme_1"
+	elif equip_slot == "bouclier" and is_two_handed(slots.get("arme_1", {})):
+		# Un bouclier ne se glisse pas sous une arme à deux mains : c'est l'arme
+		# qui cède, sinon on porterait trois pièces pour deux mains.
+		displaced.append(unequip("arme_1"))
 	if slot == "":
 		return {}
 	var previous: Dictionary = slots.get(slot, {})

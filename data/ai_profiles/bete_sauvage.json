@@ -1,0 +1,14 @@
+{
+  "id": "bete_sauvage",
+  "_commentaire": "Profil de comportement (GDD E.16). Le GDD veut que « créer ou modifier un comportement = éditer un JSON, zéro code » ; ces fiches sont le premier pas dans cette direction. Elles portent aujourd'hui ce qui était en dur dans creature.gd : agressivité, portée d'agression et PERCEPTION. Le scoring d'actions viendra s'y brancher.",
+  "name_key": "ai.bete_sauvage.name",
+  "attaque_a_vue": false,
+  "riposte": true,
+  "fuit": false,
+  "patrouille": false,
+  "intercepte": false,
+  "vision": 12.0,
+  "vision_nuit": 0.7,
+  "poids_lumiere": 0.2,
+  "poids_discretion": 0.3
+}

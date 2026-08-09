@@ -797,6 +797,10 @@ func equip_instance(instance: Dictionary) -> bool:
 	var replaced := equipment.equip(instance)
 	if not replaced.is_empty():
 		inventory.add_object(replaced)
+	# Main gauche libérée par une arme à deux mains : elle retourne au sac.
+	for extra: Dictionary in equipment.displaced:
+		if not extra.is_empty():
+			inventory.add_object(extra)
 	_clamp_selection()
 	EventBus.ui_notification.emit(tr("ui.toast.equipe").format({
 		"item": tr(String(instance.get("name_key", "")))}))
@@ -4237,6 +4241,10 @@ func _try_equip() -> void:
 	var replaced := equipment.equip(instance)
 	if not replaced.is_empty():
 		inventory.add_object(replaced)
+	# Main gauche libérée par une arme à deux mains : elle retourne au sac.
+	for extra: Dictionary in equipment.displaced:
+		if not extra.is_empty():
+			inventory.add_object(extra)
 	_clamp_selection()
 	EventBus.ui_notification.emit(tr("ui.toast.equipe").format({
 		"item": tr(String(instance.get("name_key", "")))}))
@@ -4258,6 +4266,13 @@ func equip_instance_in_slot(instance: Dictionary, slot: String) -> bool:
 		EventBus.ui_notification.emit("ui.toast.pas_equipable")
 		return false
 	if slot == "arme_2" and int(item.get("hands", 1)) >= 2:
+		EventBus.ui_notification.emit("ui.toast.deux_mains_occupe")
+		return false
+	# ... et RÉCIPROQUEMENT : rien ne va en main gauche quand la main forte
+	# tient déjà une arme à deux mains. Le refus n'existait que dans un sens,
+	# si bien qu'on posait un bouclier — ou une seconde espadon — sur une main
+	# déjà occupée par la première.
+	if slot == "arme_2" and Equipment.is_two_handed(equipment.equipped("arme_1")):
 		EventBus.ui_notification.emit("ui.toast.deux_mains_occupe")
 		return false
 	inventory.objects.erase(instance)

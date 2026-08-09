@@ -378,7 +378,62 @@ func _has_support_at(x: float, z: float, feet_y: float) -> bool:
 ## chute : un epsilon vers le haut avant floori().
 func _body_blocked_at(x: float, z: float, feet_y: float) -> bool:
 	var foot_by := floori(feet_y + 0.001)
-	return _solid_at_level(x, z, foot_by) or _solid_at_level(x, z, foot_by + 1)
+	if _solid_at_level(x, z, foot_by) or _solid_at_level(x, z, foot_by + 1):
+		return true
+	return _creature_blocked_at(x, z, feet_y)
+
+
+## Rayon d'encombrement d'une créature, en blocs. Un peu moins que sa demi-
+## largeur visible : on veut se cogner à quelqu'un, pas rester bloqué à un
+## demi-mètre de lui dans une ruelle de village.
+const CREATURE_RADIUS := 0.38
+## Hauteur au-dessus des pieds où le corps compte encore. On enjambe donc un
+## corps au sol, mais on ne traverse pas quelqu'un debout.
+const CREATURE_HEIGHT := 1.7
+
+
+## UN PNJ EST UN OBSTACLE (2026-08-09, demande de l'auteur : « fais en sorte que
+## les PNJ aient des collisions, qu'on ne puisse pas passer à travers »).
+##
+## POURQUOI ICI, ET PAS DANS UN CORPS PHYSIQUE. Le projet n'a aucun collider :
+## ni le terrain ni les entités n'en ont, et toute la collision est analytique
+## (voir `_solid_at_level`). Ajouter un `CharacterBody3D` aux créatures pour ce
+## seul besoin ferait cohabiter deux systèmes de collision — celui de Godot pour
+## les PNJ, le nôtre pour le monde — avec deux façons de se contredire.
+##
+## `_body_blocked_at` est le POINT DE PASSAGE UNIQUE du déplacement : les deux
+## axes le consultent, l'auto-step aussi. En greffant l'obstacle ici, le
+## glissement le long d'un mur devient GRATUITEMENT le contournement d'une
+## personne — on longe un villageois comme on longe une paroi.
+func _creature_blocked_at(x: float, z: float, feet_y: float) -> bool:
+	# ON NE PIÈGE PERSONNE. Les créatures, elles, traversent le joueur : l'une
+	# d'elles peut donc venir s'arrêter SUR lui. Toutes les directions seraient
+	# alors bloquées et le joueur resterait prisonnier d'un corps — un piège que
+	# le terrain ne tend jamais, puisqu'un bloc ne se déplace pas jusqu'à vous.
+	# Déjà dedans, on laisse passer : la seule issue est de sortir.
+	if _overlaps_creature(position.x, position.z, feet_y):
+		return false
+	return _overlaps_creature(x, z, feet_y)
+
+
+## Vrai si (x, z, feet_y) tombe dans le cylindre d'encombrement d'une créature
+## vivante de la dimension active.
+func _overlaps_creature(x: float, z: float, feet_y: float) -> bool:
+	var here := Vector2(x, z)
+	for creature in CreatureManager.creatures:
+		if not is_instance_valid(creature) or creature.is_dead():
+			continue
+		if creature.dimension != WorldManager.active_dimension:
+			continue  # Une créature d'une autre dimension ne barre rien (3.5).
+		var body: Vector3 = creature.logical_position
+		# HAUTEUR D'ABORD : le test vertical est une soustraction, le test
+		# horizontal une racine. On écarte donc d'abord tout ce qui est bien
+		# au-dessus ou bien en dessous — c'est-à-dire presque tout le monde.
+		if body.y > feet_y + CREATURE_HEIGHT or body.y + CREATURE_HEIGHT < feet_y:
+			continue
+		if here.distance_squared_to(Vector2(body.x, body.z)) < CREATURE_RADIUS * CREATURE_RADIUS:
+			return true
+	return false
 
 
 ## FRANCHISSEMENT AUTOMATIQUE (auto-step) : le pas vers (nx, nz) est bloqué au
