@@ -269,18 +269,29 @@ Le choix du matériau dans un craft est donc un **arbitrage multidimensionnel**,
 
 ## 5. Combat et système de compétences
 
-### 5.0 Système de temps : temps réel ↔ mode tactique (action time)
+### 5.0 Le temps : temps réel unique, ticks de simulation
 
-- **Architecture à ticks dès le départ** : toute la logique de jeu (combat, mana, faim, régénération, IA...) est pilotée par des ticks de simulation, jamais par le delta de frame. Contrainte d'architecture fondamentale (voir Annexe D) — impossible à retrofit proprement plus tard.
-- **Par défaut : temps réel** — les ticks avancent avec l'horloge.
-- **Mode tactique (action time, façon Elona/ToME) : bascule à la volée par une touche** — les ticks n'avancent que lorsqu'un joueur consomme du temps (se déplacer, attaquer, utiliser un objet/compétence). Réfléchir est gratuit.
-- **En multijoueur :**
-  - Passer en mode tactique déclenche un **vote** ; s'il est accepté, tout le groupe bascule.
-  - En mode tactique multi, **le temps avance dès que n'importe quel joueur agit** (pas d'attente que tous aient joué leur "tour" — le tick le plus rapide gagne).
+> ⚠️ **AMENDÉ LE 2026-08-09 — le mode tactique est SUPPRIMÉ, définitivement.**
+> Pas différé : supprimé. Le jeu est entièrement temps réel, dans la continuité
+> du combat directionnel E.3.1. L'identité roguelike du jeu vit dans ses
+> systèmes (jets hors combat, potentiel, donjons, permadeath-lite A.10),
+> **pas** dans un tour par tour.
 
-**Décisions :**
-- **Vote (tactique ET sommeil E.21, même mécanique) :** majorité simple, fenêtre de vote de 15 s, re-vote possible après 30 s (harmonisé avec E.11).
-- **Granularité des ticks : résolu (E.1)** — coûts par action définis (déplacement 3 ticks/bloc, attaque 10/vitesse_arme, objet 5, bloc 2) ; oui, les actions rapides/lentes coûtent différemment, c'est le cœur du système.
+- **Architecture à ticks inchangée** : toute la logique de jeu (combat, mana, faim, régénération, IA...) reste pilotée par des ticks de simulation (10/s), jamais par le delta de frame (Annexe D). Ce qui disparaît, c'est la bascule `tactical_mode`/`push_ticks()` **comme mécanique de jeu** — elle peut survivre comme outil de debug, mais aucun système de gameplay ne doit en dépendre.
+- **E.1 recadré** : les « coûts en ticks par action » (déplacement 3 ticks/bloc, attaque 10/vitesse...) n'ont plus de sens joueur. Les durées d'action **temps réel** font foi : vitesse de déplacement en blocs/s, wind-up + balayage d'arme (E.3.1), temps d'incantation par module. Les valeurs E.1 converties en secondes équivalentes (÷10) servent de premières valeurs d'équilibrage.
+- **Pause** : en solo, le menu inventaire/craft met le jeu en pause simple (rien ne bouge) ; en multijoueur, jamais de pause. La pause active n'est **pas** introduite.
+
+**Systèmes orphelins de la suppression — résolutions actées :**
+1. **Votes multijoueur (E.11)** : le vote de bascule tactique est mort. Le vote ne subsiste que pour le **sommeil** (E.21 : saut de nuit consenti — majorité simple, fenêtre 15 s, re-vote 30 s).
+2. **UI de combat (E.3)** : la « fourchette de dégâts au survol en mode tactique » devient un **tooltip temps réel optionnel** (réglage) : viser une cible affiche son alignement Wu Xing (5.2) et le multiplicateur prévu.
+3. **Jets de dés hors combat : conservés intégralement.** Le jet universel (1d20 + compétence/2 + stat/4 vs difficulté) reste la résolution de la lecture (A.7), du dressage, de la négociation, de la discrétion (E.26), de la capture. L'échec critique (1 naturel) disparaît du combat (E.3.1 n'en a pas) mais reste sur les jets hors combat.
+4. **Esquive et encaissement (compétences mortes depuis E.3.1)** — raccrochées au directionnel :
+   - **Encaissement** : gagne de l'XP quand une garde tenue absorbe un coup ; son niveau réduit le coût d'endurance de l'absorption.
+   - **Esquive** : gagne de l'XP quand un balayage adverse manque le joueur de peu (fenêtre de proximité) alors qu'il est en mouvement ; son niveau accorde un léger bonus de vitesse pendant les 10 ticks suivant une esquive réussie.
+   - *Question ouverte* : une esquive **active** dédiée (pas de côté/roulade sur touche, coût d'endurance) — ou le mouvement pur suffit-il ? À trancher au playtest du feel.
+5. **Compagnons (E.17)** : plus de pause tactique pour donner les ordres. **Roue d'ordres temps réel** (maintien d'une touche → roue : suivre / tenir / attaquer ma cible / repli / posture agressive-défensive), le jeu **ralenti à 20 %** pendant la roue ouverte en solo (jamais en multijoueur). Modèle Kenshi/M&B assumé.
+6. **Sorts et modules (5.1) : visée temps réel.** Modules-projectiles = **projectiles physiques visés à la souris** (esprit Noita, cohérent avec l'assemblage) ; zones au sol indiquées au curseur avec télégraphe visible ; effets sur soi/aura instantanés. La fenêtre de combo Wu Xing (30 ticks = 3 s, 5.2) est déjà compatible temps réel.
+7. **Statuts de contrôle (F.4)** : étourdissement/enracinement = **perte de contrôle à durée affichée**. Règle de design : aucun contrôle dur ne dépasse 2 s sur le joueur, et un contrôle ne peut pas se réappliquer dans les 5 s qui suivent sa fin (anti-stunlock), joueur comme créatures.
 
 ### 5.1 Combat
 
@@ -292,7 +303,7 @@ Le choix du matériau dans un craft est donc un **arbitrage multidimensionnel**,
 > historique et reste valable pour tout ce qui n'est pas le toucher (dégâts,
 > mitigation, jet de compétence universel).
 
-- **Type de combat :** temps réel **directionnel** (E.3.1) — la direction du coup est lue au mouvement de souris qui suit le clic, l'arme balaie réellement l'espace, et ce qui touche géométriquement touche. La bascule en mode tactique (5.0) reste au design, mais **elle n'a pas encore de forme retenue** : une attaque visée à la souris ne se découpe pas naturellement en tours, et c'est une question ouverte que l'amendement de ce jour crée. Voir la note « Question ouverte » en fin de E.3.1.
+- **Type de combat :** temps réel **directionnel** (E.3.1) — la direction du coup est lue au mouvement de souris qui suit le clic, l'arme balaie réellement l'espace, et ce qui touche géométriquement touche. (2026-08-09 : la question ouverte d'une forme tactique pour ce combat est **close** — le mode tactique est supprimé, voir 5.0.)
 - **Résolution :** la **géométrie** décide *si* et *où* le coup porte ; les **dés** décident *combien*. Dés de dégâts par type d'arme (dague 1d6, masse 3d8…), mitigation d'armure à jet, et **critique par zone touchée** (la tête vaut ×2.5) au lieu du 20 naturel — un critique est une intention de visée, pas une loterie. Détail complet en E.3.1.
 - Reste **inchangé et pleinement en vigueur** : le **jet de compétence universel** (1d20 + compétence/2 + stat/4 vs difficulté), qui unifie toutes les actions risquées hors combat — lecture, dressage, capture, négociation, discrétion. C'est la grammaire de tout le reste du jeu ; seul le combat au corps-à-corps y échappe.
 - **Structure des compétences (façon Noita + Elin) :**
