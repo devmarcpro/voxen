@@ -1532,9 +1532,26 @@ func _slide(from: Vector3, step: Vector3) -> Vector3:
 	var out := from
 	if not _wall_at(out.x + step.x, out.z, out.y):
 		out.x += step.x
+	elif _steppable(out.x + step.x, out.z, out.y):
+		out.x += step.x
 	if not _wall_at(out.x, out.z + step.z, out.y):
 		out.z += step.z
+	elif _steppable(out.x, out.z + step.z, out.y):
+		out.z += step.z
 	return out
+
+
+## LA MARCHE D'UN BLOC SE FRANCHIT (2026-08-09). Le joueur a son franchissement
+## automatique depuis le 2026-07-28 ; les créatures n'en avaient pas besoin tant
+## qu'elles traversaient tout. Maintenant qu'un mur les arrête, la moindre marche
+## les arrêterait aussi — un seuil de porte, une racine, un pavé.
+##
+## On ne remonte PAS `logical_position.y` ici : la hauteur est reprise juste
+## après par `_ground_height()`, qui est l'unique source de vérité de l'altitude
+## d'une créature. Poser une seconde autorité sur `y` rouvrirait la classe de
+## bugs de dérive corrigée le 2026-07-21 côté joueur.
+func _steppable(x: float, z: float, logical_y: float) -> bool:
+	return not _wall_at(x, z, logical_y + 1.0)
 
 
 ## Un mur occupe-t-il l'emprise du corps à cette position ? Deux niveaux : les
