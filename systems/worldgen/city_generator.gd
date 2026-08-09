@@ -184,6 +184,21 @@ static func tile_plan(cell: Vector2i, world_seed: int, category: String) -> Dict
 		for idx: int in rescued:
 			outskirts.erase(idx)
 			plots.append(idx)
+	# DERNIER RECOURS (2026-08-09, vu sur capture : village T=6, ZERO batiment —
+	# rues et champs, personne). Dans une PETITE forme, toutes les tuiles
+	# touchent le dehors : le zonage « le bord est agricole » les classait
+	# toutes champs, et le sauvetage ci-dessus, qui exige de ne pas toucher le
+	# bord, ne rendait rien. Une maison de hameau PEUT donner sur les champs —
+	# c est meme sa definition. On leve donc la contrainte de bord, et seule
+	# reste la desserte : batir sans rue serait pire que ne pas batir.
+	if plots.is_empty():
+		for idx: int in outskirts.duplicate():
+			if plots.size() >= built_tiles:
+				break
+			@warning_ignore("integer_division")
+			if _adjacent_road_dir(types, t, idx % t, idx / t) != Vector3i.ZERO:
+				outskirts.erase(idx)
+				plots.append(idx)
 
 	var doors := {}
 	var archetypes := {}

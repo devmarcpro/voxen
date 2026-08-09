@@ -1381,3 +1381,8 @@ guilde.rang.maitre,Maître
 quest.chasse_prime.text,"Éliminez {count} {target} qui écument la région."
 quest.purge_betes.text,"Abattez {count} {target} qui rôdent trop près des fermes."
 quest.prospection.text,"Prouvez un gisement : extrayez {count} blocs de {target}."
+job.marchand,Marchand
+job.tavernier,Tavernier
+job.croupier,Croupier
+job.pretre,Prêtre
+job.maitre_guilde,Maître de guilde

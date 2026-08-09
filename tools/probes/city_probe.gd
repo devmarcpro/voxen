@@ -207,11 +207,31 @@ func run() -> void:
 			bare += 1
 	print("[CITYPROBE] tuiles laissées vides : %d (attendu 0)" % bare)
 
+	# AUCUN VILLAGE FANTOME (2026-08-09, vu sur CAPTURE et pas par la sonde :
+	# le village le plus proche du spawn avait T=6 et ZERO batiment — rues et
+	# champs, personne. Cette sonde etait verte parce qu elle ne regardait que
+	# LE village le plus grand du rayon). On balaie donc TOUS les villages du
+	# rayon : un plan sans batiment est un plan casse, quel qu il soit.
+	var ghost := 0
+	var swept := 0
+	for scx in range(-60, 61, 8):
+		for scz in range(-60, 61, 8):
+			for dz in 8:
+				var l2: Dictionary = g.city_at_cell(Vector2i(scx, scz + dz))
+				if l2.is_empty():
+					continue
+				swept += 1
+				if int(l2.get("buildings", 0)) < 1:
+					ghost += 1
+					print("[CITYPROBE]   village fantome en %s : T=%d, 0 batiment" % [
+						Vector2i(scx, scz + dz), int(l2.get("T", 0))])
+	print("[CITYPROBE] villages balayes : %d, fantomes : %d (attendu 0)" % [swept, ghost])
+
 	var capital_ok := await _check_capital(g)
 
 	await _capture_village(layout)
 
-	var ok: bool = t >= 3 and roads > 0 and buildings > 0 and exits >= 2 		and terrace_ok and step_ok and road_ok and wall_ok and floor_ok 		and door_ok and roof_ok and bare == 0 and capital_ok
+	var ok: bool = t >= 3 and roads > 0 and buildings > 0 and exits >= 2 		and terrace_ok and step_ok and road_ok and wall_ok and floor_ok 		and door_ok and roof_ok and bare == 0 and capital_ok and ghost == 0
 	print("[CITYPROBE] RÉSULTAT : %s" % ("OK" if ok else "ÉCHEC"))
 	main.get_tree().quit(0 if ok else 1)
 

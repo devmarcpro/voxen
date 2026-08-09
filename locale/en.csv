@@ -1381,3 +1381,8 @@ guilde.rang.maitre,Master
 quest.chasse_prime.text,"Eliminate {count} {target} plaguing the region."
 quest.purge_betes.text,"Put down {count} {target} prowling near the farms."
 quest.prospection.text,"Prove a deposit: extract {count} blocks of {target}."
+job.marchand,Merchant
+job.tavernier,Innkeeper
+job.croupier,Croupier
+job.pretre,Priest
+job.maitre_guilde,Guild master

@@ -80,6 +80,4 @@ func run() -> void:
 		panel.call("close")
 	else:
 		print("[CITYCAP] aucun marchand actif dans le village — capture commerce sautée")
-	else:
-		print("[CITYCAP] aucun habitant à qui parler (panneau=%s)" % (panel != null))
 	main.get_tree().quit(0)

@@ -168,8 +168,18 @@ func merchant_stock(creature: Node) -> Array:
 		return []
 	var taken: Dictionary = _stock_taken.get("%s:%d" % [key, week], {})
 	var out: Array = []
+	# TIRAGE SANS REMISE (vu sur capture : « Acheter Chêne » deux fois dans le
+	# même étal). On mélange le bassin et on prend les premiers ; on ne repasse
+	# au tirage avec remise que si le bassin est plus petit que l étal.
+	var shuffled := pool.duplicate()
+	for i in range(shuffled.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var swap: Variant = shuffled[i]
+		shuffled[i] = shuffled[j]
+		shuffled[j] = swap
 	for line in STOCK_LINES:
-		var material_id := String(pool[rng.randi_range(0, pool.size() - 1)])
+		var material_id := String(shuffled[line % shuffled.size()] if line < shuffled.size()
+			else pool[rng.randi_range(0, pool.size() - 1)])
 		var count := rng.randi_range(2, 8)
 		var price := ShopManager.suggested_price(material_id)
 		out.append({
