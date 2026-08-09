@@ -1,0 +1,7 @@
+# Les fichiers d'import Godot sont écrits par l'ÉDITEUR, toujours en LF.
+# Sans cette règle, core.autocrlf=true les affichait modifiés EN PERMANENCE
+# (33 fantômes dans git status depuis des semaines) alors que leur contenu
+# n'avait pas bougé d'un octet — et chaque `git add` global les brassait pour
+# rien. `-text` = pas de conversion : git compare les octets, point.
+*.import -text
+*.gdextension -text
