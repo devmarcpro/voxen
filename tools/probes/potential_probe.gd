@@ -61,6 +61,7 @@ func run() -> void:
 	_check_default_unchanged()
 	_check_class_overrides_race()
 	_check_persistence()
+	_check_general_floor()
 	finish(_ok, TAG)
 
 
@@ -77,10 +78,11 @@ func _check_data() -> void:
 	# plus rien ne l'emprunte. Le taire reviendrait à croire la sonde complète.
 	var racial := 0
 	for race_id: String in GameData.races:
-		if not ((GameData.races[race_id] as Dictionary).get("base_potentials", {}) as Dictionary).is_empty():
+		var fiche: Dictionary = GameData.races[race_id]
+		if not (fiche.get("base_potentials", {}) as Dictionary).is_empty() 				or float(fiche.get("base_potential_min", 0.0)) > 0.0:
 			racial += 1
 	if racial == 0:
-		print("[%s] NON COUVERT : aucune race ne déclare de base_potentials — le plancher RACIAL n'est plus exercé par les données." % TAG)
+		print("[%s] NON COUVERT : aucune race ne déclare de plancher — la règle RACIALE n'est plus exercée par les données." % TAG)
 	_check("le plancher témoin est au-dessus du défaut",
 		float(potentials.get(WITNESS_SKILL, 0.0)) > PlayerSkills.DEFAULT_BASE_POTENTIAL,
 		"%.0f > %.0f" % [float(potentials.get(WITNESS_SKILL, 0.0)),
@@ -176,3 +178,68 @@ func _check_persistence() -> void:
 	_check("il tient encore après relecture",
 		float(restored.skills[WITNESS_SKILL]["potential"]) >= expected - 0.001,
 		"%.1f" % float(restored.skills[WITNESS_SKILL]["potential"]))
+
+
+## LE PLANCHER GÉNÉRAL D'UNE RACE POLYVALENTE (2026-08-09).
+##
+## L'humain est déclaré POLYVALENT par le GDD (C.2) : lui donner un plancher sur
+## une compétence précise en aurait fait un spécialiste de plus, c'est-à-dire le
+## contraire de ce que sa fiche annonce. Il porte donc `base_potential_min`, un
+## plancher modeste sur TOUTES les compétences.
+##
+## TROIS CHOSES À DÉFENDRE, et la troisième est celle qu'on oublierait :
+##   1. le plancher est bien posé partout, pas sur une compétence témoin ;
+##   2. il RÉSISTE à la montée de niveau, comme tout plancher (c'est la règle
+##      entière, et elle n'a pas de raison de valoir moins ici) ;
+##   3. il NE MANGE PAS un plancher nommé : un artisan garde ses 115 en forge.
+##      Sans ce point, la polyvalence écraserait toutes les spécialités et
+##      chaque classe vaudrait la même chose.
+func _check_general_floor() -> void:
+	var race: Dictionary = GameData.races.get("humain", {})
+	var general := float(race.get("base_potential_min", 0.0))
+	_check("l'humain porte un plancher GÉNÉRAL (polyvalent, C.2)", general > 0.0,
+		"%.0f" % general)
+	if general <= 0.0:
+		return
+	_check("et il est au-dessus du défaut générique",
+		general > PlayerSkills.DEFAULT_BASE_POTENTIAL,
+		"%.0f > %.0f" % [general, PlayerSkills.DEFAULT_BASE_POTENTIAL])
+
+	# On rejoue ce que fait la création de personnage : plancher général, puis
+	# planchers nommés de la classe.
+	var skills := PlayerSkills.new()
+	for skill_id: String in skills.skills:
+		skills.set_base_potential(skill_id, general)
+	var named: Dictionary = (GameData.classes.get(WITNESS_CLASS, {}) as Dictionary).get(
+			"base_potentials", {})
+	for skill_id: String in named:
+		skills.set_base_potential(skill_id, float(named[skill_id]))
+
+	# 1. PARTOUT, pas seulement sur un témoin.
+	var below := 0
+	for skill_id: String in skills.skills:
+		if skills.base_potential(skill_id) < general - 0.001:
+			below += 1
+	_check("toutes les compétences reçoivent ce plancher", below == 0,
+		"%d compétence(s) en dessous" % below)
+
+	# 3. LA SPÉCIALITÉ L'EMPORTE.
+	var specialised := skills.base_potential(WITNESS_SKILL)
+	_check("un plancher nommé de classe l'emporte sur le plancher général",
+		specialised > general,
+		"%s : %.0f contre %.0f" % [WITNESS_SKILL, specialised, general])
+
+	# 2. IL RÉSISTE À LA MONTÉE DE NIVEAU. Une compétence ORDINAIRE — pas celle
+	# de la classe, qui est protégée par son propre plancher.
+	var ordinary := ""
+	for skill_id: String in skills.skills:
+		if not named.has(skill_id):
+			ordinary = skill_id
+			break
+	if ordinary == "":
+		return
+	for i in 40:
+		skills.gain_xp(ordinary, 50_000.0)
+	_check("et il survit à la montée de niveau, comme tout plancher",
+		float(skills.skills[ordinary]["potential"]) >= general - 0.001,
+		"%s : %.1f >= %.0f" % [ordinary, float(skills.skills[ordinary]["potential"]), general])

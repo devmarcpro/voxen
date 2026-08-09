@@ -357,6 +357,22 @@ func apply_character(config: Dictionary) -> void:
 	# Ces potentiels sont le PLANCHER PERMANENT de 6.4, pas une valeur de
 	# départ : passer par set_base_potential, sans quoi le level up les
 	# ramènerait à 80 et l'identité de la race s'évaporerait (corrigé 2026-08-02).
+	# PLANCHER GÉNÉRAL (2026-08-09). L'humain est POLYVALENT (C.2 : « +10 % d'XP,
+	# polyvalent ») : lui poser un plancher sur une compétence précise en ferait
+	# un spécialiste de plus, ce qui est exactement le contraire de ce que sa
+	# fiche annonce. La polyvalence se dit autrement — il n'est JAMAIS mauvais
+	# nulle part, donc un plancher modeste sur TOUTES les compétences.
+	#
+	# UN CHAMP PLUTÔT QU'UNE LISTE DE CINQUANTE-TROIS ENTRÉES : une liste
+	# devrait être complétée à chaque compétence ajoutée, et celle qu'on
+	# oublierait retomberait au défaut sans que rien ne le signale.
+	#
+	# APPLIQUÉ EN PREMIER, donc écrasé par tout plancher nommé : un artisan
+	# garde ses 115 en forge, il ne les perd pas au profit du plancher général.
+	var general := float(race.get("base_potential_min", 0.0))
+	if general > 0.0:
+		for skill_id: String in skills.skills:
+			skills.set_base_potential(skill_id, general)
 	for source: Dictionary in [race.get("base_potentials", {}), cls.get("base_potentials", {})]:
 		for skill_id in source:
 			skills.set_base_potential(skill_id, float(source[skill_id]))

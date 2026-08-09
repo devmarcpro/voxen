@@ -6,5 +6,6 @@
   "traits": [
     "polyvalent"
   ],
-  "id": "humain"
+  "id": "humain",
+  "base_potential_min": 90
 }

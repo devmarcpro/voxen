@@ -1650,7 +1650,11 @@ Toutes dérivées d'une seed monde unique + `seed_offset` (reproductibilité tot
 
 Création : 30 points à répartir (base 5 par stat, max 15 à la création), + choix de race, classe, apparence (parties du corps, section 12).
 
-### C.2 Races de départ (6)
+### C.2 Races de départ (1, amendé le 2026-08-09)
+
+**LE MONDE EST HUMAIN.** Décision de l'auteur : « on supprime tout ce qui est fantaisie ; pour l'instant race on met qu'humain ». Les cinq autres races du tableau ci-dessous sont retirées des données et conservées ici pour mémoire — le « pour l'instant » est explicite, et elles restent récupérables dans l'historique (`git show 1916391:data/races/<id>.json`).
+
+L'humain porte désormais, en plus de son bonus d'XP, un **plancher de potentiel général à 90 sur toutes les compétences** (6.4). C'est la traduction de « polyvalent » : il n'excelle nulle part, mais il n'est jamais mauvais nulle part non plus. Un plancher nommé — celui d'une classe — l'emporte sur lui.
 
 | Race | Type | Bonus |
 |---|---|---|
