@@ -1332,3 +1332,8 @@ ui.toast.duel_envoye,決闘を申し込んだ
 ui.toast.duel_personne,相手がいない
 ui.pnj.age,{age}歳
 ui.pnj.origine,{lieu}の出
+culture.germanique.name,ゲルマン
+culture.hellenique.name,ギリシア
+culture.persane.name,ペルシア
+culture.bantoue.name,バントゥ
+culture.andine.name,アンデス

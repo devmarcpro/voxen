@@ -1332,3 +1332,8 @@ ui.toast.duel_envoye,已发出决斗邀请
 ui.toast.duel_personne,没有可挑战的人
 ui.pnj.age,{age}岁
 ui.pnj.origine,来自{lieu}
+culture.germanique.name,日耳曼
+culture.hellenique.name,希腊
+culture.persane.name,波斯
+culture.bantoue.name,班图
+culture.andine.name,安第斯

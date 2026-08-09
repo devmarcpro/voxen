@@ -1,0 +1,100 @@
+{
+  "id": "culture_bantoue",
+  "name_key": "culture.bantoue.name",
+  "name_order": "prenom_nom",
+  "race_affinity": {
+    "humain": 1.0
+  },
+  "prenom_a": [
+    "Chi",
+    "Tha",
+    "Nda",
+    "Zu",
+    "Mfu",
+    "Kwe",
+    "Sipho",
+    "Nom",
+    "Lun",
+    "Bab",
+    "Thu",
+    "Ama"
+  ],
+  "prenom_b": [
+    "nedu",
+    "bo",
+    "lo",
+    "mani",
+    "sile",
+    "nge",
+    "kile",
+    "usa",
+    "ando",
+    "ile"
+  ],
+  "famille_a": [
+    "Mbe",
+    "Nku",
+    "Dla",
+    "Ngu",
+    "Sith",
+    "Khum",
+    "Zwa",
+    "Mkh",
+    "Buth",
+    "Ndlo"
+  ],
+  "famille_b": [
+    "ki",
+    "malo",
+    "mini",
+    "nyane",
+    "ole",
+    "vu"
+  ],
+  "ville_a": [
+    "Ki",
+    "Mba",
+    "Lu",
+    "Nya",
+    "Zi",
+    "Ma",
+    "Bu",
+    "Tha",
+    "Nka",
+    "Chi"
+  ],
+  "ville_b": [
+    "landa",
+    "sanga",
+    "wezi",
+    "mbwe",
+    "goma",
+    "tembo"
+  ],
+  "titres": {
+    "monarchie_hereditaire": {
+      "m": "Mfumu",
+      "f": "Mfumukazi"
+    },
+    "republique_elue": {
+      "m": "Ndunankulu",
+      "f": "Ndunankulu"
+    },
+    "theocratie": {
+      "m": "Sangoma",
+      "f": "Sangoma"
+    },
+    "ploutocratie": {
+      "m": "Mwenye",
+      "f": "Mwenye"
+    },
+    "dictature_militaire": {
+      "m": "Induna",
+      "f": "Induna"
+    },
+    "guilde_maitre": {
+      "m": "Fundi",
+      "f": "Fundi"
+    }
+  }
+}

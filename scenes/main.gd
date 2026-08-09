@@ -166,7 +166,7 @@ func _menu_smoke_test(menu: CanvasLayer) -> void:
 	menu._on_create()  # → panneau création de personnage (6.3).
 	await get_tree().process_frame
 	# Création de personnage : Nain + Guerrier, +5 en Force.
-	menu._char_race_option.selected = menu._race_ids.find("nain")
+	menu._char_race_option.selected = menu._race_ids.find("humain")
 	menu._char_class_option.selected = menu._class_ids.find("guerrier")
 	menu._refresh_character()
 	menu._adjust_stat("force", 5)
@@ -188,7 +188,7 @@ func _menu_smoke_test(menu: CanvasLayer) -> void:
 	print("[MENUTEST] capture monde créé : menu_world_screenshot.png")
 	var ok: bool = g != null and WorldManager.world_seed == 777 \
 		and g.biome_at(0, 0).get("id", "") == "desert_aride" \
-		and player.race_id == "nain" and player.class_id == "guerrier" \
+		and player.race_id == "humain" and player.class_id == "guerrier" \
 		and int(player.stats["force"]) == 13 and int(player.stats["endurance"]) == 8 \
 		and player.skills.level("epee") == 5 and player.inventory.objects.size() >= 1
 	print("[MENUTEST] RÉSULTAT : %s" % ("OK" if ok else "ÉCHEC"))

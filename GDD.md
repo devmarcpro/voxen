@@ -764,7 +764,7 @@ Chaque créature du jeu est un assemblage choisi dans ces bibliothèques de part
 - **Ordre des noms** configurable par culture (`name_order`: `prenom_nom` ou `nom_prenom`) — certaines cultures nomment famille avant prénom.
 
 **Décisions :**
-- **Cultures de lancement : 10** (liste C.9) — assez pour une vraie variété sans exploser le volume de contenu à la main.
+- **Cultures de lancement : 12** (liste C.9, amendée le 2026-08-09 : trois cultures de fantaisie retirées, cinq cultures réelles ajoutées) — assez pour une vraie variété sans exploser le volume de contenu à la main.
 - Détail technique complet (algorithme, formats) : **E.31**.
 
 ---
@@ -942,7 +942,7 @@ Les tables de sculpture ne s'achètent pas et ne se craftent pas librement : ell
 - Le **nom du projet**.
 - Donjons (3.5) : taille exacte des salles/connecteurs en blocs, taille de la bibliothèque de prefabs au lancement, fréquence de réapparition de nouveaux donjons dans le monde.
 - Monstres rares (12.4) : nombre de tiers de rareté.
-- ~~Noms/cultures (12.5) : contenu exact des pools de noms pour les 10 cultures (C.9)~~ — **écrit le 2026-08-02** (`data/name_cultures/`, dix cultures au schéma B.11).
+- ~~Noms/cultures (12.5) : contenu exact des pools de noms pour les 10 cultures (C.9)~~ — **écrit le 2026-08-02** (`data/name_cultures/`, douze cultures au schéma B.11 depuis le 2026-08-09).
 - Le **lore** : noms propres des royaumes générés (les gabarits existent, 10.1/E.27), textes d'ambiance, mythologie du monde — à écrire au fil du contenu.
 - L'ajout des **saisons** (E.28 : l'architecture les accueille, gros impact agricole — à décider après playtest de la boucle agricole).
 - La réintroduction éventuelle de **créatures fantastiques** dans les zones à haute corruption (F.3 : prévu sans changement de système).
@@ -1701,11 +1701,15 @@ Réalisme climatique (2026-07-20, 3.0/E.2) : chaque biome réel de la Terre a d�
 
 Établi (générique), Forge, Scierie, Tailleur de pierre, Atelier de tissage, Alambic, Cuisine, Table d'enchantement — plus les 5 tables de sculpture (items, armes, blocs, meubles, véhicules), qui se débloquent uniquement via les rangs de guilde (voir section 13).
 
-### C.9 Cultures de nommage (10, schéma B.11)
+### C.9 Cultures de nommage (12, schéma B.11)
 
-*Purement phonétique/toponymique — aucune donnée de gameplay différenciée par culture au-delà des pools de noms et titres. Affinité de race entre parenthèses.*
+*Purement phonétique/toponymique — aucune donnée de gameplay différenciée par culture au-delà des pools de noms et titres.*
 
-Latine/romane (Humain) · Nordique/germanique (Nain, Humain) · Sino (Humain) · Nipponne (Humain) · Slave (Humain) · Arabo-berbère (Humain) · Celte (Elfe, Humain) · Sylvestre — sonorités végétales/fluides dédiées (Sylvide exclusivement) · Ignée — consonnes dures, sonorités volcaniques dédiées (Cendreux exclusivement) · Résonance — syllabes fragmentées/répétées, sonorité artificielle dédiée (Échomorphe exclusivement, cohérent avec sa nature mimétique du bruit, 12/section race).
+**AMENDÉ LE 2026-08-09 — LE MONDE EST HUMAIN ET RÉEL.** Décision de l'auteur : « dans les noms culturels et les races on va supprimer tout ce qui est fantaisie et rajouter des choses du monde réel ; pour l'instant race on met qu'humain ». Les trois cultures inventées pour des races inventées — Sylvestre, Ignée, Résonance — disparaissent avec elles, et cinq cultures réelles les remplacent. Les affinités de race ne sont plus notées : il n'y en a qu'une.
+
+Latine/romane · Nordique · Germanique · Hellénique · Slave · Celte · Sino · Nipponne · Arabo-berbère · Persane · Bantoue · Andine.
+
+*Les cultures retirées restent récupérables dans l'historique (`git show 1916391:data/name_cultures/culture_sylvestre.json`) le jour où une race non humaine reviendrait — ce que l'auteur n'exclut pas (« pour l'instant »).*
 
 ---
 
@@ -2738,7 +2742,7 @@ IDENTITÉ (déterministe à la graine) :
     d'autres races, et TOUT rôle de gouvernance/leadership_role est
     exclusivement de la race dominante (12.2/B.9).
   - **Culture (12.5/B.11) :** tirage pondéré par `race_affinity` parmi
-    les 10 cultures (C.9) selon la race dominante du royaume — un
+    les 12 cultures (C.9) selon la race dominante du royaume — un
     royaume humain peut tirer n'importe quelle culture à large spectre
     (sino, nordique, latine...), un royaume sylvide tire toujours sa
     culture dédiée. Détermine ensuite noms de PNJ, noms de villes et

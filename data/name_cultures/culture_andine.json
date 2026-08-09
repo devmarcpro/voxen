@@ -1,0 +1,100 @@
+{
+  "id": "culture_andine",
+  "name_key": "culture.andine.name",
+  "name_order": "prenom_nom",
+  "race_affinity": {
+    "humain": 1.0
+  },
+  "prenom_a": [
+    "Ata",
+    "Huay",
+    "Sinch",
+    "Pach",
+    "Yup",
+    "Cus",
+    "Ill",
+    "Mam",
+    "Rum",
+    "Tup",
+    "Aman",
+    "Quil"
+  ],
+  "prenom_b": [
+    "hualpa",
+    "na",
+    "i",
+    "acuti",
+    "anqui",
+    "ari",
+    "apa",
+    "aya",
+    "ac",
+    "asca"
+  ],
+  "famille_a": [
+    "Quis",
+    "Cond",
+    "Mam",
+    "Huam",
+    "Chura",
+    "Yupan",
+    "Tica",
+    "Puma",
+    "Wara",
+    "Suyu"
+  ],
+  "famille_b": [
+    "pe",
+    "ori",
+    "ani",
+    "qui",
+    "yta",
+    "cha"
+  ],
+  "ville_a": [
+    "Huanca",
+    "Sacsa",
+    "Ollanta",
+    "Cara",
+    "Pisac",
+    "Chinche",
+    "Wari",
+    "Tambo",
+    "Killa",
+    "Inti"
+  ],
+  "ville_b": [
+    "marca",
+    "yllu",
+    "pampa",
+    "huasi",
+    "raqay",
+    "cocha"
+  ],
+  "titres": {
+    "monarchie_hereditaire": {
+      "m": "Sapa Inca",
+      "f": "Coya"
+    },
+    "republique_elue": {
+      "m": "Curaca",
+      "f": "Curaca"
+    },
+    "theocratie": {
+      "m": "Willaq Umu",
+      "f": "Mama Cuna"
+    },
+    "ploutocratie": {
+      "m": "Qhatuq",
+      "f": "Qhatuq"
+    },
+    "dictature_militaire": {
+      "m": "Apusquipay",
+      "f": "Apusquipay"
+    },
+    "guilde_maitre": {
+      "m": "Kamayuq",
+      "f": "Kamayuq"
+    }
+  }
+}

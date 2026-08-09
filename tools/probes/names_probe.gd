@@ -24,14 +24,23 @@ extends Probe
 const TAG := "NOMS"
 
 ## C.9 : dix cultures de lancement.
-const EXPECTED_CULTURES := 10
+## Le GDD (C.9) fait foi, et il a été AMENDÉ le 2026-08-09 : trois cultures de
+## fantaisie retirées avec les races qu'elles servaient, cinq cultures réelles
+## ajoutées. Ce nombre et celui du GDD doivent bouger ENSEMBLE — c'est tout
+## l'intérêt de l'asserter plutôt que de compter ce qu'on trouve.
+const EXPECTED_CULTURES := 12
 ## B.9 : six gouvernances, plus l'entrée `guilde_maitre` de 7.3 (indépendante
 ## du royaume). L'anarchie n'a pas de dirigeant à titrer, elle est donc
 ## légitimement absente des tables de titres.
 const TITLE_KEYS := ["monarchie_hereditaire", "republique_elue", "theocratie",
 		"ploutocratie", "dictature_militaire", "guilde_maitre"]
 ## Races originales (12) : chacune a sa culture, non partagée.
-const EXCLUSIVE_RACES := ["sylvide", "cendreux", "echomorphe"]
+## RACES EXCLUSIVES À UNE CULTURE — plus aucune depuis le 2026-08-09 : la
+## fantaisie est retirée et seul l'humain subsiste. La liste reste, VIDE, avec
+## le test qui la parcourt : le jour où une seconde race réelle arrive, elle a
+## déjà sa vérification. L'effacer aurait fait disparaître la règle avec les
+## données qu'elle protégeait.
+const EXCLUSIVE_RACES: Array[String] = []
 
 var _ok := true
 

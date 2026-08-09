@@ -1332,3 +1332,8 @@ ui.toast.duel_envoye,Demande de duel envoyée
 ui.toast.duel_personne,Personne à provoquer
 ui.pnj.age,{age} ans
 ui.pnj.origine,de {lieu}
+culture.germanique.name,Germanique
+culture.hellenique.name,Hellénique
+culture.persane.name,Persane
+culture.bantoue.name,Bantoue
+culture.andine.name,Andine

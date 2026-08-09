@@ -3,8 +3,7 @@
   "name_key": "culture.celte.name",
   "name_order": "prenom_nom",
   "race_affinity": {
-    "elfe": 1.0,
-    "humain": 0.5
+    "humain": 1.0
   },
   "prenom_a": [
     "Bran",

@@ -1,0 +1,100 @@
+{
+  "id": "culture_hellenique",
+  "name_key": "culture.hellenique.name",
+  "name_order": "prenom_nom",
+  "race_affinity": {
+    "humain": 1.0
+  },
+  "prenom_a": [
+    "Alex",
+    "Nik",
+    "Theo",
+    "Dem",
+    "Kall",
+    "Sof",
+    "Andr",
+    "Perikl",
+    "Xen",
+    "Arist",
+    "Lys",
+    "Eur"
+  ],
+  "prenom_b": [
+    "andros",
+    "olaos",
+    "doros",
+    "etrios",
+    "ias",
+    "ia",
+    "eas",
+    "es",
+    "ippos",
+    "ander"
+  ],
+  "famille_a": [
+    "Papa",
+    "Kara",
+    "Stav",
+    "Vasil",
+    "Manol",
+    "Nikol",
+    "Kondy",
+    "Doux",
+    "Anagno",
+    "Xanth"
+  ],
+  "famille_b": [
+    "dopoulos",
+    "iadis",
+    "akis",
+    "atos",
+    "oglou",
+    "ides"
+  ],
+  "ville_a": [
+    "Nea",
+    "Palaio",
+    "Mega",
+    "Kalli",
+    "Thermo",
+    "Chryso",
+    "Argy",
+    "Hydro",
+    "Leuko",
+    "Pyrgo"
+  ],
+  "ville_b": [
+    "polis",
+    "chori",
+    "nissos",
+    "kastro",
+    "limani",
+    "vounos"
+  ],
+  "titres": {
+    "monarchie_hereditaire": {
+      "m": "Basileus",
+      "f": "Basilissa"
+    },
+    "republique_elue": {
+      "m": "Archonte",
+      "f": "Archontesse"
+    },
+    "theocratie": {
+      "m": "Hiérophante",
+      "f": "Hiérophantide"
+    },
+    "ploutocratie": {
+      "m": "Naucléros",
+      "f": "Naucléra"
+    },
+    "dictature_militaire": {
+      "m": "Stratège",
+      "f": "Stratège"
+    },
+    "guilde_maitre": {
+      "m": "Protomaître",
+      "f": "Protomaîtresse"
+    }
+  }
+}

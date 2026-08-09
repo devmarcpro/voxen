@@ -1332,3 +1332,8 @@ ui.toast.duel_envoye,Duel request sent
 ui.toast.duel_personne,Nobody to challenge
 ui.pnj.age,{age} years old
 ui.pnj.origine,from {lieu}
+culture.germanique.name,Germanic
+culture.hellenique.name,Hellenic
+culture.persane.name,Persian
+culture.bantoue.name,Bantu
+culture.andine.name,Andean

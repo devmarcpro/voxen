@@ -191,19 +191,21 @@ static func id_of(capital_cell: Vector2i) -> String:
 	return "royaume_%d_%d" % [capital_cell.x, capital_cell.y]
 
 
-## Race dominante : ~90 % de la population et l'exclusivité de la gouvernance
-## (14.4). On la choisit par le biome, avec un repli sur l'humain — une race
-## manquante ne doit jamais empêcher un royaume d'exister.
-static func _dominant_race(biome: Dictionary, hash_value: int) -> String:
-	var tags: Array = biome.get("tags", [])
-	if "froid" in tags or "montagne" in tags:
-		return "nain"
-	if "foret" in tags or "magique" in tags:
-		return "elfe"
+## Race dominante d'un royaume (14.4).
+##
+## IL N'Y EN A PLUS QU'UNE (2026-08-09, décision de l'auteur : « on supprime
+## tout ce qui est fantaisie, pour l'instant race on met qu'humain »). Cette
+## fonction choisissait un nain en montagne et un elfe en forêt ; ces races
+## n'existent plus. On la garde plutôt que d'effacer ses appels : le jour où une
+## seconde race réelle apparaîtra, c'est le seul endroit à rouvrir.
+##
+## LE REPLI EXISTAIT DÉJÀ et servait quand une race manquait — il est devenu le
+## cas général, et c'est ce qui rend ce changement inoffensif.
+static func _dominant_race(_biome: Dictionary, _hash_value: int) -> String:
 	var ids: Array = GameData.races.keys()
-	if ids.is_empty():
+	if ids.is_empty() or "humain" in ids:
 		return "humain"
-	return "humain" if hash_value % 4 != 0 else String(ids[hash_value % ids.size()])
+	return str(ids[0])
 
 
 # --- Territoire ---------------------------------------------------------------

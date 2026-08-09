@@ -1,0 +1,100 @@
+{
+  "id": "culture_persane",
+  "name_key": "culture.persane.name",
+  "name_order": "prenom_nom",
+  "race_affinity": {
+    "humain": 1.0
+  },
+  "prenom_a": [
+    "Dar",
+    "Kour",
+    "Ard",
+    "Bahr",
+    "Farh",
+    "Sohr",
+    "Rost",
+    "Anah",
+    "Par",
+    "Kav",
+    "Jamsh",
+    "Shir"
+  ],
+  "prenom_b": [
+    "iush",
+    "osh",
+    "eshir",
+    "am",
+    "ad",
+    "ab",
+    "in",
+    "ita",
+    "vaz",
+    "id"
+  ],
+  "famille_a": [
+    "Tehr",
+    "Shir",
+    "Isfah",
+    "Kerm",
+    "Nish",
+    "Zar",
+    "Bakht",
+    "Sabz",
+    "Golest",
+    "Farr"
+  ],
+  "famille_b": [
+    "ani",
+    "azi",
+    "pour",
+    "zadeh",
+    "yar",
+    "mand"
+  ],
+  "ville_a": [
+    "Shah",
+    "Gol",
+    "Zar",
+    "Nou",
+    "Kuh",
+    "Dar",
+    "Sabz",
+    "Mah",
+    "Rud",
+    "Bagh"
+  ],
+  "ville_b": [
+    "abad",
+    "shahr",
+    "kert",
+    "gerd",
+    "dasht",
+    "sar"
+  ],
+  "titres": {
+    "monarchie_hereditaire": {
+      "m": "Shah",
+      "f": "Shahbanou"
+    },
+    "republique_elue": {
+      "m": "Anjoman",
+      "f": "Anjoman"
+    },
+    "theocratie": {
+      "m": "Mobed",
+      "f": "Mobedeh"
+    },
+    "ploutocratie": {
+      "m": "Bazargan",
+      "f": "Bazargan"
+    },
+    "dictature_militaire": {
+      "m": "Sepahbod",
+      "f": "Sepahbod"
+    },
+    "guilde_maitre": {
+      "m": "Ostad",
+      "f": "Ostad"
+    }
+  }
+}

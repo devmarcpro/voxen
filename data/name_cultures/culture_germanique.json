@@ -1,0 +1,101 @@
+{
+  "id": "culture_germanique",
+  "name_key": "culture.germanique.name",
+  "name_order": "prenom_nom",
+  "race_affinity": {
+    "humain": 1.0
+  },
+  "prenom_a": [
+    "Wolf",
+    "Gerh",
+    "Diet",
+    "Hein",
+    "Reinh",
+    "Sieg",
+    "Ott",
+    "Berth",
+    "Lud",
+    "Ulr",
+    "Adel",
+    "Herm"
+  ],
+  "prenom_b": [
+    "gang",
+    "ard",
+    "rich",
+    "old",
+    "helm",
+    "fried",
+    "mund",
+    "wig",
+    "hild",
+    "trud"
+  ],
+  "famille_a": [
+    "Schmied",
+    "Braun",
+    "Wagner",
+    "Stein",
+    "Berg",
+    "Hoff",
+    "Zimmer",
+    "Bach",
+    "Kaiser",
+    "Fisch"
+  ],
+  "famille_b": [
+    "mann",
+    "er",
+    "bach",
+    "stein",
+    "hardt",
+    "meier"
+  ],
+  "ville_a": [
+    "Alten",
+    "Neu",
+    "Rosen",
+    "Hohen",
+    "Eisen",
+    "Königs",
+    "Freu",
+    "Grün",
+    "Stein",
+    "Waldes"
+  ],
+  "ville_b": [
+    "burg",
+    "berg",
+    "heim",
+    "furt",
+    "thal",
+    "stadt",
+    "brunn"
+  ],
+  "titres": {
+    "monarchie_hereditaire": {
+      "m": "Kaiser",
+      "f": "Kaiserin"
+    },
+    "republique_elue": {
+      "m": "Bürgermeister",
+      "f": "Bürgermeisterin"
+    },
+    "theocratie": {
+      "m": "Erzbischof",
+      "f": "Äbtissin"
+    },
+    "ploutocratie": {
+      "m": "Handelsherr",
+      "f": "Handelsfrau"
+    },
+    "dictature_militaire": {
+      "m": "Feldherr",
+      "f": "Feldherrin"
+    },
+    "guilde_maitre": {
+      "m": "Zunftmeister",
+      "f": "Zunftmeisterin"
+    }
+  }
+}

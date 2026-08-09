@@ -3,8 +3,7 @@
   "name_key": "culture.nordique.name",
   "name_order": "prenom_nom",
   "race_affinity": {
-    "nain": 1.0,
-    "humain": 0.6
+    "humain": 1.0
   },
   "prenom_a": [
     "Bjor",
