@@ -200,10 +200,16 @@ temps : le cœur du mesher (17,1 → 2,55 ms/chunk), puis la **coquille**
 (`fill_shell_terrain` : strates, cavernes, branche dimension — la partie dont
 une divergence se paie en parois fantômes aux frontières) → **1,61 ms/chunk**
 au total. Parité 294/294 chunks vérifiée par `--probe-mesh-parite`, qui
-bascule les DEUX ports d'un seul A/B. Le prochain plafond du vol est la
-**génération** GDScript (`prepare_context`/`generate_chunk`, ~11 ms/chunk
-mesurés par `--probe-mesh`) — même recette applicable, dépendances bien plus
-larges (arbres, villes, rivières).
+bascule les DEUX ports d'un seul A/B (contextes de colonne compris — les
+hauteurs sont entières, la moindre dérive du terrain C++ s'y verrait au bloc
+près). Troisième temps le même jour : les **colonnes** (`sample_columns`, les
+324 `_sample_column` d'un contexte — terrain continental, climat, biomes,
+littoraux) mesurées à 41,4 % de la génération par la nouvelle sonde
+`--probe-gen` → **14,5 → 0,72 ms/colonne (×20)**, contexte 33,0 → 20,1
+ms/colonne. Hors ville et hors dimensions (le terrassement et les reliefs de
+dimension restent en GDScript de référence). Le plafond restant de la
+génération est **les arbres** (75 % du contexte : `TreeGenerator`, formes 3D)
+— chantier suivant, d'une autre nature (botanique procédurale, pas du bruit).
 
 ### Les 50 créatures, critère repassé au rouge — et pourquoi c'est assumé
 

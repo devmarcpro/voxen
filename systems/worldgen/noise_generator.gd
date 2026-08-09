@@ -1,5 +1,24 @@
 class_name NoiseGenerator
 extends RefCounted
+
+## Profilage par PHASE de la GÉNÉRATION (2026-08-09) — même patron que
+## ChunkMesher.profiling : activé par --probe-gen, coût nul sinon (un booléen
+## testé par phase). Le portage natif de la génération se décidera sur CES
+## chiffres, pas sur une intuition (règle G : mesurer avant d'optimiser).
+static var profiling := false
+static var phase_us := {}
+static var profiled_cols := 0
+static var profiled_chunks := 0
+
+
+static func reset_profile() -> void:
+	phase_us = {}
+	profiled_cols = 0
+	profiled_chunks = 0
+
+
+static func _phase_add(key: String, us: int) -> void:
+	phase_us[key] = int(phase_us.get(key, 0)) + us
 ## Générateur du monde par couches de bruit (étape D.3.2 — 3.0/E.2/G.4).
 ## - Une seule génération continue : les couches sont des fonctions f(x, z)
 ##   sur les coordonnées MONDE en blocs (E.2) — la cellule et la carte ne
@@ -705,12 +724,83 @@ func _init(seed_value: int, params: Dictionary = {}, dimension_id: StringName = 
 ## La bascule d'exécution est `ChunkMesher.use_native` : la sonde de parité
 ## (--probe-mesh-parite) couvre donc AUSSI ce port en basculant le mesher.
 var _native_shell: Object = null
+## Les COLONNES natives ne couvrent que l'overworld (et le monde plat) : les
+## dimensions gardent le chemin GDScript — voir voxen_columns.cpp.
+var _native_columns := false
 
 
 func _configure_native_shell() -> void:
 	if not (ClassDB.class_exists(&"VoxenNative") and ClassDB.can_instantiate(&"VoxenNative")):
 		return
 	_native_shell = ClassDB.instantiate(&"VoxenNative")
+	if _is_overworld:
+		_native_columns = true
+		_native_shell.configure_columns({
+			"world_seed": world_seed,
+			"p_flat": _p_flat,
+			"flat_height": FLAT_HEIGHT,
+			"p_relief": _p_relief,
+			"p_temp_offset": _p_temp_offset,
+			"p_hum_offset": _p_hum_offset,
+			"warp_amplitude": WARP_AMPLITUDE,
+			"cont_warp_amp": CONT_WARP_AMP,
+			"cont_detail_weight": CONT_DETAIL_WEIGHT,
+			"land_radius": float(_land_radius),
+			"world_radius": float(world_radius),
+			"lat_period": _lat_period,
+			"coast_cont": COAST_CONT,
+			"ocean_gain": OCEAN_GAIN,
+			"land_gain": LAND_GAIN,
+			"hill_amp": HILL_AMP,
+			"mtn_amp": MTN_AMP,
+			"canyon_depth": CANYON_DEPTH,
+			"seismic_threshold": SEISMIC_THRESHOLD,
+			"terrace_step": TERRACE_STEP,
+			"mesa_dry_bonus": MESA_DRY_BONUS,
+			"fjord_depth": FJORD_DEPTH,
+			"elev_ref": ELEV_REF,
+			"volcano_cell": VOLCANO_CELL,
+			"volcano_chance": VOLCANO_CHANCE,
+			"volcano_radius": VOLCANO_RADIUS,
+			"volcano_height": VOLCANO_HEIGHT,
+			"seed_volcano": SEED_VOLCANO,
+			"seed_biome_dither": SEED_BIOME_DITHER,
+			"lapse_ref_height": TEMPERATURE_LAPSE_REF_HEIGHT,
+			"lapse_rate": TEMPERATURE_LAPSE_RATE,
+			"rain_shadow_upwind": RAIN_SHADOW_UPWIND_OFFSET,
+			"rain_shadow_threshold": RAIN_SHADOW_THRESHOLD,
+			"rain_shadow_strength": RAIN_SHADOW_STRENGTH,
+			"orogeny_gradient_sample": OROGENY_GRADIENT_SAMPLE,
+			"biome_transition_margin": BIOME_TRANSITION_MARGIN,
+			"water_level": float(water_level),
+			"water_id": _water_id,
+			"marsh_id": _marsh_id,
+			"marsh_sub_id": _marsh_sub_id,
+			"sand_id": _sand_id,
+			"gravel_id": _gravel_id,
+			"cliff_id": _cliff_id,
+			"biome_count": _biome_count,
+			"forced_biome": _forced_biome_index,
+			"biome_min": _biome_min,
+			"biome_max": _biome_max,
+			"biome_surface": _biome_surface,
+			"biome_subsurface": _biome_subsurface,
+			"warp_x": _warp_x,
+			"warp_z": _warp_z,
+			"cont_warp_x": _cont_warp_x,
+			"cont_warp_z": _cont_warp_z,
+			"continent": _continent,
+			"altitude": _layers["altitude"],
+			"hills": _hills,
+			"ridged": _ridged,
+			"canyon": _canyon,
+			"fjord": _fjord,
+			"seismic": _layers["sismique"],
+			"temperature": _layers["temperature"],
+			"humidity": _layers["humidite"],
+			"mana": _layers["mana"],
+			"transition": _transition_noise,
+		})
 	_native_shell.configure_shell({
 		"is_overworld": _is_overworld,
 		"water_id": _water_id,
@@ -2826,21 +2916,39 @@ func prepare_context(col: Vector2i) -> Dictionary:
 	# layout au bord exact d une cellule — cas deja rarissime avant les
 	# capitales, et la couture qui en resulterait est bornee a un bloc de
 	# hauteur sur la ligne de partage. Assumé, documente, mesurable.
+	var t_phase := Time.get_ticks_usec() if profiling else 0
 	var city := city_covering(col.x * ChunkData.SIZE, col.y * ChunkData.SIZE)
+	if profiling:
+		_phase_add("ville_layout", Time.get_ticks_usec() - t_phase)
+		t_phase = Time.get_ticks_usec()
 	var h_min := 1 << 30
 	var h_max := -(1 << 30)
-	var i := 0
-	for z in 18:
-		for x in 18:
-			var r := _sample_column(bx + x, bz + z, city)
-			heights[i] = r["h"]
-			surfaces[i] = r["surf"]
-			subsurfaces[i] = r["sub"]
-			transitions[i] = r["trans"]
-			accents[i] = r["acc"]
-			h_min = mini(h_min, r["h"])
-			h_max = maxi(h_max, r["h"])
-			i += 1
+	var i := 0  # Réutilisé par le bloc rivières plus bas, quelle que soit la branche.
+	# COLONNES NATIVES (2026-08-09) : les 324 _sample_column en un appel C++ —
+	# 41,4 % de la génération d'après --probe-gen. HORS ville (le terrassement
+	# réécrit les colonnes du footprint, il reste sur le chemin GDScript de
+	# référence ci-dessous) et hors dimensions (_native_columns).
+	if _native_columns and _native_shell != null and ChunkMesher.use_native and city.is_empty():
+		var out: Array = _native_shell.sample_columns(col)
+		heights = out[0]
+		surfaces = out[1]
+		subsurfaces = out[2]
+		transitions = out[3]
+		h_min = out[4]
+		h_max = out[5]
+		# `accents` reste le tableau de zéros pré-alloué : l'overworld n'en a pas.
+	else:
+		for z in 18:
+			for x in 18:
+				var r := _sample_column(bx + x, bz + z, city)
+				heights[i] = r["h"]
+				surfaces[i] = r["surf"]
+				subsurfaces[i] = r["sub"]
+				transitions[i] = r["trans"]
+				accents[i] = r["acc"]
+				h_min = mini(h_min, r["h"])
+				h_max = maxi(h_max, r["h"])
+				i += 1
 
 	# Rivières (2026-07-20, E.2.2) : creusent le lit + EAU LOCALE (pas le
 	# niveau de mer global, voir _river_carve_at) — local_water[icol] vaut
@@ -2848,6 +2956,10 @@ func prepare_context(col: Vector2i) -> Dictionary:
 	# vaut la hauteur de terrain D'ORIGINE (avant creusement) : l'eau remplit
 	# le lit creusé jusqu'à ce niveau LOCAL, quelle que soit l'altitude —
 	# permet des rivières de montagne, pas seulement au niveau de la mer.
+	if profiling:
+		_phase_add("colonnes", Time.get_ticks_usec() - t_phase)
+		t_phase = Time.get_ticks_usec()
+
 	var local_water := PackedInt32Array()
 	local_water.resize(324)
 	for k in 324:
@@ -2869,6 +2981,10 @@ func prepare_context(col: Vector2i) -> Dictionary:
 						subsurfaces[i] = _gravel_id
 				i += 1
 
+	if profiling:
+		_phase_add("rivieres", Time.get_ticks_usec() - t_phase)
+		t_phase = Time.get_ticks_usec()
+
 	# Arbres (survol 3D, TreeGenerator) : toute base dont l'empreinte pourrait
 	# atteindre ce chunk-colonne (16×16 blocs, TREE_MAX_REACH de marge).
 	var col_min_x := col.x * ChunkData.SIZE
@@ -2885,6 +3001,10 @@ func prepare_context(col: Vector2i) -> Dictionary:
 		for pos: Vector3i in (tree["blocks"] as Dictionary):
 			top_max = maxi(top_max, pos.y)
 
+	if profiling:
+		_phase_add("arbres", Time.get_ticks_usec() - t_phase)
+		t_phase = Time.get_ticks_usec()
+
 	# Plantes de sol : même fenêtre que les arbres, footprint d'un seul bloc.
 	var plants := _plants_in_window(col_min_x, col_min_x + ChunkData.SIZE - 1, col_min_z, col_min_z + ChunkData.SIZE - 1)
 	if not city.is_empty():
@@ -2894,12 +3014,20 @@ func prepare_context(col: Vector2i) -> Dictionary:
 	for plant: Dictionary in plants:
 		top_max = maxi(top_max, int((plant["pos"] as Vector3i).y))
 
+	if profiling:
+		_phase_add("plantes", Time.get_ticks_usec() - t_phase)
+		t_phase = Time.get_ticks_usec()
+
 	# Cultures/flore en sous-voxels (2026-07-20, PlantGenerator) : même
 	# fenêtre, footprint d'un bloc (+ éventuellement celui du dessous pour
 	# les racines, couvert par la marge -1 déjà présente sur hmin ailleurs).
 	var cultures := _cultures_in_window(col_min_x, col_min_x + ChunkData.SIZE - 1, col_min_z, col_min_z + ChunkData.SIZE - 1)
 	for culture: Dictionary in cultures:
 		top_max = maxi(top_max, int((culture["base"] as Vector3i).y))
+
+	if profiling:
+		_phase_add("cultures", Time.get_ticks_usec() - t_phase)
+		t_phase = Time.get_ticks_usec()
 
 	# Les bâtiments montent au-dessus du plateau (B_HEIGHT+2) : élargir hmax
 	# pour que leur chunk aérien ne soit pas sauté par le chemin rapide (G.2).
@@ -2944,6 +3072,10 @@ func prepare_context(col: Vector2i) -> Dictionary:
 			var twz := col.y * ChunkData.SIZE + int(round(float(gz) / 2.0 * ChunkData.SIZE))
 			var tb: Array = biome_at(twx, twz).get("grass_tint", [1.0, 1.0, 1.0])
 			tint[gz * 3 + gx] = Color(tb[0], tb[1], tb[2])
+
+	if profiling:
+		_phase_add("reste", Time.get_ticks_usec() - t_phase)
+		profiled_cols += 1
 
 	return {
 		"h": heights, "surf": surfaces, "sub": subsurfaces, "trans": transitions,
@@ -3115,6 +3247,7 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 	var block_hosts := {}  # indice bloc → roche/terre hôte (masque minerai/herbe).
 	var chunk_bx := cpos.x * ChunkData.SIZE
 	var chunk_bz := cpos.z * ChunkData.SIZE
+	var t_phase := Time.get_ticks_usec() if profiling else 0
 
 	for z in ChunkData.SIZE:
 		for x in ChunkData.SIZE:
@@ -3192,6 +3325,10 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 				if host != 0:
 					block_hosts[x | (z << 4) | (y << 8)] = host
 
+	if profiling:
+		_phase_add("remplissage", Time.get_ticks_usec() - t_phase)
+		t_phase = Time.get_ticks_usec()
+
 	# Survol des arbres (TreeGenerator) : voxels 3D épars, superposés APRÈS
 	# le terrain (une branche/canopée ne remplace jamais un bloc plein sous
 	# elle, seulement l'air — évite qu'un arbre s'incruste dans une colline).
@@ -3217,6 +3354,10 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 			blocks.encode_u16(index << 1, tree["blocks"][pos])
 			if trunk_subdivs.has(pos):
 				extra_subdivs[index] = trunk_subdivs[pos]
+
+	if profiling:
+		_phase_add("arbres_stamp", Time.get_ticks_usec() - t_phase)
+		t_phase = Time.get_ticks_usec()
 
 	# Plantes de sol : posées seulement sur de l'air (jamais sous un arbre ni
 	# dans l'eau) — un simple bloc décoratif au-dessus de la surface.
@@ -3278,6 +3419,10 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 				if root_dominant != 0:
 					blocks.encode_u16(root_index << 1, root_dominant)
 					extra_subdivs[root_index] = root_grid
+
+	if profiling:
+		_phase_add("flore_stamp", Time.get_ticks_usec() - t_phase)
+		t_phase = Time.get_ticks_usec()
 
 	# Bâtiments de ville (point 5) : ce chunk-colonne = UNE tuile ; si c'est
 	# une tuile bâtiment, poser ses murs/toit (précalculés) dans la tranche
@@ -3354,6 +3499,10 @@ func generate_chunk(cpos: Vector3i, ctx: Dictionary) -> ChunkData:
 						id = DungeonTower._material_for(wx, wy, wz, local_y, world_seed, palette)
 					var index := ChunkData.index_of(lx, ly, lz)
 					blocks.encode_u16(index << 1, id)
+
+	if profiling:
+		_phase_add("structures", Time.get_ticks_usec() - t_phase)
+		profiled_chunks += 1
 
 	var data := ChunkData.new()
 	data.blocks = blocks
