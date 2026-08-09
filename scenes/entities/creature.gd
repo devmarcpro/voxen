@@ -1332,11 +1332,11 @@ func _sweep_strike(delta: float) -> void:
 	var functionality := combat_functionality()
 	if functionality.is_empty():
 		return
-	var stats := WeaponStats.derive(functionality, {})
 	var arm: float = PlayerBody.HAND_ARC_RADIUS
-	var draw: float = preload("res://scenes/entities/held_item.gd").PART_SCALE
-	# MÊME portée vulnérante que le joueur, lue au même endroit.
-	var span := WeaponStats.head_span(stats, arm, draw)
+	# MÊME portée vulnérante que le joueur, lue au même endroit — via le cache
+	# par fonctionnalité (_weapon_span) : le balayage court à la FRAME, refaire
+	# la dérivation d'arme à chaque frame était un des coûts du bench créatures.
+	var span := _weapon_span(functionality)
 	var grip := position + Vector3.UP * PlayerBody.COMBAT_GRIP_HEIGHT
 	# REPÈRE PRIS SUR LE LACET RÉELLEMENT AFFICHÉ. Depuis que la convention est
 	# corrigée (`_yaw_towards`), le corps regarde bien sa cible : la lame peut
@@ -1404,12 +1404,32 @@ func _sweep_strike(delta: float) -> void:
 ## C'est la même géométrie que celle du balayage (`WeaponStats.head_span`), donc
 ## la distance à laquelle elle décide d'attaquer est exactement celle à laquelle
 ## elle touche.
+## Portée (min, max) de la TÊTE d'arme, EN CACHE par fonctionnalité
+## (bench créatures 2026-08-09) : `WeaponStats.derive` est une dérivation
+## complète de dictionnaires, et elle était refaite à chaque TICK par créature
+## engagée (décision d'attaque) ET à chaque FRAME de frappe (balayage) — pour
+## une arme qui ne change qu'à l'équipement. La clé est l'id de fonctionnalité :
+## si l'arme change, l'id change et le cache se recalcule tout seul. La
+## sentinelle « ? » force le premier calcul même pour un id vide.
+var _span_cached := Vector2.ZERO
+var _span_cached_for := "?"
+
+
+func _weapon_span(functionality: Dictionary) -> Vector2:
+	var fid := String(combat.get("functionality", ""))
+	if fid == _span_cached_for:
+		return _span_cached
+	var stats := WeaponStats.derive(functionality, {})
+	_span_cached = WeaponStats.head_span(stats, PlayerBody.HAND_ARC_RADIUS,
+		preload("res://scenes/entities/held_item.gd").PART_SCALE)
+	_span_cached_for = fid
+	return _span_cached
+
+
 func _strike_reach(functionality: Dictionary) -> float:
 	if functionality.is_empty():
 		return 1.5
-	var stats := WeaponStats.derive(functionality, {})
-	return WeaponStats.head_span(stats, PlayerBody.HAND_ARC_RADIUS,
-		preload("res://scenes/entities/held_item.gd").PART_SCALE).y
+	return _weapon_span(functionality).y
 
 
 ## Avance d'un tick le jeu de jambes, et déplace la créature.
@@ -1564,13 +1584,29 @@ func _wall_at(x: float, z: float, logical_y: float) -> bool:
 	# est la surface. Prendre l'un pour l'autre faisait lire LE SOL comme un mur :
 	# la règle d'évasion s'activait alors à chaque pas et plus rien ne bloquait.
 	# La sonde annonçait « un mur arrête une créature » et mesurait 4 m parcourus.
+	# `loaded_only` : une créature dans un chunk évincé ne teste PAS les murs.
+	# Rien n'y est visible et rien n'y a été construit côté données — alors que
+	# chaque lecture y retombe sur le générateur (colonne entière). Mesuré au
+	# bench de vol du 2026-08-09 : 8 fps, tick d'IA 300-600 ms pour 10 créatures,
+	# entièrement dans ces lectures. Même règle que le repli de _ground_height.
+	#
+	# COLONNES DÉDOUBLONNÉES, PAS « LES 4 COINS » (bench créatures 2026-08-09 :
+	# 50 créatures actives = 29 ms de tick, dont l'essentiel ici). L'empreinte
+	# fait 0,6 bloc de large : les coins tombent dans 1, 2 ou 4 colonnes — les
+	# balayer par bornes entières lit chaque colonne UNE fois (mêmes blocs
+	# testés, même verdict), et supprime les tableaux littéraux qui étaient
+	# alloués à CHAQUE appel par les `for ... in [...]`.
 	var foot_by := floori(logical_y + 0.5 + 0.001)
-	for level in [foot_by, foot_by + 1]:
-		for corner_x in [-WALL_RADIUS, WALL_RADIUS]:
-			for corner_z in [-WALL_RADIUS, WALL_RADIUS]:
-				if WorldManager.is_body_blocking(
-						Vector3i(floori(x + corner_x), level, floori(z + corner_z))):
-					return true
+	var bx0 := floori(x - WALL_RADIUS)
+	var bx1 := floori(x + WALL_RADIUS)
+	var bz0 := floori(z - WALL_RADIUS)
+	var bz1 := floori(z + WALL_RADIUS)
+	for bx in range(bx0, bx1 + 1):
+		for bz in range(bz0, bz1 + 1):
+			if WorldManager.is_body_blocking(Vector3i(bx, foot_by, bz), true):
+				return true
+			if WorldManager.is_body_blocking(Vector3i(bx, foot_by + 1, bz), true):
+				return true
 	return false
 
 
@@ -1581,10 +1617,11 @@ func _wall_at(x: float, z: float, logical_y: float) -> bool:
 ## joueur ne doit jamais être déplacé par une décision qu'il n'a pas prise.
 func _push_out_of_bodies() -> void:
 	var here := logical_position
-	for other in CreatureManager.creatures:
+	# GRILLE SPATIALE (2026-08-09, même raison que _separation). Le rayon de
+	# requête prend une marge : `here` dérive au fil des poussées successives,
+	# et la requête est faite UNE fois sur la position de départ.
+	for other in CreatureManager.neighbours_within(here, BODY_RADIUS * 2.0 + 1.0):
 		if other == self or not is_instance_valid(other) or other.is_dead():
-			continue
-		if other.dimension != dimension:
 			continue
 		here = _pushed_out(here, other.logical_position, BODY_RADIUS * 2.0)
 	# LES JOUEURS OCCUPENT DE LA PLACE EUX AUSSI. Sans ça, une créature
@@ -1629,12 +1666,12 @@ func _pushed_out(point: Vector3, body: Vector3, min_gap: float) -> Vector3:
 
 func _separation() -> Vector3:
 	var push := Vector3.ZERO
-	# Ne parcourt QUE les créatures de la dimension active : les autres sont
-	# gelées et n'occupent aucun espace ici.
-	for other in CreatureManager.creatures:
+	# GRILLE SPATIALE et non la liste entière (2026-08-09) : seuls les voisins
+	# à portée de PERSONAL_SPACE peuvent pousser, et la grille ne contient que
+	# les créatures vivantes de la dimension active — les tests de dimension et
+	# de mort restent par sécurité (une créature peut mourir en cours de tick).
+	for other in CreatureManager.neighbours_within(logical_position, PERSONAL_SPACE):
 		if other == self or not is_instance_valid(other) or other.is_dead():
-			continue
-		if other.dimension != dimension:
 			continue
 		var away: Vector3 = logical_position - other.logical_position
 		away.y = 0.0
@@ -1715,6 +1752,12 @@ func _ground_height() -> float:
 	var water_id: int = GameData.material_runtime_ids.get("eau", -1)
 	var crosses := GameData.cross_mask
 	for wy in range(start + 1, start - 9, -1):
+		# Ligne non chargée = air (même règle que _wall_at/_surface_under) : la
+		# descente peut traverser un chunk enterré jamais stocké, et chaque
+		# lecture y régénérerait la colonne alors que le repli procédural en fin
+		# de fonction donne déjà la bonne réponse.
+		if not WorldManager.is_block_loaded(Vector3i(bx, wy, bz)):
+			continue
 		var id := WorldManager.block_at_world(Vector3i(bx, wy, bz))
 		# LES PLANTES NE SONT PAS DU SOL. Sans ce test, un villageois qui traverse
 		# une prairie marche SUR les fleurs, un demi-bloc trop haut, et flotte.
