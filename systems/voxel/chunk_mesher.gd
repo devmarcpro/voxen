@@ -40,6 +40,27 @@ static func _make_native() -> Object:
 	return null
 
 
+## Teinte d'herbe au sommet (x, z locaux au chunk) — MIROIR de `tint_color()`
+## du natif, et réplique de l'échantillonnage de l'ancienne texture 3×3
+## filter_linear/clamp : uv = clamp(p/16) ; c = clamp(uv*3 - 0.5, 0, 2) ;
+## interpolation bilinéaire entre les texels encadrants. COLOR = (lumière,
+## teinte.rgb) — le shader lit la lumière en r et la teinte en gba.
+static func _tint_at(tint: PackedColorArray, level: float, x: float, z: float) -> Color:
+	if tint.is_empty():
+		return Color(level, 1.0, 1.0, 1.0)
+	var cx := clampf(clampf(x / 16.0, 0.0, 1.0) * 3.0 - 0.5, 0.0, 2.0)
+	var cz := clampf(clampf(z / 16.0, 0.0, 1.0) * 3.0 - 0.5, 0.0, 2.0)
+	var ix := mini(int(cx), 1)
+	var iz := mini(int(cz), 1)
+	var fx := cx - float(ix)
+	var fz := cz - float(iz)
+	var i00 := iz * 3 + ix
+	var top := tint[i00].lerp(tint[i00 + 1], fx)
+	var bottom := tint[i00 + 3].lerp(tint[i00 + 4], fx)
+	var m := top.lerp(bottom, fz)
+	return Color(level, m.r, m.g, m.b)
+
+
 static func reset_profile() -> void:
 	phase_us = {"coquille": 0, "interieur": 0, "greedy": 0, "subdiv": 0}
 	profiled_chunks = 0
@@ -127,7 +148,7 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 	# de la donnée GDScript, et elles sont rares). Le reste de cette fonction
 	# est le chemin de RÉFÉRENCE, exécuté quand la DLL n'est pas là.
 	if use_native and _native != null:
-		return _mesh_chunk_native(cpos, data, generator, pad, uniform, fine)
+		return _mesh_chunk_native(cpos, data, generator, ctx, pad, uniform, fine)
 
 	# Intérieur + nombre de blocs solides par niveau Y (pour les sauts rapides).
 	var level_solid := PackedInt32Array()
@@ -246,6 +267,10 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 	var has_host := not block_host.is_empty()
 	var light_empty := light.is_empty()
 	var inv_light := 1.0 / float(LightField.MAX_LEVEL)
+	# Teinte d'herbe du biome (grille 3×3 de la colonne), cuite PAR SOMMET dans
+	# COLOR.gba (2026-08-09) — c'est ce qui a permis le matériau PARTAGÉ entre
+	# chunks. Vide (donjon/dimension sans ctx) = blanc.
+	var tint: PackedColorArray = ctx.get("tint", PackedColorArray())
 
 	for d in 3:
 		var u := (d + 1) % 3
@@ -411,11 +436,13 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 						if positive:
 							lit_index += sd
 						level = float(light[lit_index]) * inv_light
-					var vertex_color := Color(level, level, level, 1.0)
+					# Teinte évaluée PAR COIN (les x/z des sommets sont intacts,
+					# la chute des liquides ne touche que y).
 					for k in 4:
 						normals[vc + k] = normal
 						uvs[vc + k] = uv
-						colors[vc + k] = vertex_color
+						colors[vc + k] = _tint_at(tint, level,
+								vertices[vc + k].x, vertices[vc + k].z)
 					indices[ic] = vc
 					indices[ic + 1] = vc + 1
 					indices[ic + 2] = vc + 2
@@ -462,7 +489,6 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 			var q := 0
 			var sub_level := float(LightField.level_at(light, Vector3i(bx, by, bz))) \
 					/ float(LightField.MAX_LEVEL)
-			var sub_color := Color(sub_level, sub_level, sub_level, 1.0)
 			while q < quads.size():
 				var d := quads[q]
 				var cut := quads[q + 1]
@@ -510,9 +536,10 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 					normals[vc + k] = normal
 					uvs[vc + k] = uv
 					# Lumiere du BLOC hote (G.3) : une sous-grille est contenue dans
-					# un bloc, elle prend son eclairage. Sans cette ecriture les
-					# sommets garderaient le noir par defaut.
-					colors[vc + k] = sub_color
+					# un bloc, elle prend son eclairage — et la teinte de biome de
+					# sa position, comme les faces de bloc.
+					colors[vc + k] = _tint_at(tint, sub_level,
+							vertices[vc + k].x, vertices[vc + k].z)
 				indices[ic] = vc
 				indices[ic + 1] = vc + 1
 				indices[ic + 2] = vc + 2
@@ -547,7 +574,7 @@ static func mesh_chunk(cpos: Vector3i, data: ChunkData, generator: NoiseGenerato
 ## phases intérieur/croix/lumière/greedy/subdiv, puis rejoint le MÊME code de
 ## plantes et d'assemblage que le chemin GDScript. Le pad arrive avec sa
 ## coquille déjà remplie (la phase « coquille » reste mesurée par l'appelant).
-static func _mesh_chunk_native(cpos: Vector3i, data: ChunkData, generator: NoiseGenerator, pad: PackedInt32Array, uniform: bool, fine: bool) -> Array:
+static func _mesh_chunk_native(cpos: Vector3i, data: ChunkData, generator: NoiseGenerator, ctx: Dictionary, pad: PackedInt32Array, uniform: bool, fine: bool) -> Array:
 	var out: Array = _native.mesh_core(
 		pad,
 		PackedByteArray() if uniform else data.blocks,
@@ -555,6 +582,7 @@ static func _mesh_chunk_native(cpos: Vector3i, data: ChunkData, generator: Noise
 		data.subdivs, data.block_host,
 		GameData.cross_mask, GameData.hidden_mask, GameData.liquid_mask,
 		GameData.emission_by_runtime, GameData.transmits_by_runtime,
+		ctx.get("tint", PackedColorArray()),
 		profiling)
 	var vertices: PackedVector3Array = out[0]
 	var normals: PackedVector3Array = out[1]
@@ -631,13 +659,13 @@ static func _append_plants(arrs: Array, vc: int, ic: int, plants: Array[Vector4i
 		var lit := 1.0
 		if not light_empty:
 			lit = float(light[(plant.y + 1) * SY + (plant.z + 1) * SZ + plant.x + 1]) * inv_light
-		# ENCODAGE : la lumière tient dans `r` (le shader ne lit que ça), donc
-		# `g`, `b` et `a` sont LIBRES. On y met l'UV du sprite et un drapeau —
-		# plutôt qu'un second canal d'UV, qui aurait coûté huit octets par
-		# sommet SUR TOUT LE MONDE, plantes ou pas, dans un jeu de voxels.
-		# `a = 0.5` dit « ce sommet est une plante » ; 1.0 est le cas normal.
+		# ENCODAGE (revu 2026-08-09) : la lumière tient dans `r`, l'UV du sprite
+		# dans `g`/`b` — plutôt qu'un second canal d'UV, qui aurait coûté huit
+		# octets par sommet SUR TOUT LE MONDE, plantes ou pas. Le drapeau
+		# « plante », lui, est l'id NÉGATIF dans UV.x : l'ancien drapeau
+		# `COLOR.a = 0.5` a cédé son canal à la teinte d'herbe par sommet.
 		var atlas_cell := float(int(plant_atlas_index.get(plant.w, 0)))
-		var plant_uv := Vector2(float(plant.w), atlas_cell)
+		var plant_uv := Vector2(-float(plant.w), atlas_cell)
 		var centre := Vector3(float(plant.x) + 0.5, float(plant.y), float(plant.z) + 0.5)
 		for quad: PackedVector3Array in quads:
 			var a := centre + quad[0]
@@ -678,7 +706,7 @@ static func _append_plants(arrs: Array, vc: int, ic: int, plants: Array[Vector4i
 					normals[vc + k] = face_normal
 					uvs[vc + k] = plant_uv
 					var cuv: Vector2 = corner_uv[order[k]]
-					colors[vc + k] = Color(lit, cuv.x, cuv.y, 0.5)
+					colors[vc + k] = Color(lit, cuv.x, cuv.y, 1.0)
 				indices[ic] = vc
 				indices[ic + 1] = vc + 1
 				indices[ic + 2] = vc + 2

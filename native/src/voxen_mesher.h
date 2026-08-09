@@ -38,6 +38,9 @@ public:
 	//   [7] PackedInt64Array phase_us [interieur, greedy, subdiv] (si profiling)
 	// `pad` arrive avec la coquille déjà remplie (fill_shell GDScript) ; les
 	// blocs intérieurs sont posés ici.
+	// `tint9` : teinte d'herbe du biome, 9 échantillons (grille 3×3 de la
+	// colonne, ctx["tint"]) — cuite PAR SOMMET dans COLOR.gba (2026-08-09, ce
+	// qui a permis le matériau partagé). Vide = blanc (dimensions/donjons).
 	Array mesh_core(const PackedInt32Array &pad_in,
 			const PackedByteArray &blocks,
 			bool uniform, int uniform_id, bool fine,
@@ -48,6 +51,7 @@ public:
 			const PackedByteArray &liquid_mask,
 			const PackedByteArray &emission,
 			const PackedByteArray &transmits,
+			const PackedColorArray &tint9,
 			bool profiling);
 };
 

@@ -86,11 +86,10 @@ func _setup() -> bool:
 	_viewport.add_child(cam)
 
 	_material = src.duplicate() as ShaderMaterial
-	# Herbe : teinte neutre (blanc) — pas de biome pour une icône.
-	var white := Image.create(1, 1, false, Image.FORMAT_RGB8)
-	white.fill(Color.WHITE)
-	_material.set_shader_parameter("grass_tint_map", ImageTexture.create_from_image(white))
-	_material.set_shader_parameter("chunk_origin", Vector3.ZERO)
+	# Herbe : teinte neutre garantie SANS rien poser (2026-08-09) — la teinte
+	# vit par sommet (COLOR.gba) et ce mesh ne fournit pas de tableau COLOR :
+	# la couleur par défaut est blanche, donc l'icône est déjà non teintée.
+	# L'origine du chunk se lit dans MODEL_MATRIX (instance à l'origine ici).
 
 	_mesh_instance = MeshInstance3D.new()
 	_viewport.add_child(_mesh_instance)

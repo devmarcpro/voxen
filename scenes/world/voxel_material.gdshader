@@ -19,7 +19,6 @@ uniform sampler2D style_map : filter_nearest, repeat_disable;
 uniform float world_seed = 0.0;
 uniform int herbe_id = -1;
 uniform int eau_id = -1;
-uniform sampler2D grass_tint_map : filter_linear, repeat_disable;
 // ATLAS DES PLANTES (2026-08-04). Chaque espèce en croix y a une cellule de
 // 16 px de large — EXACTEMENT la grille de `PIXELS` ci-dessous, pour qu'une
 // plante ait le même grain qu'un bloc posé à côté d'elle. `filter_nearest` est
@@ -34,7 +33,6 @@ uniform int plant_atlas_rows = 1;
 // chacune sa couleur propre, et un roux d'automne unique les effacerait toutes.
 // Blanc = été, c'est-à-dire la couleur telle que les données la décrivent.
 uniform vec3 season_tint = vec3(1.0);
-uniform float chunk_size = 16.0;
 uniform float bump_strength = 0.35;
 // Cycle jour/nuit (E.21/G.3) : le terrain est UNSHADED, il ignore donc
 // totalement la lumière directionnelle — changer l'énergie du soleil ne
@@ -47,11 +45,17 @@ uniform vec3 night_tint = vec3(0.42, 0.50, 0.78);
 // sources de lumière locales (torches, G.3) n'existent pas — sinon le jeu
 // deviendrait injouable la nuit au lieu d'être dangereux.
 uniform float night_floor = 0.30;
-// Origine MONDE du chunk (en blocs, multiple de 16) — permet de calculer la
-// texture à partir des coords LOCALES précises (2026-07-26) : à grande distance
-// de l'origine, `fract(world_pos)` perdait toute précision → la texture nageait
+// L'origine MONDE du chunk (en blocs, multiple de 16) était un uniform par
+// chunk — c'était, avec la texture de teinte, ce qui imposait UN MATÉRIAU
+// DUPLIQUÉ PAR CHUNK, soit ~3 ms/frame de rebinds driver mesurés (2026-08-09)
+// et un bug : les uniforms d'ambiance (daylight) poussés sur le matériau
+// source ne se propageaient pas aux duplicatas déjà installés. Elle se lit
+// désormais dans MODEL_MATRIX (la position de l'instance EST l'origine du
+// chunk, posée par WorldManager), le matériau est PARTAGÉ par tous les chunks.
+// La raison d'être reste la même qu'en 2026-07-26 : calculer la texture à
+// partir des coords LOCALES précises, car à grande distance de l'origine
+// `fract(world_pos)` perdait toute précision → la texture nageait
 // (« tout tremble »). `fract(origine_entière + local) == fract(local)`.
-uniform vec3 chunk_origin = vec3(0.0);
 
 const float PIXELS = 16.0;
 const float DETAIL_NEAR = 26.0;
@@ -77,15 +81,17 @@ varying vec3 v_local;      // Position LOCALE au chunk (0..16), précise.
 varying vec3 v_world_normal;
 varying flat float v_material;
 varying flat float v_host;
-varying vec2 v_tint_uv;
+varying flat vec3 v_chunk_origin;
 
 void vertex() {
 	v_world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_local = VERTEX;
 	v_world_normal = (MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz;
+	// UV.x NÉGATIF = sommet de PLANTE (encodage 2026-08-09, voir le bloc plante
+	// en fin de fragment) ; l'id matériau est sa valeur absolue.
 	v_material = UV.x;
 	v_host = UV.y;
-	v_tint_uv = clamp(VERTEX.xz / chunk_size, 0.0, 1.0);
+	v_chunk_origin = MODEL_MATRIX[3].xyz;
 }
 
 uint pcg(uint v) {
@@ -275,7 +281,10 @@ float bump_height(vec2 px, uint bs, int style, vec2 uv, bool top) {
 }
 
 void fragment() {
-	int id = int(round(v_material));
+	// `abs` : un id de plante arrive NÉGATIF (drapeau) — le chemin terrain qui
+	// suit calcule alors pour rien (le bloc plante en fin de fonction écrase
+	// tout), mais il ne doit jamais adresser la palette hors bornes.
+	int id = abs(int(round(v_material)));
 	int host = int(round(v_host));
 	vec3 base = texelFetch(palette, ivec2(id, 0), 0).rgb;
 	// Roche HÔTE : la roche encaissante pour un FILON généré (host défini), sinon
@@ -325,7 +334,11 @@ void fragment() {
 	float dist = length(v_world_pos - CAMERA_POSITION_WORLD);
 	float detail = 1.0 - smoothstep(DETAIL_NEAR, DETAIL_FAR, dist);
 
-	vec3 green = base * texture(grass_tint_map, v_tint_uv).rgb;  // herbe : teinte biome
+	// Herbe : teinte de biome CUITE PAR SOMMET par le mesher (COLOR.gba — ces
+	// canaux sont libres sur le terrain, les plantes se signalant désormais par
+	// un id négatif dans UV.x). Remplace l'ancienne texture 3×3 par chunk, qui
+	// imposait un matériau dupliqué par chunk (2026-08-09).
+	vec3 green = base * vec3(COLOR.g, COLOR.b, COLOR.a);
 	// Le feuillage vire avec la saison. On teinte `base` AVANT toute texture
 	// procédurale, pour que le grain de feuille suive la couleur au lieu de
 	// rester figé sur celle de l'été.
@@ -336,7 +349,7 @@ void fragment() {
 	} else {
 		// Coordonnée de bloc MONDE = origine entière du chunk + bloc local
 		// (précis même très loin de l'origine).
-		ivec3 bc = ivec3(round(chunk_origin)) + ivec3(floor(v_local - v_world_normal * 0.5));
+		ivec3 bc = ivec3(round(v_chunk_origin)) + ivec3(floor(v_local - v_world_normal * 0.5));
 		uint bs = ms ^ pcg(uint(bc.x) * 2654435761u ^ pcg(uint(bc.y) * 40503u ^ pcg(uint(bc.z))));
 
 		vec3 c;
@@ -383,10 +396,12 @@ void fragment() {
 
 	// PLANTE : un quad plat qui porte une IMAGE, pas une face de bloc.
 	//
-	// Le mailleur l'a signalée par `COLOR.a = 0.5` et a rangé l'UV du sprite
-	// dans `COLOR.gb` — la lumière n'occupant que `COLOR.r`, ces canaux étaient
-	// libres, et s'en servir évite d'ajouter un second jeu d'UV à CHAQUE sommet
-	// du monde pour le bénéfice des seules plantes.
+	// Le mailleur l'a signalée par un id NÉGATIF dans UV.x (2026-08-09 — le
+	// drapeau vivait avant dans COLOR.a, cédé à la teinte d'herbe par sommet)
+	// et a rangé l'UV du sprite dans `COLOR.gb` — la lumière n'occupant que
+	// `COLOR.r`, ces canaux sont libres sur un sommet de plante, et s'en servir
+	// évite d'ajouter un second jeu d'UV à CHAQUE sommet du monde pour le
+	// bénéfice des seules plantes.
 	//
 	// `discard` sur les pixels transparents : c'est LUI qui donne la silhouette.
 	// Sans lui, la plante serait le rectangle plein qu'elle est géométriquement.
@@ -398,7 +413,7 @@ void fragment() {
 	// calculé plutôt que de court-circuiter le calcul ; quelques instructions
 	// gaspillées sur les seuls pixels de plante, contre une restructuration de
 	// quatre-vingt-dix lignes.
-	if (COLOR.a < 0.75) {
+	if (v_material < -0.5) {
 		int cell = int(round(v_host));
 		vec2 grid = vec2(float(plant_atlas_columns), float(plant_atlas_rows));
 		vec2 cell_xy = vec2(float(cell % plant_atlas_columns),

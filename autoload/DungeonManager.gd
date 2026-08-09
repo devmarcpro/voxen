@@ -130,7 +130,6 @@ var _dungeon_meshes := {}      # Vector3i -> MeshInstance3D
 ## Diff persistant par ÉTAGE : Vector3i (cellule.x, cellule.y, profondeur) -> { Vector3i chunk -> { indice -> id runtime } }.
 var _dungeon_edits := {}
 var _dungeon_root: Node3D
-var _dungeon_material: ShaderMaterial
 
 ## --- Ambiance de la dimension (2026-07-21, retour visuel) ---
 ## Sans ça, une salle close est éclairée par l'AMBIANCE DU CIEL de l'overworld :
@@ -876,16 +875,13 @@ func _boundary_blocks(data: ChunkData) -> Dictionary:
 	return out
 
 
-## Matériau des meshes de donjon : celui du monde (palette + bruit par voxel),
-## avec une teinte d'herbe neutre (aucune herbe en donjon, mais le shader
-## attend la texture).
+## Matériau des meshes de donjon : CELUI du monde, partagé (2026-08-09). Le
+## duplicata n'existait que pour poser une texture de teinte d'herbe neutre ;
+## la teinte vivant désormais par sommet (COLOR.gba, blanc par défaut quand le
+## ctx n'en fournit pas — cas du donjon), il ne servait plus qu'à FIGER le
+## daylight du donjon à l'instant de son premier maillage. Partager corrige ça.
 func _dimension_material() -> ShaderMaterial:
-	if _dungeon_material == null:
-		_dungeon_material = WorldManager.base_material().duplicate() as ShaderMaterial
-		var img := Image.create_empty(1, 1, false, Image.FORMAT_RGBAF)
-		img.set_pixel(0, 0, Color(1, 1, 1))
-		_dungeon_material.set_shader_parameter("grass_tint_map", ImageTexture.create_from_image(img))
-	return _dungeon_material
+	return WorldManager.base_material()
 
 
 # --- Cellules donjon / nettoyage ---
