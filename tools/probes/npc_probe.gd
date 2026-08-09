@@ -531,3 +531,27 @@ func _check_identity() -> void:
 	print("[%s] exemple : %s, %d ans, %s/%s, rôle « %s », de %s, %d objet(s)" % [
 		TAG, sample["affichage"], int(sample["age"]), sample["race"], sample["classe"],
 		sample["role"], sample["origine"], (sample["equipement"] as Array).size()])
+
+	# LA CRÉATURE EN JEU PORTE-T-ELLE CETTE IDENTITÉ ? Tout ce qui précède
+	# vérifie le ROSTER, c'est-à-dire le papier. Si rien ne la transmet à
+	# l'habitant qu'on croise, le village reste anonyme à l'écran et aucune de
+	# ces assertions ne s'en apercevrait.
+	var probe: Node = CreatureManager.spawn("villageois",
+		player.get_position_for_ai() + Vector3(3, 0, 0))
+	if probe != null:
+		probe.call("apply_identity", roster[0])
+		var shown := String(probe.call("display_name"))
+		var line := String(probe.call("identity_line"))
+		_check("un habitant croisé porte SON nom, pas celui de son espèce",
+			shown == String(roster[0]["affichage"]), shown)
+		_check("et sa ligne de présentation dit son âge, son rôle et son origine",
+			line.contains(String(roster[0]["origine"])), line)
+		# UNE BÊTE N'A PAS DE NOM, et doit retomber sur son espèce — sans ce
+		# repli, un sanglier s'appellerait « » et la ligne serait vide.
+		var beast: Node = CreatureManager.spawn("bandit",
+			player.get_position_for_ai() + Vector3(5, 0, 0))
+		if beast != null:
+			_check("une créature sans identité garde le nom de son espèce",
+				String(beast.call("display_name")) != "" and String(beast.call("identity_line")) == "")
+			CreatureManager.despawn(beast)
+		CreatureManager.despawn(probe)

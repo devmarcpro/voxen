@@ -1330,3 +1330,5 @@ ui.toast.duel_demande,Un joueur vous propose un duel (Y pour accepter)
 ui.toast.duel_engage,Duel engagé
 ui.toast.duel_envoye,Demande de duel envoyée
 ui.toast.duel_personne,Personne à provoquer
+ui.pnj.age,{age} ans
+ui.pnj.origine,de {lieu}

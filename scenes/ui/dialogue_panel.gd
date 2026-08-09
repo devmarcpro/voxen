@@ -133,11 +133,21 @@ func _refresh(new_line: bool) -> void:
 	if _creature == null or not is_instance_valid(_creature):
 		close()
 		return
-	_title.text = tr(String(_creature.display_name_key))
+	# LE NOM DE LA PERSONNE, PAS CELUI DE SON ESPÈCE (2026-08-09). On lisait
+	# `display_name_key`, donc « Villageois » pour tout le monde : le village
+	# avait des noms, des âges et des origines, et le dialogue affichait une
+	# étiquette d'espèce. `display_name()` retombe sur l'espèce pour une bête,
+	# qui n'a effectivement pas de nom.
+	_title.text = String(_creature.call("display_name"))
 	var tier: String = _creature.call("relation_tier")
+	# ÂGE, RÔLE ET ORIGINE sous le nom : c'est ce qui distingue deux villageois
+	# l'un de l'autre, et ce qui donne prise à une conversation.
+	var line := String(_creature.call("identity_line"))
 	var job := String(_creature.job)
+	if line == "":
+		line = "" if job == "" else tr("job." + job)
 	_subtitle.text = "%s%s" % [
-		"" if job == "" else tr("job." + job) + " · ",
+		"" if line == "" else line + " · ",
 		tr("ui.dialogue.relation").format({"palier": tr("relation." + tier)})]
 
 	if new_line:

@@ -1330,3 +1330,5 @@ ui.toast.duel_demande,A player challenges you to a duel (Y to accept)
 ui.toast.duel_engage,Duel begun
 ui.toast.duel_envoye,Duel request sent
 ui.toast.duel_personne,Nobody to challenge
+ui.pnj.age,{age} years old
+ui.pnj.origine,from {lieu}

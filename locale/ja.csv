@@ -1330,3 +1330,5 @@ ui.toast.duel_demande,決闘を申し込まれた（Yで受ける）
 ui.toast.duel_engage,決闘開始
 ui.toast.duel_envoye,決闘を申し込んだ
 ui.toast.duel_personne,相手がいない
+ui.pnj.age,{age}歳
+ui.pnj.origine,{lieu}の出

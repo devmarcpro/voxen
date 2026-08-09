@@ -610,6 +610,7 @@ func _drain_spawn_queue() -> void:
 		creature.kingdom_id = String(entry["kingdom_id"])
 		creature.home_building = entry["home"]
 		creature.work_place = entry["work"]
+		creature.apply_identity(entry.get("identite", {}))
 		(_populated_villages[cell] as Array).append(creature)
 
 
@@ -756,6 +757,11 @@ func _populate_village(cell: Vector2i, plan: Dictionary) -> void:
 			"kingdom_id": kingdom_id,
 			"home": Vector3(home),
 			"work": Vector3(VillagePopulation.work_position(cell, plan)),
+			# L'IDENTITÉ VOYAGE AVEC L'HABITANT. Le roster la connaissait, la
+			# créature l'ignorait : un villageois croisé en jeu n'avait ni nom,
+			# ni âge, ni origine — toute la démographie existait sur le papier et
+			# nulle part à l'écran.
+			"identite": entry,
 		})
 	# LE VILLAGE EST MARQUÉ PEUPLÉ TOUT DE SUITE, avec une liste encore vide :
 	# c'est cette entrée qui empêche le tick suivant de re-mettre en file le même

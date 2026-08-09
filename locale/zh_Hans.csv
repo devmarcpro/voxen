@@ -1330,3 +1330,5 @@ ui.toast.duel_demande,有玩家向你发起决斗（按Y接受）
 ui.toast.duel_engage,决斗开始
 ui.toast.duel_envoye,已发出决斗邀请
 ui.toast.duel_personne,没有可挑战的人
+ui.pnj.age,{age}岁
+ui.pnj.origine,来自{lieu}

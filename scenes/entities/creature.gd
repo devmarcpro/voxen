@@ -188,6 +188,15 @@ var _provoked := false
 var village_cell := Vector2i(1 << 30, 1 << 30)
 ## Poste de travail (VillagePopulation.JOBS), "" si aucun.
 var job := ""
+## IDENTITÉ COMPLÈTE de l'habitant (2026-08-09) : prénom, nom, genre, race,
+## classe, rôle, âge, origine, foyer, parenté, équipement, inventaire. Vide pour
+## une créature sauvage, qui n'est le membre d'aucune communauté.
+##
+## PORTÉE ICI ET PAS SEULEMENT DANS LE ROSTER. Le roster la calculait déjà, mais
+## rien ne la donnait à la créature : le PNJ qu'on croisait en jeu n'avait ni
+## nom, ni âge, ni origine, et toute cette démographie n'existait que sur le
+## papier. Le dialogue, la fiche et les rumeurs la lisent maintenant ici.
+var identity: Dictionary = {}
 ## Domicile et lieu de travail en coordonnées monde. Vector3.INF = aucun.
 var home_building := Vector3.INF
 var work_place := Vector3.INF
@@ -366,6 +375,56 @@ func _standing() -> float:
 	if player == null or player.reputation == null:
 		return 0.0
 	return player.reputation.standing_with(social_key, village_cell, race_id, kingdom_id)
+
+
+## Pose l'identité d'un habitant et lui donne son ÉQUIPEMENT VISIBLE.
+##
+## L'arme portée vient de l'équipement de sa classe, assemblée par la même
+## fonction que celle du joueur et des avatars distants (`WeaponPreview`) : ce
+## qu'on voit dans la main d'un forgeron est ce qu'on verrait dans la sienne.
+## NOMMÉE `apply_identity` ET NON `set_identity` : `Node3D` porte déjà un
+## `set_identity()` natif (identité de scène), et le redéfinir donne un
+## avertissement traité en erreur — le moteur ne l aurait de toute façon
+## jamais appelée comme on l entend ici.
+func apply_identity(data: Dictionary) -> void:
+	identity = data
+	var carried: Array = data.get("equipement", [])
+	if carried.is_empty() or _body == null or not _body.has_method("attach_weapon_model"):
+		return
+	var item: Dictionary = GameData.items.get(String(carried[0]), {})
+	if item.is_empty():
+		return
+	# MATÉRIAUX MODESTES : un villageois ne porte pas d'acier de maître. Ils
+	# décident de la teinte, donc de ce qu'on lit à distance.
+	var model := WeaponPreview.assemble(item, {"bois": "pin", "minerai": "cuivre"})
+	if model != null:
+		_body.attach_weapon_model(model,
+				preload("res://scenes/entities/held_item.gd").PART_SCALE)
+
+
+## Nom affichable de cette créature : son nom complet si c'est quelqu'un, le nom
+## d'espèce sinon. Un point d'entrée unique — le dialogue, la fiche et les
+## journaux doivent tous dire la même chose.
+func display_name() -> String:
+	var shown := String(identity.get("affichage", ""))
+	return shown if shown != "" else tr(display_name_key)
+
+
+## Ligne de présentation : « 31 ans · garde · de Borgrad ». Vide pour une
+## créature sans identité.
+func identity_line() -> String:
+	if identity.is_empty():
+		return ""
+	var parts: Array[String] = []
+	if int(identity.get("age", 0)) > 0:
+		parts.append(tr("ui.pnj.age").format({"age": str(int(identity["age"]))}))
+	var role := String(identity.get("role", ""))
+	if role != "":
+		parts.append(tr("job.%s" % role))
+	var origin := String(identity.get("origine", ""))
+	if origin != "":
+		parts.append(tr("ui.pnj.origine").format({"lieu": origin}))
+	return " · ".join(parts)
 
 
 ## Palier de relation, pour l'affichage et les règles (Reputation.tier).
