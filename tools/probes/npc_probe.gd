@@ -37,6 +37,8 @@ func run() -> void:
 	_check_identity()
 	_check_collision()
 	await _check_bodies_separate()
+	_check_civilians_stand_their_ground()
+	_check_walls_stop_creatures()
 	finish(_ok, TAG)
 
 
@@ -656,3 +658,87 @@ func _check_bodies_separate() -> void:
 			from_player >= b.BODY_RADIUS * 2.0 - 0.01, "écart %.2f m" % from_player)
 	_check("séparation des corps : le joueur n'a pas bougé",
 			CreatureManager.last_player_position.is_equal_approx(player_pos))
+
+
+## UN VILLAGEOIS NE DÉTALE PAS À VOTRE APPROCHE (2026-08-09, signalé en jeu).
+##
+## Régression du passage des comportements en données : le profil `civil` porte
+## `fuit: true`, ce qui voulait dire « fuyard » là où l'on voulait dire « fuit
+## s'il est menacé ». Tout un village se vidait dès qu'on y entrait.
+##
+## Les DEUX faits comptent. « Il ne fuit pas » seul serait satisfait par un
+## civil qui ne fuit jamais — un villageois qu'on frappe et qui reste planté là
+## est un défaut aussi grave que celui qu'on corrige.
+func _check_civilians_stand_their_ground() -> void:
+	var civil: Node = null
+	for c in CreatureManager.creatures:
+		if is_instance_valid(c) and not c.is_dead() and String(c.ai_profile) == "civil":
+			civil = c
+			break
+	if civil == null:
+		_check("fuite des civils", false, "aucun civil trouvé")
+		return
+	civil.set("_provoked", false)
+	_check("un civil ne fuit pas à vue", not bool(civil.call("is_skittish")),
+			civil.call("display_name"))
+	civil.set("_provoked", true)
+	_check("un civil fuit quand on l'attaque", bool(civil.call("is_skittish")))
+	civil.set("_provoked", false)
+
+
+## LES MURS ARRÊTENT LES CRÉATURES (2026-08-09, signalé en jeu).
+##
+## Leur déplacement n'a JAMAIS consulté le terrain : il ajoutait un pas et
+## replaquait `y` au sol. Le défaut est aussi vieux que la déambulation, et ne
+## s'est vu que le jour où les villageois se sont mis à fuir à travers les murs.
+##
+## Le test BÂTIT son mur au lieu d'en chercher un : un mur trouvé au hasard du
+## village pourrait être une porte, et le verdict dépendrait du décor.
+func _check_walls_stop_creatures() -> void:
+	var subject: Node = null
+	for c in CreatureManager.creatures:
+		if is_instance_valid(c) and not c.is_dead() and c.dimension == WorldManager.active_dimension:
+			subject = c
+			break
+	if subject == null:
+		_check("murs", false, "aucune créature vivante")
+		return
+	var at: Vector3 = subject.logical_position
+	# `logical_position.y` est le CENTRE du bloc de sol : les pieds sont un
+	# demi-bloc plus haut, et le corps occupe les deux niveaux au-dessus du sol.
+	var feet := floori(at.y + 0.5 + 0.001)
+	# ON DÉGAGE D'ABORD LE VOISINAGE. La créature choisie peut se tenir DANS une
+	# maison : `_slide` laisse alors passer, à dessein (on peut murer quelqu'un,
+	# il ne doit pas rester figé), et le test mesurerait cette règle-là au lieu
+	# du blocage. Une première version l'a fait et annonçait « un mur arrête une
+	# créature » sur 4 m parcourus sans obstacle.
+	for dx in range(-1, 4):
+		for dz in [-1, 0, 1]:
+			for level in [feet, feet + 1]:
+				WorldManager.set_block(Vector3i(floori(at.x) + dx, level, floori(at.z) + dz), 0)
+	_check("murs : la créature part d'un espace dégagé",
+			not bool(subject.call("_wall_at", at.x, at.z, at.y)))
+	# Un mur plein sur deux niveaux, deux blocs à l'est.
+	var wall_x := floori(at.x) + 2
+	var stone: int = GameData.material_runtime_ids.get("pierre", 0)
+	if stone == 0:
+		_check("murs", false, "matériau pierre introuvable")
+		return
+	for dz in [-1, 0, 1]:
+		for level in [feet, feet + 1]:
+			WorldManager.set_block(Vector3i(wall_x, level, floori(at.z) + dz), stone)
+	var before: Vector3 = subject.logical_position
+	subject.call("_move_by", Vector3(4.0, 0.0, 0.0))
+	var travelled: float = subject.logical_position.x - before.x
+	_check("un mur arrête une créature", travelled < 2.0,
+			"parcouru %.2f m vers le mur" % travelled)
+	# ET ON NE FIGE PERSONNE : muré, on peut toujours sortir. Sans cette règle,
+	# un habitant qu'on emmure reste immobile pour toujours, en silence.
+	subject.logical_position = Vector3(float(wall_x) + 0.5, at.y, at.z)
+	var walled: Vector3 = subject.logical_position
+	subject.call("_move_by", Vector3(-1.0, 0.0, 0.0))
+	_check("une créature murée n'est pas figée",
+			not subject.logical_position.is_equal_approx(walled))
+	for dz in [-1, 0, 1]:
+		for level in [feet, feet + 1]:
+			WorldManager.set_block(Vector3i(wall_x, level, floori(at.z) + dz), 0)

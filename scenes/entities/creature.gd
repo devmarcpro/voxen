@@ -476,7 +476,16 @@ func relation_tier() -> String:
 func is_skittish() -> bool:
 	# LE PROFIL LE DIT, plus une comparaison de chaîne : c'est la donnée qui
 	# décide, comme pour l'agressivité et la perception.
-	return bool(profile().get("fuit", false)) or has_status("terreur")
+	# UN CIVIL NE FUIT PAS À VUE (2026-08-09, signalé en jeu : « les PNJ fuient le
+	# joueur »). Régression du passage des comportements en données : le profil
+	# `civil` porte `fuit: true` — il DOIT fuir, mais quand on l'attaque, pas
+	# quand on entre au village. La donnée disait « fuyard » là où elle voulait
+	# dire « fuit s'il est menacé », et tout un village détalait à l'approche.
+	if bool(profile().get("fuit", false)):
+		return true
+	if bool(profile().get("fuit_si_menace", false)) and _provoked:
+		return true
+	return has_status("terreur")
 
 
 ## Encaisse `amount` points de dégâts. UN SEUL POINT D'ENTRÉE, pour que le
@@ -1494,9 +1503,58 @@ const BODY_RADIUS := 0.38
 ## les corps l'un contre l'autre — c'est ce qui donne une foule qui s'écarte au
 ## lieu d'une file qui se fige.
 func _move_by(step: Vector3) -> void:
-	logical_position += step
+	logical_position = _slide(logical_position, step)
 	_push_out_of_bodies()
 	logical_position.y = _ground_height()
+
+
+## Demi-largeur du corps pour la collision avec le DÉCOR. Volontairement plus
+## petite que `BODY_RADIUS` : un villageois qui frotte les chambranles resterait
+## coincé dans sa propre porte, et il n'a pas le recul du joueur pour manœuvrer.
+const WALL_RADIUS := 0.30
+
+
+## Applique `step` en GLISSANT le long des murs, axe par axe — la même
+## résolution que le joueur, pour que « traverser un mur » veuille dire la même
+## chose des deux côtés.
+##
+## LES CRÉATURES TRAVERSAIENT LES MURS (2026-08-09, signalé en jeu). Leur
+## déplacement n'a JAMAIS consulté le terrain : il ajoutait un pas et replaquait
+## `y` au sol. Le défaut est aussi vieux que la déambulation ; il ne s'est vu que
+## le jour où les villageois se sont mis à fuir et à traverser leurs maisons.
+##
+## Une créature DÉJÀ DANS un mur n'est pas retenue — le monde est modifiable et
+## l'on peut murer quelqu'un. Ne pas prévoir ce cas fige un habitant pour
+## toujours, sans que rien ne le signale.
+func _slide(from: Vector3, step: Vector3) -> Vector3:
+	if _wall_at(from.x, from.z, from.y):
+		return from + step
+	var out := from
+	if not _wall_at(out.x + step.x, out.z, out.y):
+		out.x += step.x
+	if not _wall_at(out.x, out.z + step.z, out.y):
+		out.z += step.z
+	return out
+
+
+## Un mur occupe-t-il l'emprise du corps à cette position ? Deux niveaux : les
+## pieds et la tête. La règle de solidité elle-même vit dans `WorldManager` —
+## partagée avec le joueur, sans quoi le blé serait franchissable pour l'un et
+## infranchissable pour l'autre.
+func _wall_at(x: float, z: float, logical_y: float) -> bool:
+	# `logical_position.y` EST LE CENTRE DU BLOC DE SOL (`_ground_height` rend
+	# `indice + 0.5`), pas son sommet — contrairement au `feet_y` du joueur, qui
+	# est la surface. Prendre l'un pour l'autre faisait lire LE SOL comme un mur :
+	# la règle d'évasion s'activait alors à chaque pas et plus rien ne bloquait.
+	# La sonde annonçait « un mur arrête une créature » et mesurait 4 m parcourus.
+	var foot_by := floori(logical_y + 0.5 + 0.001)
+	for level in [foot_by, foot_by + 1]:
+		for corner_x in [-WALL_RADIUS, WALL_RADIUS]:
+			for corner_z in [-WALL_RADIUS, WALL_RADIUS]:
+				if WorldManager.is_body_blocking(
+						Vector3i(floori(x + corner_x), level, floori(z + corner_z))):
+					return true
+	return false
 
 
 ## Écarte des corps qui se chevauchent : les autres créatures, et LE JOUEUR.

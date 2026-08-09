@@ -1777,3 +1777,33 @@ func wait_for_in_flight() -> void:
 
 func _exit_tree() -> void:
 	wait_for_in_flight()
+
+
+## UN CORPS PEUT-IL OCCUPER CE BLOC ? Règle de solidité PARTAGÉE par tout ce qui
+## se déplace : le joueur, les créatures, et ce qu'on ajoutera ensuite.
+##
+## Elle vivait dans `fly_camera.gd` et n'y servait qu'au joueur ; les créatures
+## traversaient donc les murs. Elle porte trois savoirs payés cher, qu'aucune
+## copie ne devait risquer de perdre : les sous-voxels d'abord (un bloc
+## majoritairement air peut contenir un mur fin), les plantes ensuite (un champ
+## de blé n'est pas une palissade), l'eau enfin (on y nage).
+func is_body_blocking(pos: Vector3i) -> bool:
+	if generator == null:
+		return false
+	# Bloc SUBDIVISÉ : tester les sous-cellules AVANT l'id dominant (un bloc
+	# majoritairement air a un dominant=0 mais peut contenir une construction
+	# fine solide — bug de collision corrigé 2026-07-26). Seuil abaissé à 1/8
+	# pour que les murs/structures fins bloquent.
+	var solid := subdiv_solid_count(pos)
+	if solid >= 0:
+		return solid >= SubdivGrid.CELLS / 8
+	var id := block_at_world(pos)
+	if id == 0:
+		return false
+	# ON TRAVERSE LES PLANTES (2026-08-04, demande explicite « pas de hitbox »).
+	# Sans ça, un champ de blé est un mur de cubes invisibles qu'il faut sauter
+	# un par un — et c'est le même défaut que les cultures en sous-voxels avaient
+	# déjà causé avant leur correction par le seuil des 50 %.
+	if id < GameData.cross_mask.size() and GameData.cross_mask[id] == 1:
+		return false
+	return id != GameData.material_runtime_ids.get("eau", -1)
