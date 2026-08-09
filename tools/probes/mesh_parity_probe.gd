@@ -39,10 +39,20 @@ func run() -> void:
 	var chunks := 0
 	var compared := 0
 	var mismatches := 0
+	var ctx_mismatches := 0
 	for cx in range(-3, 4):
 		for cz in range(-3, 4):
 			var col := Vector2i(cx, cz)
+			# PARITÉ DU CONTEXTE (colonnes natives, 2026-08-09) : les deux
+			# chemins de prepare_context doivent rendre les MÊMES tableaux —
+			# les hauteurs étant entières, la moindre dérive flottante du
+			# terrain C++ se voit ici au bloc près.
+			ChunkMesher.use_native = false
 			var ctx: Dictionary = gen.prepare_context(col)
+			ChunkMesher.use_native = true
+			var ctx_nat: Dictionary = gen.prepare_context(col)
+			if not _compare_ctx(col, ctx, ctx_nat):
+				ctx_mismatches += 1
 			for cy in range(-2, 4):
 				var ck := Vector3i(cx, cy, cz)
 				var data: ChunkData = WorldManager._get_chunk_sync(ck)
@@ -61,7 +71,26 @@ func run() -> void:
 
 	_expect(chunks > 50, "assez de chunks pour conclure (%d maillés)" % chunks)
 	_expect(mismatches == 0, "aucune divergence GDScript↔natif (%d/%d chunks identiques)" % [compared, chunks])
+	_expect(ctx_mismatches == 0, "contextes de colonne identiques (49 colonnes)" if ctx_mismatches == 0 else "%d contexte(s) divergent(s)" % ctx_mismatches)
 	finish(_ok, TAG)
+
+
+func _compare_ctx(col: Vector2i, ref: Dictionary, nat: Dictionary) -> bool:
+	for key in ["h", "surf", "sub", "trans", "acc", "local_water"]:
+		var a: PackedInt32Array = ref[key]
+		var b: PackedInt32Array = nat[key]
+		if a != b:
+			for i in a.size():
+				if a[i] != b[i]:
+					print("[%s] ctx %s : « %s »[%d] = %d (réf) contre %d (natif)" % [
+							TAG, col, key, i, a[i], b[i]])
+					break
+			return false
+	if int(ref["hmin"]) != int(nat["hmin"]) or int(ref["hmax"]) != int(nat["hmax"]):
+		print("[%s] ctx %s : hmin/hmax divergents (%d/%d vs %d/%d)" % [TAG, col,
+				int(ref["hmin"]), int(ref["hmax"]), int(nat["hmin"]), int(nat["hmax"])])
+		return false
+	return true
 
 
 func _compare(ck: Vector3i, ref: Array, nat: Array) -> bool:

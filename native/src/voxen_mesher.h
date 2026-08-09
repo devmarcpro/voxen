@@ -70,6 +70,55 @@ protected:
 	int32_t deep_block(int depth, int32_t subsurface, int32_t trans,
 			int32_t accent, int wx, int wy, int wz, int h) const;
 
+	// Configuration des COLONNES (sample_columns) — port de _sample_column et
+	// de sa pile (terrain continental, climat, biomes, littoraux) pour
+	// l'OVERWORLD (et le monde plat). Les dimensions restent en GDScript :
+	// rarement visitées, et leurs modes de relief textuels doubleraient la
+	// surface de divergence. Voir voxen_columns.cpp.
+	struct ColumnsConfig {
+		bool configured = false;
+		int64_t world_seed = 0;
+		bool p_flat = false;
+		double flat_height = 72.0;
+		double p_relief = 1.0, p_temp_offset = 0.0, p_hum_offset = 0.0;
+		double warp_amplitude = 40.0, cont_warp_amp = 900.0, cont_detail_weight = 0.14;
+		double land_radius = 0.0, world_radius = 0.0, lat_period = 1.0;
+		double coast_cont = 0.47, ocean_gain = 150.0, land_gain = 46.0;
+		double hill_amp = 9.0, mtn_amp = 300.0, canyon_depth = 58.0;
+		double seismic_threshold = 0.6, terrace_step = 40.0, mesa_dry_bonus = 1.6;
+		double fjord_depth = 62.0, elev_ref = 140.0;
+		int volcano_cell = 1500;
+		double volcano_chance = 0.06, volcano_radius = 230.0, volcano_height = 190.0;
+		int64_t seed_volcano = 9152, seed_biome_dither = 9107;
+		double lapse_ref_height = 400.0, lapse_rate = 0.35;
+		double rain_shadow_upwind = 250.0, rain_shadow_threshold = 0.6,
+				rain_shadow_strength = 1.2;
+		double orogeny_gradient_sample = 40.0, biome_transition_margin = 0.05;
+		double water_level = 0.0;
+		int water_id = 0;
+		int marsh_id = 0, marsh_sub_id = 0, sand_id = 0, gravel_id = 0, cliff_id = 0;
+		int subsurface_thickness = 3;
+		// Matrice de biomes compilée : n × 4 conditions [alt, temp, hum, mana].
+		int biome_count = 0, forced_biome = -1;
+		std::vector<float> biome_min, biome_max;
+		std::vector<int32_t> biome_surface, biome_subsurface;
+		Ref<FastNoiseLite> warp_x, warp_z, cont_warp_x, cont_warp_z, continent,
+				altitude, hills, ridged, canyon, fjord, seismic, temperature,
+				humidity, mana, transition;
+	};
+	ColumnsConfig cols;
+
+	struct TerrainSample {
+		double h, elev_n, gradient_mag;
+	};
+	TerrainSample terrain_at(double fx, double fz) const;
+	double volcano_add(double fx, double fz) const;
+	double temperature_at(double fx, double fz, double h) const;
+	double humidity_at(double fx, double fz) const;
+	int biome_index_at(double alt_n, double temp_n, double hum_n, double mana_n) const;
+	void blended_surface(double fx, double fz, double alt_n, double temp_n,
+			double hum_n, double mana_n, int32_t &out_surf, int32_t &out_sub) const;
+
 public:
 	// Configure la coquille pour CE générateur (une instance VoxenNative par
 	// NoiseGenerator — le mesher, lui, passe par l'instance partagée de
@@ -89,6 +138,16 @@ public:
 			const PackedInt32Array &transitions,
 			const PackedInt32Array &local_water,
 			const PackedInt32Array &accents) const;
+
+	// Configure l'échantillonnage de colonnes (overworld/plat uniquement).
+	void configure_columns(const Dictionary &cfg);
+
+	// Les 324 colonnes (18×18) d'un contexte de chunk-colonne, en un appel.
+	// Retourne [heights, surfaces, subsurfaces, transitions, hmin, hmax] —
+	// les accents sont nuls dans l'overworld, l'appelant garde son tableau de
+	// zéros. HORS ville : une colonne couverte par un footprint de ville reste
+	// entièrement sur le chemin GDScript (le terrassement y réécrit tout).
+	Array sample_columns(const Vector2i &col) const;
 	// Retourne un Array de 8 éléments :
 	//   [0] PackedVector3Array vertices   [1] PackedVector3Array normals
 	//   [2] PackedVector2Array uvs        [3] PackedColorArray colors

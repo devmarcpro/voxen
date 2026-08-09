@@ -595,6 +595,10 @@ Array VoxenNative::fill_shell_terrain(const Vector3i &cpos,
 void VoxenNative::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("configure_shell", "cfg"),
 			&VoxenNative::configure_shell);
+	ClassDB::bind_method(D_METHOD("configure_columns", "cfg"),
+			&VoxenNative::configure_columns);
+	ClassDB::bind_method(D_METHOD("sample_columns", "col"),
+			&VoxenNative::sample_columns);
 	ClassDB::bind_method(D_METHOD("fill_shell_terrain", "cpos", "heights",
 								 "surfaces", "subsurfaces", "transitions",
 								 "local_water", "accents"),
