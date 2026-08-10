@@ -336,6 +336,71 @@ Le choix du matériau dans un craft est donc un **arbitrage multidimensionnel**,
 - **Slots : croissants avec le niveau d'arme** — slots de compétences par arme = `2 + floor(N_arme/20)` (max 6) ; slots de modules par compétence = `2 + floor(N_arme/25)` (max 5). La progression d'arme débloque de la complexité de build, pas seulement des chiffres.
 - **Pool de mana : résolu (A.5)** — `20 + Volonté×3 + Méditation×2` (+ effets d'équipement, règle de retrait A.4.4). Ni la race (sauf via ses bonus de stats) ni l'arme n'y entrent directement.
 
+### 5.2 Wu Xing : les cinq éléments et leurs cycles
+
+> **AMENDEMENT DU 2026-08-09 (décision de l'auteur).** Formules en A.4.6 ;
+> champs `element` ajoutés aux schémas B.4 (modules), B.5 (créatures),
+> B.6 (biomes) ; C.6 amendé (domaine Métal ajouté, mapping élémentaire).
+> Le Wu Xing est ORTHOGONAL au combat directionnel E.3.1 : la géométrie décide
+> du toucher et de la zone, le multiplicateur élémentaire s'applique ensuite
+> sur les dégâts (étape 3 du pipeline, là où E.3 d'origine le plaçait).
+> Points d'accroche du code : `StatModifiers` (E.4) et le champ `element` des
+> 36 modules existants.
+
+Le système élémentaire du jeu est le **Wu Xing daoïste** — cinq éléments
+(**Bois, Feu, Terre, Métal, Eau**) définis par leurs **relations** plutôt que
+par leur nature, via deux cycles en pentagramme :
+
+- **Cycle d'engendrement (生)** : Bois → Feu → Terre → Métal → Eau → Bois
+  (le bois nourrit le feu, le feu crée la terre par ses cendres, la terre
+  produit le métal, le métal enrichit l'eau, l'eau fait croître le bois).
+- **Cycle de domination (克)** : Bois ⊳ Terre ⊳ Eau ⊳ Feu ⊳ Métal ⊳ Bois
+  (le bois perce la terre, la terre endigue l'eau, l'eau éteint le feu, le feu
+  fond le métal, le métal tranche le bois).
+
+Aucun élément n'est supérieur : chacun **domine un élément, est dominé par un
+autre, en nourrit un troisième**. C'est un ciseaux-feuille-pierre à cinq
+branches avec une couche coopérative.
+
+**Application au combat (formules en A.4.6) :**
+- **Domination = efficacité** : une attaque élémentaire contre une cible dont
+  l'alignement est dominé → dégâts ×1,5 ; contre l'élément qui la domine en
+  retour → ×0,65 ; contre l'élément qu'elle nourrit → ×0,8 (on n'attaque pas
+  efficacement ce qu'on alimente). Autres cas ×1,0.
+- **Engendrement = combos** : enchaîner deux modules dans l'ordre nourricier
+  (Bois puis Feu…) dans une **fenêtre de 30 ticks** amplifie le second
+  (+1 dé de dégâts et +50 % de durée de statut). Tourner dans le cycle devient
+  une grammaire de rotation pour les builds de mage — propriété émergente de
+  l'assemblage de modules (5.1), esprit Noita.
+- **Alignement des cibles** : dérivé automatiquement — pour une créature, de
+  sa nature (champ `element` de B.5, ex. créature aquatique = Eau) ; pour un
+  personnage équipé, de la **catégorie dominante des matériaux de son armure**
+  (métal = Métal, cuir/bois = Bois, etc. — B.1). L'armure de plates face à un
+  mage de Feu est un vrai handicap élémentaire : le choix de matériau (4.2)
+  gagne une dimension de plus. Avec le craft compositionnel (4.2.1, quand il
+  sera intégré), l'alignement devient **composite** : chaque composant apporte
+  son élément au prorata de son poids de slot (A.4.7).
+- **Hors cycle** : les domaines Arcane, Espace et Corruption sont **neutres**
+  (ni bonus ni malus, ne combotent pas) — tout ne doit pas être élémentaire,
+  les builds neutres restent viables.
+- **Lisibilité obligatoire** : le tooltip temps réel optionnel (5.0, point 2 —
+  le mode tactique est supprimé) affiche l'alignement de la cible visée et le
+  multiplicateur prévu ; l'écran d'assemblage montre le pentagramme avec les
+  éléments des modules équipés.
+
+**Au-delà du combat (le Wu Xing comme grammaire transversale) :**
+- **Alchimie et cuisine (7.7)** : chaque ingrédient porte une affinité
+  élémentaire (dérivée de sa catégorie/nature, surchargée en données) ; un
+  **plat équilibré sur les cinq éléments** gagne un bonus de nutrition et de
+  potentiel (×1,2) — l'assiette harmonieuse du daoïsme, mécanisée.
+- **Biomes** : chaque biome a un élément dominant (forêt = Bois, volcan = Feu,
+  montagne = Métal, marécage = Eau, plaine/désert = Terre — champ B.6) ;
+  lancer un module de l'élément du biome coûte −15 % de mana, l'élément dominé
+  coûte +15 %. Le lieu du combat compte.
+- Extensions futures naturelles (non incluses au lancement) : saisons alignées
+  sur les éléments (si E.28 les active un jour), enchantements élémentaires
+  (A.4.4).
+
 ---
 
 ## 6. Progression du personnage
@@ -542,6 +607,13 @@ Les PNJ résidant sur la base/claim du joueur (compagnons recrutés, animaux —
 - Qualité de la potion (A.3, compétence Alchimie) = durée et intensité du buff.
 
 **Boucle complète :** chasser (parties + viandes spécifiques) + cultiver (plantes, 7.4) → cuisiner (croissance long terme via potentiel) + distiller (puissance court terme via buffs) → progresser → chasser plus grand. La chasse d'une créature précise pour sa viande/ses parties devient un objectif en soi.
+
+**Affinités élémentaires (amendement Wu Xing 2026-08-09, 5.2/A.4.6) :** chaque
+ingrédient porte une affinité élémentaire — dérivée de sa catégorie/nature,
+surchargée en données au besoin. Un plat dont les ingrédients couvrent les
+**cinq éléments** gagne ×1,2 en nutrition ET en potentiel : l'assiette
+harmonieuse du daoïsme, mécanisée. *(Contenu ouvert : les affinités par
+ingrédient sont des données de cuisine à écrire.)*
 
 ### 7.6 Économie et flux d'or (sources et puits)
 
@@ -1160,6 +1232,41 @@ Transparence : transparence >= 50 → le bloc laisse passer lumière et
   regard (fenêtres, serres) — impact meshing : passe de rendu séparée
 ```
 
+### A.4.6 Wu Xing : tables et formules (5.2) — amendement du 2026-08-09
+
+```
+ALIGNEMENT D'UNE ENTITÉ :
+  créature : champ element (B.5), sinon dérivé des tags
+    (aquatique→Eau, volant→Bois, souterrain→Terre...)
+  personnage équipé : catégorie de matériau majoritaire de l'armure
+    portée — métal→Métal ; bois/fibre/cuir→Bois ; roche/terre→Terre ;
+    glace/liquide→Eau ; matériaux à flammabilite>=60 → Feu.
+    Sans armure : neutre.
+  Un module d'attaque porte l'élément de son domaine (C.6).
+
+MULTIPLICATEUR DE DOMINATION (attaque élément A sur cible élément B) :
+  A domine B         : x1.5     (Bois⊳Terre⊳Eau⊳Feu⊳Métal⊳Bois)
+  B domine A         : x0.65
+  A engendre B       : x0.8     (Bois→Feu→Terre→Métal→Eau→Bois)
+  autres / neutre    : x1.0
+  Appliqué en étape 3 du pipeline E.3, après les dés, avant mitigation.
+
+COMBO D'ENGENDREMENT :
+  Si le module M2 (élément E2) est lancé dans les 30 ticks après un
+  module M1 (élément E1) et que E1 engendre E2 :
+    M2 gagne +1 dé de dégâts et +50 % de durée de ses statuts.
+  Chaînable (Bois→Feu→Terre...) mais le bonus ne cumule pas (+1 dé
+  max, pas +2) — la rotation paie, sans explosion exponentielle.
+  Fenêtre et bonus par module surchargeables en données (B.4).
+
+COÛT DE MANA PAR BIOME (5.2) :
+  élément du module == élément dominant du biome (B.6) : cout x0.85
+  élément du module dominé par celui du biome           : cout x1.15
+
+CUISINE (7.7) : un plat dont les ingrédients couvrent les 5 éléments
+  (affinité par ingrédient, données) : nutrition et potentiel x1.2.
+```
+
 ### A.5 Mana (calqué Elin)
 
 ```
@@ -1423,6 +1530,11 @@ Pour une armure : `"kind": "armure"`, avec `"equip_slot"` et `"facteur_slot"` à
 
 ### B.4 Module de compétence — `data/modules/*.json`
 
+> Amendement Wu Xing (2026-08-09) : champ `"element": "feu"` — hérité du
+> domaine du grimoire d'origine (mapping en C.6) ; `null`/absent = neutre.
+> Optionnels : `"combo_window_ticks"` et `"combo_bonus_dice"` surchargent la
+> fenêtre/le bonus d'engendrement (défauts A.4.6 : 30 ticks, +1 dé).
+
 ```json
 {
   "id": "projectile_feu",
@@ -1441,6 +1553,10 @@ Pour une armure : `"kind": "armure"`, avec `"equip_slot"` et `"facteur_slot"` à
 - `book_type` : `"grimoire"` (sorts) ou `"manuel"` (armes).
 
 ### B.5 Créature / PNJ — `data/creatures/*.json`
+
+> Amendement Wu Xing (2026-08-09) : champ `"element": null` — quand il est
+> nul, l'alignement se DÉRIVE des tags (aquatique→Eau, volant→Bois,
+> souterrain→Terre) ; sans tag reconnu, neutre.
 
 ```json
 {
@@ -1479,6 +1595,10 @@ Pour une armure : `"kind": "armure"`, avec `"equip_slot"` et `"facteur_slot"` à
 - Les PNJ ont leurs propres compétences qui **progressent à l'usage comme le joueur** (instance ≠ définition : l'état courant des skills vit dans la sauvegarde).
 
 ### B.6 Biome — `data/biomes/*.json`
+
+> Amendement Wu Xing (2026-08-09) : champ `"element"` — l'élément dominant du
+> biome (forêt=bois, volcan=feu, montagne=métal, marécage=eau,
+> plaine/désert=terre), qui module le coût de mana des modules (A.4.6).
 
 ```json
 {
@@ -1701,9 +1821,16 @@ L'humain porte désormais, en plus de son bonus d'XP, un **plancher de potentiel
 
 Les 13 stats (voir 4.2 et A.4.5) : `durete`, `densite`, `valeur_base`, `conductivite_mana`, `flammabilite`, `isolation`, `conductivite_electrique`, `flottabilite`, `luminosite`, `fertilite`, `transparence`, `elasticite`, `friction`. Tags dérivés par seuils (B.1) + tags manuels : `organique`, `corrompu`.
 
-### C.6 Domaines de grimoires (8) et manuels (4)
+### C.6 Domaines de grimoires (9) et manuels (4)
 
-- **Grimoires :** Feu, Eau/Glace, Foudre, Terre, Vie (soin/nature), Arcane (pur mana, projectiles/boucliers), Espace (téléport, portée), Corruption (dégâts sur soi pour puissance — lié à la couche danger)
+> **AMENDÉ LE 2026-08-09 (Wu Xing, 5.2)** : le domaine **Métal** est ajouté
+> (lames invoquées, perforation, affûtage — 5 modules à écrire, contenu
+> ouvert). Mapping élémentaire des domaines : Feu→Feu · Eau/Glace→Eau ·
+> Terre→Terre · Métal→Métal · **Foudre et Vie→Bois** (attribution
+> traditionnelle : le tonnerre du printemps, la croissance) ·
+> Arcane/Espace/Corruption→hors cycle (neutres, ne combotent pas).
+
+- **Grimoires :** Feu, Eau/Glace, Foudre, Terre, Vie (soin/nature), **Métal** (lames invoquées, perforation), Arcane (pur mana, projectiles/boucliers), Espace (téléport, portée), Corruption (dégâts sur soi pour puissance — lié à la couche danger)
 - **Manuels :** Frappes (effets d'attaque), Postures (buffs de maniement), Techniques (mobilité, contres), Maîtrise (modificateurs : multi-coups, portée...)
 
 ### C.7 Biomes de départ (17 implémentés au 2026-07-20, extensibles vers 20+)
