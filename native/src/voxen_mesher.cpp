@@ -599,6 +599,9 @@ void VoxenNative::_bind_methods() {
 			&VoxenNative::configure_columns);
 	ClassDB::bind_method(D_METHOD("sample_columns", "col"),
 			&VoxenNative::sample_columns);
+	ClassDB::bind_method(D_METHOD("generate_tree", "base", "world_seed",
+								 "species", "wood_id", "leaf_id"),
+			&VoxenNative::generate_tree);
 	ClassDB::bind_method(D_METHOD("fill_shell_terrain", "cpos", "heights",
 								 "surfaces", "subsurfaces", "transitions",
 								 "local_water", "accents"),
