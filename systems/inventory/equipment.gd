@@ -222,6 +222,25 @@ func dominant_armor_category() -> String:
 	return best_category
 
 
+## Élément Wu Xing du PORTEUR (5.2/A.4.6, amendement 2026-08-09) : dérivé de la
+## catégorie de matériau dominante de l'armure (la pièce de torse, même règle
+## que `dominant_armor_category`) — métal→Métal, bois/fibre/cuir→Bois,
+## roche/terre→Terre, glace/liquide→Eau, flammabilité ≥ 60→Feu. Torse nu :
+## neutre. L'armure de plates face à un mage de Feu est un vrai handicap.
+func wu_element() -> String:
+	var category := dominant_armor_category()
+	if category == "":
+		return ""
+	var torso: Dictionary = slots.get("torse", {})
+	var mat_id := String((torso.get("materials", {}) as Dictionary).get(category, ""))
+	var material: Dictionary = GameData.materials.get(mat_id, {})
+	if not material.is_empty():
+		var el := WuXing.element_of_material(material)
+		if el != "":
+			return el
+	return WuXing.CATEGORY_ELEMENT.get(category, "")
+
+
 ## Poids total de l'équipement porté — compte dans la capacité (A.4.2 :
 ## « inclut inventaire ET équipement »).
 func total_weight() -> float:

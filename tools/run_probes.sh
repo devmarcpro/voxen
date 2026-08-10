@@ -56,6 +56,7 @@ PROBES="--probe-touches
 --probe-pnj
 --probe-royaumes
 --probe-combat
+--probe-wuxing
 --probe-assemblage
 --probe-mains
 --probe-arbres

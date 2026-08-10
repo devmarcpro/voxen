@@ -542,10 +542,15 @@ func _resolve_creature_attack(creature: Node, player: Node, zone_hit: Dictionary
 		guarded = player.call("absorb_on_guard", float(creature_stats["stamina_drain"]),
 				bool(guard.get("parry", false)))
 
+	# WU XING (5.2/A.4.6) : l'élément de la CRÉATURE (fiche/tags) contre celui de
+	# l'ARMURE du joueur — c'est le sens où l'alignement d'équipement compte :
+	# une armure de plates encaisse mal une créature de Feu.
+	var element_mult := WuXing.multiplier(
+			WuXing.element_of_creature(creature.profile()), String(player.call("wu_element")))
 	var result := CombatResolver.resolve_hit(
 		int(creature.stats.get("dexterite", 5)), int(creature.stats.get("force", 5)),
 		String(functionality.get("degats_des", "1d4")), natural_hardness, 1.0, false,
-		armor_dice, zone_mult, penetration)
+		armor_dice, zone_mult, penetration, 0, element_mult)
 	var damage := int(result["damage"])
 	if armor_dice != "" and type_modifier != 1.0:
 		# Ré-application du modificateur de type : resolve_hit ne connaît pas

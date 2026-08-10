@@ -31,6 +31,7 @@ const PROBES := {
 	"--probe-mort":           "res://tools/probes/death_probe.gd",
 	"--probe-faune":          "res://tools/probes/fauna_probe.gd",
 	"--probe-combat":         "res://tools/probes/combat_probe.gd",
+	"--probe-wuxing":         "res://tools/probes/wu_xing_probe.gd",
 	"--test-ui":              "res://tools/probes/ui_shot_probe.gd",
 	"--test-carte":           "res://tools/probes/kingdom_map_probe.gd",
 	"--probe-royaumes":       "res://tools/probes/kingdom_probe.gd",
