@@ -65,13 +65,18 @@ const CRITICAL_ZONE_MULT := 2.0
 ##
 ## `zone_mult`  : multiplicateur de la zone de coup atteinte (gabarit B.5).
 ## `penetration`: fraction de la mitigation d'armure ignorée, 0..1.
+## `element_mult` : multiplicateur Wu Xing (5.2/A.4.6) — calculé par l'appelant
+## via `WuXing.multiplier(élément de l'attaque, élément de la cible)`. Appliqué
+## ICI, en étape 3 : après les dés et la zone, avant la mitigation — c'est
+## l'emplacement que l'amendement prescrit, orthogonal au directionnel.
 ##
 ## Retourne { "damage": int, "critical": bool, "raw": int, "reduction": int }.
 static func resolve_hit(
 	dexterity: int, strength: int,
 	dice_notation: String, base_hardness: float, quality: float,
 	is_ranged: bool, armor_dice: String,
-	zone_mult: float = 1.0, penetration: float = 0.0, bonus_damage: int = 0
+	zone_mult: float = 1.0, penetration: float = 0.0, bonus_damage: int = 0,
+	element_mult: float = 1.0
 ) -> Dictionary:
 	# JET DE DÉGÂTS (A.4.1) : dureté de BASE (avant qualité), jamais la finale.
 	var raw := roll_dice(dice_notation) * (base_hardness / 20.0) * quality
@@ -80,6 +85,7 @@ static func resolve_hit(
 	# La zone multiplie APRÈS les bonus de stat : viser la tête doit valoir le
 	# risque quel que soit le personnage, pas seulement pour les gros scores.
 	raw *= zone_mult
+	raw *= element_mult
 
 	# MITIGATION À JET (armure) : 0 si pas d'armure équipée. La pénétration
 	# ronge la réduction plutôt que d'ajouter des dégâts — une masse ne frappe

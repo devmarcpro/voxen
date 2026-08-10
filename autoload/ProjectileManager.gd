@@ -333,12 +333,23 @@ func _on_tick(_tick_index: int) -> void:
 		var stats: Dictionary = impact["stats"]
 		# `is_ranged` : la DEXTÉRITÉ porte le tir là où la force porte la mêlée
 		# (CombatResolver le prévoyait déjà, personne ne s'en servait).
+		# WU XING (5.2/A.4.6) : l'élément de l'attaque voyage avec le projectile
+		# depuis son lancement ; celui de la CIBLE se dérive à l'impact — fiche
+		# pour une créature, armure pour un joueur. Le multiplicateur s'applique
+		# en étape 3 du pipeline, dans resolve_hit.
+		var victim_element := ""
+		if victim.has_method("profile"):
+			victim_element = WuXing.element_of_creature(victim.profile())
+		elif victim.has_method("wu_element"):
+			victim_element = String(victim.wu_element())
+		var element_mult := WuXing.multiplier(String(stats.get("element", "")), victim_element)
 		var result := CombatResolver.resolve_hit(
 			int(shooter.effective_stat("dexterite")) if shooter != null else 5,
 			int(shooter.effective_stat("force")) if shooter != null else 5,
 			String(stats.get("dice", "1d6")),
 			float(impact["hardness"]), float(impact["quality"]), true, "",
-			float(impact["mult"]), float(stats.get("penetration", 0.0)))
+			float(impact["mult"]), float(stats.get("penetration", 0.0)), 0,
+			element_mult)
 		victim.take_damage(float(result["damage"]))
 		EventBus.damage_dealt.emit(impact["point"], int(result["damage"]),
 			bool(result["critical"]), false)

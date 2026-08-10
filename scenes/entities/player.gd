@@ -1085,6 +1085,13 @@ var _channel_start_ms := -1
 ## sort était parti était le projectile — quand il y en avait un. Un sort de
 ## soin ou de protection ne produisait rigoureusement rien à l'écran.
 var _cast_gesture := -1.0
+
+## COMBO WU XING (5.2/A.4.6) : dernier élément lancé et son tick — le bonus
+## d'engendrement se décide à la salve suivante. `_wu_combo_active` ne vit que
+## le temps d'UNE exécution de salve (posé/effacé par cast_assembly).
+var _wu_last_element := ""
+var _wu_last_cast_tick := -1000
+var _wu_combo_active := false
 ## Durée du geste. Bref et sec : c'est une DÉTENTE, pas une pose.
 const CAST_GESTURE_S := 0.30
 
@@ -2869,9 +2876,29 @@ func set_assembly(skill_id: String, slot: int, module_ids: Array) -> bool:
 ## Coût en mana d'un assemblage, arme tenue comprise (A.6). Exposé pour que
 ## l'interface puisse l'AFFICHER pendant qu'on assemble : sans ce retour
 ## immédiat, on ne construit pas un sort, on tâtonne.
+## MODULÉ PAR LE BIOME (Wu Xing, A.4.6) : l'élément du lieu rend son élément
+## moins cher (×0,85) et l'élément qu'il domine plus cher (×1,15). Le facteur
+## est appliqué ICI pour que l'affichage et le débit soient le MÊME chiffre.
 func assembly_cost(skill_id: String, slot: int) -> float:
-	return SpellAssembly.mana_cost(assembly_at(skill_id, slot), known_modules,
-			_held_mana_conductivity())
+	var ids := assembly_at(skill_id, slot)
+	var base := SpellAssembly.mana_cost(ids, known_modules, _held_mana_conductivity())
+	return base * WuXing.biome_cost_factor(WuXing.element_of_assembly(ids), _biome_element_here())
+
+
+## Élément du biome sous les pieds. OVERWORLD SEULEMENT : `WorldManager.
+## generator` est le générateur de l'overworld, et une position de dimension
+## est en coordonnées locales — l'interroger rendrait le biome d'un autre
+## endroit. Neutre ailleurs, ce qui est le comportement sans malus.
+func _biome_element_here() -> String:
+	if WorldManager.generator == null or WorldManager.active_dimension != &"overworld":
+		return ""
+	var p := get_position_for_ai()
+	return WuXing.element_of_biome(WorldManager.generator.biome_at(int(p.x), int(p.z)))
+
+
+## Élément Wu Xing du joueur — celui de son armure (Equipment.wu_element).
+func wu_element() -> String:
+	return equipment.wu_element()
 
 
 ## Conductivité mana de l'arme en main forte (A.6 : réduit le coût des sorts).
@@ -2991,10 +3018,23 @@ func cast_assembly(skill_id: String, slot: int) -> bool:
 		health = maxf(0.0, health - overheat)
 	_module_cooldown_ticks = 5
 
+	# COMBO D'ENGENDREMENT WU XING (5.2/A.4.6) : si l'élément de CET assemblage
+	# est nourri par celui du précédent dans la fenêtre de 30 ticks, la salve
+	# gagne +1 dé de dégâts et +50 % de durée de statut. Le drapeau ne vit que
+	# le temps de la salve — chaînable (Bois→Feu→Terre...), jamais cumulable.
+	var wu_element := WuXing.element_of_assembly(module_ids)
+	_wu_combo_active = wu_element != "" \
+			and WuXing.generates(_wu_last_element, wu_element) \
+			and TickManager.tick_index - _wu_last_cast_tick <= WuXing.COMBO_WINDOW_TICKS
+	if wu_element != "":
+		_wu_last_element = wu_element
+		_wu_last_cast_tick = TickManager.tick_index
+
 	# LE MÊME GESTE QUE LE SORT INNÉ. Les assemblages n'avaient AUCUNE animation :
 	# on lançait un sort composé de cinq modules sans que rien ne bouge à l'écran.
 	_announce_cast(String(module_ids[0]) if not module_ids.is_empty() else "")
 	_execute_casts(casts)
+	_wu_combo_active = false
 
 	# MONTÉE DE NIVEAU À L'USAGE (5.1, sans plafond). Chaque module qui a
 	# réellement participé est crédité, y compris ceux enfouis derrière un
@@ -3168,8 +3208,11 @@ func _apply_non_damaging(module_id: String, module: Dictionary, power: float,
 	if MODULE_STATUS.has(module_id):
 		# La DURÉE vient de la fiche du module (`duree`, en secondes de jeu) et
 		# la PUISSANCE de son niveau : monter un module allonge et renforce son
-		# effet, comme pour tout le reste (A.6).
+		# effet, comme pour tout le reste (A.6). Le combo Wu Xing l'allonge de
+		# 50 % (A.4.6 : « +50 % de durée de ses statuts »).
 		var ticks := int(float(params.get("duree", 10.0)) * 10.0)
+		if _wu_combo_active:
+			ticks = int(ticks * WuXing.COMBO_STATUS_DURATION_MULT)
 		statuses.apply(String(MODULE_STATUS[module_id]), ticks, 1.0 + power * 0.02)
 		return true
 
@@ -3241,12 +3284,20 @@ func _launch_spell_projectile(module_id: String, module: Dictionary, power: floa
 	if volley_size > 1:
 		var spread := deg_to_rad(7.0) * (float(index) - float(volley_size - 1) * 0.5)
 		aim = aim.rotated(Vector3.UP, spread)
+	# WU XING : l'élément du module voyage AVEC le projectile (le multiplicateur
+	# se calcule à l'impact, contre la cible réellement touchée) ; le combo
+	# d'engendrement ajoute son dé ICI, au lancement — c'est cette salve qui est
+	# nourrie, pas les suivantes.
+	var dice := String(module.get("degats_des", "1d6"))
+	if _wu_combo_active:
+		dice = WuXing.add_die(dice)
 	var stats := {
 		"vitesse_projectile": float(params.get("vitesse", 20.0)) + float(mods.get("vitesse", 0.0)),
-		"dice": String(module.get("degats_des", "1d6")),
+		"dice": dice,
 		"penetration": 0.0,
 		"skill": weapon_skill_id(),
 		"module": module_id,
+		"element": WuXing.element_of_module(module),
 	}
 	var domain := ""
 	for d: String in (module.get("grimoire_domains", []) as Array):
