@@ -47,9 +47,19 @@ func run() -> void:
 			# chemins de prepare_context doivent rendre les MÊMES tableaux —
 			# les hauteurs étant entières, la moindre dérive flottante du
 			# terrain C++ se voit ici au bloc près.
+			# LE CACHE D'ARBRES DOIT ÊTRE VIDÉ ENTRE LES DEUX PASSES : sans ça,
+			# la passe native relirait les arbres GDScript mis en cache par la
+			# passe de référence, et la comparaison validerait un miroir qui n'a
+			# jamais tourné (2026-08-10, port de TreeGenerator).
 			ChunkMesher.use_native = false
+			gen._tree_cache_mutex.lock()
+			gen._tree_cache.clear()
+			gen._tree_cache_mutex.unlock()
 			var ctx: Dictionary = gen.prepare_context(col)
 			ChunkMesher.use_native = true
+			gen._tree_cache_mutex.lock()
+			gen._tree_cache.clear()
+			gen._tree_cache_mutex.unlock()
 			var ctx_nat: Dictionary = gen.prepare_context(col)
 			if not _compare_ctx(col, ctx, ctx_nat):
 				ctx_mismatches += 1
@@ -90,7 +100,56 @@ func _compare_ctx(col: Vector2i, ref: Dictionary, nat: Dictionary) -> bool:
 		print("[%s] ctx %s : hmin/hmax divergents (%d/%d vs %d/%d)" % [TAG, col,
 				int(ref["hmin"]), int(ref["hmax"]), int(nat["hmin"]), int(nat["hmax"])])
 		return false
+	# ARBRES : égalité PROFONDE des Variant (blocs, sous-grilles, ordre des
+	# tableaux — l'ordre d'insertion fait partie du contrat, le mesher en
+	# dépend pour l'ordre de ses sommets).
+	var rt: Array = ref["trees"]
+	var nt: Array = nat["trees"]
+	if rt.size() != nt.size():
+		print("[%s] ctx %s : %d arbre(s) (réf) contre %d (natif)" % [TAG, col, rt.size(), nt.size()])
+		return false
+	for t in rt.size():
+		var a: Dictionary = rt[t]
+		var b: Dictionary = nt[t]
+		# `wood_positions` d'abord : il ne dépend QUE du squelette — s'il
+		# diverge c'est le RNG/tracé, s'il tient c'est le feuillage.
+		for key in ["base", "species_id", "wood_positions", "trunk_subdivs", "blocks", "wood_volume"]:
+			if a[key] != b[key]:
+				print("[%s] ctx %s : arbre %d (%s), champ « %s » divergent (base %s)" % [
+						TAG, col, t, a["species_id"], key, a["base"]])
+				_detail_diff(a[key], b[key], key)
+				return false
 	return true
+
+
+## Premier écart en détail — sans lui on saurait QUE ça diverge, jamais OÙ.
+func _detail_diff(a: Variant, b: Variant, key: String) -> void:
+	if a is Dictionary and b is Dictionary:
+		print("    tailles : %d (réf) contre %d (natif)" % [(a as Dictionary).size(), (b as Dictionary).size()])
+		var shown := 0
+		for k in (a as Dictionary):
+			if not (b as Dictionary).has(k):
+				print("    clé %s : présente en réf, absente en natif" % [k])
+				shown += 1
+			elif (a as Dictionary)[k] != (b as Dictionary)[k]:
+				print("    clé %s : %s (réf) contre %s (natif)" % [k, (a as Dictionary)[k], (b as Dictionary)[k]])
+				shown += 1
+			if shown >= 4:
+				return
+		for k in (b as Dictionary):
+			if not (a as Dictionary).has(k):
+				print("    clé %s : absente en réf, présente en natif" % [k])
+				shown += 1
+			if shown >= 4:
+				return
+	elif a is Array and b is Array:
+		print("    tailles : %d (réf) contre %d (natif)" % [(a as Array).size(), (b as Array).size()])
+		for i in mini((a as Array).size(), (b as Array).size()):
+			if (a as Array)[i] != (b as Array)[i]:
+				print("    indice %d : %s (réf) contre %s (natif)" % [i, (a as Array)[i], (b as Array)[i]])
+				return
+	else:
+		print("    %s (réf) contre %s (natif)" % [a, b])
 
 
 func _compare(ck: Vector3i, ref: Array, nat: Array) -> bool:

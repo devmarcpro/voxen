@@ -142,6 +142,13 @@ public:
 	// Configure l'échantillonnage de colonnes (overworld/plat uniquement).
 	void configure_columns(const Dictionary &cfg);
 
+	// Un arbre complet (miroir de TreeGenerator.generate — voir
+	// voxen_trees.cpp). Pur et sans configuration : la fiche d'essence
+	// traverse à chaque appel, les ids matériaux sont résolus par l'appelant
+	// (les deux lookups GameData de la version GDScript).
+	Dictionary generate_tree(const Vector3i &base, int64_t world_seed,
+			const Dictionary &species, int wood_id, int leaf_id) const;
+
 	// Les 324 colonnes (18×18) d'un contexte de chunk-colonne, en un appel.
 	// Retourne [heights, surfaces, subsurfaces, transitions, hmin, hmax] —
 	// les accents sont nuls dans l'overworld, l'appelant garde son tableau de

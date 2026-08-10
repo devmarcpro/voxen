@@ -207,9 +207,16 @@ près). Troisième temps le même jour : les **colonnes** (`sample_columns`, les
 littoraux) mesurées à 41,4 % de la génération par la nouvelle sonde
 `--probe-gen` → **14,5 → 0,72 ms/colonne (×20)**, contexte 33,0 → 20,1
 ms/colonne. Hors ville et hors dimensions (le terrassement et les reliefs de
-dimension restent en GDScript de référence). Le plafond restant de la
-génération est **les arbres** (75 % du contexte : `TreeGenerator`, formes 3D)
-— chantier suivant, d'une autre nature (botanique procédurale, pas du bruit).
+dimension restent en GDScript de référence). Quatrième temps (2026-08-10) :
+**les arbres** — `TreeGenerator.generate` porté en entier
+([voxen_trees.cpp](native/src/voxen_trees.cpp)) : squelette récursif, RNG
+Godot au même ordre d'appels (piège payé : l'ordre d'évaluation des arguments
+C++ n'est pas spécifié — chaque tirage est hissé en variable nommée), tables
+ordonnées maison pour préserver l'ordre d'insertion des dictionnaires dont
+dépend l'ordre des sommets. Formes 13,7 → **2,75 ms/colonne**, contexte
+complet 33,0 → **9,0 ms/colonne (×3,7)**. Les postes restants sont émiettés
+(candidats 2,4 / plantes 1,9 / stamp 1,3 ms) — rendements décroissants, le
+chantier génération est considéré clos à ce niveau.
 
 ### Les 50 créatures, critère repassé au rouge — et pourquoi c'est assumé
 

@@ -9,6 +9,10 @@
 __pycache__/
 *.pyc
 
+# Reglages personnels de l outillage Claude (permissions locales, jamais
+# partages — le fichier est reecrit par l outil lui-meme).
+.claude/settings.local.json
+
 # Artefacts de build de l extension native (native/) — la DLL se rebatit avec
 # native/SConstruct (voir son en-tete pour la toolchain portable).
 /native/bin/

@@ -1702,6 +1702,11 @@ func _trees_in_window(min_x: int, max_x: int, min_z: int, max_z: int) -> Array[D
 	var cell_max_x := floori(float(max_x + span) / TREE_CELL_SIZE)
 	var cell_min_z := floori(float(min_z - span) / TREE_CELL_SIZE)
 	var cell_max_z := floori(float(max_z + span) / TREE_CELL_SIZE)
+	# Sous-phases de --probe-gen (2026-08-10) : « arbres_cand » (l'échantillon
+	# de terrain complet par cellule acceptée) et « arbres_gen » (les formes,
+	# TreeGenerator) sont des SOUS-ENSEMBLES de la phase « arbres » — c'est le
+	# partage entre les deux qui décide du prochain portage natif.
+	var t0 := Time.get_ticks_usec() if profiling else 0
 	for cx in range(cell_min_x, cell_max_x + 1):
 		for cz in range(cell_min_z, cell_max_z + 1):
 			var cand := _tree_candidate_in_cell(cx, cz)
@@ -1716,7 +1721,15 @@ func _trees_in_window(min_x: int, max_x: int, min_z: int, max_z: int) -> Array[D
 			var own := int(_tree_reach.get(cand["species_id"], span))
 			if base.x + own < min_x or base.x - own > max_x 					or base.z + own < min_z or base.z - own > max_z:
 				continue
+			if profiling:
+				_phase_add("arbres_cand", Time.get_ticks_usec() - t0)
+				t0 = Time.get_ticks_usec()
 			result.append(_generate_tree_cached(cand))
+			if profiling:
+				_phase_add("arbres_gen", Time.get_ticks_usec() - t0)
+				t0 = Time.get_ticks_usec()
+	if profiling:
+		_phase_add("arbres_cand", Time.get_ticks_usec() - t0)
 	return result
 
 
@@ -1730,7 +1743,18 @@ func _generate_tree_cached(cand: Dictionary) -> Dictionary:
 	_tree_cache_mutex.unlock()
 
 	var species: Dictionary = GameData.trees[cand["species_id"]]
-	var tree := TreeGenerator.generate(base, world_seed, species)
+	# ARBRES NATIFS (2026-08-10) : les FORMES pesaient 13,7 ms/colonne (36,5 %
+	# de la génération, --probe-gen). Le miroir C++ (voxen_trees.cpp) rend des
+	# arbres identiques au bloc près — même RNG Godot, même ordre d'appels,
+	# même ordre d'insertion des dictionnaires. Les deux lookups GameData
+	# restent ici : le C++ ne connaît pas les ids runtime.
+	var tree: Dictionary
+	if _native_shell != null and ChunkMesher.use_native:
+		tree = _native_shell.generate_tree(base, world_seed, species,
+				GameData.material_runtime_ids.get(species["wood_material"], 0),
+				GameData.material_runtime_ids.get(species["leaf_material"], 0))
+	else:
+		tree = TreeGenerator.generate(base, world_seed, species)
 
 	_tree_cache_mutex.lock()
 	# Le cache est régénérable (pur, déterministe) : borné, purgé s'il déborde
