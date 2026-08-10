@@ -96,7 +96,11 @@ ARBRES (75 % du coût de contexte restant — prochain chantier).
 
 `melee_attack.gd` (balayage directionnel, zones), `combat_resolver.gd`
 (pipeline dégâts/mitigation — l'en-tête porte le raisonnement E.3.1),
-`weapon_stats.gd` (stats dérivées des pièces et matériaux).
+`weapon_stats.gd` (stats dérivées des pièces et matériaux),
+`wu_xing.gd` (les cinq éléments 5.2/A.4.6 — LA table unique des cycles et
+des dérivations d'alignement ; le multiplicateur s'applique dans
+`resolve_hit`, les combos dans `player.cast_assembly`),
+`spell_assembly.gd` (compilation des assemblages de modules, coût A.6).
 
 ## Données (`data/`) et outillage (`tools/`)
 
